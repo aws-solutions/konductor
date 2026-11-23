@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf } = require('./stream.js');
 const { frontmatter, fmValue } = require('./frontmatter.js');
-const claudeParse = require('./harness/claude-code-parse.js');
+const claudeParse = require('../../plugins/claude-code/parse.js');
 const { loadOrderOf, loadCheckOf } = require('./load-check.js');
 
 const SKILL_FIELDS = [

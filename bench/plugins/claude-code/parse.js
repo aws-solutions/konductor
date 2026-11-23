@@ -6,7 +6,7 @@
 // session, and a session that resumes after a background task prints a second `result`, so the last one is used.
 
 const path = require('node:path');
-const { detectAskedUser } = require('../stream.js');
+const { detectAskedUser } = require('../../runner/lib/stream.js');
 
 const SUBAGENT_TOOLS = new Set(['Agent', 'Task']);
 const ASK_TOOLS = new Set(['AskUserQuestion']);

@@ -9,7 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { canonicalModelOf } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'harness', 'claude-code-parse.js'));
+const { canonicalModelOf } = require('../../plugins/claude-code/parse.js');
 
 const MCP_VERSION = '2025-11-25';
 const SERVER = 'plant';

@@ -137,7 +137,7 @@ function writeEnvJson({ outDir, runtime, ctx, config, envKeep, stCreds, interpre
     konductorArm: describeEnv(process.env, envFor(true)),
     vanillaArm: describeEnv(process.env, envFor(false)),
     interpreters,
-    // The skill listing each arm's runs get (claude-listing.js; Kiro's record from its install), by arm id.
+    // The skill listing each arm's runs get (plugins/claude-code/listing.js; Kiro's record from its install), by arm id.
     skillListings: Object.fromEntries(arms.map((a) => [a.id, ctx.skillListings?.get(a.id)?.listing ?? null])),
   }, null, 2) + '\n');
 }

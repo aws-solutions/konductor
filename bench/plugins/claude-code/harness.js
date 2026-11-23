@@ -8,26 +8,26 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseStream } = require('../stream.js');
-const { installedSkills } = require('../startup.js');
-const sandbox = require('../sandbox.js');
-const { ALLOW } = require('../env.js');
-const { ensureEmptyClaudeRules } = require('../isolation-gates.js');
-const { realHomes } = require('../isolate.js');
-const { scrubTreeDetailed } = require('../hygiene.js');
-const { secretLiterals } = require('../scrub.js');
-const skills = require('../skills.js');
-const { promptFor } = require('../arm-opts.js');
-const { writeArmConfig } = require('../arm-config.js');
-const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
-const { copyPlainFile } = require('../safe-copy.js');
-const parse = require('./claude-code-parse.js');
-const { turnStreamTexts } = require('../autonomy.js');
-const listing = require('./claude-listing.js');
-const { plantPrompt, MCP_CONFIG_REL, SERVER_NAME: PLANT_SERVER } = require('../plant/agent-file.js');
+const { parseStream } = require('../../runner/lib/stream.js');
+const { installedSkills } = require('../../runner/lib/startup.js');
+const sandbox = require('../../runner/lib/sandbox.js');
+const { ALLOW } = require('../../runner/lib/env.js');
+const { ensureEmptyClaudeRules } = require('../../runner/lib/isolation-gates.js');
+const { realHomes } = require('../../runner/lib/isolate.js');
+const { scrubTreeDetailed } = require('../../runner/lib/hygiene.js');
+const { secretLiterals } = require('../../runner/lib/scrub.js');
+const skills = require('../../runner/lib/skills.js');
+const { promptFor } = require('../../runner/lib/arm-opts.js');
+const { writeArmConfig } = require('../../runner/lib/arm-config.js');
+const { orchMetrics: computeOrchMetrics } = require('../../runner/lib/orch-metrics.js');
+const { copyPlainFile } = require('../../runner/lib/safe-copy.js');
+const parse = require('./parse.js');
+const { turnStreamTexts } = require('../../runner/lib/autonomy.js');
+const listing = require('./listing.js');
+const { plantPrompt, MCP_CONFIG_REL, SERVER_NAME: PLANT_SERVER } = require('../../runner/lib/plant/agent-file.js');
 
 const id = 'claude-code';
-const meta = require('./claude-code-meta.js');
+const meta = require('./meta.js');
 const PROVIDER = 'bedrock';
 const DEFAULT_MODEL = 'us.anthropic.claude-sonnet-5-5';
 const REGION = 'us-east-1';
@@ -53,16 +53,16 @@ const EXPECTED_AGENTS = 11;
 // Claude Code starts these even with an empty config directory, so a vanilla arm is not empty.
 const BUILTIN_AGENTS = ['claude', 'Explore', 'general-purpose', 'Plan', 'statusline-setup'];
 const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
-// ---- Binary: resolveClaude and the study's one-binary check live in claude-code-bin.js (D-192) ----
-const { resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions } = require('./claude-code-bin.js');
+// ---- Binary: resolveClaude and the study's one-binary check live in bin.js (D-192) ----
+const { resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions } = require('./bin.js');
 
 // ---- Model and credentials ----
 
 /** The canonical id a run must report, from the model flag value. */
 const canonicalModel = (model) => parse.canonicalModelOf(model);
 
-// The credential variables and checks live in claude-code-creds.js (D-192).
-const { CREDENTIAL_VARS, PROFILE_VARS, credentialNames, checkCredentials } = require('./claude-code-creds.js');
+// The credential variables and checks live in creds.js (D-192).
+const { CREDENTIAL_VARS, PROFILE_VARS, credentialNames, checkCredentials } = require('./creds.js');
 
 // ---- Environment ----
 
@@ -242,7 +242,7 @@ function trialInstall(prepared, ctx) {
 
 /**
  * The skill listing a run of `arm` gets from the install in `home`, measured with no credentials in the environment
- * (claude-listing.js): `{ skillListing, skillListingError }`.
+ * (listing.js): `{ skillListing, skillListingError }`.
  */
 function listingOf(home, arm, ctx) {
   if (!ctx.claude?.bin) return { skillListing: null, skillListingError: 'no claude binary was resolved for this command' };
@@ -272,8 +272,8 @@ function removeCredentials(home) {
   fs.rmSync(path.join(home, '.aws'), { recursive: true, force: true });
 }
 
-// Run cleanup (claude's task dirs under the temp dirs) lives in claude-code-cleanup.js (D-192).
-const { slugOf, cleanupRun, describeCleanup } = require('./claude-code-cleanup.js');
+// Run cleanup (claude's task dirs under the temp dirs) lives in cleanup.js (D-192).
+const { slugOf, cleanupRun, describeCleanup } = require('./cleanup.js');
 
 // ---- Results ----
 
@@ -400,7 +400,7 @@ const strictMcp = true;
 
 module.exports = {
   id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
-  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, streams: require('./claude-code-streams.js'), credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
-  resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
+  listingMismatch: listing.listingMismatch, resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };

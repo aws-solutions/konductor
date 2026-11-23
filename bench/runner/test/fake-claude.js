@@ -8,7 +8,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { MIN_BINARY_BYTES } = require('../lib/harness/claude-code.js');
+const { MIN_BINARY_BYTES } = require('../../plugins/claude-code/harness.js');
 const { writeAtomic } = require('../lib/backfill.js');
 
 const SCRIPT = `#!/usr/bin/env node
@@ -19,7 +19,7 @@ const path = require('path');
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'fake-claude.config.json'), 'utf8'));
 const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log(cfg.version || '9.9.9 (fake)'); process.exit(0); }
-// The listing probes (lib/harness/claude-listing.js): /context, and -p with --debug-file and no credentials. They are
+// The listing probes (plugins/claude-code/listing.js): /context, and -p with --debug-file and no credentials. They are
 // answered from the skills in CLAUDE_CONFIG_DIR by the real fill rule (built-ins first, then name order while it fits),
 // and never touch started.json or the files of a run.
 // A real run also passes --debug-file (D-33), so a probe is told apart by its "-p ok" prompt. In a run the fake writes

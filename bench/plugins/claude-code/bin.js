@@ -6,7 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const sandbox = require('../sandbox.js');
+const sandbox = require('../../runner/lib/sandbox.js');
 
 // The Claude Code version the stream parser and the harness flags were checked against.
 const VALIDATED_VERSION = '2.1.316.1544';
@@ -55,7 +55,7 @@ function binaryContains(file, needle) {
   } finally { fs.closeSync(fd); }
 }
 
-const PLANT_CONTROLS_DIR = path.resolve(__dirname, '..', '..', '..', 'physical', 'controls');
+const PLANT_CONTROLS_DIR = path.resolve(__dirname, '..', '..', 'physical', 'controls');
 const PLANT_CONTROL_VERSION = 'plant-control';
 
 /** Whether `bin` is one of bench's own Claude Code plant controls: named `<control>-claude`, its file in physical/controls. */

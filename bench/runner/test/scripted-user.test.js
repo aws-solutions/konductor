@@ -19,7 +19,7 @@ const { loadTasks } = require('../lib/tasks.js');
 const { validateResult } = require('../lib/result.js');
 const { scriptedToAutonomy, newConversation } = require('../lib/autonomy.js');
 const { v3Errors } = require('../lib/task-v3.js');
-const cc = require('../lib/harness/claude-code.js');
+const cc = require('../../plugins/claude-code/harness.js');
 
 const FX = path.join(__dirname, 'fixtures', 'claude-code');
 const SCRIPTED = {

@@ -89,7 +89,7 @@ test('the harness\'s own askedUser signal is not read: the final text alone deci
 // Cross-harness fixtures: each harness's contract stream with its final text replaced by the same plain-prose question
 // (and by the same question with the marker). Every harness must give the scripted user the same question record.
 const CONTRACT = path.join(__dirname, 'fixtures', 'harness-contract');
-const FILES = { 'kiro-cli': 'kiro-cli.jsonl', 'claude-code': 'claude-code.jsonl', opencode: path.join(__dirname, '..', '..', 'plugins', 'opencode', 'test', 'fixtures', 'single-turn.jsonl'), strands: path.join(__dirname, '..', '..', 'plugins', 'strands', 'test', 'fixtures', 'single-turn.jsonl') };
+const FILES = { 'kiro-cli': 'kiro-cli.jsonl', 'claude-code': path.join(__dirname, '..', '..', 'plugins', 'claude-code', 'test', 'fixtures', 'single-turn.jsonl'), opencode: path.join(__dirname, '..', '..', 'plugins', 'opencode', 'test', 'fixtures', 'single-turn.jsonl'), strands: path.join(__dirname, '..', '..', 'plugins', 'strands', 'test', 'fixtures', 'single-turn.jsonl') };
 function withFinalText(id, text) {
   const stream = fs.readFileSync(path.resolve(CONTRACT, FILES[id]), 'utf8');
   const old = HARNESSES[id].turnSummary(stream).finalText;

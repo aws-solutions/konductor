@@ -7,7 +7,7 @@
 // file adds the order, the agents and the first write.
 
 const { toolNameOf, isV3Call, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf, subagentTargets, SUBAGENT_TOOL } = require('./stream.js');
-const { SUBAGENT_TOOLS } = require('./harness/claude-code-parse.js');
+const { SUBAGENT_TOOLS } = require('../../plugins/claude-code/parse.js');
 
 // shortcut: a file written by a shell command (`cat > f`, `sed -i`) is not seen as a write, so firstWriteAt can be
 // late on a run that writes only through the shell; upgrade when such runs show up in the load-check table.

@@ -207,7 +207,7 @@ test('CLI: a Claude Code run writes names-only run-config and env, a USD summary
     assert.equal(cfg.model, MODEL);
     assert.equal(cfg.canonicalModel, 'claude-sonnet-5-5');
     assert.equal(cfg.budgetUsd, 1);
-    assert.deepEqual(cfg.plugins.map((p) => [p.name, p.benchApi, /^[0-9a-f]{64}$/.test(p.sha256)]), [['opencode', 1, true], ['strands', 1, true]], 'run-config lists each loaded plugin with its hash');
+    assert.deepEqual(cfg.plugins.map((p) => [p.name, p.benchApi, /^[0-9a-f]{64}$/.test(p.sha256)]), [['claude-code', 1, true], ['opencode', 1, true], ['strands', 1, true]], 'run-config lists each loaded plugin with its hash');
     assert.equal(cfg.claudeCode.maxBudgetUsdPerRun, 0.5);
     assert.equal(cfg.claudeCode.permissionMode, 'acceptEdits');
     assert.match(cfg.claudeCode.binarySha256, /^[0-9a-f]{64}$/);

@@ -9,7 +9,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { MIN_BINARY_BYTES } = require('../lib/harness/claude-code.js');
+const { MIN_BINARY_BYTES } = require('../../plugins/claude-code/harness.js');
 
 const SCRIPT = String.raw`#!/usr/bin/env node
 const fs = require('fs');

@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
 const { profileCredentials, exportCredentials, parseProcessCredentials } = require('../lib/aws-creds.js');
-const cc = require('../lib/harness/claude-code.js');
+const cc = require('../../plugins/claude-code/harness.js');
 
 const PROFILE = 'bench';
 const json = (id, secret, token, expiresAt) => JSON.stringify({ Version: 1, AccessKeyId: id, SecretAccessKey: secret, SessionToken: token, ...(expiresAt ? { Expiration: new Date(expiresAt).toISOString() } : {}) });

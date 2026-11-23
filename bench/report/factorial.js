@@ -141,7 +141,7 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
   const efforts = uniq(executed.map((e) => e.result.effort ?? 'unrecorded')).sort();
   if (efforts.length > 1) throw new Error(`${where}: its runs were started at more than one effort level (${efforts.join(', ')}); a cell holds one effort level`);
   const modelsSeen = uniq(executed.flatMap((e) => (e.result.claudeCode?.modelsSeen ?? [e.result.sessionModel ?? e.result.model]).filter(Boolean))).sort();
-  // The skill listing each run recorded (runner/lib/harness/claude-listing.js; Kiro's from its install). A konductor cell
+  // The skill listing each run recorded (plugins/claude-code/listing.js; Kiro's from its install). A konductor cell
   // whose runs sent a konductor skill by name only is refused: that harness would lose descriptions the other keeps.
   const listings = executed.map((e) => e.result.skillListing ?? e.result.claudeCode?.skillListing ?? null);
   const cut = listings.find((l) => l?.nameOnly > 0);

@@ -4,15 +4,16 @@
   "imports": [
     "judge/opencode.js -> plugins/opencode/creds.js",
     "judge/opencode.js -> plugins/opencode/parse.js",
-    "report/plant-trace/stream-calls.js -> runner/lib/harness/claude-code-parse.js",
+    "physical/controls/plant-control.js -> plugins/claude-code/parse.js",
+    "report/plant-trace/stream-calls.js -> plugins/claude-code/parse.js",
     "runner/lib/backfill-skills.js -> runner/lib/harness/kiro.js",
     "runner/lib/backfill.js -> runner/lib/harness/kiro.js",
-    "runner/lib/introspect/scopes.js -> runner/lib/harness/claude-code-parse.js",
-    "runner/lib/load-check.js -> runner/lib/harness/claude-code-parse.js",
+    "runner/lib/introspect/scopes.js -> plugins/claude-code/parse.js",
+    "runner/lib/load-check.js -> plugins/claude-code/parse.js",
     "runner/lib/run-cmd.js -> runner/lib/harness/kiro.js",
-    "runner/lib/run-one.js -> runner/lib/harness/claude-listing.js",
-    "runner/lib/skills.js -> runner/lib/harness/claude-code-parse.js",
-    "runner/lib/trace.js -> runner/lib/harness/claude-code-parse.js"
+    "runner/lib/skills.js -> plugins/claude-code/parse.js",
+    "runner/lib/trace.js -> plugins/claude-code/parse.js",
+    "scripts/claude-code-smoke.js -> plugins/claude-code/harness.js"
   ],
   "names": {
     "cap/paidcall.js": 1,
@@ -27,9 +28,6 @@
     "runner/lib/backfill-skills.js": 1,
     "runner/lib/backfill.js": 1,
     "runner/lib/contamination.js": 1,
-    "runner/lib/harness/claude-code-meta.js": 1,
-    "runner/lib/harness/claude-code.js": 3,
-    "runner/lib/harness/claude-listing.js": 1,
     "runner/lib/harness/descriptors.js": 3,
     "runner/lib/harness/index.js": 2,
     "runner/lib/harness/kiro-meta.js": 2,

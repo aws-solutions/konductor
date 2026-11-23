@@ -60,7 +60,7 @@ These checks are the point of the kit. Do not weaken them to get a run through.
 
 - `bench/scripts/pilot-2x2.sh` is the small, self-contained 2x2 pilot (five lite tasks, one run each). The kit here is the
   larger, frozen study with a DEV and HELD-OUT split, caps and gates. Both end in `bench.js report-2x2`.
-- `2x2/listing-check.js` estimates the listing from the git tree. `bench/runner/lib/harness/claude-listing.js` measures it
+- `2x2/listing-check.js` estimates the listing from the git tree. `bench/plugins/claude-code/listing.js` measures it
   from a real install and records it per arm. Keep the estimate for the free pre-freeze check; the measurement is what a
   run records (debt rows D-33 and D-34).
 - `2x2/rescore-by-limit.js` changes only which runs count as timeouts. It is not `bench.js recheck` (which scores a saved

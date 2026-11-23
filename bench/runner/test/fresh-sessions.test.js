@@ -18,7 +18,7 @@ const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { validateResult } = require('../lib/result.js');
 const { v3Errors } = require('../lib/task-v3.js');
-const cc = require('../lib/harness/claude-code.js');
+const cc = require('../../plugins/claude-code/harness.js');
 
 const MEMORY = '.konductor/memory/decision.md';
 const SECOND = 'New session. Finish the change using what the team decided.';

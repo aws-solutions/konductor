@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The skill listing record (runner/lib/harness/claude-listing.js and kiro.js skillListingOf): the /context and debug-log
+// The skill listing record (plugins/claude-code/listing.js and kiro.js skillListingOf): the /context and debug-log
 // parsers, the budget formula, the probe against the fake claude (which answers by the real fill rule), the cache, the
 // cost guard, and Kiro's equivalent record. No model call, nothing outside the scratch directory.
 
@@ -11,8 +11,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
-const L = require('../lib/harness/claude-listing.js');
-const cc = require('../lib/harness/claude-code.js');
+const L = require('../../plugins/claude-code/listing.js');
+const cc = require('../../plugins/claude-code/harness.js');
 const kiro = require('../lib/harness/kiro.js');
 
 const MODEL = 'us.anthropic.claude-sonnet-5-5';

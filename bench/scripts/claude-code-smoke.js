@@ -11,7 +11,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const LIB = path.join(__dirname, '..', 'runner', 'lib');
-const cc = require(path.join(LIB, 'harness', 'claude-code.js'));
+const cc = require('../plugins/claude-code/harness.js');
 const { validateResult } = require(path.join(LIB, 'result.js'));
 
 const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };

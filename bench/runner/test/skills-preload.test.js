@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const skills = require('../lib/skills.js');
-const cc = require('../lib/harness/claude-code-parse.js');
+const cc = require('../../plugins/claude-code/parse.js');
 const { validate, loadSchema } = require('../lib/schema.js');
 
 const use = (id, name, input, parent = null) => ({ type: 'assistant', parent_tool_use_id: parent, message: { id: `m-${id}`, model: 'x', content: [{ type: 'tool_use', id, name, input }], usage: {} } });

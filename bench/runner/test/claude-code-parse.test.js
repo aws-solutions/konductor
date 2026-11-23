@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseStream } = require('../lib/stream.js');
-const cc = require('../lib/harness/claude-code-parse.js');
+const cc = require('../../plugins/claude-code/parse.js');
 
 const FIX = path.join(__dirname, 'fixtures', 'claude-code');
 const names = fs.readdirSync(FIX).filter((f) => f.endsWith('.stream.jsonl')).map((f) => f.replace('.stream.jsonl', ''));

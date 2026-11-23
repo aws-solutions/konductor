@@ -34,10 +34,6 @@ const CASES = {
       return {};
     },
   },
-  'claude-code': {
-    config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: 'claude-sonnet-5-5', effort: 'high' },
-    setup: () => ({ claude: { version: '9.9.9' } }),
-  },
 
 };
 

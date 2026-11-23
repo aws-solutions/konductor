@@ -16,7 +16,7 @@ const { HARNESSES } = require('../lib/harness/index.js');
 const { checksOf } = require('../../kit/plugin/check.js');
 
 // The harnesses that live in bench/plugins now. A move adds its name here.
-const MOVED = ['opencode', 'strands'];
+const MOVED = ['opencode', 'claude-code', 'strands'];
 
 test('createRegistry puts the parts named in `order` first, in that order, and the rest after in their own order', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'registry-order-'));

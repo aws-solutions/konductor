@@ -10,7 +10,7 @@ const { streamCallsOf } = require('../../runner/lib/plant/stream-match.js');
 const { SERVER_NAME } = require('../../runner/lib/plant/agent-file.js');
 const { ALL_TOOLS } = require('../../runner/lib/plant/meta.js');
 const { toolNameOf, subagentTargets, isV3Call, SUBAGENT_TOOL } = require('../../runner/lib/stream.js');
-const { SUBAGENT_TOOLS } = require('../../runner/lib/harness/claude-code-parse.js');
+const { SUBAGENT_TOOLS } = require('../../plugins/claude-code/parse.js');
 const { PlantTraceError } = require('./load.js');
 
 const MAX_TEXT = 2000;

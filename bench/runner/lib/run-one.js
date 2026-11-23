@@ -30,7 +30,6 @@ const { plantWalls, withCgroup } = require('./plant/walls.js');
 const introspect = require('./introspect/index.js');
 const { startupRecord } = require('./startup.js');
 const introspectReport = require('./introspect/report.js');
-const { listingMismatch: claudeListingMismatch } = require('./harness/claude-listing.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -467,7 +466,7 @@ function attachListing(result, { harness, ctx, arm, outDir }) {
   const observed = harness.observedListing && listing.listing ? harness.observedListing(outDir) : null;
   result.skillListing = observed ? { ...listing.listing, observed } : listing.listing;
   if (harness.id === 'claude-code') {
-    const mismatch = claudeListingMismatch(listing.listing, result.claudeCode?.runListing);
+    const mismatch = harness.listingMismatch(listing.listing, result.claudeCode?.runListing);
     result.claudeCode = { ...(result.claudeCode ?? {}), skillListing: listing.listing, listingMismatch: mismatch };
     if (mismatch) result.flags = [...new Set([...(result.flags || []), 'listingMismatch'])];
   }

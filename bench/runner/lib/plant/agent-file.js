@@ -50,7 +50,7 @@ function copyPlantAgentOut(home, outDir) {
 }
 
 // Claude Code has no agent file for the plant: the shim is its only MCP server, given with --mcp-config, and the
-// one-line prompt goes on --append-system-prompt (claude-code.js buildCommand).
+// one-line prompt goes on --append-system-prompt (plugins/claude-code/harness.js buildCommand).
 const MCP_CONFIG_REL = path.join('.claude', 'plant-mcp.json');
 
 /** The one-line operator prompt for environment kind `kind` (default `conveyor-sim`). */

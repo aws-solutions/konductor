@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseStream, toolNameOf, SUBAGENT_TOOL } = require('../stream.js');
-const { SUBAGENT_TOOLS: CC_SUBAGENT_TOOLS } = require('../harness/claude-code-parse.js');
+const { SUBAGENT_TOOLS: CC_SUBAGENT_TOOLS } = require('../../../plugins/claude-code/parse.js');
 const skills = require('../skills.js');
 const { readJsonOrNull: readJson } = require('../util.js');
 const { readLines, oneLine, clip, numOrNull } = require('./report-text.js');

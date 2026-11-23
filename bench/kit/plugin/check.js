@@ -178,7 +178,11 @@ function fakeRunProblems({ id, harness, conf, newCtx, fixture, root }) {
   } finally {
     keys.forEach((k, i) => { if (saved[i] === undefined) delete process.env[k]; else process.env[k] = saved[i]; });
   }
-  need(!Object.values(env).includes(CANARY), 'a host variable reached the agent env: env() must build an allowlist, not copy process.env');
+  // A host value may reach the agent only under a credential name the harness declares (credentialEnv: an agent that
+  // signs its own model calls, as Claude Code does); any other is a leak.
+  const declared = new Set(harness.credentialEnv ?? []);
+  const leaked = Object.entries(env).filter(([k, v]) => v === CANARY && !declared.has(k)).map(([k]) => k);
+  need(!leaked.length, `a host variable reached the agent env (${leaked.join(', ')}): env() must build an allowlist, not copy process.env`);
   need(env.HOME === home, "env().HOME must be the run's scratch HOME");
   const log = path.join(root, 'replay.json');
   const r = spawnSync(process.execPath, [REPLAY, fixture, log, cmd.file, ...cmd.args], { cwd, env, input: cmd.stdin ?? '', encoding: 'utf8', timeout: 30000 });

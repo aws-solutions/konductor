@@ -4,7 +4,7 @@
 // The Claude Code stream readers (harness/streams.js, FW-17). The stream is `claude -p --output-format stream-json`.
 // Claude Code arms take no --stop-on, so there is no stopEvent. trace.js is required at call time.
 
-const parse = require('./claude-code-parse.js');
+const parse = require('./parse.js');
 
 const blank = (t) => typeof t !== 'string' || !t.trim();
 
@@ -15,5 +15,5 @@ module.exports = {
     if (!blank(a.finalText)) return a.finalText;
     return blank(a.lastText) ? a.finalText ?? a.lastText : a.lastText;
   },
-  timeline: (events) => require('../trace.js').claudeTimeline(events),
+  timeline: (events) => require('../../runner/lib/trace.js').claudeTimeline(events),
 };

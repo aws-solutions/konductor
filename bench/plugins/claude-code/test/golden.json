@@ -1,0 +1,102 @@
+{
+  "turn": {
+    "sessionId": "445ddd25-adc6-4c3f-addf-d373844db85d",
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "finalText": "hi",
+    "askedUser": false
+  },
+  "agg": {
+    "delegatedTo": {},
+    "sessionId": "445ddd25-adc6-4c3f-addf-d373844db85d",
+    "sessionIds": [
+      "445ddd25-adc6-4c3f-addf-d373844db85d"
+    ],
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "credits": 0,
+    "meteringEntries": 0,
+    "nonCreditUnits": [],
+    "turnDurationMs": 2612,
+    "contextUsagePercentage": null,
+    "toolCalls": 1,
+    "workToolCalls": 1,
+    "subagentCalls": 0,
+    "toolNames": {
+      "Bash": 1
+    },
+    "skillsMcpOk": null,
+    "finalText": "hi",
+    "finalTextTruncated": false,
+    "askedUser": false
+  },
+  "session": {
+    "model": "claude-sonnet-5-5",
+    "models": [
+      "claude-sonnet-5-5"
+    ],
+    "totalRequestCount": 2
+  },
+  "usage": {
+    "tokens": {
+      "input": 4,
+      "output": 71,
+      "reasoning": 0,
+      "cacheRead": 16458,
+      "cacheWrite": 16559,
+      "total": 33092
+    },
+    "costUsd": 0.0437613,
+    "modelCalls": 2,
+    "sessions": 1,
+    "variants": []
+  },
+  "transcript": {
+    "bytes": 6183,
+    "chars": 6183,
+    "partial": false
+  },
+  "skills": {
+    "extraction": {
+      "runtime": "claude-code",
+      "skillsLoaded": [],
+      "skillQueries": [],
+      "skillBytesLoaded": 0,
+      "bytesByName": {},
+      "skillsLoadedFull": [],
+      "skillLoadsPreview": 0,
+      "skillLoads": [],
+      "skillCallsFailed": 0,
+      "findSkillsCalls": 0,
+      "findSkillsEmpty": 0,
+      "findSkillsBytes": 0,
+      "requested": [],
+      "failedCalls": [],
+      "failedByTool": {
+        "get_skill": 0,
+        "load_resource": 0,
+        "find_skills": 0
+      },
+      "firstDecision": {
+        "kind": "none",
+        "name": null
+      }
+    },
+    "info": null,
+    "order": {
+      "order": [],
+      "firstWriteAt": null
+    },
+    "extras": {
+      "skillsPreloaded": [],
+      "skillBytesPreloaded": 0,
+      "skillLoadsByScope": {
+        "main": 0,
+        "child": 0
+      },
+      "skillLoadsNoBody": 0,
+      "skillReferenceReads": 0
+    }
+  },
+  "flags": []
+}

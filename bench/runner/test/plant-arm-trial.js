@@ -33,7 +33,7 @@ const jsonl = (lines) => lines.map((l) => JSON.stringify(l)).join('\n') + '\n';
 /**
  * Runs control `name` with `prompt` as the agent in its `harness` form: `kiro` (`<name>-kiro`, the shim in the Kiro plant
  * agent file under `home`, the prompt as its last argument) or `claude` (`<name>-claude`, the shim in an MCP config passed
- * with `--mcp-config`, the prompt on stdin, as claude-code.js starts Claude Code). Returns the spawnSync result.
+ * with `--mcp-config`, the prompt on stdin, as plugins/claude-code/harness.js starts Claude Code). Returns the spawnSync result.
  */
 function runAgent(name, prompt, { harness, home, work, socketPath }) {
   const where = { shimPath: SHIM, socketPath, nodeBin: process.execPath };

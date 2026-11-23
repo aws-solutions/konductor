@@ -12,7 +12,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { parseStream, toolNameOf, isV3Call, skillsCallOf, mcpInputOf, subagentTargets, SUBAGENT_TOOL } = require('./stream.js');
 const { runtimeOf, descriptorOf, supporting, joinNames } = require('./harness/runtime.js');
-const claude = require('./harness/claude-code-parse.js');
+const claude = require('../../plugins/claude-code/parse.js');
 const skills = require('./skills.js');
 
 const { readJsonOrNull: readJson } = require('./util.js');

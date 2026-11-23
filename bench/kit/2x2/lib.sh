@@ -29,7 +29,12 @@ pins() {
   "$CBIN" --help | grep -q -- '--effort' || die "claude copy has no --effort flag"
   say "pins ok: kiro-cli $KIRO_VERSION, claude $CC_VERSION with --effort (bench validated on $(validated))"
 }
-validated() { node -e 'console.log(require(process.argv[1]).VALIDATED_VERSION)' "$R/bench/runner/lib/harness/claude-code.js"; }
+# The Claude Code harness moved to bench/plugins/claude-code (FW-18); a frozen bench from before keeps the old path.
+validated() {
+  local h="$R/bench/plugins/claude-code/harness.js"
+  [ -f "$h" ] || h="$R/bench/runner/lib/harness/claude-code.js"
+  node -e 'console.log(require(process.argv[1]).VALIDATED_VERSION)' "$h"
+}
 ack_cc() { # owner rule (2026-11-18): no stage starts without ACK_CC_VERSION=1, set after the smoke run passes
   [ "${ACK_CC_VERSION:-}" = 1 ] || die "run 'smoke' first (Claude Code $CC_VERSION; bench validated on $(validated)), then set ACK_CC_VERSION=1"
 }

@@ -537,7 +537,7 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   verified (the smoke script reports it). The `global.` inference profile is untested (the default is `us.`). Only the `SessionStart` hook
   was seen under `-p`; the `--include-hook-events` flag is passed to konductor arms when the binary has it. The skill startup
   size (`startupResources`) is not measured for this harness.
-- Where it plugs in (for reviewers): `runner/lib/harness/claude-code.js` and `claude-code-parse.js`; `harness/runtime.js`
+- Where it plugs in (for reviewers): `plugins/claude-code/harness.js` and `plugins/claude-code/parse.js`; `harness/runtime.js`
   (`runtimeOf`, `isUsdRuntime`) and `harness/index.js`; `arms.js` (`cc-` prefix) and `profiles.js` (A/A repeat prefix);
   `run-cmd.js` (flags, guards, config, run-config record); `run-one.js` (post-run `cleanupRun`); `result.js` and
   `schema/result.schema.json` (`claudeCode`, harness enum, canonical model check); `skills.js` (Claude load extractor);
@@ -552,7 +552,7 @@ Claude Code sends the model one line per skill, `- name: description`, up to a b
 are filled in name order; a skill that no longer fits is sent by name only. Kiro CLI has no known cap.
 
 Bench measures the listing once per arm, at prepare, before any run, with no model call
-(`runner/lib/harness/claude-listing.js`). On the trial install it runs four local `claude -p` calls with no AWS
+(`plugins/claude-code/listing.js`). On the trial install it runs four local `claude -p` calls with no AWS
 credentials in their environment: `/context` at the arm's budget and with it lifted (a skill whose token count drops is cut),
 and `-p ok --debug-file` at the arm's budget and at budget 1 (the `Sending N skills` and `Skill listing over budget` lines;
 claude then stops at the credential step). The record is cached in `--cache` under `claude-listing/`, keyed by the claude
