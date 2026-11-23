@@ -10,8 +10,8 @@ const { treeHtml, stepExtras, stateStrip } = require('./rows.js');
 const { flatCalls } = require('./tree.js');
 
 const read = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
-// No network: nothing may load from outside the page. Inline style and script are the page's own files.
-const CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'";
+// No network: nothing may load from outside the page. Inline style and script are the page's own files; images are data: URIs.
+const CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:";
 
 const taskName = (t) => (t ? path.basename(String(t)) : null);
 
@@ -79,8 +79,16 @@ function endLine(trace) {
   return `<div class="end"><span class="na">end of run, after the settle</span> ${harm} ${stateStrip(trace.final.state)}</div>`;
 }
 
-/** One run as one full-width block: its header naming the arm, then every step one below the other. `lane` is its index. */
-const runBlock = (trace, lane) => `<section class="panel run">${runHeader(trace)}<div class="steps">${listHead(trace)}${treeHtml(trace.steps, lane, trace)}${endLine(trace)}</div></section>`;
+/** An arm trial's still frames at its key moments (frames.js), a note when they could not be drawn, or nothing. */
+function frameStrip(frames) {
+  if (!frames) return '';
+  const note = frames.unavailable ? `<p class="note">frames not drawn: ${esc(frames.unavailable)}</p>` : '';
+  const figs = (frames.frames ?? []).map((f) => `<figure class="frame"><img alt="arm at ${esc(f.cause)}: ${esc(f.why)}" src="data:image/png;base64,${esc(f.png_base64)}"><figcaption>${esc(f.cause)} at ${esc(+(f.t_ms / 1000).toFixed(1))} s: ${esc(f.why)}</figcaption></figure>`).join('');
+  return `${note}${figs ? `<div class="frames">${figs}</div>` : ''}`;
+}
+
+/** One run as one full-width block: its header naming the arm, its still frames (arm trials), then every step one below the other. `lane` is its index. */
+const runBlock = (trace, lane) => `<section class="panel run">${runHeader(trace)}${frameStrip(trace.frames)}<div class="steps">${listHead(trace)}${treeHtml(trace.steps, lane, trace)}${endLine(trace)}</div></section>`;
 
 const extras = (traces) => traces.map((t, lane) => flatCalls(t.steps).map((s) => stepExtras(s, lane, t)).join('')).join('');
 

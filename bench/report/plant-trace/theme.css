@@ -92,3 +92,7 @@ pre { margin: 0; padding: 8px 10px; background: var(--code); color: #c9c2de; bor
 dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 12px; }
 dt { color: var(--mu); }
 dd { margin: 0; font-family: var(--mono); word-break: break-word; }
+.frames { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.frame { margin: 0; width: 160px; font-size: 11px; color: var(--mu); }
+.frame img { display: block; width: 160px; height: 160px; border: 1px solid var(--bd); border-radius: 8px; image-rendering: pixelated; }
+.frame figcaption { margin-top: 4px; }
