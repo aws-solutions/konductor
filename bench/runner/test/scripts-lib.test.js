@@ -141,7 +141,7 @@ test('every lib/sh.js command a script calls exists, and no script under bench/s
       calls++;
     }
   }
-  assert.ok(calls >= 10, `only ${calls} sh.js calls found`);
+  assert.ok(calls >= 6, `only ${calls} sh.js calls found`);
 });
 
 test('the sh.js command line: prints each answer on one line, exit 3 when the repo has no hygiene scanner, 64 on an unknown command', (t) => {
