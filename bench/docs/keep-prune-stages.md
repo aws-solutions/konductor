@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Keep or prune, stages 2 to 4: agent files, SOPs and always-loaded context
 
-2026-11-22, version 2: the record schema, the stage 2 delegation test, prices checked against real runs, and the
-first pilot unit. [← capability playbook](cap-playbook.md) · [reference](reference.md)
+2026-11-23, version 3: the paid path for the first pilot (writing its baseline, and its quick run), built and tested
+on a fake kiro-cli, with no paid call made. [← capability playbook](cap-playbook.md) · [reference](reference.md)
 
 ## The problem
 
@@ -44,8 +44,8 @@ session reads it. That is an audit finding, and needs no measurement.
 - `cap units [--kind agent|sop|context] [--coverage FILE]` lists every unit, with its hash, size, who reaches it,
   its drop arm, its selection test, the bench tasks that target it, and what it needs next.
 - `cap unit-stage --kind K --unit NAME --run stub-ID` runs one unit through the real stage 1 pipeline on the stub
-  provider. It needs a frozen unit baseline, refuses a run id that is not `stub-...`, and refuses any provider but the
-  stub. With no baseline, a stale one, an entry agent or too few judge families, the record says NO DATA and why.
+  provider. It needs a frozen unit baseline and refuses a run id that is not `stub-...`; the paid provider is below.
+  With no baseline, a stale one, an entry agent or too few judge families, the record says NO DATA and why.
 - `cap unit-stage --estimate [--kind K] [--depth quick|deep|both] [--max-units N]` prints the dry-run cost.
 - The stage record is checked on write and on read against `bench/schema/keep-prune-unit-stage.schema.json` (major
   1, `bench/cap/unitrecord.js`). Its quick and deep blocks are checked against the skill record's own block schema.
@@ -59,13 +59,34 @@ session reads it. That is an audit finding, and needs no measurement.
 - `bench/runner/test/cap-units.test.js`, `cap-unitstage.test.js`, `cap-unitrecord.test.js` and
   `cap-delegation.test.js` cover all of these.
 
+### The paid path (built, never run on a real model)
+
+Both paid steps of the first pilot are one command each, for the owner to run after approving a cap:
+
+- `bash bench/cap/pilot/author-baseline.sh --cap N` writes the pilot unit's baseline from its 16 briefs
+  (`bench/cap/unit-baselines/context-k-orchestrator-shared/briefs.json`, the table in Appendix C). It runs
+  `cap unit-author`: per batch, glm-5 writes the 8 tasks, deepseek-3.2 reviews them, a failed task gets one fix by
+  glm-5 and one recheck, and a task that still fails is dropped and recorded. At most 8 calls. With all 16 passing it
+  writes `baseline.json` with `signedOffBy: null`; with any dropped it writes `baseline.draft.json` and stops.
+- `bash bench/cap/pilot/run-pilot.sh --cap N` runs `cap unit-stage --provider kiro` at quick depth: claude-sonnet-5.5
+  answers each task once with the file (keep arm) and once without (drop arm), glm-5 writes the request-only checklists,
+  and qwen3-coder-next, gpt-5.6-luna and grok-4.7 judge. The controls run too, as in stage 1.
+
+Every call is a one-turn `kiro-cli chat` with no tools, in a scratch HOME under the work dir (outside the home folder)
+with only the sign-in copied in (`bench/cap/paidcall.js`). Before each call the ledger is read; the call counts at the
+larger of 15 credits and its real credits, and it is refused when spent plus 15 would pass the cap. Every reply is
+saved, so the same command resumes after a stop or a larger cap. The run stops before its first call when the unit
+has no fresh baseline or the panel lacks three families. Both scripts take `--dry-run`, which prints the calls and the
+worst case and makes none. `bench/runner/test/cap-paid.test.js` runs both scripts and both steps end to end on a fake
+kiro-cli (`fake-kp-kiro.js`).
+
 ## What is missing
 
 1. Unit baselines. No unit has one. Each needs 16 tasks with rubrics, in two batches of 8, written by one model family
-   and reviewed by a second, frozen on the unit's current hash. Appendix C lists the 16 tasks of the first pilot unit;
-   the unit map in the workspace reports lists seed tasks for the rest.
-2. A live provider. Stages 2 to 4 share stage 1's gap: the stub is the only provider. A live one needs the owner's
-   spend cap.
+   and reviewed by a second, frozen on the unit's current hash. The pilot unit's writing step is built (above) and
+   waits for the owner's cap; the unit map in the workspace reports lists seed tasks for the rest.
+2. A deep-depth paid provider. The paid provider answers in one turn, so it runs quick depth only; deep depth needs
+   full sessions per replicate.
 3. A live delegation run: the stub test reads streams the stub wrote; a live one needs the orchestrator to run each
    request (paid). DEBT D-172 holds the remaining work.
 
@@ -139,9 +160,9 @@ has six sections. `k-full-sdlc` is ruled out at about 30,000 tokens.
 **Who writes and reviews.** The agent under test is Claude, so no writer and no judge is Claude. A first family writes
 the 16 tasks and rubrics (glm). A second family reviews them (deepseek). Under the one-fix rule, a task the reviewer
 fails goes back to the glm writer for one fix; if the fix fails again, the task is dropped and recorded, never fixed by
-hand, and a new task idea takes its place. The judges then come from three other families (qwen, gpt, grok). The owner,
-who did not write the unit's tasks, signs off the frozen baseline. Writing is paid: about 6 calls (two batch drafts,
-two reviews, up to two fixes), 90 credits at the 15-per-call rule.
+hand; the owner then picks the new task idea that takes its place. The judges then come from three other families (qwen, gpt, grok). The owner,
+who did not write the unit's tasks, signs off the frozen baseline. Writing is paid: at most 8 calls (two batch drafts,
+two reviews, up to two fixes and two rechecks), 120 credits at the 15-per-call rule.
 
 Each task gives the orchestrator a situation and asks what it does next. The with arm has the file; the without arm
 does not.

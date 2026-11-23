@@ -13,7 +13,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { mkScratch } = require('./scratch.js');
 
-const GUARDED = ['cap-variant.test.js', 'cap-studyio.test.js', 'cap-skillstudy.test.js', 'claude-code-harness.test.js', 'prepare-only.test.js', 'startup.test.js'];
+const GUARDED = ['cap-variant.test.js', 'cap-studyio.test.js', 'cap-skillstudy.test.js', 'claude-code-harness.test.js', 'prepare-only.test.js', 'startup.test.js', 'cap-paid.test.js'];
 
 test('test files with a home guard pass when TMPDIR is inside HOME, and leave nothing there', () => {
   const home = path.join(mkScratch('home-tmpdir-'), 'home');
