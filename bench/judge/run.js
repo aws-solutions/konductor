@@ -2,6 +2,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const path = require('node:path');
 const { loadTasks, requireTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
@@ -30,6 +31,19 @@ const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 const { EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, exclusionClassOfRun, exclusionClassOfReason } = require('./exclusion.js');
 
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
+
+/**
+ * The id of a judging pass (FW-6): the UTC day of `at` and a hash of the backend and each judge's model version, so two
+ * invocations on one day with the same panel and versions are one pass, and a pass on another day, or after a judge model
+ * changed, is another. `versions` maps judge -> model version. Compare refuses to pair judgments of two passes.
+ */
+function passIdOf({ backend, versions, at = new Date() }) {
+  const panel = Object.keys(versions).sort().map((j) => [j, versions[j]]);
+  return `${at.toISOString().slice(0, 10)}.${crypto.createHash('sha256').update(JSON.stringify({ backend, panel })).digest('hex').slice(0, 8)}`;
+}
+
+/** The model version a judgment records: the Bedrock model id on the opencode backend, else the judge id kiro-cli resolves. */
+const judgeModelVersionOf = (backendInfo, judge) => backendInfo?.models?.[judge]?.bedrockModelId ?? judge;
 
 // Runs that are not sent to a judge: the credential scrub could not finish (so the text may still hold a secret),
 // the agent replaced its live output files or planted a link where the usage database should be, setup or post-run
@@ -231,6 +245,9 @@ async function runJudging(o) {
   const backendInfo = o.backendInfo ?? null;
   const quoteRule = checkRule(o.quoteRule ?? DEFAULT_JUDGE_QUOTE_RULE, '--quote-match', JUDGE_QUOTE_RULES);
   const { run, tasks, backend, usdMode, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf } = prepareJudging(o);
+  const versions = Object.fromEntries(judges.map((j) => [j, judgeModelVersionOf(backendInfo, j)]));
+  const passId = o.passId ?? passIdOf({ backend, versions });
+  const passOf = (judge) => ({ passId, judgeModelVersion: versions[judge] });
   // Kiro keeps the original cache key. Any other backend adds itself (and what its caller says matters) to the key.
   const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);
   const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'), { salt });
@@ -303,7 +320,7 @@ async function runJudging(o) {
   units.forEach((u, i) => {
     const out = outs[i];
     const bundle = bundles.get(runKey(u.run));
-    const common = { judge: u.judge, armId: u.run.armId, taskId: u.run.taskId, replicate: u.run.replicate };
+    const common = { judge: u.judge, ...passOf(u.judge), armId: u.run.armId, taskId: u.run.taskId, replicate: u.run.replicate };
     if (u.kind === 'rubric') {
       const task = tasks.get(u.run.taskId);
       const matchers = matchersFor(bundle.text, bundle.expertText);
@@ -351,19 +368,19 @@ async function runJudging(o) {
   });
   const graded = [...gradedMap.values()].map(({ errors, ...rec }) => ({ ...rec, ...combineGraded(rec.orderings[0], rec.orderings[1]), judgeError: errors.length ? errors.join('; ') : null }));
   for (const { judge, run: r } of gradedErrors) {
-    graded.push({ kind: 'graded', judge, armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, ...combineGraded(null, null), judgeError: `no baseline run (${baseline}) for this task and replicate` });
+    graded.push({ kind: 'graded', judge, ...passOf(judge), armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, ...combineGraded(null, null), judgeError: `no baseline run (${baseline}) for this task and replicate` });
   }
   for (const { judge, run: r } of pairErrors) {
-    pairwise.push({ kind: 'pairwise', judge, armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, verdict: null, positionInconsistent: false, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, judgeError: `no baseline run (${baseline}) for this task and replicate` });
+    pairwise.push({ kind: 'pairwise', judge, ...passOf(judge), armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, verdict: null, positionInconsistent: false, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, judgeError: `no baseline run (${baseline}) for this task and replicate` });
   }
 
-  const judgments = mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
+  const judgments = mergeAndWrite(run, { passId, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
   return { ...judgments, ledgerLine: study.line(), guardState: study.state() };
 }
 
 // A rerun with other judges or modes keeps earlier records; a record is replaced by the same (judge, run, kind).
 // Spend accumulates across invocations: cached calls cost 0 now, so replacing a record never erases earlier spend.
-function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
+function mergeAndWrite(run, { passId, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
   const file = path.join(run.dir, 'judgments.json');
   const prev = run.judgments || { rubric: [], pairwise: [], graded: [], judges: [], modes: [] };
   // New studies are stamped; a judgments file that already exists without the stamp stays legacy, so its reports do not change.
@@ -387,7 +404,7 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
     spentCredits: (prev.spentCredits || 0) + spent,
     spentByJudge: byJudge,
     ...(usd ? { spentUsd: (prev.spentUsd || 0) + spentUsd, spentUsdByJudge: byJudgeUsd } : {}),
-    invocations: [...(prev.invocations || []), { at: new Date().toISOString(), judges, modes, spentCredits: spent, ...(usd ? { spentUsd } : {}), calls: calls.length, cachedCalls: calls.filter((c) => c.cached).length }],
+    invocations: [...(prev.invocations || []), { at: new Date().toISOString(), passId, judges, modes, spentCredits: spent, ...(usd ? { spentUsd } : {}), calls: calls.length, cachedCalls: calls.filter((c) => c.cached).length }],
     notJudged,
     rubric: mergeRecords(prev.rubric, rubric),
     pairwise: mergeRecords(prev.pairwise, pairwise),
@@ -397,4 +414,4 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
   return out;
 }
 
-module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, exclusionClass, exclusionClassOfRun, exclusionClassOfReason, EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, runKey };
+module.exports = { runJudging, planJudging, passIdOf, estimateSpend, judgeOnce, notJudgedReason, exclusionClass, exclusionClassOfRun, exclusionClassOfReason, EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, runKey };

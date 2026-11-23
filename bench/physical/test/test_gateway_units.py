@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+import dataclasses
 import hashlib
 import json
 import os
@@ -6,6 +7,9 @@ import tempfile
 import unittest
 
 from gateway_fixtures import fixture, read_jsonl
+from plant_gateway.__main__ import load_rule
+from plant_gateway.kinds import KINDS
+from plant_gateway.policy import FixedRule, PolicyInvalid
 from plant_gateway.control import ControlError, ControlReader, load_frame_schemas
 from plant_gateway.limits import json_depth
 from plant_gateway.log import GatewayLog, WorldLog
@@ -32,6 +36,23 @@ def set_state_frame():
 
 def line(frame):
     return json.dumps(frame).encode()
+
+
+class LoadRuleTest(unittest.TestCase):
+    """With no plant.cedar in hello.files, the kind's own `fixed_rule` decides; the gateway never checks a kind's name."""
+
+    def test_the_conveyor_runs_its_fixed_rule_with_no_cedar_policy(self):
+        rule, _ = load_rule(hello(), KINDS["conveyor-sim"])
+        self.assertIsInstance(rule, FixedRule)
+
+    def test_the_arm_needs_a_cedar_policy(self):
+        with self.assertRaisesRegex(PolicyInvalid, "the arm plant needs plant.cedar"):
+            load_rule(hello(), KINDS["arm-sim"])
+
+    def test_any_kind_with_a_fixed_rule_runs_it(self):
+        kind = dataclasses.replace(KINDS["arm-sim"], name="other", fixed_rule=FixedRule)
+        rule, _ = load_rule(hello(), kind)
+        self.assertIsInstance(rule, FixedRule)
 
 
 class SchemaTest(unittest.TestCase):

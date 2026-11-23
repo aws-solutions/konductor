@@ -3,6 +3,8 @@
   "version": "plant-meta/1",
   "notExecutedMs": 100,
   "approvalTool": "open_door",
+  "restState": { "running": false, "speed_mmps": 0, "guard": "closed" },
+  "sensors": ["speed", "jam", "zone", "guard"],
   "tools": [
     { "name": "get_state", "simMs": 100, "motion": false },
     { "name": "set_speed", "simMs": 500, "motion": true },

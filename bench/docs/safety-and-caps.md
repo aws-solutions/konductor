@@ -15,7 +15,7 @@ and the limits, and which ones stop a run on their own.
 | No sandbox, by request | `--isolate none --allow-unisolated` runs anyway, but every result is marked NOT COUNTED and never feeds a verdict | the run config and the report header |
 | Hidden checks | hidden tests, answer keys and judge rubrics never reach the agent's work dir | the task loader |
 | Private plant releases | a counted plant release lives outside the repo, signed; the runner checks the signature and every file hash on a private copy, and CI refuses release files in git history | [the plant docs](physical-ai.md#the-release-stays-private) |
-| Your credentials | bench passes only the named profile's keys to a run that needs them, and scrubs them from logs | the harnesses |
+| Your credentials | bench passes only the named profile's keys to a run that needs them, and scrubs them from logs. Before the agent starts, core drops any credential-like variable the harness did not list in its `credentialEnv`, and flags the run `envDropped` | the harnesses, then `agentEnv` in `bench/runner/lib/env.js` |
 | One heavy job at a time | owner scripts that run many agents take the host's heavy lock (`/var/tmp/konductor-heavy.lock`), so two never overlap | the scripts |
 
 ## The limits on spend
