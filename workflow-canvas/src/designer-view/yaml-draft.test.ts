@@ -63,7 +63,7 @@ describe('reduceDraft', () => {
     expect(draftStatus(startDraft('v0'))).toBe('unchecked');
 
     const draft = after(edited('v1'));
-    expect(draft).toEqual({ text: 'v1', revision: 1, opened: 0 });
+    expect(draft).toEqual({ text: 'v1', base: 'v0', revision: 1, opened: 0 });
     expect(draftStatus(draft)).toBe('waiting');
   });
 
@@ -136,7 +136,12 @@ describe('reduceDraft', () => {
     );
     const draft = reduceDraft(before, { type: 'opened', text: 'other' });
 
-    expect(draft).toEqual({ text: 'other', revision: 3, opened: 3 });
+    expect(draft).toEqual({
+      text: 'other',
+      base: 'other',
+      revision: 3,
+      opened: 3,
+    });
     expect(draftStatus(draft)).toBe('unchecked');
     expect(currentAnswer(draft)).toBeUndefined();
     expect(reduceDraft(draft, checked(2, BAD))).toBe(draft);
@@ -200,18 +205,36 @@ describe('reduceDraft', () => {
 
   it('keeps the text, its revision and its answer when the base moves', () => {
     const before = after(edited('v1'), sent(1), checked(1, GOOD));
-    const moved = reduceDraft(before, { type: 'base-moved' });
+    const moved = reduceDraft(before, { type: 'base-moved', text: 'disk' });
 
     expect(moved.text).toBe('v1');
+    expect(moved.base).toBe('disk');
     expect(moved.revision).toBe(before.revision);
     expect(moved.baseMoved).toBe(true);
     expect(currentAnswer(moved)).toBe(GOOD);
     expect(draftStatus(moved)).toBe('valid');
 
-    expect(reduceDraft(moved, { type: 'base-moved' })).toBe(moved);
+    expect(reduceDraft(moved, { type: 'base-moved', text: 'disk' })).toBe(
+      moved,
+    );
     expect(reduceDraft(moved, edited('v2')).baseMoved).toBe(true);
+    expect(reduceDraft(moved, edited('v2')).base).toBe('disk');
     expect(
       reduceDraft(moved, { type: 'opened', text: 'v1' }).baseMoved,
     ).toBeUndefined();
+  });
+
+  it('takes the file as the base, so an edit undone leaves nothing unsaved', () => {
+    const edits = after(edited('v1'), sent(1), checked(1, GOOD), edited('v0'));
+
+    expect(edits.base).toBe('v0');
+    expect(edits.text).toBe('v0');
+    expect(edits.revision).not.toBe(edits.opened);
+
+    const moved = reduceDraft(edits, { type: 'base-moved', text: 'v2' });
+    expect(moved.base).toBe('v2');
+    expect(reduceDraft(moved, { type: 'base-moved', text: 'v3' }).base).toBe(
+      'v3',
+    );
   });
 });
