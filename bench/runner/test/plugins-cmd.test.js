@@ -14,9 +14,9 @@ const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const STRANDS = path.join(__dirname, '..', '..', 'plugins', 'strands');
 
 test('pluginsTable lists each part with its source, and a plugin with its version, api and short hash', () => {
-  const reg = createRegistry({ builtins: [{ kind: 'harness', meta: Object.freeze({ id: 'kiro-cli' }) }], pluginRoots: [path.dirname(STRANDS)] });
+  const reg = createRegistry({ builtins: [{ kind: 'harness', meta: Object.freeze({ id: 'house-agent' }) }], pluginRoots: [path.dirname(STRANDS)] });
   const text = pluginsTable([reg]);
-  assert.match(text, /\| harness \| kiro-cli \| built-in \| - \| - \| - \|/);
+  assert.match(text, /\| harness \| house-agent \| built-in \| - \| - \| - \|/);
   assert.match(text, new RegExp(`\\| harness \\| strands \\| plugin \\| 1\\.0\\.0 \\| 1 \\| ${folderHash(STRANDS).slice(0, 12)} \\|`));
   assert.doesNotMatch(text, /Refused/);
 });

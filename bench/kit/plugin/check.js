@@ -69,7 +69,8 @@ function descriptorProblems(meta) {
   const out = [];
   if (!Object.isFrozen(meta)) out.push('meta must be frozen');
   for (const k of ['label', 'proseName', 'streamFormat']) if (typeof meta[k] !== 'string' || !meta[k]) out.push(`meta.${k} must be a non-empty string`);
-  if (typeof meta.armPrefix !== 'string' || !/^[a-z]+-$/.test(meta.armPrefix)) out.push('meta.armPrefix must be letters and a hyphen (only the built-in kiro-cli has none)');
+  // '' marks the default runtime (an arm with no prefix); the registry refuses a second one.
+  if (typeof meta.armPrefix !== 'string' || !/^([a-z]+-)?$/.test(meta.armPrefix)) out.push('meta.armPrefix must be letters and a hyphen, or empty for the one default runtime');
   if (!COST_UNITS.includes(meta.costUnit)) out.push(`meta.costUnit must be one of ${COST_UNITS.join(', ')}`);
   if (!meta.report || typeof meta.report !== 'object') out.push('meta.report must be an object (CONTRACT.md, "Descriptor")');
   return out;

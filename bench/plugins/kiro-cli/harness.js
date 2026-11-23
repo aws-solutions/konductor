@@ -7,25 +7,25 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, sessionModels, runErrorOf } = require('../stream.js');
+const { parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, sessionModels, runErrorOf } = require('../../runner/lib/stream.js');
 
 const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
-const { turnStreamTexts } = require('../autonomy.js');
-const { crossCheckCredits } = require('../result.js');
-const { buildChildEnv } = require('../env.js');
-const sandbox = require('../sandbox.js');
-const skills = require('../skills.js');
-const { installedSkills } = require('../startup.js');
-const { promptFor } = require('../arm-opts.js');
-const { writeArmConfig } = require('../arm-config.js');
-const { orchMetricsOfRunDir } = require('../orch-metrics.js');
-const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
-const { scrubTreeDetailed, redactHostPaths } = require('../hygiene.js');
-const { secretLiterals } = require('../scrub.js');
+const { turnStreamTexts } = require('../../runner/lib/autonomy.js');
+const { crossCheckCredits } = require('../../runner/lib/result.js');
+const { buildChildEnv } = require('../../runner/lib/env.js');
+const sandbox = require('../../runner/lib/sandbox.js');
+const skills = require('../../runner/lib/skills.js');
+const { installedSkills } = require('../../runner/lib/startup.js');
+const { promptFor } = require('../../runner/lib/arm-opts.js');
+const { writeArmConfig } = require('../../runner/lib/arm-config.js');
+const { orchMetricsOfRunDir } = require('../../runner/lib/orch-metrics.js');
+const { copyPlainFile, assertPlainPath } = require('../../runner/lib/safe-copy.js');
+const { scrubTreeDetailed, redactHostPaths } = require('../../runner/lib/hygiene.js');
+const { secretLiterals } = require('../../runner/lib/scrub.js');
 
 const id = 'kiro-cli';
-const meta = require('./kiro-meta.js');
-const { observedListingOf } = require('./kiro-listing.js');
+const meta = require('./meta.js');
+const { observedListingOf } = require('./listing.js');
 
 // resume: {sessionId, prompt} continues an earlier turn of the same conversation (autonomy tasks). The session store
 // lives in the run's scratch HOME and is keyed by directory, so the same HOME and cwd find it.
@@ -220,7 +220,7 @@ function skillListingOf(home, info) {
 }
 
 /**
- * What the run loaded at session start, from its own stream (kiro-listing.js), or null when the stream has no breakdown
+ * What the run loaded at session start, from its own stream (listing.js), or null when the stream has no breakdown
  * or is missing. run-one adds it to the arm's listing record as `skillListing.observed`.
  */
 function observedListing(outDir) {
@@ -340,6 +340,6 @@ function checkScratchRoot(dir) {
 }
 
 module.exports = {
-  id, meta, streams: require('./kiro-streams.js'), checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, streams: require('./streams.js'), checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

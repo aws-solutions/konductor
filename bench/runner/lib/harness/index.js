@@ -23,14 +23,12 @@
  * @property {(removed: any, tmpdir: string) => object} [describeCleanup] required when cleanupRun is defined
  */
 
-const kiro = require('./kiro.js');
 const { runtimeOf } = require('./runtime.js');
 const { REGISTRY } = require('./descriptors.js');
 
-const BUILTIN = { 'kiro-cli': kiro };
-// Every harness in registry order: a built-in module, or a plugin's entry module (core/registry.js).
-const HARNESSES = Object.fromEntries(REGISTRY.parts('harness').map((p) => [p.name, p.source === 'builtin' ? BUILTIN[p.name] : require(p.plugin.entry)]));
-const { opencode, strands, 'claude-code': claudeCode } = HARNESSES;
+// Every harness in registry order: each one's plugin entry module (core/registry.js, bench/plugins/<name>/).
+const HARNESSES = Object.fromEntries(REGISTRY.parts('harness').map((p) => [p.name, require(p.plugin.entry)]));
+const { opencode, strands, 'claude-code': claudeCode, 'kiro-cli': kiro } = HARNESSES;
 
 // id -> descriptor (id, label, armPrefix, costUnit, supports), read from each harness module. runtime.js and arms.js
 // read the same descriptors through descriptors.js because they cannot load the harness modules (require cycle).

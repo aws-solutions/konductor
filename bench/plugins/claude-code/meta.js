@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Static description of the Claude Code runtime. See kiro-meta.js for why this is its own file.
+// Static description of the Claude Code runtime. See bench/plugins/kiro-cli/meta.js for why this is its own file.
 const AWS_VARS = 'credentials come from the AWS_* variables in the environment that starts the bench, or from --aws-profile';
 const NO_WATCHER = 'the early-stop watcher reads kiro-cli and opencode events only';
 

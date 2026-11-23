@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp } = require('./helpers.js');
-const { checkScratchRoot } = require('../lib/harness/kiro.js');
+const { checkScratchRoot } = require('../../plugins/kiro-cli/harness.js');
 
 test('a scratch root below a .kiro/skills/ws-* skill is refused; other skills and a clean tree pass', () => {
   const root = tmp();

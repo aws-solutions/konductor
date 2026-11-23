@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Static description of the opencode runtime. See kiro-meta.js for why this is its own file.
+// Static description of the opencode runtime. See bench/plugins/kiro-cli/meta.js for why this is its own file.
 module.exports = Object.freeze({
   id: 'opencode',
   label: 'opencode',

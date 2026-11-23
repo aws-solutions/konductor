@@ -13,7 +13,7 @@ const { tmp, write, makeBench, mkResult } = require('./helpers.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { parseStream } = require('../lib/stream.js');
 const { SKILL_FIELDS, extractSkills, resultFields, catalogFrom, capInvocationOf } = require('../lib/skills.js');
-const { aggregateRunDir } = require('../lib/harness/kiro.js');
+const { aggregateRunDir } = require('../../plugins/kiro-cli/harness.js');
 const { backfillAll, PRE_BACKFILL } = require('../lib/backfill.js');
 const { backfillSkills, summarizeSkillsBackfill, PRE_SKILLS_BACKFILL } = require('../lib/backfill-skills.js');
 
