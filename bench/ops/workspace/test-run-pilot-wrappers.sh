@@ -28,7 +28,7 @@ FAKE="$CLONE/.worktrees/$WT_NAME/bench/runner/test/fake-kp-kiro.js"
 run() {  # run <script> [args]: one wrapper with every path pointed at the scratch dir and the fake kiro-cli
   env KP_PIN_FILE="$T/pinned-commit" KP_WT_NAME="$WT_NAME" KP_KIRO_BIN="$FAKE" KP_AUTH_DB="$T/auth.sqlite3" KP_PILOT_WORK="$T/work" \
     KP_BASELINES="$T/baselines" KP_LOG_ROOT="$T/logs" KP_PILOT_LOCK="$T/kp.lock" KP_HEAVY_LOCK="$T/heavy.lock" FAKE_KP_LOG="$T/calls" \
-    bash "$SELF/$1" "${@:2}" > "$T/out" 2>&1
+    BENCH_PAID_ENV_KEEP=FAKE_KP_LOG bash "$SELF/$1" "${@:2}" > "$T/out" 2>&1   # paid calls get an allowlisted env (FW-4)
 }
 BL="$T/baselines/context-k-orchestrator-shared/baseline.json"
 

@@ -9,7 +9,7 @@ const path = require('node:path');
 const { BENCH_DIR, realDir } = require('../runner/lib/tasks.js');
 const { optionalProfile } = require('../runner/lib/profiles.js');
 const { planSkillStudy, renderPlan, LARGE_DEFAULT, DUPLICATE_PAIRS_DEFAULT, TIERS } = require('./skillplan.js');
-const { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec } = require('./skillstudy.js');
+const { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec, STUDY_JUDGE_BACKEND } = require('./skillstudy.js');
 const { expandGlob } = require('./usage.js');
 const { analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria } = require('./criteria.js');
 const { checkMode, checkHeldMin } = require('./forced.js');
@@ -93,7 +93,7 @@ function settingsFrom(opts, studyDir, repo, benchDir, extraTasks, base, profile)
 // Settings that depend on the machine or the moment (credentials, binaries, caches), so a resume can change them.
 function runtimeOverrides(opts) {
   return withoutUndefined({
-    judgeBackend: val(opts['judge-backend']) ?? 'opencode', credsFile: val(opts['aws-creds-file']) ?? process.env.CREDS ?? process.env.SKILL_BENCH_CREDS,
+    judgeBackend: val(opts['judge-backend']) ?? STUDY_JUDGE_BACKEND, credsFile: val(opts['aws-creds-file']) ?? process.env.CREDS ?? process.env.SKILL_BENCH_CREDS,
     awsProfile: val(opts['aws-profile']), awsRegion: val(opts['aws-region']), budgetUsdPerWave: num(opts['budget-usd'], 'budget-usd') ?? 15,
     budgetCreditsPerWave: num(opts['wave-budget-credits'], 'wave-budget-credits'), authDb: val(opts['auth-db']), cache: val(opts.cache), cargoTarget: val(opts['cargo-target']),
     kiroBin: val(opts['kiro-bin']), opencodeBin: val(opts['opencode-bin']), forcedLoad: checkMode(opts['forced-load']) ?? undefined,

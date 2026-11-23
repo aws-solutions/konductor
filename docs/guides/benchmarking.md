@@ -4,6 +4,10 @@ Benchmark a change to this package's agents or skills using nothing but the
 `claude` CLI — this harness has **zero dependency on `aim` or any
 internal-only build tooling**.
 
+> **Which harness?** This one (`tests/judges/`) is a quick check of one change on Claude Code. To compare
+> konductor with a bare agent, across kiro-cli, opencode or Claude Code, with three judge families and noise bands,
+> use konductor bench: start at [`bench/README.md`](../../bench/README.md).
+
 ## ⚠️ Sandbox warning — read this before running anything
 
 The scenario runner (`tests/judges/claude-code-agent-runner.js`) invokes

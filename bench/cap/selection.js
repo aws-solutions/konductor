@@ -29,8 +29,9 @@ const { extractSkills, capInvocationOf } = require('../runner/lib/skills.js');
 const { liveRows, materializeTasks } = require('./trigger.js');
 const { scoreTrigger } = require('./score.js');
 const { assertStubRun } = require('./stubprovider.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
 
-const RUNTIME = 'kiro-cli';
+const RUNTIME = STUDY_RUNTIME;
 /** The stub behaviours: always load, never load, load exactly when the request expects it. */
 const STUB_BEHAVIOURS = Object.freeze({
   always: () => true,

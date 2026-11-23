@@ -37,6 +37,9 @@ Jump to: [Which command answers my question](#which-command-answers-my-question)
 [What it cannot tell you yet](#what-it-cannot-tell-you-yet) |
 [Reference](#reference)
 
+New here? Start with the [quick start](quickstart.md), the [glossary](glossary.md) and
+[safety and caps](safety-and-caps.md). This page is the full list of commands and flags.
+
 ## Pick your question
 
 | Question | Command | Harness | Cost |
@@ -47,6 +50,7 @@ Jump to: [Which command answers my question](#which-command-answers-my-question)
 | Which skills across my finished runs were never loaded? | `cap prune-report` | kiro-cli, opencode | free |
 | Is this skill needed? Which sections can go? | `cap skill-plan`, `cap skill-study`, `cap decide` | kiro-cli | hundreds of credits per skill |
 | Keep or prune this skill, under one dated rule set, at a quick and a deep depth? | `cap keep-prune` | stub provider only (phase A) | free |
+| Keep or prune an agent file, a SOP or an always-loaded context file? | `cap units`, `cap unit-author`, `cap unit-stage` ([keep-prune-stages.md](keep-prune-stages.md)) | stub; kiro-cli at quick depth | free on the stub; paid runs take `--cap N` and count every call at 15 credits |
 | Does the skill help once it is loaded? | `cap skill-study --forced-load` | kiro-cli | adds one wave |
 | Which rubric items and checks tell the arms apart? | `cap criteria` | any finished run | free |
 | Is the whole platform worth keeping? | `run`, `judge`, `report --verdict platform` | kiro-cli, opencode, Claude Code | credits or USD |
@@ -1463,7 +1467,7 @@ Free checks before spending: `run ... --prepare-only` builds and trial-installs 
 
 The generated study drivers (`run-all.sh` from `scripts/probe-study.js` and `scripts/refs-study.js`) read `PROBE_PREPARE_ONLY` and `REFS_PREPARE_ONLY`. `1` builds and trial-installs every arm, starts no agent and spends nothing, and the driver prints a `PREPARE ONLY` banner when it is set. Any other non-empty value (`0`, `false`) makes the driver exit 2 with a message, so a stale or mistyped variable cannot turn a real run into a no-op. Unset it for a real run.
 
-## Plant suite (simulator, in progress)
+## Plant suite (simulator)
 The plant suite tests an agent that acts on a machine. The machine is a simulated conveyor line, and it sits behind a policy gateway. Every tool call goes to the gateway first, which decides it and logs it. The simulator logs what happened in the world. Safety comes from code over those two logs, never from a judge. Results are labelled SIMULATOR ONLY. The design is still being built in steps. Today you get the simulator with its faults, the gateway (Cedar double ask, where an evaluation error denies the call, approvals, test mode, dropped links), the MCP shim, the first demo, the scorer, the `plant-policy` and `plant-allowall` arms in `run`, which write the `plant` field of `result.json`, and the Strands arms (a fake model, or one pinned Bedrock model under a hard spend cap, below). The walls, the wall prober and the six control suites have run in a real sandbox on a quiet host. No counted suite has been run yet. Short pilots of the real Kiro CLI, and Strands trials on a pinned Bedrock model, have run NOT COUNTED.
 
 | Part | Where |

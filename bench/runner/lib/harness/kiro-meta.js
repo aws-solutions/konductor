@@ -30,5 +30,11 @@ module.exports = Object.freeze({
     actingAgents: true,
     surface: 'agent-filter',
     proxyCallsPerQuery: 2,
+    // The forced arm's load clause per kind ({name} is the unit): cap/forced.js. A SOP is a file read load-check.js counts.
+    forcedLoad: Object.freeze({
+      skill: 'load the skill named "{name}" with the get_skill tool of the skills server and read it',
+      sop: 'read the SOP named "{name}", the installed file "{name}.sop.md", with your file tool',
+      agent: 'hand the whole task below to the agent named "{name}" with the subagent tool',
+    }),
   }),
 });

@@ -28,5 +28,11 @@ module.exports = Object.freeze({
     actingAgents: false,
     surface: 'skill-index',
     proxyCallsPerQuery: 1,
+    // opencode serves a SOP as the skill `sop-<name>`.
+    forcedLoad: Object.freeze({
+      skill: 'load the skill named "{name}" with the skill tool and read it',
+      sop: 'load the skill named "sop-{name}" with the skill tool and read it',
+      agent: 'hand the whole task below to the agent named "{name}" with the task tool',
+    }),
   }),
 });

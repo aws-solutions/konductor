@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { loadAgentSpecs } = require('./scan.js');
 const { skillRecords, filterRecords } = require('./retrieval.js');
+const { runtimeOfSurface } = require('./runtimes.js');
 
 const EXCERPT_MAX = 6000;
 
@@ -46,7 +47,7 @@ function specFor(baseDir, actingAgent) {
 }
 
 /**
- * { runtime: 'kiro-cli', skillFilter, records, missing, promptExcerpt, source, actingAgent }. `records` are the skills the
+ * { runtime (the agent-filter runtime, cap/runtimes.js), skillFilter, records, missing, promptExcerpt, source, actingAgent }. `records` are the skills the
  * agent's skills server serves: the tree's skills that pass the filter. `missing` are filter names with no file.
  */
 function kiroSurface({ baseDir, actingAgent = 'konductor', fromRun = null, armName = null, excerpt = true }) {
@@ -65,10 +66,10 @@ function kiroSurface({ baseDir, actingAgent = 'konductor', fromRun = null, armNa
   const all = skillRecords(baseDir);
   const records = filterRecords(all, skillFilter);
   const missing = skillFilter ? skillFilter.filter((n) => !n.includes('*') && !all.some((r) => r.name.toLowerCase() === n.toLowerCase())) : [];
-  return { runtime: 'kiro-cli', actingAgent, skillFilter, records, missing, promptExcerpt: excerpt ? skillParagraphs(spec, baseDir) : '', source };
+  return { runtime: runtimeOfSurface('agent-filter'), actingAgent, skillFilter, records, missing, promptExcerpt: excerpt ? skillParagraphs(spec, baseDir) : '', source };
 }
 
-/** { runtime: 'opencode', skills: [{ name, description }], source }: the skill index opencode puts in the prompt. */
+/** { runtime (the skill-index runtime), skills: [{ name, description }], source }: the skill index opencode puts in the prompt. */
 function opencodeSurface({ baseDir, fromRun = null, armName = null }) {
   const all = skillRecords(baseDir);
   let names = null;
@@ -80,7 +81,7 @@ function opencodeSurface({ baseDir, fromRun = null, armName = null }) {
     source = `run-config startupResources of arm ${armName ?? '(first konductor arm)'}`;
   }
   const skills = all.filter((r) => !names || names.has(r.name.toLowerCase())).map((r) => ({ name: r.name, description: r.description }));
-  return { runtime: 'opencode', skills, source };
+  return { runtime: runtimeOfSurface('skill-index'), skills, source };
 }
 
 module.exports = { kiroSurface, opencodeSurface, recordedStartup, EXCERPT_MAX };
