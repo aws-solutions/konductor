@@ -3,7 +3,7 @@
 [← bench home](../README.md) · [agents](agents.md) · [your own agent](benchmark-your-own-agent.md) ·
 [harness contract](../runner/lib/harness/CONTRACT.md)
 
-Date: 2026-11-23. Covers plugin API 1, which has one kind: `harness`.
+Date: 2026-11-23. Covers plugin API 1, which has two kinds: `harness` and `judge-backend` (see "A judge backend" below).
 
 ## The problem
 
@@ -105,9 +105,19 @@ every member against the contract tables, and what `turnSummary` and `parseResul
 4. Record one real single-turn run as `test/fixtures/single-turn.jsonl`, and set `test/conformance.js`.
 5. Run the kit until it prints `PASS`, then `node bench/runner/bench.js list-arms` to see your arms.
 
+## A judge backend
+
+A `judge-backend` plugin adds a program that asks the judge models. Its `plugin.json` has `"kind": "judge-backend"`;
+its `meta` file exports `{ id, costUnit, label }`, where `costUnit` is `credits` or `usd` and decides which budget flag
+the judge takes (`--budget-credits` or `--budget-usd`); its `entry` module exports `makeCaller({ timeoutMs, rawDir, log })`,
+which returns an async `({ model, prompt })` function that resolves `{ text, credits, usd?, latencyMs, error? }`.
+`judge --judge-backend <id>` then uses it. The two built-ins, `kiro` and `opencode`, are listed in
+`judge/backends.js`; `checkBackend` there is the one check of a backend and its budget flag.
+`runner/test/judge-backend-plugin.test.js` loads a fake one end to end.
+
 ## Limits today
 
-Plugin API 1 covers harnesses only. Plants, scorers, judge backends and unit kinds are still core code. Some core
+Plugin API 1 covers harnesses and judge backends. Plants, scorers and unit kinds are still core code. Some core
 files still name a runtime: the stream readers in `judge/bundle.js`, `trace.js`, `stop-watch.js` and
 `plant/stream-match.js`, and the runtime branches in `run-cmd.js`, `cap/` and `report/`. A new stream format still
 needs a reader in each of those. `DEBT.md` rows D-201, D-205, D-206 and D-211 track the work to remove them.

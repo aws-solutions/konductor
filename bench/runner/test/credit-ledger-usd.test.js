@@ -1,45 +1,51 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
+// D-196 (USD side): a USD ledger line with no known cost never counts as 0. It counts at the larger of UNKNOWN_USD_FLOOR
+// and the highest USD cost seen in the ledger, in the study total and in the command's USD guard.
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
 const { tmp } = require('./helpers.js');
-const { openLedger, readLedger, LEDGER_FILE } = require('../lib/credit-ledger.js');
+const { openLedger, readLedger, UNKNOWN_USD_FLOOR } = require('../lib/credit-ledger.js');
 
-test('ledger: USD lines are kept apart from credits; the USD guard counts only USD', () => {
+const judge = (usd) => ({ kind: 'judge', unit: 'usd', credits: 0, usd });
+
+test('an unknown USD cost counts at the highest USD cost seen, never 0', () => {
   const dir = tmp();
   try {
-    openLedger({ dir }).record({ kind: 'run', credits: 500 });
-    const l = openLedger({ dir, budget: 0.1, budgetUnit: 'usd' });
-    assert.equal(l.state(), 'ok');
-    l.record({ kind: 'judge', unit: 'usd', judge: 'glm-5', credits: 0, usd: 0.05 });
-    assert.equal(l.state(), 'ok');
-    l.record({ kind: 'judge', unit: 'usd', judge: 'glm-5', credits: 0, usd: 0.045 });
-    assert.equal(l.state(), 'stop');
-    assert.match(l.stopReason(), /usd guard.*\$0\.0950.*90% of the \$0\.1 guard/);
-    l.record({ kind: 'judge', unit: 'usd', judge: 'glm-5', credits: 0, usd: 0.02 });
-    assert.equal(l.state(), 'hard');
+    const l = openLedger({ dir, budget: 1, budgetUnit: 'usd' });
+    l.record(judge(0.2));
+    l.record(judge(null));
     const t = l.totals();
-    assert.equal(t.total, 500, 'USD never enters the credit total');
-    assert.equal(t.judge, 0);
-    assert.equal(t.usd, 0.115);
-    assert.match(l.line(), /usd: this command \$0\.1150 \(guard \$0\.1\)/);
-    assert.equal(readLedger(dir).totals.usd, 0.115);
-    const lines = fs.readFileSync(path.join(dir, LEDGER_FILE), 'utf8').trim().split('\n').map((x) => JSON.parse(x));
-    assert.deepEqual(lines.slice(1).map((x) => [x.unit, x.usd, x.credits]), [['usd', 0.05, 0], ['usd', 0.045, 0], ['usd', 0.02, 0]]);
+    assert.equal(t.sessionUsd, 0.4);
+    assert.equal(t.usd, 0.4);
+    assert.equal(t.unknownUsd, 1);
+    assert.equal(t.total, 0, 'no credit is counted for a USD line');
+    assert.match(l.line(), /1 USD call\(s\) with unknown cost/);
+    assert.equal(readLedger(dir).totals.usd, 0.4, 'the same on a re-read');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('ledger: a credit guard ignores USD lines, and a USD guard ignores credits', () => {
+test('with no USD cost seen yet, an unknown one counts at the floor, and the guard sees it', () => {
   const dir = tmp();
   try {
-    const credits = openLedger({ dir, budget: 1 });
-    credits.record({ kind: 'judge', unit: 'usd', credits: 0, usd: 50 });
-    assert.equal(credits.state(), 'ok');
-    const usd = openLedger({ dir, budget: 1, budgetUnit: 'usd' });
-    usd.record({ kind: 'judge', unit: 'credits', credits: 50 });
-    assert.equal(usd.state(), 'ok');
+    const l = openLedger({ dir, budget: UNKNOWN_USD_FLOOR * 1.5, budgetUnit: 'usd' });
+    l.record(judge(undefined));
+    assert.equal(l.totals().sessionUsd, UNKNOWN_USD_FLOOR);
+    assert.equal(l.shouldStop(), false);
+    l.record(judge(null));
+    assert.equal(l.shouldStop(), true, 'two unknown calls pass the guard');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a cached USD call (usd 0) is a known 0 and raises nothing', () => {
+  const dir = tmp();
+  try {
+    const l = openLedger({ dir, budgetUnit: 'usd' });
+    l.record({ ...judge(0), cached: true });
+    assert.equal(l.totals().usd, 0);
+    assert.equal(l.totals().unknownUsd, 0);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

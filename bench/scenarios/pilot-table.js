@@ -27,6 +27,8 @@ const { toolNameOf, mcpToolNameOf, mcpInputOf, parseStream, runErrorOf } = requi
 const { aggregateHidden } = require('../runner/lib/check-matcher.js');
 const { lockBlockers, fixReasons } = require('./ready.js');
 const { serviceCancelled } = require('../runner/lib/result.js');
+const { armGaps, renderGaps, armIdentities } = require('./pilot-gaps.js');
+const { loadState, markLoad, cutSummary, cutLine } = require('./load-cuts.js');
 
 const PACK_DIR = __dirname;
 const EASY = 90;
@@ -247,7 +249,7 @@ function insensitiveChecks(entry) {
   return out;
 }
 
-const loadsOf = (r) => [...(r.sopsLoaded || []).map((s) => `sop:${s}`), ...(r.skillsLoaded || []).map((s) => (typeof s === 'string' ? s : s?.name ?? '?'))];
+const loadsOf = (r, st = loadState(r)) => [...(r.sopsLoaded || []).map((s) => `sop:${s}`), ...(r.skillsLoaded || []).map((s) => markLoad(typeof s === 'string' ? s : s?.name ?? '?', st))];
 
 /** Rows for the runs under `dirs`, in task and replicate order. */
 // A task and arm whose code scores spread more than this (sample sd, points of 100) over its replicates is noisy (FW-35):
@@ -326,7 +328,7 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       rows.push({
         task: e.taskId, batch, arm: e.armId, rep: e.replicate, status: r.status ?? null, score, sd,
         sec: finite(r.wallClockMs) ? r.wallClockMs / 1000 : null, credits: finite(r.creditsCharged) ? r.creditsCharged : finite(r.credits) ? r.credits : null,
-        loads: loadsOf(r), flags, handEdited, singleFamily, knownTask: Boolean(entry),
+        loads: loadsOf(r), skillLoadState: loadState(r), flags, handEdited, singleFamily, knownTask: Boolean(entry),
       });
     }
   }
@@ -405,6 +407,8 @@ function renderTable(rows) {
   L.push('', ...renderBatches(batchSummary(rows)));
   L.push(`Flagged runs: broken ${count('broken')}, throttled ${count('throttled')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}, fix ${count('fix')}, hand-edited with no re-check ${count('hand-edited, recheck missing')}.`);
   L.push(`Second run for noisy tasks: ${rerun.length ? rerun.join(',') : 'none'}`);
+  const cuts = cutLine(cutSummary(rows.filter((r) => !r.skipped).map((r) => r.skillLoadState)));
+  if (cuts) L.push(cuts);
   L.push(NOTE_DRY_RUN);
   return `${L.join('\n')}\n`;
 }
@@ -414,7 +418,9 @@ function cmdPilotTable(opts) {
   if (!dirs.length) throw new Error('scenarios pilot-table needs the wave directories: bench.js scenarios pilot-table DIR...');
   const packDir = typeof opts.pack === 'string' ? path.resolve(opts.pack) : PACK_DIR;
   const rows = pilotRows(dirs, { packDir });
-  process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : renderTable(rows));
+  if (opts.json) { process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`); return; }
+  const gaps = renderGaps(armGaps(pairedRows(rows), armIdentities(dirs)));
+  process.stdout.write(renderTable(rows) + (gaps.length ? `${gaps.join('\n')}\n` : ''));
 }
 
 module.exports = { NOISY_SD, sampleSd, pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, unpaired, pairedRows, throttled, FLAG_NAMES };

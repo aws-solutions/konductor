@@ -25,7 +25,7 @@ const { openLedger } = require('../runner/lib/credit-ledger.js');
 const REASK_WORST_CREDITS = 15;
 const REASK_WORST_USD = 0.05;
 const { writeAtomic } = require('../runner/lib/owned.js');
-const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
+const { DEFAULT_BACKEND, checkBackend } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 const { EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, exclusionClassOfRun, exclusionClassOfReason } = require('./exclusion.js');
@@ -97,11 +97,7 @@ async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = prompt
  */
 function prepareJudging(o) {
   const { runDir, benchDir, extraDirs = [], judges, modes, baseline, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
-  const backend = o.backend ?? DEFAULT_BACKEND;
-  if (!BACKENDS.includes(backend)) throw new Error(`unknown judge backend "${backend}" (${BACKENDS.join(' or ')})`);
-  const usdMode = backend === 'opencode';
-  if (usdMode && budgetCredits != null) throw new Error('--budget-credits does not apply to the opencode backend; use --budget-usd');
-  if (!usdMode && budgetUsd != null) throw new Error('--budget-usd applies to the opencode backend only; use --budget-credits');
+  const { backend, usdMode } = checkBackend({ backend: o.backend, budgetCredits, budgetUsd }, o.backendRegistry);
   const run = loadRun(runDir);
   // Verdicts from two backends are not comparable, so one results directory keeps one. Files from before the label existed are kiro.
   const earlier = run.judgments ? (run.judgments.backend ?? DEFAULT_BACKEND) : null;
@@ -374,20 +370,20 @@ async function runJudging(o) {
     pairwise.push({ kind: 'pairwise', judge, ...passOf(judge), armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, verdict: null, positionInconsistent: false, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, judgeError: `no baseline run (${baseline}) for this task and replicate` });
   }
 
-  const judgments = mergeAndWrite(run, { passId, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
+  const judgments = mergeAndWrite(run, { passId, usdMode, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
   return { ...judgments, ledgerLine: study.line(), guardState: study.state() };
 }
 
 // A rerun with other judges or modes keeps earlier records; a record is replaced by the same (judge, run, kind).
 // Spend accumulates across invocations: cached calls cost 0 now, so replacing a record never erases earlier spend.
-function mergeAndWrite(run, { passId, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
+function mergeAndWrite(run, { passId, usdMode, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
   const file = path.join(run.dir, 'judgments.json');
   const prev = run.judgments || { rubric: [], pairwise: [], graded: [], judges: [], modes: [] };
   // New studies are stamped; a judgments file that already exists without the stamp stays legacy, so its reports do not change.
   const stamp = !run.judgments || run.judgments.rubricPolicy === RUBRIC_POLICY;
   const byJudge = addSpend(prev.spentByJudge, spentByJudge);
   const allJudges = [...new Set([...prev.judges, ...judges])].sort();
-  const usd = backend === 'opencode';
+  const usd = usdMode;
   const byJudgeUsd = addSpend(prev.spentUsdByJudge, spentUsdByJudge);
   const out = {
     schemaVersion: 1,

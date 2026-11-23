@@ -1,6 +1,4 @@
 {
-  "_comment": "Bare catch blocks (no statement, no comment) that catch-lint.test.js tolerates, per file (FW-26). It only shrinks. judge/bundle.js waits for chat-120's FW-17 work on the same file.",
-  "files": {
-    "judge/bundle.js": 1
-  }
+  "_comment": "Bare catch blocks (no statement, no comment) that catch-lint.test.js tolerates, per file (FW-26). It only shrinks. Empty since D-220.",
+  "files": {}
 }

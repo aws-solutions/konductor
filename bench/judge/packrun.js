@@ -15,7 +15,7 @@ const { validateRubricReply, parseJsonReply } = require('./validate.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
-const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
+const { DEFAULT_BACKEND, checkBackend } = require('./backends.js');
 const { judgeOnce, notJudgedReason, runKey, estimateSpend } = require('./run.js');
 const { cacheSaltOf } = require('./opencode.js');
 const { mergeRecords, addSpend } = require('./merge.js');
@@ -58,9 +58,7 @@ function packPromptOf(p, redactions) {
 /** planPack plus what the CLI needs to show before a pass: backend, calls served by the cache, and the estimated spend. */
 function describePackPlan(o) {
   const { run, judges, redactions, thePack } = o;
-  const backend = o.backend ?? DEFAULT_BACKEND;
-  if (!BACKENDS.includes(backend)) throw new Error(`unknown judge backend "${backend}" (${BACKENDS.join(' or ')})`);
-  const usdMode = backend === 'opencode';
+  const { backend, usdMode } = checkBackend({ backend: o.backend }, o.backendRegistry);
   const base = planPack(o);
   const salt = o.cacheSalt ?? (usdMode ? cacheSaltOf : null);
   const cacheDir = path.join(run.dir, 'judge', 'cache');
@@ -86,11 +84,7 @@ async function runPackJudging(o) {
   if (o.plan) throw new Error('runPackJudging makes model calls and cannot honor --plan; call describePackPlan instead');
   const { runDir, benchDir, extraDirs = [], judges, concurrency, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
   const thePack = o.pack;
-  const backend = o.backend ?? DEFAULT_BACKEND;
-  if (!BACKENDS.includes(backend)) throw new Error(`unknown judge backend "${backend}" (${BACKENDS.join(' or ')})`);
-  const usdMode = backend === 'opencode';
-  if (usdMode && budgetCredits != null) throw new Error('--budget-credits does not apply to the opencode backend; use --budget-usd');
-  if (!usdMode && budgetUsd != null) throw new Error('--budget-usd applies to the opencode backend only; use --budget-credits');
+  const { backend, usdMode } = checkBackend({ backend: o.backend, budgetCredits, budgetUsd }, o.backendRegistry);
   const run = loadRun(runDir);
   const earlier = readQuality(run.dir);
   if (earlier && (earlier.backend ?? DEFAULT_BACKEND) !== backend) {
@@ -158,12 +152,12 @@ async function runPackJudging(o) {
     };
   });
 
-  const merged = mergeAndWrite(run, earlier, { thePack, judges, backend, limits, spent, spentUsd, spentByJudge, spentUsdByJudge, records, notJudged, calls: outs.flatMap((x) => x.calls || []), subjectModel: o.subjectModel ?? null, backendInfo: o.backendInfo ?? null });
+  const merged = mergeAndWrite(run, earlier, { thePack, judges, backend, usdMode, limits, spent, spentUsd, spentByJudge, spentUsdByJudge, records, notJudged, calls: outs.flatMap((x) => x.calls || []), subjectModel: o.subjectModel ?? null, backendInfo: o.backendInfo ?? null });
   return { ...merged, plannedCalls, ledgerLine: study.line(), guardState: study.state() };
 }
 
-function mergeAndWrite(run, prev, { thePack, judges, backend, limits, spent, spentUsd, spentByJudge, spentUsdByJudge, records, notJudged, calls, backendInfo }) {
-  const usd = backend === 'opencode';
+function mergeAndWrite(run, prev, { thePack, judges, backend, usdMode, limits, spent, spentUsd, spentByJudge, spentUsdByJudge, records, notJudged, calls, backendInfo }) {
+  const usd = usdMode;
   const allJudges = [...new Set([...(prev?.judges || []), ...judges])].sort();
   const out = {
     schemaVersion: 1,

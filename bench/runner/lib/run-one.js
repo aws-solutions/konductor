@@ -416,6 +416,82 @@ function finalizeOutput(harness, outDir, ctx) {
   }
 }
 
+/** Adds auth, launch, credit-limit and early-stop facts of `exec` to `meta` (flags and infraError). */
+function noteOutcome(meta, { agg, exec, outDir }) {
+  const authFailure = exec ? classifyAuthFailure({ agg, exec, texts: [readIfPresent(path.join(outDir, 'stderr.txt')), readIfPresent(path.join(outDir, 'stream.jsonl'))] }) : null;
+  if (authFailure) {
+    meta.authFailure = authFailure;
+    meta.infraError = [meta.infraError, `login not valid, no turn ran: ${authFailure}`].filter(Boolean).join(' | ');
+  }
+  const launchFailure = exec && !authFailure ? classifyLaunchFailure({ agg, exec, texts: [readIfPresent(path.join(outDir, 'stderr.txt'))] }) : null;
+  if (launchFailure) {
+    meta.launchFailure = launchFailure;
+    meta.infraError = [meta.infraError, `agent binary could not be launched, no turn ran: ${launchFailure}`].filter(Boolean).join(' | ');
+  }
+  if (exec?.creditLimitHit) meta.flags.push('creditLimit');
+  else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
+  if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
+  if (exec?.stopped) meta.flags.push('earlyStopped');
+}
+
+/** Runs the harness's optional finalize (scrub the run dir) and records its outcome flags in `meta`. */
+function noteFinalize(meta, harness, outDir, ctx) {
+  if (!harness.finalize) return;
+  const fin = finalizeOutput(harness, outDir, ctx);
+  if (fin.scrubbed > 0) meta.flags.push('credsRedacted');
+  if (fin.unscrubbed.length) {
+    meta.flags.push('credsUnscrubbed');
+    meta.unscrubbed = fin.unscrubbed;
+  }
+}
+
+/** Closes the plant run, drops credentials, runs the harness's cleanupRun and removes the run's scratch dirs. */
+function removeRunRoot({ harness, ctx, result, runRoot, home, stdioDir, probeDirs, plantRun }) {
+  plantRun?.dispose();
+  if (home) harness.removeCredentials(home);
+  if (harness.cleanupRun) {
+    const tmpdir = path.join(runRoot, 'tmp');
+    const removed = harness.cleanupRun({ cwd: path.join(runRoot, 'work'), tmpdir, tmpBases: ctx.claudeTmpBases });
+    if (result.claudeCode) result.claudeCode = { ...result.claudeCode, tmpCleanup: harness.describeCleanup(removed, tmpdir) };
+  }
+  fs.rmSync(runRoot, { recursive: true, force: true });
+  if (stdioDir) fs.rmSync(stdioDir, { recursive: true, force: true });
+  for (const d of probeDirs) fs.rmSync(d, { recursive: true, force: true });
+}
+
+/** Adds the arm's skill listing record (and what the run observed, when the harness can read it) to `result`. */
+function attachListing(result, { harness, ctx, arm, outDir }) {
+  const listing = ctx.skillListings?.get(arm.id);
+  if (!listing) return;
+  // A harness that can read what its run loaded at session start (optional `observedListing`) adds it beside the arm's record.
+  const observed = harness.observedListing && listing.listing ? harness.observedListing(outDir) : null;
+  result.skillListing = observed ? { ...listing.listing, observed } : listing.listing;
+  if (harness.id === 'claude-code') {
+    const mismatch = claudeListingMismatch(listing.listing, result.claudeCode?.runListing);
+    result.claudeCode = { ...(result.claudeCode ?? {}), skillListing: listing.listing, listingMismatch: mismatch };
+    if (mismatch) result.flags = [...new Set([...(result.flags || []), 'listingMismatch'])];
+  }
+}
+
+/** Scrubs secrets, applies the installs gate and the schema check, writes result.json and the introspect report; returns the result. */
+function sealResult(result, { harness, ctx, installsWindow, outDir }) {
+  const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
+  const out = scrubbed.value;
+  if (scrubbed.count) out.flags = [...new Set([...(out.flags || []), 'credsRedacted'])];
+  const leak = installsWindow ? installsWindow.end() : null;
+  if (leak && !leak.ok) failOnLeak(out, leak);
+  const problems = validateResult(out);
+  if (problems.length) out.error = [out.error, `schema: ${problems.join('; ')}`].filter(Boolean).join(' | ');
+  try {
+    fs.mkdirSync(outDir, { recursive: true });
+    writeAtomic(path.join(outDir, 'result.json'), JSON.stringify(out, null, 2) + '\n');
+  } catch { /* the caller still gets the result object */ }
+  if (ctx.introspect) {
+    try { introspectReport.writeReport(outDir); } catch (e) { process.stderr.write(`[bench] introspect report: ${e.message}\n`); }
+  }
+  return out;
+}
+
 async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFlightAtStart = null }) {
   const { config } = ctx;
   const harness = harnessFor(arm);
@@ -516,70 +592,17 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
           meta.infraError = [meta.infraError, `post-processing failed: ${e.message}`].filter(Boolean).join(' | ');
         }
       }
-      const authFailure = exec ? classifyAuthFailure({ agg: acc.agg, exec, texts: [readIfPresent(path.join(outDir, 'stderr.txt')), readIfPresent(path.join(outDir, 'stream.jsonl'))] }) : null;
-      if (authFailure) {
-        meta.authFailure = authFailure;
-        meta.infraError = [meta.infraError, `login not valid, no turn ran: ${authFailure}`].filter(Boolean).join(' | ');
-      }
-      const launchFailure = exec && !authFailure ? classifyLaunchFailure({ agg: acc.agg, exec, texts: [readIfPresent(path.join(outDir, 'stderr.txt'))] }) : null;
-      if (launchFailure) {
-        meta.launchFailure = launchFailure;
-        meta.infraError = [meta.infraError, `agent binary could not be launched, no turn ran: ${launchFailure}`].filter(Boolean).join(' | ');
-      }
-      if (exec?.creditLimitHit) meta.flags.push('creditLimit');
-      else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
-      if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
-      if (exec?.stopped) meta.flags.push('earlyStopped');
+      noteOutcome(meta, { agg: acc.agg, exec, outDir });
       plantRun?.scoreInto(meta, { agg: acc.agg, exec, outDir });
-      if (harness.finalize) {
-        const fin = finalizeOutput(harness, outDir, ctx);
-        if (fin.scrubbed > 0) meta.flags.push('credsRedacted');
-        if (fin.unscrubbed.length) {
-          meta.flags.push('credsUnscrubbed');
-          meta.unscrubbed = fin.unscrubbed;
-        }
-      }
+      noteFinalize(meta, harness, outDir, ctx);
       plantRun?.rescoreAfterScrub(meta);
       result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
     }
   }
 
-  if (runRoot) {
-    plantRun?.dispose();
-    if (home) harness.removeCredentials(home);
-    if (harness.cleanupRun) {
-      const tmpdir = path.join(runRoot, 'tmp');
-      const removed = harness.cleanupRun({ cwd: path.join(runRoot, 'work'), tmpdir, tmpBases: ctx.claudeTmpBases });
-      if (result.claudeCode) result.claudeCode = { ...result.claudeCode, tmpCleanup: harness.describeCleanup(removed, tmpdir) };
-    }
-    fs.rmSync(runRoot, { recursive: true, force: true });
-    if (stdioDir) fs.rmSync(stdioDir, { recursive: true, force: true });
-    for (const d of probeDirs) fs.rmSync(d, { recursive: true, force: true });
-  }
-  const listing = ctx.skillListings?.get(arm.id);
-  if (listing) {
-    result.skillListing = listing.listing;
-    if (harness.id === 'claude-code') {
-      const mismatch = claudeListingMismatch(listing.listing, result.claudeCode?.runListing);
-      result.claudeCode = { ...(result.claudeCode ?? {}), skillListing: listing.listing, listingMismatch: mismatch };
-      if (mismatch) result.flags = [...new Set([...(result.flags || []), 'listingMismatch'])];
-    }
-  }
-  const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
-  result = scrubbed.value;
-  if (scrubbed.count) result.flags = [...new Set([...(result.flags || []), 'credsRedacted'])];
-  const leak = installsWindow ? installsWindow.end() : null;
-  if (leak && !leak.ok) failOnLeak(result, leak);
-  const problems = validateResult(result);
-  if (problems.length) result.error = [result.error, `schema: ${problems.join('; ')}`].filter(Boolean).join(' | ');
-  try {
-    fs.mkdirSync(outDir, { recursive: true });
-    writeAtomic(path.join(outDir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
-  } catch { /* the caller still gets the result object */ }
-  if (ctx.introspect) {
-    try { introspectReport.writeReport(outDir); } catch (e) { process.stderr.write(`[bench] introspect report: ${e.message}\n`); }
-  }
-  return result;
+  if (runRoot) removeRunRoot({ harness, ctx, result, runRoot, home, stdioDir, probeDirs, plantRun });
+  attachListing(result, { harness, ctx, arm, outDir });
+  return sealResult(result, { harness, ctx, installsWindow, outDir });
 }
 
 module.exports = { NO_GIT_NOTE,

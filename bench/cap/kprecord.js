@@ -24,6 +24,7 @@ const { DEEP_RULES, DEEP_RULES_DATE, PANEL_RULES, PANEL_RULES_DATE, DEPTHS, CLAI
 const { familyOf } = require('../judge/family.js');
 const { readJsonFile } = require('./checkedjson.js');
 const { subjectManifest } = require('./subjectunit.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
 
 const SCHEMA_NAME = 'keep-prune-record';
 const MAJOR = 2;
@@ -122,8 +123,8 @@ function blockFromDecision(decision, meta = {}) {
   const del = decision.evidence?.del ?? null;
   return {
     claim: CLAIM,
-    commit: meta.commit ?? null, runId: meta.runId ?? null, provider: 'kiro-cli',
-    subject: { harness: 'kiro-cli', model: meta.model ?? null, family: familyOf(meta.model) },
+    commit: meta.commit ?? null, runId: meta.runId ?? null, provider: STUDY_RUNTIME,
+    subject: { harness: STUDY_RUNTIME, model: meta.model ?? null, family: familyOf(meta.model) },
     judges: [], judgesRefused: [], unjudged: null,
     coverage: { tasksCounted: 0, tasksTotal: 0, bTasksCounted: 0, notLoaded: 0, setupFault: 0, staleJudgments: 0, runsPerSide: del ? Math.min(del.nHead, del.nBase) : null },
     gapA: null, gapB: null, bWaiting: [], scores: [],

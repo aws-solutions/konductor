@@ -61,6 +61,7 @@ is the docs owner's page and points here.
 | `run-cc-plant-check.sh` | Superseded by `run-cc-plant-check-v2.sh`. |
 | `run-full-suite-twice-v2.sh` | KR k485f5870: two full suite runs through `bench/scripts/test.sh --tap`, then the reading. Free. |
 | `run-full-suite-twice.sh` | Superseded by `run-full-suite-twice-v2.sh`. |
+| `run-fw30-rewrite.sh` | FW-30: the pilot tasks written again from `briefs-fw30.json`, deepseek-3.2 writes, glm-5 reviews. Paid (cap 120); `--dry-run` is free. |
 | `run-lite-judge.sh` | Judge pass of the LITE konductor-against-plain run. Paid (USD). |
 | `run-lite-konductor-v2.sh` | LITE konductor-against-plain run, v2. Paid. |
 | `run-lite-konductor.sh` | LITE konductor-against-plain run, v1. Paid. |
@@ -98,6 +99,7 @@ is the docs owner's page and points here.
 | `test-lite-v2-fill.sh` | Test of the LITE v2 budget and fill rules. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
+| `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
 | `test-run-full-suite-twice.sh` | Superseded by `test-run-full-suite-twice-v2.sh`. |
 | `test-run-pilot-option-b.sh` | Stub run of the 15-task path and option B. Free. |
 | `test-run-pilot-wrappers.sh` | Stub run of the pilot wrappers on their paid paths. Free. |
@@ -112,6 +114,8 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 
 | File | What it does |
 | --- | --- |
+| `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, all sets in one pass, then the code-score floor. Paid (USD, cap 2). |
+| `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
 | `run-forced-aa-r2.sh` | Resume of `run-forced-aa.sh` with the budget fix. Paid. |
 | `run-forced-aa.sh` | The forced-skills experiment's two new arms on the frozen LITE bench. Paid. |
 | `run-forced-judge.sh` | Judge pass of the forced-skills run. Paid (USD). |
@@ -119,5 +123,6 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-forced-small.sh` | Focused follow-up of the forced run. Paid. |
 | `run-nudge-judge.sh` | Judge pass of the nudge-arm run. Paid (USD). |
 | `run-nudge.sh` | The nudge-arm run. Paid. |
+| `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
 | `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench. Free. |
