@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { mkScratch } = require('./scratch.js');
+const { waitFor } = require('./helpers.js');
 const { spawnSync } = require('node:child_process');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'scripts');
@@ -134,7 +135,8 @@ function chain(s, extra = {}) {
 const out = (r) => `${r.stdout}${r.stderr}`;
 const read = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } };
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
-async function until(fn, ms = 30000) { const end = Date.now() + ms; while (Date.now() < end) { if (fn()) return true; await sleep(100); } return false; }
+/** Whether `fn` turns true within `ms` (helpers.js waitFor, as a boolean for assert.ok). */
+const until = (fn, ms = 30000) => waitFor(fn, ms).then(() => true, () => false);
 const LINUX = process.platform === 'linux';
 const opts = { skip: LINUX ? false : 'the scripts rely on /proc and GNU tools' };
 

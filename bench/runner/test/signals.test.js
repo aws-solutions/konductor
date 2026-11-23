@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const { tmp, makeBench } = require('./helpers.js');
+const { tmp, makeBench, waitFor } = require('./helpers.js');
 const { makeFakeKiro, writeFakeAuth } = require('./fake-kiro.js');
 const { makeFakeClaude } = require('./fake-claude.js');
 const { makeFakeOpencode } = require('./fake-opencode.js');
@@ -16,16 +16,7 @@ const procs = require('../lib/procs.js');
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function waitFor(fn, ms = 20000) {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    const v = fn();
-    if (v) return v;
-    await sleep(50);
-  }
-  throw new Error('timed out waiting');
-}
+
 const findAll = (dir, name) => fs.readdirSync(dir, { recursive: true }).filter((f) => path.basename(String(f)) === name);
 
 for (const signal of ['SIGTERM', 'SIGHUP']) test(`${signal} to the runner kills the agent group, removes scratch and auth copies, and writes partial results`, async () => {

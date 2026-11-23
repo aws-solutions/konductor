@@ -11,6 +11,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { env: studyEnv, withRuns } = require('./cap-study-helpers.js');
+const { waitFor } = require('./helpers.js');
 
 const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'run-skill-bench.sh');
 const REPO = path.join(__dirname, '..', '..', '..');
@@ -306,8 +307,7 @@ setInterval(() => {}, 1000);
 `);
     const p = spawn('bash', [SCRIPT, '--dry-run'], { env: { ...s.base, CLI_JS: fake }, cwd: s.e.root, stdio: 'ignore' });
     const exited = new Promise((resolve) => p.on('exit', resolve));
-    for (let i = 0; i < 100 && !fs.existsSync(marker); i++) await new Promise((r) => setTimeout(r, 100));
-    assert.ok(fs.existsSync(marker), 'the runner started');
+    await waitFor(() => fs.existsSync(marker), 30000, 'the runner to start'); // was a 10 s cap (D-96)
     p.kill('SIGTERM');
     await exited;
     assert.ok(fs.existsSync(flushed), 'the runner flushed while its TMPDIR still existed');
@@ -408,7 +408,8 @@ test('the daemon child gets all three flags and passes them to its run', async (
     assert.match(r.stdout, /LAUNCHED: pid (\d+)/);
     const pid = Number(/LAUNCHED: pid (\d+)/.exec(r.stdout)[1]);
     const alive = () => { try { process.kill(pid, 0); return true; } catch { return false; } };
-    for (let i = 0; i < 100 && (alive() || !calls().some((a) => kind(a) === 'run')); i++) await new Promise((res) => setTimeout(res, 100));
+    // was a 10 s cap (D-96); on timeout the daemon is killed and the assertion below names the failure
+    await waitFor(() => !alive() && calls().some((a) => kind(a) === 'run'), 30000, 'the daemon to run and finish').catch(() => {});
     if (alive()) process.kill(pid, 'SIGTERM');
     assert.equal(alive(), false, 'the daemon child finished');
     const init = calls().find((a) => kind(a) === 'init');

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const { tmp, makeBench, makeRun } = require('./helpers.js');
+const { tmp, makeBench, makeRun, waitFor } = require('./helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { runJudging, notJudgedReason } = require('../../judge/run.js');
 const { buildBundle } = require('../../judge/bundle.js');
@@ -21,13 +21,7 @@ const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const REAL_BENCH = path.join(__dirname, '..', '..');
 const FAKE = `node ${path.join(__dirname, 'fake-judge.js')}`;
 const rm = (d) => fs.rmSync(d, { recursive: true, force: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
-async function waitFor(fn, ms = 20000) {
-  const end = Date.now() + ms;
-  while (Date.now() < end) { const v = fn(); if (v) return v; await sleep(50); }
-  throw new Error('timed out waiting');
-}
 
 const reply = (prompt, evidence = 'a.txt', verdict = 'pass') => {
   const ids = [...prompt.matchAll(/^- id: (\S+)/gm)].map((m) => m[1]);

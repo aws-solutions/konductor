@@ -26,6 +26,7 @@ const { GatewayProcess, gatewayCommand, runningHashProblems } = require('../lib/
 const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
 const { rig, suiteOf, plantRun, readJsonl, FAST, LOSS_FAST, CONFIG } = require('./plant-run-rig.js');
 const { startGateway } = require('../lib/plant/launch.js');
+const { waitFor } = require('./helpers.js');
 
 const unshareBlocked = spawnSync('unshare', ['--user', '--map-root-user', 'true']).status !== 0;
 const STOP_CALLS = [{ tool: 'get_state', args: {} }, { tool: 'stop', args: {} }];
@@ -321,7 +322,9 @@ test('a shim that connects before peer is held unanswered, then served once peer
     await new Promise((res) => setTimeout(res, 400));
     assert.equal(replies.length, 0, 'held until peer');
     gw.peer(fs.readlinkSync('/proc/self/ns/pid'));
-    await new Promise((res) => setTimeout(res, 400));
+    // The reply comes when the gateway gets to it: wait for it, not a fixed 400 ms (D-96). The 400 ms above stays: it is
+    // how long the held connection must stay unanswered.
+    await waitFor(() => replies.length, 30000, 'the reply after peer');
     assert.equal(JSON.parse(replies[0]).id, 0);
     conn.destroy();
     assert.ok((await gw.stop()).lastSeq >= 0);

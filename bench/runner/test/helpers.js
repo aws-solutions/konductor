@@ -71,7 +71,21 @@ function makeRun(runDir, benchDir, specs, config = {}) {
 // Fake agents finish in milliseconds; BENCH_TEST_MODE keeps the under-one-second infra check from rejecting those runs.
 const testModeEnv = (env) => ({ ...env, BENCH_TEST_MODE: '1' });
 
-module.exports = { RUBRIC, tmp, write, makeBench, makeRun, mkResult, testModeEnv };
+/**
+ * Polls `fn` every 50 ms until it returns a truthy value, which it resolves to; throws after `ms` (default 30 s, sized for
+ * a loaded host, DEBT D-96). Use it instead of a fixed sleep before an assertion: the wait ends as soon as the event happens.
+ */
+async function waitFor(fn, ms = 30000, what = 'the condition') {
+  const end = Date.now() + ms;
+  for (;;) {
+    const v = await fn();
+    if (v) return v;
+    if (Date.now() >= end) throw new Error(`timed out after ${ms} ms waiting for ${what}`);
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
+module.exports = { RUBRIC, tmp, write, makeBench, makeRun, mkResult, testModeEnv, waitFor };
 
 function addTask(bench, id, cls) {
   const t = JSON.parse(fs.readFileSync(path.join(bench, 'tasks/t1.json'), 'utf8'));

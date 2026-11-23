@@ -14,6 +14,7 @@ const { mkScratch } = require('./scratch.js');
 const gc = require('../lib/gc.js');
 const owned = require('../lib/owned.js');
 const cleanup = require('../lib/cleanup-cmd.js');
+const { waitFor } = require('./helpers.js');
 
 const DAY = 86400000;
 const NO_PROTECT = { entries: [], problems: [] };
@@ -72,14 +73,8 @@ function heldNow(dir, ms = 3000) {
   throw new Error(`no process holds ${dir}`);
 }
 
-async function untilHeld(dir, ms = 3000) {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    if (gc.holdersOf([dir], gc.snapshotProcesses()).length) return;
-    await new Promise((r) => setTimeout(r, 25));
-  }
-  throw new Error(`no process holds ${dir}`);
-}
+/** Resolves once some process holds `dir`; 30 s, not 3 s, since the holder starts slowly on a loaded host (D-96). */
+const untilHeld = (dir, ms = 30000) => waitFor(() => gc.holdersOf([dir], gc.snapshotProcesses()).length, ms, `a process to hold ${dir}`);
 
 function capture(fn) {
   const lines = [];
