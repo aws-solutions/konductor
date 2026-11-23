@@ -302,15 +302,11 @@ function logOutcome({ results, studyLine, fill, authStop, infra, guard, log }) {
   }
 }
 
-async function cmdRun(opts, deps = {}) {
-  // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
-  preloadSchemas();
-  const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
-  const suitesDir = opts['suites-dir'] && opts['suites-dir'] !== true ? path.resolve(opts['suites-dir']) : null;
-  if (opts['suites-dir'] !== undefined && (!suitesDir || !fs.existsSync(suitesDir) || !fs.statSync(suitesDir).isDirectory())) throw new Error(`--suites-dir directory not found: ${suitesDir ?? '(no value)'}`);
-  if (!isSuiteName(opts.suite, benchDir, suitesDir)) {
-    throw new Error(`--suite ${SUITE_NAMES.join('|')}|skilleval-SKILL is required${opts.suite ? `; no suite "${opts.suite}" (searched ${suiteDirs(benchDir, suitesDir).join(', ')})` : ''}`);
-  }
+/**
+ * The tasks of a run (DEBT D-24): the suite's task list, or --tasks, or the --level selection, each with --timeout-sec
+ * applied. Throws on an unknown or empty selection, and when --prereg does not cover it.
+ */
+function selectTasks(opts, benchDir, suitesDir) {
   const extraDirs = mergeExtraDirs(suiteExtraDirs(opts.suite, benchDir, suitesDir), list(opts['extra-tasks']));
   const tasksAll = loadTasks(benchDir, { extraDirs });
   const suite = loadSuite(opts.suite, tasksAll, benchDir, suitesDir);
@@ -324,6 +320,225 @@ async function cmdRun(opts, deps = {}) {
   });
   if (!tasks.length) throw new Error('no tasks selected');
   if (opts.prereg !== undefined) requirePrereg(opts, { taskIds: tasks.map((t) => t.id), extraDirs });
+  return { extraDirs, suite, levelPlan, timeoutOverride, tasks };
+}
+
+/**
+ * The arms of a run (DEBT D-24): --arms or the suite's, resolved against `repo`, with the arm flags, the oracle and the
+ * forced loads applied, the profile's A/A repeat added (it copies its twin's prefix, agent and config), and the variants.
+ */
+function resolveRunArms({ opts, suite, tasks, repo, benchDir, profile }) {
+  const armIds = [...(opts.arms ? list(opts.arms) : suite.arms)];
+  const arms = armIds.map((id) => resolveArm(id, repo));
+  const armOpts = applyArmOptions(arms, opts);
+  armOpts.oracle = applyOracle(arms, opts, { tasks, repo, benchDir });
+  armOpts.forcedMustLoad = applyForcedMustLoad(arms, opts, { tasks, repo });
+  const aa = profile?.aaArm ? aaArmFor(arms) : null;
+  if (aa?.spec) {
+    // The repeat runs under the same conditions as the arm it repeats, so it takes that arm's prefix, entry agent and config.
+    const twin = arms.find((a) => a.id === aa.twin);
+    const copy = resolveArm(aa.spec, repo);
+    for (const k of ['prefixText', 'prefixInfo', 'agent', 'agentOverride', 'armConfig', 'oracle', 'forcedLoad']) if (twin[k] !== undefined) copy[k] = twin[k];
+    arms.push(copy);
+    armIds.push(copy.id);
+  }
+  return { arms, armIds, armOpts, aa, variants: arms.map(attachVariant).filter(Boolean) };
+}
+
+/**
+ * The Claude Code run flags (DEBT D-24): --run-budget-usd (positive) and --aws-region (Claude Code only), and the
+ * model, which must be a Bedrock id. `{ runBudgetUsd, ccRegion }`, nulls for other harnesses.
+ */
+function claudeRunOpts(opts, isCc) {
+  if (!isCc) {
+    if (opts['aws-region'] !== undefined) throw new Error('--aws-region applies to Claude Code (cc-) arms only; judge commands take it separately');
+    return { runBudgetUsd: null, ccRegion: null };
+  }
+  let runBudgetUsd = null;
+  if (opts['run-budget-usd'] !== undefined) {
+    runBudgetUsd = Number(opts['run-budget-usd']);
+    if (opts['run-budget-usd'] === true || !(runBudgetUsd > 0)) throw new Error('--run-budget-usd must be a positive number');
+  }
+  if (!cc.canonicalModel(opts.model || cc.DEFAULT_MODEL)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
+  return { runBudgetUsd, ccRegion: opts['aws-region'] && opts['aws-region'] !== true ? opts['aws-region'] : cc.REGION };
+}
+
+/**
+ * The dirs and files a run writes or reads (DEBT D-24): --out (a timestamped dir under bench/results by default), the
+ * --resume state, arm drift against earlier results there (refused unless --allow-arm-drift), the cache and cargo
+ * target, the kiro-cli auth db and opencode's credentials file. Makes the owned dirs, and refuses a scratch root under
+ * which Claude Code or konductor would find skills that are not the arm's.
+ */
+function runPaths({ opts, repo, arms, isUsd, runtime, log }) {
+  const isOc = runtime === 'opencode';
+  const outDir = path.resolve(opts.out || path.join(repo, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
+  const resume = opts.resume ? { errors: Boolean(opts['resume-errors']) } : null;
+  if (opts['resume-errors'] && !resume) throw new Error('--resume-errors needs --resume');
+  if (resume && (!opts.out || !fs.existsSync(path.join(outDir, 'run-config.json')))) throw new Error(`--resume needs --out DIR of an earlier run (no run-config.json in ${outDir})`);
+  const armDrift = pinConflicts(outDir, arms);
+  if (armDrift.length && !opts['allow-arm-drift']) throw new Error(describeConflicts(armDrift, outDir));
+  for (const c of armDrift) log(`warning: --allow-arm-drift: arm ${c.armId} was ${c.recorded.slice(0, 12)} in earlier results of this --out and is ${c.now.slice(0, 12)} now`);
+  const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
+  const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
+  const authDb = isUsd ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
+  if (authDb && !fs.existsSync(authDb)) throw new Error(`kiro-cli auth database not found: ${authDb} (log in with kiro-cli first)`);
+  const awsCredsFile = isOc ? path.resolve(need(opts, 'aws-creds-file')) : null;
+  const awsProfile = isOc ? (opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench') : null;
+  if (isOc) readProfile(awsCredsFile, awsProfile);
+
+  ensureOwnedDir(outDir, 'run-out');
+  ensureOwnedDir(cacheDir, 'cache');
+  if (opts['cargo-target'] || !process.env.CARGO_TARGET_DIR) for (const t of [cargoTarget, `${cargoTarget}-mcp`]) ensureOwnedDir(t, 'cargo-target');
+  // Claude Code loads every .claude/skills above a run's cwd as project skills. Runs, trial installs and listing probes
+  // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
+  if (runtime === 'claude-code') cc.checkScratchRoot(os.tmpdir());
+  // The konductor agents load .kiro/skills/ws-* skills (D-36): no such dir may sit above the scratch root.
+  if (runtime === 'kiro-cli') require('./harness/kiro.js').checkScratchRoot(os.tmpdir());
+  return { outDir, resume, armDrift, cacheDir, cargoTarget, authDb, awsCredsFile, awsProfile };
+}
+
+/**
+ * Logs the plan of a run (profile, A/A repeat, cells, budget note, isolation and the warnings that make it not
+ * comparable) and resolves the isolation mode, which it returns (DEBT D-24). --no-default-hide sets its env switch.
+ */
+function announceRun({ opts, profile, aa, tasks, arms, replicates, parallel, budgetCredits, budgetFlag, unit, timeoutOverride, isolate, log }) {
+  if (profile) log(`profile ${profile.name}: ${replicates} replicate(s) per cell${opts.replicates === undefined ? ' (the profile default)' : ''}`);
+  if (aa) log(aa.note);
+  const plan = describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit, timeoutSecOverride: timeoutOverride });
+  log(plan.text);
+  const note = budgetNote(plan.planned, budgetCredits, budgetFlag);
+  if (note) log(note);
+  if (opts['no-default-hide']) { process.env.BENCH_NO_DEFAULT_HIDE = '1'; log('--no-default-hide: the credential paths added to the default hide set stay readable'); }
+  const isolation = resolveIsolation(isolate);
+  log(`isolation: ${isolation.mode} (${isolation.reason})`);
+  if (opts.introspect) log('--introspect: every run records its model requests, tool calls and hooks under <run>/introspect (mode 0700); these runs are diagnostic, not comparable');
+  if (!isComparableMode(isolation.mode)) log('warning: no OS isolation. These runs are recorded as not comparable and no verdict will count them.');
+  if (parallel > 1) log(`warning: --parallel ${parallel} shares one account; wall-clock comparisons need --parallel 1`);
+  for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
+  return isolation;
+}
+
+/**
+ * The tripwire roots of a run (DEBT D-24): the real HOME (depth --tripwire-depth, default 3), the repo (depth 8) and
+ * --tripwire-dir (default TMPDIR/konductor-bench), with the run's own out, cache, cargo and scratch dirs excluded.
+ */
+function tripwireOf({ opts, home, repo, tripExtra, outDir, cacheDir, cargoTarget, scratchDir, realCache }) {
+  return {
+    roots: [
+      { dir: home, depth: opts['tripwire-depth'] ? intOpt(opts['tripwire-depth'], 'tripwire-depth') : 3, exclude: DEFAULT_EXCLUDES },
+      { dir: repo, depth: 8, exclude: REPO_EXCLUDES },
+      ...(opts['tripwire-dir'] ? list(opts['tripwire-dir']) : [path.join(os.tmpdir(), 'konductor-bench')]).map((dir) => ({ dir, depth: 4, exclude: ['target-shared'] })),
+    ],
+    extraExcludes: tripExtra,
+    absExclude: [outDir, cacheDir, cargoTarget, `${cargoTarget}-mcp`, scratchDir, ...(realCache ? [realCache] : [])],
+  };
+}
+
+/** The interpreter versions and the toolchain pin check of `tasks`, with a warning per mismatch (DEBT D-24). */
+function toolchainOf(tasks, benchDir, log) {
+  const interpreters = toolchain.interpreterVersions();
+  const anyChecks = tasks.some((t) => t.checks?.length || t.hiddenDir);
+  const toolchainCheck = toolchain.checkPins(toolchain.loadPins(benchDir), interpreters, tasks.map((t) => t.id), { anyChecks });
+  for (const m of toolchainCheck.mismatches) log(`warning: toolchain: ${toolchain.describeMismatch(m)}. Results may differ from the validated ones.`);
+  return { interpreters, toolchainCheck };
+}
+
+/** Writes `value` as indented JSON to `file` (atomically: a temp file, then a rename), making its dir. */
+function writeJsonFile(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeAtomic(file, JSON.stringify(value, null, 2) + '\n');
+}
+
+/**
+ * The gateway rows of a plant control suite's trials, folded into the wall checklist (B-4, B-5 from real trials) and
+ * logged; [] for any other suite (DEBT D-24).
+ */
+function plantChecklistAfter({ plantSuite, results, outDir, log }) {
+  const trialRows = plantSuite?.walls && plantSuite.control
+    ? results.filter((r) => r?.armId).flatMap((r) => trialGatewayRows(path.join(outDir, r.armId, r.taskId, String(r.replicate)))) : [];
+  if (trialRows.length) {
+    plantSuite.walls.checklist = checklistWithTrials(plantSuite.walls.results, trialRows);
+    log(`plant walls: with the prober trials' gateway rows; ${plantSuite.walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}`);
+  }
+  return trialRows;
+}
+
+/** The profile's calibration sample of the finished run in `outDir`; a failure is logged, never thrown (DEBT D-24). */
+function writeSampleOf(profile, outDir, log) {
+  try {
+    const sample = writeCalibrationSample({ run: loadRun(outDir), n: profile.calibrationSample, seed: 1 });
+    if (sample) log(`calibration sample: ${sample.items} run(s) listed in ${sample.md}`);
+  } catch (e) { log(`calibration sample not written: ${e.message}`); }
+}
+
+/** The model, effort (and agent engine for Kiro CLI) a run of `runtime` uses, from --model and --effort (DEBT D-24). */
+function modelConfigOf({ runtime, opts, agentEngine }) {
+  if (runtime === 'strands') return { model: opts.model, effort: 'default' };
+  if (runtime === 'claude-code') {
+    const model = opts.model || cc.DEFAULT_MODEL;
+    return { model, canonicalModel: cc.canonicalModel(model), effort: cc.effortOf(opts.effort || DEFAULT_EFFORT) };
+  }
+  if (runtime === 'opencode') return { model: opts.model || oc.DEFAULT_MODEL, effort: oc.variantOf(opts.effort || DEFAULT_EFFORT) };
+  return { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine };
+}
+
+/**
+ * The run-config record of a run (DEBT D-24): the plan, the flags, the arms, the isolation, the harness record, the
+ * plant suite, the bench commit and content hashes, the real-repo pins and the tool versions, with startedAt.
+ */
+function buildRunConfig({ tripExtra, suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, arms, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, ctx, variants, pythonPin, levelPlan, config, isolation, prepared, errors, resume, armDrift, plantSuite, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, kiro, REPO, benchDir, suitesDir, opts, realPins, realCache, realTasks, interpreters, toolchainCheck }) {
+  const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
+  return {
+    suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, timeoutSecOverride: timeoutOverride, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+    pairOrder, fillBudget,
+    profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
+    runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle, forcedMustLoad: armOpts.forcedMustLoad,
+    isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
+    variants: variants.map((v) => ({ ...v })),
+    python: pythonPin,
+    order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
+    timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
+    level: levelPlan?.record ?? null,
+    ...config, ...ctx.envInfo,
+    isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
+    arms: rc.armRecords(arms, prepared, errors, ctx.skillListings),
+    resume,
+    armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
+    originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
+    modelNormalized: arms.some((a) => !a.vanilla),
+    ...harnessRunConfig({ runtime: runtimes[0], ctx, config, plantSuite, stModel, stCreds, budgetCredits, awsProfile, ccRegion, runBudgetUsd, arms, envKeep, kiro }),
+    ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
+    ...rc.benchGit(REPO),
+    contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
+    taskInputHashes: ctx.taskInputs.hashes(),
+    ...(suitesDir ? { suitesDir, suiteFile: suiteFile(opts.suite, benchDir, suitesDir) } : {}),
+    ...(realPins ? {
+      real: {
+        cache: realCache,
+        tasks: realPins,
+        // Hidden from the agent on top of the bench directories; the checks of these tasks also run without a network.
+        hiddenForRealTasks: Object.fromEntries(realTasks.map((t) => [t.id, real.hidePaths(t, { cache: realCache })])),
+        agentNetwork: 'open (the model API needs it); fetches are flagged after the run, not blocked',
+      },
+    } : {}),
+    tools: rc.toolVersions({ kiroBin: kiro?.bin }),
+    ...(opts.introspect ? { introspect: introspectRunConfig(runtimes[0]) } : {}),
+    interpreters,
+    toolchainCheck,
+    startedAt: new Date().toISOString(),
+  };
+}
+
+async function cmdRun(opts, deps = {}) {
+  // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
+  preloadSchemas();
+  const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
+  const suitesDir = opts['suites-dir'] && opts['suites-dir'] !== true ? path.resolve(opts['suites-dir']) : null;
+  if (opts['suites-dir'] !== undefined && (!suitesDir || !fs.existsSync(suitesDir) || !fs.statSync(suitesDir).isDirectory())) throw new Error(`--suites-dir directory not found: ${suitesDir ?? '(no value)'}`);
+  if (!isSuiteName(opts.suite, benchDir, suitesDir)) {
+    throw new Error(`--suite ${SUITE_NAMES.join('|')}|skilleval-SKILL is required${opts.suite ? `; no suite "${opts.suite}" (searched ${suiteDirs(benchDir, suitesDir).join(', ')})` : ''}`);
+  }
+  const { extraDirs, suite, levelPlan, timeoutOverride, tasks } = selectTasks(opts, benchDir, suitesDir);
   // Real tasks read their base tree from a local cache filled beforehand; stop here, not after the arms are built.
   const prepareOnly = Boolean(opts['prepare-only']);
   const realTasks = prepareOnly ? [] : tasks.filter((t) => t.real);
@@ -331,25 +546,11 @@ async function cmdRun(opts, deps = {}) {
   if (realCache) process.env.BENCH_REAL_CACHE = realCache;
   const realPins = realCache ? real.preflight(realTasks, { cache: realCache }) : null;
   const profile = optionalProfile(opts.profile);
-  const armIds = [...(opts.arms ? list(opts.arms) : suite.arms)];
   const replicates = profile ? replicatesFor(profile, opts.replicates) : opts.replicates ? intOpt(opts.replicates, 'replicates') : suite.replicates;
   const replicateOffset = replicateOffsetOpt(opts);
   const parallel = opts.parallel ? intOpt(opts.parallel, 'parallel') : suite.parallel;
   const REPO = repoRootOf(opts);
-  const arms = armIds.map((id) => resolveArm(id, REPO));
-  const armOpts = applyArmOptions(arms, opts);
-  armOpts.oracle = applyOracle(arms, opts, { tasks, repo: REPO, benchDir });
-  armOpts.forcedMustLoad = applyForcedMustLoad(arms, opts, { tasks, repo: REPO });
-  const aa = profile?.aaArm ? aaArmFor(arms) : null;
-  if (aa?.spec) {
-    // The repeat runs under the same conditions as the arm it repeats, so it takes that arm's prefix, entry agent and config.
-    const twin = arms.find((a) => a.id === aa.twin);
-    const copy = resolveArm(aa.spec, REPO);
-    for (const k of ['prefixText', 'prefixInfo', 'agent', 'agentOverride', 'armConfig', 'oracle', 'forcedLoad']) if (twin[k] !== undefined) copy[k] = twin[k];
-    arms.push(copy);
-    armIds.push(copy.id);
-  }
-  const variants = arms.map(attachVariant).filter(Boolean);
+  const { arms, armIds, armOpts, aa, variants } = resolveRunArms({ opts, suite, tasks, repo: REPO, benchDir, profile });
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
   const agentEngine = engineOpt(opts, runtimes);
   for (const d of DESCRIPTORS) {
@@ -379,73 +580,20 @@ async function cmdRun(opts, deps = {}) {
   const { pairOrder, fillBudget } = fillOpts(opts, budgetCredits);
 
   const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);
-  if (profile) log(`profile ${profile.name}: ${replicates} replicate(s) per cell${opts.replicates === undefined ? ' (the profile default)' : ''}`);
-  if (aa) log(aa.note);
-  const plan = describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit, timeoutSecOverride: timeoutOverride });
-  log(plan.text);
-  const note = budgetNote(plan.planned, budgetCredits, budgetFlag);
-  if (note) log(note);
-  if (opts['no-default-hide']) { process.env.BENCH_NO_DEFAULT_HIDE = '1'; log('--no-default-hide: the credential paths added to the default hide set stay readable'); }
-  const isolation = resolveIsolation(isolate);
-  log(`isolation: ${isolation.mode} (${isolation.reason})`);
-  if (opts.introspect) log('--introspect: every run records its model requests, tool calls and hooks under <run>/introspect (mode 0700); these runs are diagnostic, not comparable');
-  if (!isComparableMode(isolation.mode)) log('warning: no OS isolation. These runs are recorded as not comparable and no verdict will count them.');
-  if (parallel > 1) log(`warning: --parallel ${parallel} shares one account; wall-clock comparisons need --parallel 1`);
+  const isolation = announceRun({ opts, profile, aa, tasks, arms, replicates, parallel, budgetCredits, budgetFlag, unit, timeoutOverride, isolate, log });
 
-  for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
-
-  const outDir = path.resolve(opts.out || path.join(REPO, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
-  const resume = opts.resume ? { errors: Boolean(opts['resume-errors']) } : null;
-  if (opts['resume-errors'] && !resume) throw new Error('--resume-errors needs --resume');
-  if (resume && (!opts.out || !fs.existsSync(path.join(outDir, 'run-config.json')))) throw new Error(`--resume needs --out DIR of an earlier run (no run-config.json in ${outDir})`);
-  const armDrift = pinConflicts(outDir, arms);
-  if (armDrift.length && !opts['allow-arm-drift']) throw new Error(describeConflicts(armDrift, outDir));
-  for (const c of armDrift) log(`warning: --allow-arm-drift: arm ${c.armId} was ${c.recorded.slice(0, 12)} in earlier results of this --out and is ${c.now.slice(0, 12)} now`);
-  const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
-  const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
-  const authDb = isUsd ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
-  if (authDb && !fs.existsSync(authDb)) throw new Error(`kiro-cli auth database not found: ${authDb} (log in with kiro-cli first)`);
-  const awsCredsFile = isOc ? path.resolve(need(opts, 'aws-creds-file')) : null;
-  const awsProfile = isOc ? (opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench') : null;
-  if (isOc) readProfile(awsCredsFile, awsProfile);
-
-  ensureOwnedDir(outDir, 'run-out');
-  ensureOwnedDir(cacheDir, 'cache');
-  if (opts['cargo-target'] || !process.env.CARGO_TARGET_DIR) for (const t of [cargoTarget, `${cargoTarget}-mcp`]) ensureOwnedDir(t, 'cargo-target');
-  // Claude Code loads every .claude/skills above a run's cwd as project skills. Runs, trial installs and listing probes
-  // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
-  if (isCc) cc.checkScratchRoot(os.tmpdir());
-  // The konductor agents load .kiro/skills/ws-* skills (D-36): no such dir may sit above the scratch root.
-  if (runtimes[0] === 'kiro-cli') require('./harness/kiro.js').checkScratchRoot(os.tmpdir());
+  const { outDir, resume, armDrift, cacheDir, cargoTarget, authDb, awsCredsFile, awsProfile } = runPaths({ opts, repo: REPO, arms, isUsd, runtime: runtimes[0], log });
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
   // Pins python3 for the agent, the checks and the gateway (S6); refuses when tasks run Python and 3.12 is not found.
   const pythonPin = pinPython({ tasks, scratchDir, benchDir, flag: strOpt(opts.python), plantPython: strOpt(opts['plant-python']) });
 
-  let runBudgetUsd = null;
-  let ccRegion = null;
-  if (isCc) {
-    if (opts['run-budget-usd'] !== undefined) {
-      runBudgetUsd = Number(opts['run-budget-usd']);
-      if (opts['run-budget-usd'] === true || !(runBudgetUsd > 0)) throw new Error('--run-budget-usd must be a positive number');
-    }
-    ccRegion = opts['aws-region'] && opts['aws-region'] !== true ? opts['aws-region'] : cc.REGION;
-  } else if (opts['aws-region'] !== undefined) {
-    throw new Error('--aws-region applies to Claude Code (cc-) arms only; judge commands take it separately');
-  }
-  const ccModel = isCc ? opts.model || cc.DEFAULT_MODEL : null;
-  if (isCc && !cc.canonicalModel(ccModel)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
+  const { runBudgetUsd, ccRegion } = claudeRunOpts(opts, isCc);
   // A Strands run on Bedrock spends money. It needs --budget-usd (what is left of it is each run's hard cap, enforced
   // in the launcher before every model call) and --aws-profile (only that profile's exported keys reach the agent).
   // Strands arms are plant arms, and a plant suite runs at --parallel 1 (intake.js), so no two runs share what is left.
   const { stModel, stCreds } = strandsSpendOpt({ isSt, opts, budgetCredits, deps });
-  const config = isSt
-    ? { model: opts.model, effort: 'default' }
-    : isCc
-    ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: cc.effortOf(opts.effort || DEFAULT_EFFORT) }
-    : isOc
-    ? { model: opts.model || oc.DEFAULT_MODEL, effort: oc.variantOf(opts.effort || DEFAULT_EFFORT) }
-    : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine };
+  const config = modelConfigOf({ runtime: runtimes[0], opts, agentEngine });
   const state = { results: [], spent: 0, charged: 0 };
   let runConfig = { suite: suite.name, armIds, startedAt: new Date().toISOString(), seed };
   const flush = (signal) => {
@@ -494,68 +642,13 @@ async function cmdRun(opts, deps = {}) {
     ctx.maxToolCalls = maxToolCalls;
     ctx.keyRoots = [benchDir];
     if (arms.some((a) => a.plant)) plantSuite = await setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, deps, isolation, isSt, scratchDir, log });
-    ctx.tripwire = {
-      roots: [
-        { dir: home, depth: opts['tripwire-depth'] ? intOpt(opts['tripwire-depth'], 'tripwire-depth') : 3, exclude: DEFAULT_EXCLUDES },
-        { dir: REPO, depth: 8, exclude: REPO_EXCLUDES },
-        ...(opts['tripwire-dir'] ? list(opts['tripwire-dir']) : [path.join(os.tmpdir(), 'konductor-bench')]).map((dir) => ({ dir, depth: 4, exclude: ['target-shared'] })),
-      ],
-      extraExcludes: tripExtra,
-      absExclude: [outDir, cacheDir, cargoTarget, `${cargoTarget}-mcp`, scratchDir, ...(realCache ? [realCache] : [])],
-    };
-
+    ctx.tripwire = tripwireOf({ opts, home, repo: REPO, tripExtra, outDir, cacheDir, cargoTarget, scratchDir, realCache });
     ctx.envInfo = envInfoOf({ runtime: runtimes[0], ctx, ccRegion, outDir, authDb, scratchDir, envKeep, config });
+    const { interpreters, toolchainCheck } = toolchainOf(tasks, benchDir, log);
 
-    const interpreters = toolchain.interpreterVersions();
-    const anyChecks = tasks.some((t) => t.checks?.length || t.hiddenDir);
-    const toolchainCheck = toolchain.checkPins(toolchain.loadPins(benchDir), interpreters, tasks.map((t) => t.id), { anyChecks });
-    for (const m of toolchainCheck.mismatches) log(`warning: toolchain: ${toolchain.describeMismatch(m)}. Results may differ from the validated ones.`);
-
-    const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
-    runConfig = {
-      suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, timeoutSecOverride: timeoutOverride, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
-      pairOrder, fillBudget,
-      profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
-      runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle, forcedMustLoad: armOpts.forcedMustLoad,
-      isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
-      variants: variants.map((v) => ({ ...v })),
-      python: pythonPin,
-      order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
-      timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
-      level: levelPlan?.record ?? null,
-      ...config, ...ctx.envInfo,
-      isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
-      arms: rc.armRecords(arms, prepared, errors, ctx.skillListings),
-      resume,
-      armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
-      originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
-      modelNormalized: arms.some((a) => !a.vanilla),
-      ...harnessRunConfig({ runtime: runtimes[0], ctx, config, plantSuite, stModel, stCreds, budgetCredits, awsProfile, ccRegion, runBudgetUsd, arms, envKeep, kiro }),
-      ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
-      ...rc.benchGit(REPO),
-      contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
-      taskInputHashes: ctx.taskInputs.hashes(),
-      ...(suitesDir ? { suitesDir, suiteFile: suiteFile(opts.suite, benchDir, suitesDir) } : {}),
-      ...(realPins ? {
-        real: {
-          cache: realCache,
-          tasks: realPins,
-          // Hidden from the agent on top of the bench directories; the checks of these tasks also run without a network.
-          hiddenForRealTasks: Object.fromEntries(realTasks.map((t) => [t.id, real.hidePaths(t, { cache: realCache })])),
-          agentNetwork: 'open (the model API needs it); fetches are flagged after the run, not blocked',
-        },
-      } : {}),
-      tools: rc.toolVersions({ kiroBin: kiro?.bin }),
-      ...(opts.introspect ? { introspect: introspectRunConfig(runtimes[0]) } : {}),
-      interpreters,
-      toolchainCheck,
-      startedAt: new Date().toISOString(),
-    };
+    runConfig = buildRunConfig({ tripExtra, suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, arms, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, ctx, variants, pythonPin, levelPlan, config, isolation, prepared, errors, resume, armDrift, plantSuite, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, kiro, REPO, benchDir, suitesDir, opts, realPins, realCache, realTasks, interpreters, toolchainCheck });
     writeRunConfig(outDir, runConfig);
-    if (variants.length) {
-      fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
-      for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
-    }
+    for (const v of variants) writeJsonFile(path.join(outDir, 'variants', `${v.variantId}.json`), v);
     writeEnvJson({ outDir, runtime: runtimes[0], ctx, config, envKeep, stCreds, interpreters, arms });
 
     log(`out=${outDir}`);
@@ -568,12 +661,7 @@ async function cmdRun(opts, deps = {}) {
     const gate = judged.gate;
     const { infra, skipped: infraCheckSkipped } = studyInfraCheck(results, plantSuite);
     if (infraCheckSkipped) log(infraCheckSkipped);
-    const trialRows = plantSuite?.walls && plantSuite.control
-      ? results.filter((r) => r?.armId).flatMap((r) => trialGatewayRows(path.join(outDir, r.armId, r.taskId, String(r.replicate)))) : [];
-    if (trialRows.length) {
-      plantSuite.walls.checklist = checklistWithTrials(plantSuite.walls.results, trialRows);
-      log(`plant walls: with the prober trials' gateway rows; ${plantSuite.walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}`);
-    }
+    const trialRows = plantChecklistAfter({ plantSuite, results, outDir, log });
     writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(fill ? { fill } : {}), ...(infra ? { infraFailure: infra } : {}), ...(infraCheckSkipped ? { infraCheckSkipped } : {}), ...(trialRows.length ? { plantBoundaryChecklist: plantSuite.walls.checklist } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
     if (judged.warning) log(judged.warning);
     if (!gate.ok) {
@@ -582,12 +670,7 @@ async function cmdRun(opts, deps = {}) {
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     logOutcome({ results, studyLine, fill, authStop, infra, guard, log });
-    if (profile?.calibrationSample) {
-      try {
-        const sample = writeCalibrationSample({ run: loadRun(outDir), n: profile.calibrationSample, seed: 1 });
-        if (sample) log(`calibration sample: ${sample.items} run(s) listed in ${sample.md}`);
-      } catch (e) { log(`calibration sample not written: ${e.message}`); }
-    }
+    if (profile?.calibrationSample) writeSampleOf(profile, outDir, log);
   } finally {
     removeHandlers();
     plantSuite?.dispose();
