@@ -24,8 +24,7 @@ const { cmdPlantReport } = require('../../report/plant.js');
 const { policyTestCommand } = require('../lib/plant/policy-test.js');
 const { CC_CONFIG } = require('./plant-run-rig.js');
 
-const PYTHON = process.env.BENCH_ARM_PYTHON || path.join(__dirname, '..', '..', '..', '.venv', 'bin', 'python');
-const HAS_CEDAR = fs.existsSync(PYTHON) && spawnSync(PYTHON, ['-c', 'import cedarpy']).status === 0;
+const { PYTHON, HAS_CEDAR } = require('./arm-python.js');
 const CONTROLS = path.join(__dirname, '..', '..', 'physical', 'controls');
 
 /** A toy release and the dirs a suite needs, all under one temp root; `cleanup` removes them. */

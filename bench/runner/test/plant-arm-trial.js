@@ -19,9 +19,7 @@ const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
 const CONTROLS = path.join(PHYSICAL, 'controls');
 const HOST = path.join(PHYSICAL, 'test', 'arm_gateway_host.py');
 const SHIM = path.join(__dirname, '..', 'lib', 'plant', 'shim.js');
-const PYTHON = process.env.BENCH_ARM_PYTHON || path.join(__dirname, '..', '..', '..', '.venv', 'bin', 'python');
-const HAS_ARM = fs.existsSync(PYTHON) && spawnSync(PYTHON, ['-c', 'import mujoco, cedarpy']).status === 0;
-const arm = { skip: !HAS_ARM && 'no Python with mujoco and cedarpy (set BENCH_ARM_PYTHON)' };
+const { PYTHON, arm } = require('./arm-python.js');
 
 const START = { rated_max_mmps: 250 };
 const GRANTING = { approvals: { open_door: 'granted' }, expireAfterMs: 20000 };

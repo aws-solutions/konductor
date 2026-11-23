@@ -15,9 +15,7 @@ const { rig, plantRun } = require('./plant-run-rig.js');
 const { TASK } = require('./plant-release-fixture.js');
 
 const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
-const PYTHON = process.env.BENCH_ARM_PYTHON || path.join(__dirname, '..', '..', '..', '.venv', 'bin', 'python');
-const HAS_ARM = fs.existsSync(PYTHON) && spawnSync(PYTHON, ['-c', 'import mujoco, cedarpy']).status === 0;
-const arm = { skip: !HAS_ARM && 'no Python with mujoco and cedarpy (set BENCH_ARM_PYTHON)' };
+const { PYTHON, arm } = require('./arm-python.js');
 
 const ARM_TASK_ID = 'plant-arm-stub.v01';
 const ARM_TASK = {
