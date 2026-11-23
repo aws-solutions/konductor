@@ -348,11 +348,12 @@ const USAGE = `Usage:
        (free: the keep-or-prune check at a quick and a deep depth under Michael Lin's copied rules; writes DIR/<run>/records/NAME.json with both verdicts side by side. Phase A has only the stub provider)
   node bench/runner/bench.js cap units [--kind agent|sop|context] [--coverage FILE] [--out FILE] [--repo-root DIR] [--json] [--list]
   node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --run stub-ID [--out DIR] [--provider stub] [--delegation FILE] [--repo-root DIR]
-  node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --provider kiro --run ID --cap N --ledger FILE --work DIR [--depth quick] [--model M] [--judges A,B,C] [--baselines DIR] [--controls-only] [--out DIR] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
+  node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --provider kiro --run ID --cap N --ledger FILE --work DIR [--depth quick] [--model M] [--judges A,B,C] [--baselines DIR] [--controls-only] [--role-line] [--out DIR] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
        (PAID: the same stage on the kiro provider, quick depth only, one-turn kiro-cli calls with no tools; the ledger is read before every call at the larger of
        15 and its real credits and a call is refused past --cap; the baseline (in --baselines, default bench/cap/unit-baselines) must be fresh and signed off
        (source.signedOffBy); a rerun of the same --run resumes and pays only calls not saved yet. --controls-only runs the two controls and not the
-       unit. --dry-run prints the calls by section (cached and new), the worst case and what would stop the run, free)
+       unit. --role-line starts both arms of each unit task with the kind's role line (context: "You orchestrate a team of specialist
+       agents."), so the gap measures the file and not the role; control prompts do not change. --dry-run prints the calls by section (cached and new), the worst case and what would stop the run, free)
   node bench/runner/bench.js cap unit-stage --render RECORD.json [--baselines DIR]
        (free: redraws the .md of a finished stage record with the review grades written after the run; the JSON and its readings do not change)
   node bench/runner/bench.js cap unit-author --kind agent|sop|context --unit NAME --work DIR --ledger FILE --cap N [--briefs FILE] [--out FILE] [--replace ID] [--sign-off NAME] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]

@@ -15,6 +15,7 @@
   },
   "paidFrame": {
     "answer": "The file below is part of your instructions for this session. Follow it.",
+    "role": "You orchestrate a team of specialist agents.",
     "noun": "always-loaded instruction file of a coding-agent orchestrator",
     "tasks": "Each task gives the orchestrator a situation and asks what it does next."
   }

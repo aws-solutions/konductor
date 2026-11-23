@@ -311,6 +311,48 @@ function paidStage(r, env = {}) {
   return { record, calls: r.calls() };
 }
 
+test('FW-36 role line: both arms of a unit task start with it, a control prompt never does', () => {
+  const { answerPrompt } = require('../../cap/kiroprovider.js');
+  const unit = { name: 'k-rules', text: 'U', role: 'You orchestrate a team of specialist agents.' };
+  const keep = answerPrompt('Follow it.', unit, 'with', 'Q?');
+  const drop = answerPrompt('Follow it.', unit, 'without', 'Q?');
+  assert.equal(keep.loaded, true);
+  assert.equal(drop.loaded, false);
+  assert.equal(drop.prompt, 'You orchestrate a team of specialist agents.\n\nQ?');
+  assert.match(keep.prompt, /^You orchestrate a team of specialist agents\.\n\nFollow it\.\n<<<FILE\nU\nFILE>>>\n\nQ\?$/);
+  const control = { name: 'convention-control', text: 'C' };
+  assert.equal(answerPrompt('Follow it.', control, 'without', 'Q?').prompt, 'Q?', 'a control skill has no role');
+  assert.equal(answerPrompt('Follow it.', { ...unit, role: undefined }, 'without', 'Q?').prompt, 'Q?', 'without the role line nothing changes');
+});
+
+test('FW-36 role line on a paid rerun: every unit answer is new, the controls are all cached, the record names the line', { timeout: 600000 }, () => {
+  const r = rig();
+  try {
+    const baselinesDir = freeze(r);
+    const outDir = path.join(r.root, 'runs');
+    const base = { kind: 'context', name: 'k-rules', repo: r.repo, outDir, provider: 'kiro', depths: ['quick'], subjectModel: 'claude-sonnet-5.5', judges: [...PILOT_JUDGES], baselinesDir, paid: { ...r.paid, cap: 100000 } };
+    withEnv({ FAKE_KP_LOG: r.log }, () => runUnitStage({ ...base, runId: 'kp-a' }));
+    // A new run id with the first run's saved calls, as the owner's rerun copies them.
+    fs.cpSync(path.join(outDir, 'kp-a', 'calls'), path.join(outDir, 'kp-b', 'calls'), { recursive: true });
+    const { planUnitCalls } = require('../../cap/unitstage.js');
+    const plan = planUnitCalls({ kind: 'context', name: 'k-rules', repo: r.repo, runId: 'kp-b', outDir, baselinesDir, roleLine: true });
+    assert.equal(plan.convention.new, 0, 'the convention control stays cached');
+    assert.equal(plan.ladder.new, 0, 'the dose ladder stays cached');
+    assert.equal(plan.unit.cached, 16, 'only the request-only checklists stay cached');
+    const before = r.calls().length;
+    const { record } = withEnv({ FAKE_KP_LOG: r.log }, () => runUnitStage({ ...base, runId: 'kp-b', roleLine: true }));
+    const made = r.calls().slice(before).map((l) => l.split(' ')[1]);
+    assert.equal(made.filter((k) => k === 'answer').length, 32, 'both arms of all 16 unit tasks answer again');
+    assert.equal(made.filter((k) => k === 'checklist').length, 0);
+    // The plan counts every unit answer and judge call as new (a new answer means new judge prompts): 32 + 16 x 2 x 3 x 2.
+    assert.equal(plan.unit.new, 224);
+    // The fake answers the same text whatever the prompt, so its judge calls hit the cache; a real model's would not.
+    assert.ok(made.length <= plan.unit.new, 'the run never makes more calls than the plan counted');
+    assert.match(record.claim, /both arms of each unit task start with the role line "You orchestrate a team of specialist agents\."/);
+    assert.equal(record.quick.controls.passed, true);
+  } finally { r.cleanup(); }
+});
+
 test('a failed control stops the paid run before the unit: none of its answers or judgments are paid for', { timeout: 600000 }, () => {
   const r = rig();
   try {
