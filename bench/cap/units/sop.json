@@ -1,0 +1,20 @@
+{
+  "$comment": "Stage 3 unit kind: SOPs. See skill.json for the format; cap/unitkinds.js documents each field.",
+  "kind": "sop",
+  "stage": 3,
+  "label": "SOPs",
+  "article": "a SOP",
+  "path": "agent-sops/{name}.sop.md",
+  "listedIn": "sops",
+  "description": "overview",
+  "claimNoun": "SOP",
+  "selection": {
+    "test": "none: user-invoked",
+    "note": "a user names the SOP to run it, so no agent selects it; the effect after load is the whole question"
+  },
+  "paidFrame": {
+    "answer": "The user has started the procedure (SOP) below for this request. Follow it.",
+    "noun": "user-invoked procedure (SOP) of a coding agent",
+    "tasks": "Each task is a request a user makes while running the procedure, and asks for its output or its next step. When the procedure needs the user's yes for its scope or for committing, the prompt gives it."
+  }
+}

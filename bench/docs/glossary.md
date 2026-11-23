@@ -21,6 +21,7 @@ reports print it.
 | **Run level** | LITE, STANDARD or FULL: how much of the pack one study runs ([run levels](run-levels.md)). Not the same as `--suite lite`. |
 | **DEV, HELD-OUT** | Every pack task is split by a fixed hash of its id. Tuning happens on DEV; a FULL verdict comes from HELD-OUT only. |
 | **Sandbox** | The walls a run gets: its own home and scratch dir, with the rest of the host hidden or read-only (`--isolate unshare` on Linux, `sandbox-exec` on macOS). |
+| **credentialEnv, envDropped** | `credentialEnv` lists the credential variables a runtime may pass to its agent. bench drops any other one before the run starts and marks the run `envDropped`. |
 | **NOT COUNTED** | A run that ran outside the sandbox, or on a host that is not quiet. It is kept apart and never feeds a verdict. |
 
 ## Scores
@@ -31,6 +32,7 @@ reports print it.
 | **Rubric** | The items a judge scores, only for what code cannot check. |
 | **Answer key** | A hidden list of points a good answer must cover, given to the judges of design and decision tasks. |
 | **Judge panel** | Three judge models from three model families, never the agent's own family. The score is their median. |
+| **Judge pass** | One round of judging: the same panel and judge model versions on one day (`passId` on every judgment). `compare` refuses two passes unless `--allow-mixed-pass`, since judges drift between days. |
 | **Interval** | The 95% range a mean gap could plausibly have. A gap whose interval contains 0 is not shown to exist. |
 | **Verdict word** | The fixed words a FULL study may use: beats by the margin, beats, ties, loses, loses by the margin, unsettled ([scoring](scoring.md)). |
 | **NO DATA** | bench could not read a result, and says why (too few tasks counted, a stale baseline, a failed control, too few judge families). |

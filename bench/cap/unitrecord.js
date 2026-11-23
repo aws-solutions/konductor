@@ -11,8 +11,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { validate, loadSchema } = require('../runner/lib/schema.js');
 const { readJsonFile } = require('./checkedjson.js');
-const { STAGE_OF_KIND, unitManifest } = require('./units.js');
+const { UNIT_STAGE_KINDS, STAGE_OF_KIND, unitManifest } = require('./units.js');
 const { delegationProblems } = require('./delegation.js');
+const { controlsCell } = require('./kprecord.js');
 
 const SCHEMA_NAME = 'keep-prune-unit-stage';
 const MAJOR = 1;
@@ -25,7 +26,7 @@ function ruleProblems(r) {
   const agree = r.quick && r.deep ? r.quick.verdict === r.deep.verdict : null;
   if (r.agree !== agree) p.push(`$.agree: ${JSON.stringify(r.agree)} does not follow from the two verdicts (expected ${JSON.stringify(agree)})`);
   if (r.delegation) {
-    if (r.kind !== 'agent') p.push('$.delegation: only an agent unit has a delegation result');
+    if (UNIT_STAGE_KINDS[r.kind]?.selection.test !== 'delegation') p.push('$.delegation: only an agent unit has a delegation result');
     else p.push(...delegationProblems(r.delegation).map((x) => `$.delegation: ${x}`));
   }
   return p;
@@ -144,7 +145,7 @@ function renderUnitRecord(r, review = null) {
     '| | quick | deep |', '|---|---|---|',
     row('label', (b) => b.label), row('suggested verdict', (b) => b.verdict), row('why', (b) => (b.noData.length ? b.noData.join('; ') : b.labelWhy)),
     row('tasks counted', (b) => `${b.coverage.tasksCounted} of ${b.coverage.tasksTotal}`),
-    row('controls', (b) => `${b.controls.status} (${b.controls.ran.join(', ') || 'none'})`),
+    row('controls', controlsCell),
     row('judges', (b) => b.judges.map((j) => `${j.model} (${j.family})`).join(', ') || 'none'), '',
     `Unit: ${r.unit.sha256.slice(0, 12)} over ${r.unit.files.join(', ')}. Stale: ${r.stale.value ? `YES: ${r.stale.why}` : 'no'}. Sign-off: ${r.signoff.by ?? 'none yet'}.`, '',
     ...taskTable(r, review),

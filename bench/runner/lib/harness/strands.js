@@ -110,4 +110,4 @@ function finalize(outDir, ctx) {
   return scrubTreeDetailed(outDir, secretLiterals(process.env, ctx?.awsCreds ? ctx.awsCreds.values() : []), { shapes: true });
 }
 
-module.exports = { id, meta, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
+module.exports = { id, meta, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };

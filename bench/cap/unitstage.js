@@ -15,17 +15,18 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
 const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
-const { loadConvention, loadDoseLadder } = require('./frozen.js');
+const { loadConvention, loadDoseLadder, pastControlDates } = require('./frozen.js');
 const { buildPairs } = require('./doseladder.js');
 const { checkDepth, judgePanel, judgmentStore, DEFAULT_REPLICATES, JUDGE_FAMILIES, CLAIM } = require('./keepprune.js');
 const { blockFromCheck } = require('./kprecord.js');
 const { createStubProvider, assertStubRun, isStubRun } = require('./stubprovider.js');
 const { STUB_SUBJECT_MODEL, STUB_JUDGES } = require('./kprun.js');
-const { STAGE_OF_KIND, KIND_LABEL, UNIT_BASELINES_DIR, PAID_FRAME, listUnits, unitManifest, renderUnitMap } = require('./units.js');
+const { UNIT_STAGE_KINDS, UNIT_KIND_NAMES, STAGE_OF_KIND, KIND_LABEL, UNIT_BASELINES_DIR, PAID_FRAME, listUnits, unitManifest, renderUnitMap } = require('./units.js');
+const { UNIT_KINDS, renderKindList } = require('./unitkinds.js');
 const { readJsonFile } = require('./checkedjson.js');
 const { UNIT_SCHEMA_ID, writeUnitRecord, readUnitRecord, renderUnitRecord, readTaskGrades } = require('./unitrecord.js');
 const { WORST_PER_CALL, ledgerSpent } = require('./paidcall.js');
-const { createKiroProvider } = require('./kiroprovider.js');
+const { createKiroProvider, createPlanProvider } = require('./kiroprovider.js');
 const { minCounted } = require('./labels.js');
 
 const PROVIDERS = ['stub', 'kiro'];
@@ -66,7 +67,7 @@ const COSTS = Object.freeze({
 function baselineProblems(b) {
   const p = [];
   if (b?.format_version !== 1) p.push(`format_version ${JSON.stringify(b?.format_version)} is not 1`);
-  if (!STAGE_OF_KIND[b?.kind]) p.push(`kind ${JSON.stringify(b?.kind)} is not agent, sop or context`);
+  if (!STAGE_OF_KIND[b?.kind]) p.push(`kind ${JSON.stringify(b?.kind)} is not ${UNIT_KIND_NAMES}`);
   if (!/^[0-9a-f]{64}$/.test(b?.unit_sha256 ?? '')) p.push('unit_sha256 is not a SHA-256');
   if (!Array.isArray(b?.batches) || b.batches.length !== BATCHES) p.push(`a unit baseline has ${BATCHES} batches of ${TASKS_PER_BATCH} tasks`);
   // A task dropped under the one-fix rule (unitauthor.js) is recorded in source.dropped and leaves its batch one short;
@@ -132,7 +133,7 @@ function rerenderUnitRecord({ file, baselinesDir = UNIT_BASELINES_DIR }) {
  * Runs one unit's stage and writes `<outDir>/<runId>/stage-<n>/<kind>-<name>.json` and its .md. Judgments and paid
  * replies are saved under `<outDir>/<runId>`, so a rerun of the same run id resumes where it stopped.
  * @param {object} o
- * @param {string} o.kind agent, sop or context
+ * @param {string} o.kind a unit kind of stage 2 or up (cap/units/*.json: agent, sop or context)
  * @param {string} o.name the unit name
  * @param {string} o.repo the tree under test
  * @param {string} o.runId stub or stub-<name> on the stub; any other id on the paid provider
@@ -147,9 +148,9 @@ function rerenderUnitRecord({ file, baselinesDir = UNIT_BASELINES_DIR }) {
  * @param {object|null} [o.delegation] a stage 2 delegation result (delegation.js), kept beside the effect, never combined
  * @returns {{ record, file, markdown }}
  */
-function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid = null, writerModel = PILOT_WRITER, depths = ['quick', 'deep'], baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES, replicates = DEFAULT_REPLICATES, delegation = null, createdAt = new Date().toISOString() }) {
+function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid = null, writerModel = PILOT_WRITER, depths = ['quick', 'deep'], baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES, replicates = DEFAULT_REPLICATES, delegation = null, controlsOnly = false, createdAt = new Date().toISOString() }) {
   if (kind === 'skill') throw new Error('skills are stage 1: use cap keep-prune');
-  if (!STAGE_OF_KIND[kind]) throw new Error(`--kind takes agent, sop or context (got ${JSON.stringify(kind)})`);
+  if (!STAGE_OF_KIND[kind]) throw new Error(`--kind takes ${UNIT_KIND_NAMES} (got ${JSON.stringify(kind)})`);
   if (!PROVIDERS.includes(provider)) throw new Error(`provider ${JSON.stringify(provider)} is not available: stages 2 to 4 have the stub provider and the paid kiro provider`);
   const isPaid = provider === 'kiro';
   if (isPaid) assertPaidRun({ runId, paid, depths, subjectModel, judges }); else assertStubRun(runId);
@@ -158,7 +159,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const { why, baseline } = blockers({ unit, row, baselinesDir });
   // A paid run that could only read NO DATA spends nothing: it stops before the first call.
   // A paid run also needs the person's sign-off of the baseline (the owner's rule: a person signs off every verdict's tasks).
-  const stops = isPaid ? [...why, ...unsignedWhy(unit, baseline)] : [];
+  const stops = isPaid ? [...why, ...unsignedWhy(unit, baseline), ...staleControlWhy()] : [];
   if (stops.length) throw new Error(`no paid call made: ${unit.id} cannot be read (${stops.join('; ')})`);
   const blocks = { quick: null, deep: null };
   // A paid record names the bench commit that made it, so a reader knows which code spent the credits.
@@ -170,7 +171,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
     const subject = { name: unit.id, skill: { name: unit.name, text: unit.text }, batches: baseline.batches };
     for (const depth of depths) {
       const before = isPaid ? ledgerSpent(paid.ledger) : 0;
-      const check = checkDepth({ depth, subject, convention: loadConvention(), ladder, provider: model, subjectModel, judges, store, replicates, stopOnControlFail: isPaid });
+      const check = checkDepth({ depth, subject, convention: loadConvention(), ladder, provider: model, subjectModel, judges, store, replicates, stopOnControlFail: isPaid, controlsOnly });
       blocks[depth] = blockFromCheck(check, { commit, runId, provider: model.name, replicates: depth === 'deep' ? replicates : null });
       if (isPaid) {
         // Credits as the ledger counts them (each call at the larger of 15 and its real credits); kiro-cli bills no USD.
@@ -183,7 +184,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const panel = judgePanel({ subjectModel, judges });
   const record = {
     schema: UNIT_SCHEMA_ID, createdAt, stage: STAGE_OF_KIND[kind], kind, name,
-    claim: `${CLAIM}, with the ${kind === 'agent' ? 'agent prompt' : kind === 'sop' ? 'SOP' : 'context file'} in place of a skill${isPaid ? ` (paid run ${runId}, ${depths.join(' and ')} depth)` : ' (stub data: never a measurement)'}`,
+    claim: `${CLAIM}, with the ${UNIT_STAGE_KINDS[kind].claimNoun} in place of a skill${isPaid ? ` (paid run ${runId}, ${depths.join(' and ')} depth)` : ' (stub data: never a measurement)'}`,
     unit: { files: unit.files, sha256: unit.sha256, estTokens: row.estTokens }, ablation: row.ablation, selection: row.selection,
     listedBy: row.listedBy, panel: { families: JUDGE_FAMILIES, seated: panel.seats, why: panel.why },
     baseline: baseline ? { unitSha256: baseline.unit_sha256, source: baseline.source ?? null } : null, delegation,
@@ -298,9 +299,11 @@ function cmdUnitStage(opts) {
   } : null;
   const models = provider === 'kiro' ? { subjectModel: val(opts.model) ?? PILOT_SUBJECT, judges: judges ?? [...PILOT_JUDGES] } : {};
   const baselinesDir = val(opts.baselines) ? path.resolve(val(opts.baselines)) : UNIT_BASELINES_DIR;
-  if (opts['dry-run']) return printUnitPlan({ kind: kinds[0], name, repo, depths, paid, baselinesDir, ...models });
+  const outDir = path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'unit-stage'));
+  const controlsOnly = Boolean(opts['controls-only']);
+  if (opts['dry-run']) return printUnitPlan({ kind: kinds[0], name, repo, depths, paid, baselinesDir, runId: val(opts.run), outDir, controlsOnly, ...models });
   const delegation = val(opts.delegation) ? readJsonFile(path.resolve(val(opts.delegation))) : null;
-  const r = runUnitStage({ kind: kinds[0], name, repo, runId: val(opts.run) ?? '', outDir: path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'unit-stage')), provider, paid, depths, baselinesDir, delegation, ...models });
+  const r = runUnitStage({ kind: kinds[0], name, repo, runId: val(opts.run) ?? '', outDir, provider, paid, depths, baselinesDir, delegation, controlsOnly, ...models });
   console.log(`${r.markdown}\nwrote ${r.file} and its .md${provider === 'stub' ? ' (stub data: never a measurement)' : ''}`);
   for (const [depth, b] of Object.entries({ quick: r.record.quick, deep: r.record.deep })) {
     for (const w of (b?.noData ?? []).filter((x) => /^FLAG: |the unit was not run/.test(x))) console.error(`${depth}: ${w}`);
@@ -311,7 +314,7 @@ function cmdUnitStage(opts) {
  * The free plan of one unit's run (`--dry-run`): the calls by kind, the worst case at 15 per call, the ledger's spend
  * against the cap, the judge panel, and anything that would stop the run before its first call. Makes no call.
  */
-function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES }) {
+function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BASELINES_DIR, runId = null, outDir = null, controlsOnly = false, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES }) {
   const unit = unitManifest({ repo, kind, name });
   const row = listUnits({ repo, kind, baselinesDir }).find((u) => u.id === unit.id);
   const { why, baseline } = blockers({ unit, row, baselinesDir });
@@ -330,9 +333,51 @@ function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BAS
   ];
   if (paid) lines.push(`ledger ${paid.ledger ?? '(none given)'}: spent ${spent}; cap ${Number.isFinite(paid.cap) ? paid.cap : '(none given)'}; ${spent + e.credits.worst <= paid.cap ? 'the worst case fits' : 'the worst case does not fit: the run stops at the cap and a rerun with a larger cap resumes it'}`);
   if (baseline) lines.push(`baseline ${baseline.unit_sha256 === unit.sha256 ? 'fresh' : 'stale'}, signed off by ${signedOffBy(baseline) ?? 'nobody yet'}`);
-  for (const w of [panel.why, ...why, ...(paid ? unsignedWhy(unit, baseline) : [])].filter(Boolean)) lines.push(`would stop before the first call: ${w}`);
+  // With a run id, the plan reads the saved replies of that run: a rerun pays only the calls not made yet.
+  const plan = paid && runId && baseline && depths.length === 1 && depths[0] === 'quick' ? planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir, subjectModel, judges }) : null;
+  if (plan) {
+    const line = (label, t, paidNow) => `${label}: ${t.calls} calls, ${t.cached} cached (free), ${t.new} new${paidNow ? `, ${fmt(t.new * WORST_PER_CALL)} counted at ${WORST_PER_CALL} per call` : ' (not run in this step)'}`;
+    lines.push(`run ${runId}, by section${controlsOnly ? ' (controls only: the unit is not run in this step)' : ''}:`);
+    lines.push(`  ${line('convention control', plan.convention, true)}`);
+    lines.push(`  ${line('dose ladder', plan.ladder, true)}`);
+    lines.push(`  ${line('the unit', plan.unit, !controlsOnly)}`);
+    const counted = (plan.convention.new + plan.ladder.new + (controlsOnly ? 0 : plan.unit.new)) * WORST_PER_CALL;
+    lines.push(`  this step: at most ${fmt(counted)} counted credits${Number.isFinite(paid.cap) ? `; cap ${fmt(paid.cap)}, ledger spent ${spent}: ${spent + counted <= paid.cap ? 'fits' : 'does not fit'}` : ''}`);
+  }
+  for (const w of [panel.why, ...why, ...(paid ? [...unsignedWhy(unit, baseline), ...staleControlWhy()] : [])].filter(Boolean)) lines.push(`would stop before the first call: ${w}`);
   console.log(lines.join('\n'));
 }
+
+/**
+ * The calls a paid quick run of one unit would make, by section (convention, ladder, unit), each { calls, cached, new }:
+ * a call is cached when its saved reply is under `<outDir>/<runId>/calls`, so a rerun of the same run id pays only the
+ * new ones. Free: the paid provider's prompts and keys, no call. Null when the unit has no baseline.
+ */
+function planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir = UNIT_BASELINES_DIR, subjectModel = PILOT_SUBJECT, judges = PILOT_JUDGES, writerModel = PILOT_WRITER }) {
+  const unit = unitManifest({ repo, kind, name });
+  const row = listUnits({ repo, kind, baselinesDir }).find((u) => u.id === unit.id);
+  const { baseline } = blockers({ unit, row, baselinesDir });
+  if (!baseline) return null;
+  const convention = loadConvention();
+  const ladder = loadDoseLadder();
+  const convPrompts = new Set(convention.batches.flatMap((b) => b.tasks.map((t) => t.prompt)));
+  const convIds = new Set(convention.batches.flatMap((b) => b.tasks.map((t) => t.id)));
+  const ladderIds = new Set(ladder.tasks.map((t) => t.id));
+  const sectionOf = ({ request, taskId }) => (request !== undefined
+    ? (convPrompts.has(request) ? 'convention' : 'unit')
+    : (convIds.has(taskId) ? 'convention' : ladderIds.has(taskId) ? 'ladder' : 'unit'));
+  const { provider, tally } = createPlanProvider({ callsDir: path.join(outDir, runId, 'calls'), writerModel, frame: PAID_FRAME[kind].answer, sectionOf });
+  const subject = { name: unit.id, skill: { name: unit.name, text: unit.text }, batches: baseline.batches };
+  checkDepth({ depth: 'quick', subject, convention, ladder, provider, subjectModel, judges: [...judges], store: judgmentStore(null) });
+  const zero = { calls: 0, cached: 0, new: 0 };
+  return { convention: tally.convention ?? zero, ladder: tally.ladder ?? zero, unit: tally.unit ?? zero };
+}
+
+/** The reason a paid run may not use the convention control today: a task date already in the past makes it not neutral. */
+const staleControlWhy = (now = new Date()) => {
+  const past = pastControlDates(loadConvention(), now);
+  return past.length ? [`the convention control names dates already in the past (${past.slice(0, 3).map((p) => `${p.task.replace('convention-control-', '')}: ${p.date}`).join(', ')}${past.length > 3 ? ', ...' : ''}), so it is no longer neutral on reading A; move them forward`] : [];
+};
 
 /** Who signed off baseline `b` (its `source.signedOffBy`, a name), or null. */
 const signedOffBy = (b) => (typeof b?.source?.signedOffBy === 'string' && b.source.signedOffBy.trim() ? b.source.signedOffBy.trim() : null);
@@ -341,10 +386,12 @@ const signedOffBy = (b) => (typeof b?.source?.signedOffBy === 'string' && b.sour
 const unsignedWhy = (unit, baseline) => (baseline && !signedOffBy(baseline) ? [`the baseline of ${unit.id} is not signed off: a person who did not write its tasks reads them and sets source.signedOffBy`] : []);
 
 /**
- * `cap units`: the unit map of one stage's kind (or all three), as markdown or --json, printed or written to --out.
- * `--coverage FILE` (from `bench.js scenarios coverage`) adds each unit's targeted tasks.
+ * `cap units`: the unit map of one stage's kind (or all of them), as markdown or --json, printed or written to --out.
+ * `--coverage FILE` (from `bench.js scenarios coverage`) adds each unit's targeted tasks. `--list` prints the kinds
+ * (cap/units/*.json) instead and reads no tree.
  */
 function cmdUnits(opts) {
+  if (opts.list) { process.stdout.write(opts.json ? `${JSON.stringify(UNIT_KINDS, null, 2)}\n` : renderKindList(UNIT_KINDS)); return; }
   const repo = repoRootOf(opts);
   const kinds = val(opts.kind) ? [val(opts.kind)] : Object.keys(STAGE_OF_KIND);
   const coverage = val(opts.coverage) ? readJsonFile(path.resolve(val(opts.coverage))) : null;
@@ -353,4 +400,4 @@ function cmdUnits(opts) {
   if (val(opts.out)) { fs.writeFileSync(path.resolve(val(opts.out)), text); console.log(`wrote ${path.resolve(val(opts.out))}`); } else process.stdout.write(text);
 }
 
-module.exports = { COSTS, commitOf, PILOT_SUBJECT, PILOT_JUDGES, PILOT_WRITER, baselineProblems, loadUnitBaseline, runUnitStage, rerenderUnitRecord, estimateStage, cmdUnitStage, cmdUnits };
+module.exports = { COSTS, commitOf, planUnitCalls, PILOT_SUBJECT, PILOT_JUDGES, PILOT_WRITER, baselineProblems, loadUnitBaseline, runUnitStage, rerenderUnitRecord, estimateStage, cmdUnitStage, cmdUnits };

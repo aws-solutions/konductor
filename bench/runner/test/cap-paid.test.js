@@ -260,6 +260,46 @@ test('a failed control stops the paid run before the unit: none of its answers o
   } finally { r.cleanup(); }
 });
 
+test('the record keeps each control\'s checks with their numbers, and the markdown names which control passed and which failed', { timeout: 600000 }, () => {
+  const { renderUnitRecord } = require('../../cap/unitrecord.js');
+  const r = rig();
+  try {
+    const { record } = paidStage(r, { FAKE_KP_NO_ORACLE: '1' });
+    const byName = Object.fromEntries(record.quick.controls.results.map((x) => [x.control, x]));
+    assert.equal(byName['convention-control'].status, 'PASS');
+    assert.equal(byName.ladder.status, 'FAIL');
+    for (const x of record.quick.controls.results) {
+      assert.ok(x.checks.length > 0 && x.checks.every((c) => typeof c.name === 'string' && typeof c.ok === 'boolean' && typeof c.detail === 'string'), x.control);
+    }
+    assert.ok(byName['convention-control'].checks.some((c) => /A interval contains 0/.test(c.name) && /A gap .*\[/.test(c.detail)), 'the A check and its interval are stored');
+    const md = renderUnitRecord(record);
+    assert.match(md, /convention-control PASS, ladder FAIL/);
+    assert.match(md, /ladder FAIL: .*no:/, 'the failed check is printed with its numbers');
+  } finally { r.cleanup(); }
+});
+
+test('controls only: the controls run and the unit does not; the plan then counts the cached calls as free, section by section', { timeout: 600000 }, () => {
+  const { planUnitCalls } = require('../../cap/unitstage.js');
+  const r = rig();
+  try {
+    const baselinesDir = freeze(r);
+    const outDir = path.join(r.root, 'runs');
+    const base = { kind: 'context', name: 'k-rules', repo: r.repo, runId: 'kp-test', outDir, provider: 'kiro', depths: ['quick'], subjectModel: 'claude-sonnet-5.5', judges: [...PILOT_JUDGES], baselinesDir };
+    const before = planUnitCalls({ ...base });
+    assert.ok(before.convention.calls > 0 && before.ladder.calls > 0 && before.unit.calls > 0);
+    assert.equal(before.convention.cached + before.ladder.cached + before.unit.cached, 0, 'nothing is cached before the first run');
+    const { record } = withEnv({ FAKE_KP_LOG: r.log }, () => runUnitStage({ ...base, paid: { ...r.paid, cap: 100000 }, controlsOnly: true }));
+    assert.equal(record.quick.controls.passed, true);
+    assert.ok(record.quick.noData.some((w) => /controls only: the unit was not run/.test(w)));
+    assert.equal(r.calls().filter((l) => l.split(' ')[1] === 'answer').length, 16, 'only the 16 convention answers');
+    const after = planUnitCalls({ ...base });
+    assert.equal(after.convention.new, 0, 'the controls are cached');
+    assert.equal(after.ladder.new, 0);
+    assert.equal(after.unit.new, after.unit.calls, 'the unit is all new');
+    assert.equal(after.unit.calls, 16 * 2 + 16 + 16 * 2 * 2 * 3, '32 answers, 16 checklists, 192 judgments');
+  } finally { r.cleanup(); }
+});
+
 test('an unreadable judge reply is asked once more, both calls counted; Met reads as MET', { timeout: 600000 }, () => {
   const r = rig();
   try {

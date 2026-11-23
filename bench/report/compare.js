@@ -6,6 +6,7 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { buildReport } = require('./aggregate.js');
 const { medianCI, meanCI, ratioCI } = require('./stats.js');
 const { correlationLine } = require('./length.js');
+const { DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
 
 const MIN_RUNS_FOR_CI = 3;
 
@@ -39,6 +40,24 @@ function relChange(base, head) {
   return (head - base) / Math.abs(base);
 }
 
+// loadRun sets `harness` from runtimeOf; a run object without one ran on the default runtime.
+const isDefaultRuntime = (run) => (run.harness ?? DEFAULT_RUNTIME) === DEFAULT_RUNTIME;
+
+// The judge passes of a study's judgments (FW-6); a record judged before passes were recorded counts as 'unrecorded'.
+const UNRECORDED_PASS = 'unrecorded';
+function passesOf(run) {
+  const recs = ['rubric', 'pairwise', 'graded'].flatMap((k) => run.judgments?.[k] || []);
+  return [...new Set(recs.map((r) => r.passId ?? UNRECORDED_PASS))].sort();
+}
+
+/** The line naming two judge passes, or null when base and head were judged in one pass (or neither recorded one). */
+function mixedPassLine(base, head) {
+  const a = passesOf(base);
+  const b = passesOf(head);
+  if (new Set([...a, ...b]).size < 2) return null;
+  return `base "${a.join(', ') || 'none'}" vs head "${b.join(', ') || 'none'}"`;
+}
+
 function describe(run) {
   const results = run.runs.map((r) => r.result);
   return {
@@ -47,11 +66,11 @@ function describe(run) {
     tasks: [...(run.config.taskIds ?? new Set(run.runs.map((r) => r.taskId)))].sort().join(','),
     judges: [...(run.judgments?.judges || [])].sort().join(','),
     contentHash: run.config.contentHash ?? '',
-    harness: run.harness ?? 'kiro-cli',
-    harnessVersion: (run.harness !== undefined && run.harness !== 'kiro-cli' ? run.config.harnessVersion ?? results[0].harnessVersion : run.config.kiroCliVersion ?? results[0].kiroCliVersion) ?? '',
+    harness: run.harness ?? DEFAULT_RUNTIME,
+    harnessVersion: (isDefaultRuntime(run) ? run.config.kiroCliVersion ?? results[0].kiroCliVersion : run.config.harnessVersion ?? results[0].harnessVersion) ?? '',
     isolation: run.config.isolation?.mode ?? results[0].isolation ?? '',
     // Runs written before --agent-engine existed all used v2.
-    agentEngine: run.harness !== undefined && run.harness !== 'kiro-cli' ? '' : run.config.agentEngine ?? results[0].agentEngine ?? 'v2',
+    agentEngine: isDefaultRuntime(run) ? run.config.agentEngine ?? results[0].agentEngine ?? 'v2' : '',
     rubricPolicy: run.judgments ? run.judgments.rubricPolicy ?? 'legacy, excluded runs are gaps' : '',
   };
 }
@@ -119,12 +138,19 @@ function matchArms(baseArms, headArms, baseIds, headIds) {
   return pairs;
 }
 
-function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both', force = false }) {
+/**
+ * Compares two run directories. A difference in the pins (model, tasks, judges, ...) is a refusal (exitCode 2) unless
+ * `force`. Judgments from two judge passes are a refusal too, unless `allowMixedPass`; then `mixedPass` names them and
+ * the text says so.
+ */
+function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both', force = false, allowMixedPass = false }) {
   const base = loadRun(baseDir);
   const head = loadRun(headDir);
   const tasks = loadTasks(benchDir);
   const refusals = refusalsFor(base, head);
-  const result = { refusals, forced: force && refusals.length > 0, regressions: [], improvements: [], onlyInBase: [], onlyInHead: [], armChanged: [], matchedBySha: [], minRel, rule };
+  const mixed = mixedPassLine(base, head);
+  if (mixed && !allowMixedPass) refusals.push(`judge passes differ: ${mixed} (judge both in one pass, or pass --allow-mixed-pass)`);
+  const result = { refusals, forced: force && refusals.length > 0, ...(mixed && allowMixedPass ? { mixedPass: mixed } : {}), regressions: [], improvements: [], onlyInBase: [], onlyInHead: [], armChanged: [], matchedBySha: [], minRel, rule };
   if (refusals.length && !force) return { ...result, exitCode: 2 };
 
   const b = buildReport({ run: base, tasks });
@@ -193,6 +219,7 @@ function formatCompare(r) {
     const g = (v) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(3));
     return `  ${x.arm} / ${x.scope} / ${x.metric}: ${g(x.base)} -> ${g(x.head)} (${rel})${x.lowN ? ' [few runs, CI not used]' : ''}`;
   };
+  if (r.mixedPass) lines.push(`Mixed judge passes (--allow-mixed-pass): ${r.mixedPass}; judge drift between them is in every rubric difference below`);
   lines.push(`Rule: ${r.rule}, minimum relative change ${(r.minRel * 100).toFixed(0)}%`);
   for (const c of r.armChanged || []) {
     const ahead = (x) => (x.commitsAhead === null ? '' : ` (${x.commitsAhead} ahead of origin/main)`);
