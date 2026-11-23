@@ -78,6 +78,8 @@ test('a version-manager shim as PLANT_VENV stops', () => {
 
 test('stub kiro-cli + throwaway key: full prepare-only passes (skips without a cedarpy venv)', (t) => {
   const live = liveEnv();
+  // As arm-python.js: in the counted suite (BENCH_REQUIRE_ARM=1) a missing venv or counted set is an error, not a skip.
+  if (!live && process.env.BENCH_REQUIRE_ARM === '1') assert.fail(`BENCH_REQUIRE_ARM=1 but the live case cannot run: set BENCH_ARM_PYTHON to a cedarpy Python and PLANT_CS to the counted set (now ${process.env.PLANT_CS || 'unset'})`);
   if (!live) return t.skip('no cedarpy Python 3.12 and counted-set folder on this host');
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'plant-wave-'));
   // stub kiro-cli: answers --version 3.5.0 and whoami ok; never launched by prepare-only

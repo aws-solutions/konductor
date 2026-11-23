@@ -28,6 +28,11 @@ OUT_ROOT=${OUT_ROOT:-$WS/reports}
 LEAK_DIR=${LEAK_DIR:-/tmp}
 ARM_PYTHON=${ARM_PYTHON:-/home/$USER/.cache/konductor-arm/venv/bin/python}
 ARM_FFI=${ARM_FFI:-/local/apollo/package/local_1/AL2023_x86_64/Libffi/Libffi-119967.0-0/lib}
+# The private counted set: plant-wave.test.js runs its full prepare-only case only with it (D-182 assumes no host path).
+PLANT_CS=${PLANT_CS:-$WS/plant-counted-set}
+# A bench dir in LEAK_DIR after the runs counts as a leak only if it is still there LEAK_SETTLE seconds later. LEAK_DIR
+# is shared with every session on the host, so a dir that goes away was a live run's own dir, not one a test left.
+LEAK_SETTLE=${LEAK_SETTLE:-120}
 # The agreed command, from bench/test-base-set.txt: node base set, then the Python plant tests.
 SUITE_CMD=${SUITE_CMD:-bash bench/scripts/test.sh --tap}
 TS=$(date -u +%Y%m%d-%H%M%S)
@@ -41,6 +46,7 @@ die() { say "STOP: $*"; echo "STOP: $*" > "$OUT/summary.txt"; exit 2; }
 # ---- the arm venv: without it the arm tests cannot run, so the reading would say nothing about the arm
 LD_LIBRARY_PATH="$ARM_FFI" "$ARM_PYTHON" -c 'import mujoco, cedarpy' 2>/dev/null \
   || die "$ARM_PYTHON cannot import mujoco and cedarpy (LD_LIBRARY_PATH=$ARM_FFI); set ARM_PYTHON to the arm venv's python"
+[ -d "$PLANT_CS/release/tasks" ] || die "no counted set at $PLANT_CS (it must hold release/tasks): set PLANT_CS, or the live plant-wave test skips"
 
 # ---- the checkout: a detached worktree at the current origin head
 if [ -z "$REPO" ]; then
@@ -69,7 +75,7 @@ failures_of() { sed -n 's/^ *not ok [0-9][0-9]* - \(.*\)$/\1/p' "$1" | sed 's/ #
 
 run_once() {   # run_once N
   local n=$1 code=0 armskips
-  local env=(env TMPDIR=/tmp LD_LIBRARY_PATH="$ARM_FFI" BENCH_ARM_PYTHON="$ARM_PYTHON")
+  local env=(env TMPDIR=/tmp LD_LIBRARY_PATH="$ARM_FFI" BENCH_ARM_PYTHON="$ARM_PYTHON" PLANT_CS="$PLANT_CS")
   say "run $n: start (timeout ${RUN_TIMEOUT}s)"
   (cd "$REPO" && "${env[@]}" timeout -k 60 "$RUN_TIMEOUT" nice -n 19 bash -c "$SUITE_CMD") > "$OUT/run-$n.tap" 2>&1 || code=$?
   failures_of "$OUT/run-$n.tap" > "$OUT/failures-$n.txt"
@@ -99,7 +105,15 @@ grep -v '^#' "$BASE_SET" 2>/dev/null | sed '/^[[:space:]]*$/d' | sort -u > "$OUT
 comm -12 "$OUT/failures-1.txt" "$OUT/failures-2.txt" | comm -23 - "$OUT/base-set.txt" > "$OUT/new-failures.txt"
 # A test that fails in one run only is flaky, base set or not.
 comm -3 "$OUT/failures-1.txt" "$OUT/failures-2.txt" | sed 's/^\t//' | sort -u > "$OUT/flaky.txt"
-comm -13 "$OUT/leaks-before.txt" "$OUT/leaks-after.txt" > "$OUT/leaked-dirs.txt"
+comm -13 "$OUT/leaks-before.txt" "$OUT/leaks-after.txt" > "$OUT/leak-candidates.txt"
+if [ -s "$OUT/leak-candidates.txt" ]; then
+  say "$(grep -c . "$OUT/leak-candidates.txt") new bench dir(s) in $LEAK_DIR; checking again in ${LEAK_SETTLE}s"
+  sleep "$LEAK_SETTLE"
+fi
+: > "$OUT/leaked-dirs.txt"; : > "$OUT/leaks-transient.txt"
+while read -r d; do
+  if [ -e "$LEAK_DIR/$d" ]; then echo "$d" >> "$OUT/leaked-dirs.txt"; else echo "$d" >> "$OUT/leaks-transient.txt"; fi
+done < "$OUT/leak-candidates.txt"
 count() { grep -c . "$1" || true; }
 NEW=$(count "$OUT/new-failures.txt")
 FLAKY=$(count "$OUT/flaky.txt")
@@ -116,6 +130,7 @@ TOTAL=$((NEW + FLAKY + LEAKED + BROKEN))
   for n in 1 2; do
     echo "run $n: $(grep -E '^# (tests|pass|fail|skipped|py tests|py pass|py fail|py skipped)' "$OUT/run-$n.tap" | tr '\n' ' ')"
   done
+  [ -s "$OUT/leaks-transient.txt" ] && echo "not counted: $(grep -c . "$OUT/leaks-transient.txt") dir(s) gone within ${LEAK_SETTLE}s (another process's live dir): $(tr '\n' ' ' < "$OUT/leaks-transient.txt")"
   for f in new-failures flaky leaked-dirs broken-runs; do
     [ -s "$OUT/$f.txt" ] && { echo "--- $f"; cat "$OUT/$f.txt"; }
   done

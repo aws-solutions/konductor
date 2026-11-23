@@ -5,7 +5,8 @@
 #   2. the Python unittest files in bench/physical/test, printed as TAP lines (bench/scripts/unittest-tap.py).
 # The arm Python is BENCH_ARM_PYTHON, else <repo>/.venv/bin/python. When it imports mujoco and cedarpy, both parts run
 # with it and BENCH_REQUIRE_ARM=1, and any arm test that still skips fails the run (debt review F1: a suite that
-# skipped every arm test once read clean). With no arm Python the arm tests skip and the run says so.
+# skipped every arm test once read clean). With no arm Python the arm tests skip and the run says so. With an arm
+# Python, the live plant-wave case needs PLANT_CS (the private counted set; default $KONDUCTOR_WS/plant-counted-set).
 # Usage: bench/scripts/test.sh [--tap]     --tap: node prints TAP too, so the whole output is one TAP stream.
 # With KONDUCTOR_WS set (the owner workspace), it also checks that every workspace owner script is a launcher into
 # bench/ops (bench/ops/make-launchers.sh --check).
@@ -30,6 +31,8 @@ ARM=0
 if [ -x "$ARM_PY" ] && "$ARM_PY" -c 'import mujoco, cedarpy' 2>/dev/null; then
   ARM=1
   export BENCH_ARM_PYTHON=$ARM_PY BENCH_REQUIRE_ARM=1
+  # plant-wave.test.js's live case also needs the private counted set; with BENCH_REQUIRE_ARM=1 a missing one fails.
+  if [ -z "${PLANT_CS:-}" ] && [ -n "${KONDUCTOR_WS:-}" ]; then export PLANT_CS=$KONDUCTOR_WS/plant-counted-set; fi
   PY=$ARM_PY
 elif [ -n "${BENCH_ARM_PYTHON:-}" ]; then
   echo "# BENCH_ARM_PYTHON=$BENCH_ARM_PYTHON cannot import mujoco and cedarpy (set LD_LIBRARY_PATH for libffi?)" >&2

@@ -9,7 +9,7 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 SCRIPT=$HERE/run-full-suite-twice-v2.sh
 T=$(mktemp -d "${KIROCREW_SCRATCH:-/tmp}/fst2.XXXX")
 R=$T/repo
-mkdir -p "$R/bench/scripts" "$T/leak" "$T/out"
+mkdir -p "$R/bench/scripts" "$T/leak" "$T/out" "$T/cs/release/tasks"
 printf '# base set\nknown flaky-free base test\n' > "$R/bench/test-base-set.txt"
 printf '#!/bin/sh\nexit 0\n' > "$T/py-ok"; printf '#!/bin/sh\nexit 1\n' > "$T/py-bad"; chmod +x "$T/py-ok" "$T/py-bad"
 fails=0
@@ -21,8 +21,8 @@ stub() {   # stub NAME BODY: a suite command that prints BODY
 check() {  # check LABEL WANT_EXIT WANT_TOTAL SUITE_CMD [ARM_PYTHON]   (an empty SUITE_CMD means the script's default)
   local label=$1 want=$2 total=$3 cmd=$4 armpy=${5:-$T/py-ok} code=0 out
   rm -rf "$T/out"/*
-  R=$R SUITE_CMD=$cmd ARM_PYTHON=$armpy ARM_FFI=$T LOCK=$T/lock OUT_ROOT=$T/out LEAK_DIR=$T/leak \
-    RUN_TIMEOUT=${CASE_TIMEOUT:-30} bash "$SCRIPT" > "$T/log" 2>&1 || code=$?
+  KONDUCTOR_WS=$T R=$R SUITE_CMD=$cmd ARM_PYTHON=$armpy ARM_FFI=$T LOCK=$T/lock OUT_ROOT=$T/out LEAK_DIR=$T/leak \
+    PLANT_CS=${CASE_CS:-$T/cs} LEAK_SETTLE=${CASE_SETTLE:-1} RUN_TIMEOUT=${CASE_TIMEOUT:-30} bash "$SCRIPT" > "$T/log" 2>&1 || code=$?
   out=$(head -1 "$T"/out/full-suite-*/summary.txt)
   if [ "$code" = "$want" ] && [ "$out" = "${total}" ]; then echo "ok   $label"
   else echo "FAIL $label: exit $code (want $want), '$out' (want '$total')"; fails=$((fails + 1)); fi
@@ -46,6 +46,13 @@ check "a Python arm test that skips makes both runs broken" 1 "$(r 2)" "$(stub p
 check "a Python failure in both runs counts once" 1 "$(r 1)" "$(stub pyfail "echo 'ok 1 - a'; echo '# tests 1'; echo 'not ok 1 - py: test_arm.ArmTest.test_x'; echo '# py tests 1'; echo '# py fail 1'; exit 1")"
 check "Python tests with no totals are broken (both runs: 2)" 1 "$(r 2)" "$(stub pycrash "echo 'ok 1 - a'; echo '# tests 1'; echo 'ImportError: no module'; exit 1")"
 check "the suite sees BENCH_ARM_PYTHON" 0 "$(r 0)" "$(stub envcheck "[ \"\$BENCH_ARM_PYTHON\" = $T/py-ok ] || exit 3; $TAP_OK")"
+# v3 (2026-11-23): the counted set for the live plant-wave case, and leaks that are another process's live dir
+check "the suite sees PLANT_CS, the private counted set" 0 "$(r 0)" "$(stub cscheck "[ \"\$PLANT_CS\" = $T/cs ] || exit 3; $TAP_OK")"
+CASE_CS=$T/nocs check "no counted set: STOP, exit 2" 2 "STOP: no counted set at $T/nocs (it must hold release/tasks): set PLANT_CS, or the live plant-wave test skips" "$(stub nocs "$TAP_OK")"
+CASE_SETTLE=3 check "a dir its own process removes before the settle check is not a leak" 0 "$(r 0)" "$(stub transient "mkdir -p $T/leak/kplant-live\$\$; ( sleep 1; rmdir $T/leak/kplant-live\$\$ ) > /dev/null 2>&1 & $TAP_OK")"
+rm -rf "$T/leak"/*
+CASE_SETTLE=2 check "a dir still there after the settle check is a leak" 1 "$(r 1)" "$(stub stays "mkdir -p $T/leak/kplant-stay; $TAP_OK")"
+rm -rf "$T/leak"/*
 printf '%s\n' "[ \"\$1\" = --tap ] || exit 3; $TAP_OK" > "$R/bench/scripts/test.sh"
 check "by default the suite is bench/scripts/test.sh --tap" 0 "$(r 0)" ""
 
