@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { CHECK_DELAY_MS, SessionLost } from '../designer/core';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { useYamlDraft, type YamlDraftInput } from './use-yaml-draft';
 import {
-  CHECK_PAUSE_MS,
   type CheckAnswer,
-  type CheckRequest,
   type ValidatePort,
+  type ValidateRequest,
 } from './yaml-draft';
 
 const GOOD: CheckAnswer = {
@@ -27,7 +27,7 @@ const BAD: CheckAnswer = { ...GOOD, errors: 1, view: null };
 
 /** A check whose every call waits until the test answers it. */
 class HeldValidate {
-  readonly requests: CheckRequest[] = [];
+  readonly requests: ValidateRequest[] = [];
   readonly signals: AbortSignal[] = [];
   inFlight = 0;
   mostInFlight = 0;
@@ -104,40 +104,79 @@ describe('useYamlDraft', () => {
     expect(result.current.lastGood).toBeUndefined();
   });
 
+  it('opens a fresh draft when the name changes, cancelling the check and dropping its late answer', async () => {
+    const { result, validate, scheduler, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.answer(0, GOOD);
+    act(() => result.current.edit('v2'));
+    await pause();
+    expect(validate.inFlight).toBe(1);
+    expect(result.current.lastGood).toBe(GOOD);
+
+    rerender({ name: 'other' });
+    expect(result.current.text).toBe('v0');
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.lastGood).toBeUndefined();
+    await act(async () => {});
+
+    expect(validate.signals[1]?.aborted).toBe(true);
+    expect(validate.inFlight).toBe(0);
+    expect(scheduler.pendingCount).toBe(0);
+    await validate.answer(1, BAD);
+    await act(async () => scheduler.tick());
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.answer).toBeUndefined();
+    expect(validate.requests).toHaveLength(2);
+  });
+
   it.each([
-    ['name', { name: 'other' }],
     ['baseHash', { baseHash: 'hash-other' }],
-    ['initialText', { initialText: 'w0' }],
+    ['initialText and baseHash', { initialText: 'w0', baseHash: 'hash-other' }],
   ] as const)(
-    'opens a fresh draft when only %s changes, cancelling the check and dropping its late answer',
+    'keeps the typed text and its answer when %s moves under unsaved edits',
     async (_, change) => {
       const { result, validate, scheduler, pause, rerender } = setUp();
       act(() => result.current.edit('v1'));
       await pause();
       await validate.answer(0, GOOD);
-      act(() => result.current.edit('v2'));
-      await pause();
-      expect(validate.inFlight).toBe(1);
-      expect(result.current.lastGood).toBe(GOOD);
+      expect(result.current.baseMoved).toBe(false);
 
       rerender(change);
-      expect(result.current.text).toBe(
-        'initialText' in change ? change.initialText : 'v0',
-      );
-      expect(result.current.status).toBe('unchecked');
-      expect(result.current.lastGood).toBeUndefined();
-      await act(async () => {});
 
-      expect(validate.signals[1]?.aborted).toBe(true);
-      expect(validate.inFlight).toBe(0);
-      expect(scheduler.pendingCount).toBe(0);
-      await validate.answer(1, BAD);
+      expect(result.current.text).toBe('v1');
+      expect(result.current.status).toBe('valid');
+      expect(result.current.answer).toBe(GOOD);
+      expect(result.current.lastGood).toBe(GOOD);
+      expect(result.current.baseMoved).toBe(true);
       await act(async () => scheduler.tick());
-      expect(result.current.status).toBe('unchecked');
-      expect(result.current.answer).toBeUndefined();
-      expect(validate.requests).toHaveLength(2);
+      expect(validate.requests).toHaveLength(1);
     },
   );
+
+  it('keeps the text typed while a save was in flight', async () => {
+    const { result, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    // The page saved `v1` and passes the saved text and its new hash back,
+    // while `v1 and more` was typed in the meantime.
+    act(() => result.current.edit('v1 and more'));
+    rerender({ initialText: 'v1', baseHash: 'hash-saved' });
+
+    expect(result.current.text).toBe('v1 and more');
+    expect(result.current.baseMoved).toBe(true);
+  });
+
+  it('takes the file again on a reload with no unsaved edits', async () => {
+    const { result, rerender } = setUp();
+    expect(result.current.text).toBe('v0');
+
+    rerender({ initialText: 'from the agent', baseHash: 'hash-agent' });
+
+    expect(result.current.text).toBe('from the agent');
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.baseMoved).toBe(false);
+  });
 
   it('opens a fresh draft for another workflow, dropping its failure', async () => {
     const { result, validate, pause, rerender } = setUp();
@@ -187,16 +226,17 @@ describe('useYamlDraft', () => {
     expect(result.current.text).toBe('w0');
   });
 
-  it('opens a fresh draft when the same workflow is loaded again with a new hash', async () => {
+  it('opens a fresh draft for another workflow even with unsaved edits', async () => {
     const { result, validate, pause, rerender } = setUp();
     act(() => result.current.edit('v1'));
     await pause();
     await validate.answer(0, GOOD);
-    rerender({ initialText: 'v1', baseHash: 'hash-saved' });
+    rerender({ ...OTHER, initialText: 'w0' });
 
-    expect(result.current.text).toBe('v1');
+    expect(result.current.text).toBe('w0');
     expect(result.current.status).toBe('unchecked');
     expect(result.current.lastGood).toBeUndefined();
+    expect(result.current.baseMoved).toBe(false);
   });
 
   it('keeps the draft for a render with the same workflow', async () => {
@@ -230,7 +270,7 @@ describe('useYamlDraft', () => {
     expect(scheduler.pendingCount).toBe(1);
     await pause();
 
-    expect(scheduler.waits.every((ms) => ms === CHECK_PAUSE_MS)).toBe(true);
+    expect(scheduler.waits.every((ms) => ms === CHECK_DELAY_MS)).toBe(true);
     expect(validate.requests).toEqual([{ name: 'hello', text: 'v12' }]);
     expect(result.current.status).toBe('checking');
     await validate.answer(0, GOOD);
@@ -292,6 +332,32 @@ describe('useYamlDraft', () => {
     await pause();
     await validate.answer(1, GOOD);
     expect(result.current.status).toBe('valid');
+  });
+
+  it('reports a lost session at once and keeps reporting it after the next edit', async () => {
+    const { result, validate, pause } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.fail(0, new SessionLost('Open the workflow again.'));
+
+    expect(result.current.sessionLost).toBe('Open the workflow again.');
+    expect(result.current.failure).toBeUndefined();
+    expect(result.current.status).toBe('failed');
+
+    act(() => result.current.edit('v2'));
+    expect(result.current.sessionLost).toBe('Open the workflow again.');
+    expect(result.current.status).toBe('failed');
+  });
+
+  it('drops a lost session when another workflow opens', async () => {
+    const { result, validate, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.fail(0, new SessionLost('Open the workflow again.'));
+    rerender(OTHER);
+
+    expect(result.current.sessionLost).toBeUndefined();
+    expect(result.current.status).toBe('unchecked');
   });
 
   it('gives a plain sentence for a failure with no message', async () => {
