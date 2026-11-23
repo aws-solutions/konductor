@@ -122,7 +122,42 @@ the judge takes (`--budget-credits` or `--budget-usd`); its `entry` module expor
 which returns an async `({ model, prompt })` function that resolves `{ text, credits, usd?, latencyMs, error? }`.
 `judge --judge-backend <id>` then uses it. The two built-ins, `kiro` and `opencode`, are listed in
 `judge/backends.js`; `checkBackend` there is the one check of a backend and its budget flag.
-`runner/test/judge-backend-plugin.test.js` loads a fake one end to end.
+
+### Worked example: a backend that answers every criterion "pass"
+
+This is the plugin `runner/test/judge-backend-plugin.test.js` builds and runs end to end. It costs nothing.
+
+```text
+bench/plugins/fake-be/
+  plugin.json   {"benchApi": 1, "kind": "judge-backend", "name": "fake-be", "version": "0.1.0", "meta": "meta.js", "entry": "backend.js"}
+  meta.js       module.exports = Object.freeze({ id: 'fake-be', costUnit: 'usd', label: 'a fake backend, spend in USD' });
+  backend.js    the caller, below
+```
+
+```js
+// backend.js: one caller per judge pass. A real backend sends `prompt` to `model` and returns the reply text.
+exports.makeCaller = ({ timeoutMs }) => async ({ prompt }) => {
+  const ids = [...prompt.matchAll(/^- id: (\S+)/gm)].map((m) => m[1]);
+  const text = JSON.stringify({ criteria: ids.map((id) => ({ id, verdict: 'pass', evidence: 'a.txt' })) });
+  return { text, credits: 0, usd: 0.001, latencyMs: 1 };
+};
+```
+
+`node bench/runner/bench.js plugins` then lists `fake-be` with its hash, and
+`judge --judge-backend fake-be --budget-usd 1` judges with it. The spend each call returns goes on the ledger and counts
+against `--budget-usd`; the judge family rule still runs on the judge model ids, so a backend cannot seat a judge from
+the agent's own family. The kit (`kit/plugin/check.js`) checks harness plugins only; for a backend, copy the
+end-to-end test above.
+
+## A plant
+
+Plants are not plugins in API 1. The plant, its rules, its policy and the scorer that decides safety stay core code,
+because the thing being measured must not be swappable by the thing measured. What a plugin can add is a harness whose
+arms drive a plant. Strands is that example: its `meta.js` sets `plant: { mount: 'forwarder', pinKey: 'strands' }`,
+so `lifecycle.js` mounts its forwarding tool stubs and the release pins its package, and the kit's `plant-kind` check
+proves the mount and pin are known and that the plant reader finds the calls in its recorded stream. A new agent on
+the conveyor or the arm plant follows the same path: a harness plugin with `plant` set, plus a plant reader in
+`plant/stream-match.js` if its stream format is new.
 
 ## Limits today
 
