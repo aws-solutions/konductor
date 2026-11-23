@@ -189,6 +189,69 @@ test('a replacement that fails its review stays dropped, with the failure record
   } finally { r.cleanup(); }
 });
 
+test('a rewrite: a new baseline version with the named tasks written again and every other task copied byte for byte', () => {
+  const { rewriteUnit, freezeDraft } = require('../../cap/unitauthor.js');
+  const r = rig();
+  try {
+    // A 15-task frozen baseline (t14 dropped), signed off, as the pilot's.
+    const v1 = path.join(r.root, 'v1', 'baseline.json');
+    const args = { kind: 'context', name: 'k-rules', repo: r.repo, briefsFile: briefsFile(r), out: v1, paid: { ...r.paid, workDir: path.join(r.root, 'work1') } };
+    withEnv({ FAKE_KP_FAIL: 't14', FAKE_KP_NOFIX: 't14' }, () => authorUnit(args));
+    freezeDraft({ kind: 'context', name: 'k-rules', repo: r.repo, draftFile: v1.replace(/\.json$/, '.draft.json'), out: v1, signedOffBy: 'owner' });
+    const before = fs.readFileSync(v1, 'utf8');
+    const spent = ledgerSpent(r.paid.ledger);
+    const rewriteFile = path.join(r.root, 'rewrite.json');
+    const ids = ['t01', 't07', 't09', 't12', 't16'];
+    write(rewriteFile, JSON.stringify({ unit: 'context:k-rules', families: { writer: 'deepseek-3.2', reviewer: 'glm-5' }, review: 'test review',
+      tasks: ids.map((id) => ({ id, batch: Number(id.slice(1)) <= 8 ? 'b1' : 'b2', section: 'Handoffs', situation: `new case ${id}`, good: 'asks the user', why: ['it hid the note'] })) }));
+    const v2 = path.join(r.root, 'v2', 'baseline.json');
+    const rw = { kind: 'context', name: 'k-rules', repo: r.repo, rewriteFile, fromFile: v1, out: v2, paid: { ...r.paid, workDir: path.join(r.root, 'work2') } };
+
+    const plan = rewriteUnit({ ...rw, dryRun: true });
+    assert.deepEqual(plan.plan.map((p) => [p.step, p.model]), [['write', 'deepseek-3.2'], ['review', 'glm-5'], ['fix', 'deepseek-3.2'], ['recheck', 'glm-5']]);
+    assert.equal(plan.worst, 60);
+    assert.deepEqual(plan.kept, ['t02', 't03', 't04', 't05', 't06', 't08', 't10', 't11', 't13', 't15']);
+    assert.equal(r.calls().length, 0, 'the dry run made no call');
+
+    const res = withEnv({ FAKE_KP_LOG: r.log, FAKE_KP_FAIL: 't09' }, () => rewriteUnit(rw));
+    assert.equal(res.status, 'frozen');
+    assert.deepEqual(r.calls().map((l) => l.split(' ').slice(0, 2).join(' ')), ['deepseek-3.2 write', 'glm-5 review', 'deepseek-3.2 fix', 'glm-5 review']);
+    assert.equal(ledgerSpent(r.paid.ledger), spent + 60);
+    assert.equal(fs.readFileSync(v1, 'utf8'), before, 'the baseline it came from is never changed');
+    const old = JSON.parse(before);
+    const b = loadUnitBaseline(v2);
+    const tasksOf = (x) => new Map(x.batches.flatMap((bt) => bt.tasks.map((t) => [t.id, t])));
+    const [o, n] = [tasksOf(old), tasksOf(b)];
+    assert.equal(n.size, 15);
+    for (const id of plan.kept) assert.equal(JSON.stringify(n.get(id), null, 2), JSON.stringify(o.get(id), null, 2), `${id} is copied byte for byte`);
+    for (const id of ids) assert.notEqual(n.get(id).prompt, o.get(id).prompt, `${id} is rewritten`);
+    assert.deepEqual(b.batches.map((bt) => bt.tasks.map((t) => t.id)), old.batches.map((bt) => bt.tasks.map((t) => t.id)), 'every task keeps its place');
+    assert.equal(b.source.signedOffBy, null, 'the new version has no sign-off');
+    assert.equal(b.source.version, 2);
+    assert.equal(b.source.from.signedOffBy, 'owner');
+    assert.deepEqual(b.source.fixed, ['t09']);
+    assert.deepEqual(b.source.dropped.map((d) => d.id), ['t14'], 'the earlier drop stays recorded');
+    // The writer and the reviewer saw the earlier task and why it was bad.
+    const { writePrompt, reviewPrompt } = require('../../cap/unitauthor.js');
+    const frame = { noun: 'context file', tasks: '' };
+    const brief = [{ id: 't01', section: 'Handoffs', situation: 's', good: 'g' }];
+    assert.match(writePrompt(frame, 'U', brief, ['earlier: it hid the note']), /earlier: it hid the note\n\nBriefs:/);
+    assert.match(reviewPrompt(frame, 'U', brief, [], ['earlier: it hid the note']), /it hid the note[\s\S]*Tasks:/);
+    // A rerun reads the steps back; a rewrite that still fails is dropped; the unit must match; --out is a new file.
+    withEnv({ FAKE_KP_LOG: r.log }, () => rewriteUnit(rw));
+    assert.equal(r.calls().length, 4);
+    const v3 = path.join(r.root, 'v3', 'baseline.json');
+    const drop = withEnv({ FAKE_KP_FAIL: 't12', FAKE_KP_NOFIX: 't12' }, () => rewriteUnit({ ...rw, out: v3, paid: { ...r.paid, workDir: path.join(r.root, 'work3') } }));
+    assert.equal(drop.status, 'dropped');
+    const d = JSON.parse(fs.readFileSync(drop.file, 'utf8'));
+    assert.deepEqual(d.source.dropped.map((x) => x.id), ['t14', 't12']);
+    assert.equal(d.batches[1].tasks.length, 6);
+    assert.throws(() => rewriteUnit({ ...rw, out: v1, dryRun: true }), /new file/);
+    fs.appendFileSync(path.join(r.repo, 'context', 'k-rules.md'), 'One more line.\n');
+    assert.throws(() => rewriteUnit({ ...rw, dryRun: true }), /another version/);
+  } finally { r.cleanup(); }
+});
+
 /** A frozen baseline for the rig's unit, so its stage can run; `signedOffBy` null leaves it unsigned. */
 function freeze(r, signedOffBy = 'test owner') {
   const dir = path.join(r.root, 'unit-baselines');

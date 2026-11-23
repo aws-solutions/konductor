@@ -359,6 +359,9 @@ const USAGE = `Usage:
        (PAID: writes a unit's frozen baseline from its briefs: glm-5 writes, deepseek-3.2 reviews, one fix, then a still failing task is dropped and recorded;
        at most 8 calls, each spend-checked as above, resumable from --work. --dry-run prints the steps and the worst case, free. --replace ID: a dropped
        task's replacement, deepseek-3.2 writes and glm-5 reviews, two calls, into the draft. --sign-off NAME: free, freezes the draft into --out with source.signedOffBy)
+  node bench/runner/bench.js cap unit-author --kind agent|sop|context --unit NAME --rewrite FILE --from BASELINE --out FILE --work DIR --ledger FILE --cap N [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
+       (PAID: a new version of a frozen baseline with the tasks of --rewrite written again (its families, one batch, one fix, then drop and record; at
+       most 4 calls); every other task is copied unchanged and --out has no sign-off. --dry-run prints the steps and the worst case, free)
   node bench/runner/bench.js cap delegation --agent NAME --run stub-ID [--stub-behaviour always|never|correct|other] [--requests FILE] [--reps N] [--out DIR] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap unit-stage --estimate [--kind agent|sop|context] [--depth quick|deep|both] [--max-units N] [--repo-root DIR]
        (free: keep-or-prune stages 2 to 4. units lists the agent files, SOPs and always-loaded context with their drop arm and selection test; unit-stage runs

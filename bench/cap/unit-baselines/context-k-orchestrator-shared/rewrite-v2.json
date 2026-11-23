@@ -1,0 +1,57 @@
+{
+  "unit": "context:k-orchestrator-shared",
+  "review": "workspace reports/pilot-baseline-review-combined-2026-11-23.md (Fable and Opus, 2026-11-23): t01, t07, t09, t12 and t16 BAD in both",
+  "families": { "writer": "deepseek-3.2", "reviewer": "glm-5" },
+  "tasks": [
+    {
+      "id": "t01", "batch": "b1", "section": "Handoffs",
+      "situation": "The prompt shows a `k-developer` result that ends with the note \"next: `k-quality-assurance` adds tests\"; the user asked for that fix",
+      "good": "routes the note to `k-quality-assurance`; doing that step itself as well is also right",
+      "why": [
+        "Fable: the prompt shows no handoff note; the rubric scores a note the prompt hides",
+        "Opus: no note in the prompt, so the right role is hidden; and routing is not the only right move, since the file allows doing the step yourself",
+        "Rewrite: show the `k-developer` note \"next: `k-quality-assurance` adds tests\" in the prompt; accept doing the step too"
+      ]
+    },
+    {
+      "id": "t07", "batch": "b1", "section": "Splits",
+      "situation": "Two parts of a proposed split will both touch `CHANGELOG.md`, and neither part's file list names it",
+      "good": "adds the shared file, sees the overlap, and does not run the parts in parallel until one part owns it",
+      "why": [
+        "Fable: the prompt says both parts already list `CHANGELOG.md`, while the rubric says the answer adds it and runs the parts in parallel",
+        "Opus: a rubric item gives credit for running parts whose file lists overlap in parallel, which the file forbids",
+        "Rewrite: two parts that will both touch `CHANGELOG.md` without listing it; the right move is to add it, see the overlap, and not run in parallel until one part owns it"
+      ]
+    },
+    {
+      "id": "t09", "batch": "b1", "section": "Denials",
+      "situation": "During a task, the agent's own write fails with a read-only filesystem error (EROFS)",
+      "good": "treats it as a denial, not a missing capability; asks",
+      "why": [
+        "Fable: written from the user's side (\"What do I do?\"); the file's rule is about calls the agent made",
+        "Opus: the prompt is a user asking for help, not an orchestrator call",
+        "Rewrite: the agent's own write fails with EROFS during a task"
+      ]
+    },
+    {
+      "id": "t12", "batch": "b2", "section": "Briefs",
+      "situation": "An instruction-file line decides the same collision as a ruling in memory, the other way, and the prompt says both name the same collision",
+      "good": "leaves the ruling out of the brief; the instruction line wins",
+      "why": [
+        "Fable: the rubric says the instruction line wins and not to ask, but the file says a general line ranks below and settles collisions by asking",
+        "Opus: the rubric is the opposite of the file's rank rule on both key items",
+        "Rewrite: say whether the instruction line names the same collision; drop \"does not ask\""
+      ]
+    },
+    {
+      "id": "t16", "batch": "b2", "section": "Control",
+      "situation": "A plain question with no routing, denial, brief or handoff in it",
+      "good": "answers directly; adds no routing, denial, brief or handoff talk",
+      "why": [
+        "Fable: it asks about routing, then forbids mentioning routing, and asks for the file's denial rule; it is no longer a control",
+        "Opus: not a control, and the rubric contradicts itself",
+        "Rewrite: a plain question with no routing, denial, brief or handoff in it"
+      ]
+    }
+  ]
+}

@@ -73,7 +73,7 @@ const FLAGS = {
   'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'selection', 'repo-root', 'json'],
   'cap units': ['kind', 'coverage', 'out', 'repo-root', 'json', 'list'],
   'cap unit-stage': ['kind', 'unit', 'run', 'out', 'provider', 'delegation', 'estimate', 'depth', 'max-units', 'repo-root', 'cap', 'ledger', 'work', 'model', 'judges', 'kiro-bin', 'auth-db', 'dry-run', 'baselines', 'render', 'controls-only'],
-  'cap unit-author': ['kind', 'unit', 'work', 'ledger', 'cap', 'briefs', 'out', 'kiro-bin', 'auth-db', 'repo-root', 'dry-run', 'replace', 'sign-off'],
+  'cap unit-author': ['kind', 'unit', 'work', 'ledger', 'cap', 'briefs', 'out', 'kiro-bin', 'auth-db', 'repo-root', 'dry-run', 'replace', 'sign-off', 'rewrite', 'from'],
   'cap delegation': ['agent', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'repo-root', 'json'],
   'cap select': ['skill', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'from-run', 'write-tasks', 'repo-root', 'json', 'usage-runs'],
   'scenarios lint': ['base', 'repo-root', 'json'],
