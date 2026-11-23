@@ -1,0 +1,96 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The list of past runs, for the light and the dark mode. A test
+ * (run-history-contrast.test.ts) checks that these colours are the theme's
+ * and reach WCAG AA in both modes.
+ */
+.wf-history {
+  --wf-history-bg: #ffffff;
+  --wf-history-border: #e0dad0;
+  --wf-history-text: #16131f;
+  --wf-history-text-muted: #56516a;
+  --wf-history-running: #6236f0;
+  --wf-history-passed: #0b7a52;
+  --wf-history-halted: #b3261e;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--wf-history-bg);
+  color: var(--wf-history-text);
+}
+
+:root[data-theme='dark'] .wf-history {
+  --wf-history-bg: #171331;
+  --wf-history-border: #2a2450;
+  --wf-history-text: #f5f3ee;
+  --wf-history-text-muted: #9c93b8;
+  --wf-history-running: #a78bfa;
+  --wf-history-passed: #3ddc97;
+  --wf-history-halted: #ff8b8b;
+}
+
+.wf-history-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wf-history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wf-history-row {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--wf-history-border);
+}
+
+.wf-history-row:last-child {
+  border-bottom: 0;
+}
+
+.wf-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.wf-history-state {
+  font-weight: 600;
+}
+
+.wf-history-running {
+  color: var(--wf-history-running);
+}
+
+.wf-history-passed {
+  color: var(--wf-history-passed);
+}
+
+.wf-history-halted {
+  color: var(--wf-history-halted);
+}
+
+.wf-history-id {
+  font-family: var(--wf-font-code);
+}
+
+.wf-history-goal {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.wf-history-empty {
+  margin: 0;
+}
+
+.wf-history-muted {
+  color: var(--wf-history-text-muted);
+}
