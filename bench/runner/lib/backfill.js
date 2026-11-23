@@ -8,7 +8,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadRun } = require('./load-run.js');
-const { aggregateRunDir } = require('./harness/kiro.js');
+const { aggregateRunDir } = require('./harness/index.js').kiro;
 const { runtimeOf } = require('./harness/runtime.js');
 const { orchMetricsOfRunDir } = require('./orch-metrics.js');
 const { streamFields, validateResult } = require('./result.js');

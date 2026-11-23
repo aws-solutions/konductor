@@ -560,7 +560,7 @@ binary, the model, the budget settings and every installed `SKILL.md`, so a late
 same fields from their trial install (the `SKILL.md` dirs under `~/.kiro/skills`, or the source catalog when skills are
 served by the MCP server).
 Each Kiro run on engine v3 also records what it loaded at session start, read from the first `context_usage` event of
-its own stream (`skillListing.observed`, `runner/lib/harness/kiro-listing.js`): the skill files and globs its resources
+its own stream (`skillListing.observed`, `plugins/kiro-cli/listing.js`): the skill files and globs its resources
 named and how many matched, the other context files with their tokens, and the built-in and MCP tool tokens. Engine v2
 writes no such event. On konductor arms no `SKILL.md` matches: konductor's skills reach the model through the skills MCP
 server's tools (`find_skills`, `get_skill`), so the arm record's "described" count is what that server offers, not a

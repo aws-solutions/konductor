@@ -16,7 +16,7 @@ const { HARNESSES } = require('../lib/harness/index.js');
 const { checksOf } = require('../../kit/plugin/check.js');
 
 // The harnesses that live in bench/plugins now. A move adds its name here.
-const MOVED = ['opencode', 'claude-code', 'strands'];
+const MOVED = ['kiro-cli', 'opencode', 'claude-code', 'strands'];
 
 test('createRegistry puts the parts named in `order` first, in that order, and the rest after in their own order', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'registry-order-'));
@@ -26,6 +26,13 @@ test('createRegistry puts the parts named in `order` first, in that order, and t
   assert.deepEqual(r.descriptors().map((d) => d.id), ['k', 'c', 'z']);
   const r2 = createRegistry({ builtins: [{ kind: 'harness', meta: meta('z') }, { kind: 'harness', meta: meta('c') }, { kind: 'harness', meta: meta('k') }], order: ['k', 'c'] });
   assert.deepEqual(r2.descriptors().map((d) => d.id), ['k', 'c', 'z']);
+});
+
+test('one harness, the default runtime, may have no arm prefix; a second one is refused', () => {
+  const meta = (id, armPrefix) => Object.freeze({ id, armPrefix });
+  assert.doesNotThrow(() => createRegistry({ builtins: [{ kind: 'harness', meta: meta('a', '') }, { kind: 'harness', meta: meta('b', 'b-') }] }));
+  assert.throws(() => createRegistry({ builtins: [{ kind: 'harness', meta: meta('a', '') }, { kind: 'harness', meta: meta('b', '') }] }), /two harnesses have no arm prefix \(a, b\)/);
+  assert.equal(REGISTRY.descriptors().filter((d) => d.armPrefix === '').map((d) => d.id).join(), 'kiro-cli');
 });
 
 test('the runtime order a user sees is unchanged by the moves', () => {

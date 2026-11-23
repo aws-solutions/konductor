@@ -1,0 +1,93 @@
+{
+  "turn": {
+    "sessionId": "61cd3414-000f-43e5-b7f1-4b5793d81c67",
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "finalText": "The `find_skills` call with keyword \"threat modeling\" returned 0 results.",
+    "askedUser": false
+  },
+  "agg": {
+    "tokens": null,
+    "sessionId": "61cd3414-000f-43e5-b7f1-4b5793d81c67",
+    "sessionIds": [
+      "61cd3414-000f-43e5-b7f1-4b5793d81c67"
+    ],
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "credits": 0.022396195024875623,
+    "meteringEntries": 2,
+    "nonCreditUnits": [],
+    "turnDurationMs": 5561,
+    "contextUsagePercentage": 3.1491000652313232,
+    "toolCalls": 1,
+    "workToolCalls": 1,
+    "subagentCalls": 0,
+    "delegatedTo": {},
+    "toolNames": {
+      "find_skills": 1
+    },
+    "skillsMcp": {
+      "calls": 1,
+      "errors": 0
+    },
+    "skillsMcpOk": true,
+    "engine": "v2",
+    "configuredModel": null,
+    "finalText": "The `find_skills` call with keyword \"threat modeling\" returned 0 results.",
+    "finalTextTruncated": false,
+    "askedUser": false
+  },
+  "session": {
+    "turns": 1,
+    "totalRequestCount": 2,
+    "builtinToolUses": 0,
+    "model": "claude-sonnet-5.5",
+    "meteringTotal": 0.02,
+    "models": [
+      "claude-sonnet-5.5"
+    ]
+  },
+  "usage": null,
+  "transcript": {
+    "bytes": 18,
+    "chars": 18,
+    "partial": false
+  },
+  "skills": {
+    "extraction": {
+      "runtime": "kiro-cli",
+      "skillsLoaded": [],
+      "skillQueries": [
+        "threat modeling"
+      ],
+      "skillBytesLoaded": 0,
+      "bytesByName": {},
+      "skillsLoadedFull": [],
+      "skillLoadsPreview": 0,
+      "skillLoads": [],
+      "skillCallsFailed": 0,
+      "findSkillsCalls": 1,
+      "findSkillsEmpty": 1,
+      "findSkillsBytes": 2,
+      "requested": [],
+      "failedCalls": [],
+      "failedByTool": {
+        "get_skill": 0,
+        "load_resource": 0,
+        "find_skills": 0
+      },
+      "firstDecision": {
+        "kind": "find_skills",
+        "name": "threat modeling"
+      }
+    },
+    "info": null,
+    "order": {
+      "order": [],
+      "firstWriteAt": null
+    }
+  },
+  "flags": [
+    "creditsMismatch"
+  ]
+}

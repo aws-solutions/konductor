@@ -13,7 +13,7 @@ const { tmp, write } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
 const L = require('../../plugins/claude-code/listing.js');
 const cc = require('../../plugins/claude-code/harness.js');
-const kiro = require('../lib/harness/kiro.js');
+const kiro = require('../../plugins/kiro-cli/harness.js');
 
 const MODEL = 'us.anthropic.claude-sonnet-5-5';
 const CONTEXT = [

@@ -4,7 +4,7 @@
 // The kiro-cli stream readers (harness/streams.js, FW-17). The stream is kiro-cli's ACP updates (`sessionUpdate`
 // events and a closing `runFinished`). trace.js is required at call time: it loads modules that load the harnesses.
 
-const { aggregateStream, SUBAGENT_TOOL, toolNameOf, skillsCallOf, mcpInputOf } = require('../stream.js');
+const { aggregateStream, SUBAGENT_TOOL, toolNameOf, skillsCallOf, mcpInputOf } = require('../../runner/lib/stream.js');
 
 const hasInput = (input) => input && typeof input === 'object' && Object.keys(input).length > 0;
 
@@ -40,6 +40,6 @@ function stopEvent(ev) {
 
 module.exports = {
   finalText: (events) => aggregateStream(events).finalText,
-  timeline: (events) => require('../trace.js').kiroTimeline(events),
+  timeline: (events) => require('../../runner/lib/trace.js').kiroTimeline(events),
   stopEvent,
 };

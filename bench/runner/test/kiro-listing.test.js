@@ -9,8 +9,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { observedListingOf } = require('../lib/harness/kiro-listing.js');
-const kiro = require('../lib/harness/kiro.js');
+const { observedListingOf } = require('../../plugins/kiro-cli/listing.js');
+const kiro = require('../../plugins/kiro-cli/harness.js');
 const { tmp, write } = require('./helpers.js');
 
 const LINE = fs.readFileSync(path.join(__dirname, 'fixtures', 'kiro-context-breakdown.jsonl'), 'utf8');

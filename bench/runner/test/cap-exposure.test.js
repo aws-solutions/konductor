@@ -10,7 +10,7 @@ const path = require('node:path');
 const { tmp } = require('./helpers.js');
 const { makeRunDir, V1 } = require('./cap-prune-helpers.js');
 const { scanRunDirs, exposureOf, tallyUsage } = require('../../cap/usage.js');
-const kiro = require('../lib/harness/kiro.js');
+const kiro = require('../../plugins/kiro-cli/harness.js');
 
 const LISTED = { orchestratorOnly: ['konductor'], specialistOnly: ['k-developer'], ownerNeverSpawned: ['k-product-manager'], both: ['konductor', 'k-developer'] };
 const listedBy = (name) => LISTED[name] ?? [];

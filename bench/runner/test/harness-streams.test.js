@@ -15,7 +15,6 @@ const { parseStream } = require('../lib/stream.js');
 const { hasPlantReader } = require('../lib/plant/stream-match.js');
 
 const BENCH = path.join(__dirname, '..', '..');
-const FX = path.join(__dirname, 'fixtures', 'harness-contract');
 const READERS = ['judge/bundle.js', 'judge/toolcalls.js', 'runner/lib/trace.js', 'runner/lib/stop-watch.js'];
 
 test('the four stream-format tables are gone: no core reader branches on a stream format or a runtime name', () => {
@@ -29,9 +28,7 @@ test('the four stream-format tables are gone: no core reader branches on a strea
 test('every harness reads the final text of its recorded stream', () => {
   for (const [id, h] of Object.entries(HARNESSES)) {
     assert.equal(typeof h.streams?.finalText, 'function', `${id}.streams.finalText`);
-    // A built-in's recording is under fixtures/harness-contract; a plugin keeps its own (bench/kit/plugin).
-    const builtin = path.join(FX, `${id}.jsonl`);
-    const file = fs.existsSync(builtin) ? builtin : path.join(BENCH, 'plugins', id, 'test', 'fixtures', 'single-turn.jsonl');
+    const file = path.join(BENCH, 'plugins', id, 'test', 'fixtures', 'single-turn.jsonl');
     const { events } = parseStream(fs.readFileSync(file, 'utf8'));
     const text = h.streams.finalText(events);
     assert.ok(typeof text === 'string' && text.trim(), `${id} final text`);

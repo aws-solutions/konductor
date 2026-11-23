@@ -393,7 +393,7 @@ function runPaths({ opts, repo, arms, isUsd, runtime, log }) {
   // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
   if (runtime === 'claude-code') cc.checkScratchRoot(os.tmpdir());
   // The konductor agents load .kiro/skills/ws-* skills (D-36): no such dir may sit above the scratch root.
-  if (runtime === 'kiro-cli') require('./harness/kiro.js').checkScratchRoot(os.tmpdir());
+  if (runtime === 'kiro-cli') harnessFor({ runtime }).checkScratchRoot(os.tmpdir());
   return { outDir, resume, armDrift, cacheDir, cargoTarget, authDb, awsCredsFile, awsProfile };
 }
 

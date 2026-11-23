@@ -98,6 +98,9 @@ function createRegistry({ builtins = [], pluginRoots = [], order = [] } = {}) {
   // Parts named in `order` come first, in that order; the rest keep their place after them (Array sort is stable).
   const rank = (p) => (order.includes(p.name) ? order.indexOf(p.name) : order.length);
   const frozen = Object.freeze([...parts].sort((a, b) => rank(a) - rank(b)).map((p) => Object.freeze(p)));
+  // An arm with no prefix belongs to the default runtime, so only one harness may have none.
+  const bare = frozen.filter((p) => p.kind === 'harness' && p.meta.armPrefix === '').map((p) => p.name);
+  if (bare.length > 1) throw new Error(`two harnesses have no arm prefix (${bare.join(', ')}); only the default runtime may have none`);
   return Object.freeze({
     parts: (kind) => frozen.filter((p) => p.kind === kind),
     descriptors: () => Object.freeze(frozen.filter((p) => p.kind === 'harness').map((p) => p.meta)),

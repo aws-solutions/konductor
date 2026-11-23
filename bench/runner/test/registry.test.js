@@ -12,7 +12,7 @@ const { DESCRIPTORS } = require('../lib/harness/descriptors.js');
 const { RUNTIMES, USD_RUNTIMES, isUsdRuntime, runtimeOf, descriptorOf, costUnitOf, supporting, notSupporting, joinNames, DEFAULT_RUNTIME } = require('../lib/harness/runtime.js');
 const { FLAGS } = require('../lib/cli-flags.js');
 const { parseArmSpec, resolveArm, OC_PREFIX, CC_PREFIX } = require('../lib/arms.js');
-const { kiroArgs } = require('../lib/harness/kiro.js');
+const { kiroArgs } = require('../../plugins/kiro-cli/harness.js');
 const { validateResult } = require('../lib/result.js');
 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'result.schema.json'), 'utf8'));
