@@ -27,6 +27,7 @@ const { toolNameOf, mcpToolNameOf, mcpInputOf, parseStream, runErrorOf } = requi
 const { aggregateHidden } = require('../runner/lib/check-matcher.js');
 const { lockBlockers, fixReasons } = require('./ready.js');
 const { serviceCancelled } = require('../runner/lib/result.js');
+const { armGaps, renderGaps, armIdentities } = require('./pilot-gaps.js');
 
 const PACK_DIR = __dirname;
 const EASY = 90;
@@ -414,7 +415,9 @@ function cmdPilotTable(opts) {
   if (!dirs.length) throw new Error('scenarios pilot-table needs the wave directories: bench.js scenarios pilot-table DIR...');
   const packDir = typeof opts.pack === 'string' ? path.resolve(opts.pack) : PACK_DIR;
   const rows = pilotRows(dirs, { packDir });
-  process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : renderTable(rows));
+  if (opts.json) { process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`); return; }
+  const gaps = renderGaps(armGaps(pairedRows(rows), armIdentities(dirs)));
+  process.stdout.write(renderTable(rows) + (gaps.length ? `${gaps.join('\n')}\n` : ''));
 }
 
 module.exports = { NOISY_SD, sampleSd, pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, unpaired, pairedRows, throttled, FLAG_NAMES };
