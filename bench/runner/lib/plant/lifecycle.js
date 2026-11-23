@@ -322,4 +322,7 @@ async function runPlantCell(execute, args) {
   }
 }
 
-module.exports = { openPlantRun, runPlantCell, readHostListeners, sandboxPidns, PlantSuiteStop, PlantRun, MAX_RERUNS };
+/** The plant mounts a harness descriptor's `plant.mount` may name (the plugin kit's plant-kind check reads them). */
+const PLANT_MOUNTS = Object.freeze(Object.keys(MOUNTS));
+
+module.exports = { openPlantRun, runPlantCell, readHostListeners, sandboxPidns, PlantSuiteStop, PlantRun, MAX_RERUNS, PLANT_MOUNTS };

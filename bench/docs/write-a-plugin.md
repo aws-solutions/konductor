@@ -91,19 +91,28 @@ The kit checks a plugin folder for free:
 node bench/kit/plugin/check.js bench/plugins/strands
 ```
 
-It prints `PASS` or each problem, and exits 1 on any. It checks the manifest the way the bench does, the descriptor,
-every member against the contract tables, and what `turnSummary` and `parseResult` fill from the recorded stream.
-`runner/test/harness-contract.test.js` runs the same checks over every plugin, so a plugin that breaks fails the suite.
+It runs four checks and prints one line for each. It exits 1 if any check fails.
+
+| Check | What it proves |
+| --- | --- |
+| `contract` | The manifest loads the way the bench loads it. The descriptor and every member match the contract tables. `turnSummary` and `parseResult` fill what they must from the recorded stream |
+| `fake-run` | The harness's own command runs with a stand-in agent (`kit/plugin/replay-agent.js`) that prints the recorded stream. The prompt reaches the agent, no host variable leaks through `env()`, and the `result.json` built from the run is valid |
+| `plant-kind` | A plugin with plant arms names a mount and pin the runner knows, and the plant reader finds the stream's plant calls. A plugin with `plant: null` passes |
+| `golden` | What `parseResult` reads from the recorded stream equals `test/golden.json`. After a parser change you mean to keep, write a new golden with `--record` |
+
+When `contract` fails, the other three are skipped. `runner/test/kit-plugin.test.js` runs all four over Strands and
+the template, so a plugin that breaks fails the suite.
 
 ## Start a new plugin
 
 1. Make the agent one local command that prints one JSON event per line. Strands does this with
    `bench/physical/strands/launch.py`.
-2. Copy `bench/plugins/strands/` to `bench/plugins/NAME/`. Set `name` in `plugin.json` and `id` in `meta.js` to
-   `NAME`, and pick a new arm prefix.
-3. Rewrite `harness.js` and `parse.js` for your agent's command and stream.
+2. Copy `bench/kit/plugin-template/` to `bench/plugins/NAME/`. It is the smallest plugin that passes all four checks.
+   Set `name` in `plugin.json` and `id` in `meta.js` to `NAME`, and pick a new arm prefix and stream format.
+3. Rewrite `harness.js` for your agent's command and stream. `agent.js` is only a stand-in; delete it.
 4. Record one real single-turn run as `test/fixtures/single-turn.jsonl`, and set `test/conformance.js`.
-5. Run the kit until it prints `PASS`, then `node bench/runner/bench.js list-arms` to see your arms.
+5. Write the golden with `node bench/kit/plugin/check.js --record bench/plugins/NAME`, and read it once.
+6. Run the kit until it prints `PASS`, then `node bench/runner/bench.js list-arms` to see your arms.
 
 ## Limits today
 

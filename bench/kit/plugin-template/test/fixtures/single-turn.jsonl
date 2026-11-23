@@ -1,0 +1,4 @@
+{"type":"start","sessionId":"tpl-session-1","model":"fake"}
+{"type":"tool_use","name":"read"}
+{"type":"usage","input":5,"output":4,"costUsd":0}
+{"type":"end","status":"success","stopReason":"end_turn","text":"done"}
