@@ -760,6 +760,12 @@
           "additionalProperties": false,
           "properties": {
             "usd": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "credits": {
               "type": "number"
             }
           }

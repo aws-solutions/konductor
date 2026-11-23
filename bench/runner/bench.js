@@ -10,7 +10,7 @@
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
  *   node bench/runner/bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review ...   (the scenario pack's authoring tools; free, no credits)
- *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select|units|unit-stage|delegation ...   (capability benchmarking; draft, trigger and live runs cost credits)
+ *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select|units|unit-stage|unit-author|delegation ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/docs/reference.md.
@@ -347,6 +347,12 @@ const USAGE = `Usage:
        (free: the keep-or-prune check at a quick and a deep depth under Michael Lin's copied rules; writes DIR/<run>/records/NAME.json with both verdicts side by side. Phase A has only the stub provider)
   node bench/runner/bench.js cap units [--kind agent|sop|context] [--coverage FILE] [--out FILE] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --run stub-ID [--out DIR] [--provider stub] [--delegation FILE] [--repo-root DIR]
+  node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --provider kiro --run ID --cap N --ledger FILE --work DIR [--depth quick] [--model M] [--judges A,B,C] [--out DIR] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
+       (PAID: the same stage on the kiro provider, quick depth only, one-turn kiro-cli calls with no tools; the ledger is read before every call at the larger of
+       15 and its real credits and a call is refused past --cap; a rerun of the same --run resumes. --dry-run prints the calls and the worst case, free)
+  node bench/runner/bench.js cap unit-author --kind agent|sop|context --unit NAME --work DIR --ledger FILE --cap N [--briefs FILE] [--out FILE] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
+       (PAID: writes a unit's frozen baseline from its briefs: glm-5 writes, deepseek-3.2 reviews, one fix, then a still failing task is dropped and recorded;
+       at most 8 calls, each spend-checked as above, resumable from --work. --dry-run prints the steps and the worst case, free)
   node bench/runner/bench.js cap delegation --agent NAME --run stub-ID [--stub-behaviour always|never|correct|other] [--requests FILE] [--reps N] [--out DIR] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap unit-stage --estimate [--kind agent|sop|context] [--depth quick|deep|both] [--max-units N] [--repo-root DIR]
        (free: keep-or-prune stages 2 to 4. units lists the agent files, SOPs and always-loaded context with their drop arm and selection test; unit-stage runs

@@ -170,7 +170,7 @@ test('every flag in the usage text is accepted, and every accepted flag is in th
   const blocks = usage.split(/\n(?=  node bench\/runner\/bench\.js )/).filter((b) => b.startsWith('  node bench/runner/bench.js '));
   const documented = {};
   for (const b of blocks) {
-    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export-reference|export|score)|scenarios (?:lint|coverage|prereg|pilot-table|ready|spot-review)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix|keep-prune|select|unit-stage|units|delegation|nudge-preview|nudge-check)|[a-z0-9-]+)/);
+    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export-reference|export|score)|scenarios (?:lint|coverage|prereg|pilot-table|ready|spot-review)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix|keep-prune|select|unit-stage|unit-author|units|delegation|nudge-preview|nudge-check)|[a-z0-9-]+)/);
     const key = m[1];
     const flags = new Set([...b.matchAll(/--([a-z][a-z0-9-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
     documented[key] = new Set([...(documented[key] || []), ...flags]);

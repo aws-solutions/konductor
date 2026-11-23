@@ -41,7 +41,7 @@ test('the stage runner refuses a run id that is not stub, any provider but the s
   try {
     const base = { kind: 'context', name: 'k-rules', repo: r.repo, outDir: r.out, baselinesDir: r.baselines };
     assert.throws(() => runUnitStage({ ...base, runId: 'real-1' }), /stub/);
-    assert.throws(() => runUnitStage({ ...base, runId: 'stub-x', provider: 'bedrock' }), /only the stub provider/);
+    assert.throws(() => runUnitStage({ ...base, runId: 'stub-x', provider: 'bedrock' }), /not available/);
     assert.throws(() => runUnitStage({ ...base, kind: 'skill', runId: 'stub-x' }), /stage 1/);
   } finally { r.cleanup(); }
 });

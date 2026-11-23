@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// The paid provider for keep-or-prune stages 2 to 4: the same { answer, writeChecklist, judge } interface as the stub
+// (stubprovider.js), with every call a spend-checked one-turn kiro-cli call (paidcall.js). It runs only at quick depth
+// (one answer per task and arm, no tools), which is what the first pilot needs.
+//   answer    the subject model. The keep arm (`with`) gets the unit's text ahead of the request, marked as part of
+//             its instructions; the drop arm (`without`) gets the request alone.
+//   checklist reading A: the writer model writes the items from the request alone. A given rubric (the dose ladder's)
+//             is used as it is, with no call.
+//   judge     each seat is its own model. It sees the checklist and the answer only, never the arm or the unit.
+// Every reply is saved under `callsDir` by a hash of its model and prompt, so a rerun reads it back free.
+
+const path = require('node:path');
+const { sha256 } = require('../runner/lib/util.js');
+const { paidCall, paidJson } = require('./paidcall.js');
+
+const VERSION = 'kiro-cli-one-turn/1';
+const LABELS = new Set(['MET', 'PARTIAL', 'MISSING']);
+const LOADING_ARMS = new Set(['with', 'aa']);
+
+const withUnit = (text, request) => `The file below is part of your instructions for this session. Follow it.\n<<<FILE\n${text}\nFILE>>>\n\n${request}`;
+
+const checklistPrompt = (request, count) => [
+  `Write exactly ${count} checklist items that a good answer to the request below must meet. Base them on the request alone.`,
+  'Each item is one statement a reader can check against an answer.',
+  `Reply only with JSON: {"items": ["...", ...]} with exactly ${count} items.`, '', 'Request:', '<<<', request, '>>>',
+].join('\n');
+
+const judgePrompt = (checklist, answer) => [
+  'Score one answer against a checklist. For each item, give MET, PARTIAL or MISSING.',
+  `Reply only with JSON: {"labels": ["MET", ...]} with exactly ${checklist.length} labels, in item order.`, '', 'Checklist:',
+  ...checklist.map((c, i) => `${i + 1}. ${c}`), '', 'Answer:', '<<<', answer, '>>>',
+].join('\n');
+
+/**
+ * A paid provider. `paid` is paidCall's spend options { ledger, cap, workDir, bin, authDb }; `callsDir` holds the
+ * saved replies; `writerModel` writes the request-only checklists. `subjectModel` is reported by checkDepth itself.
+ */
+function createKiroProvider({ paid, callsDir, writerModel }) {
+  const call = (kind, model, prompt) => ({ model, prompt, out: path.join(callsDir, kind, sha256(`${model}\n${prompt}`).slice(0, 24)), label: kind, ...paid });
+
+  function answer({ request, skill, arm, replicate = 0, model }) {
+    const loaded = Boolean(skill) && LOADING_ARMS.has(arm);
+    const prompt = loaded ? withUnit(skill.text, request) : request;
+    // shortcut: quick depth only, so one answer per task and arm; a deep run needs a replicate in the key and full sessions.
+    if (replicate) throw new Error('the paid provider runs quick depth only (one answer per task and arm)');
+    return { text: paidCall(call('answer', model, prompt)).text, loaded, model, version: VERSION };
+  }
+
+  function writeChecklist({ request, rubric = null, count = 5 }) {
+    if (Array.isArray(rubric) && rubric.length) return [...rubric];
+    return paidJson(call('checklist', writerModel, checklistPrompt(request, count)), (j) => {
+      if (!Array.isArray(j.items) || j.items.length !== count || !j.items.every((x) => typeof x === 'string' && x.trim())) throw new Error(`wanted ${count} items`);
+      return j.items;
+    }).value;
+  }
+
+  // An unreadable judgment gives null labels: scoreOf reads it as invalid, so the task does not count (PANEL_RULES 3).
+  function judge({ seat, checklist, answer: text }) {
+    const r = paidCall(call('judge', seat, judgePrompt(checklist, text)));
+    let labels = null;
+    try {
+      const j = JSON.parse(/\{[\s\S]*\}/.exec(r.text)?.[0] ?? 'null');
+      if (Array.isArray(j?.labels) && j.labels.every((l) => LABELS.has(l))) labels = j.labels;
+    } catch { /* stays null */ }
+    return { labels, version: `${VERSION} ${seat}` };
+  }
+
+  return { name: 'kiro', version: VERSION, answer, writeChecklist, judge };
+}
+
+module.exports = { VERSION, createKiroProvider, withUnit, checklistPrompt, judgePrompt };

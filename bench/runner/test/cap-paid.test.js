@@ -1,0 +1,216 @@
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// The paid keep-or-prune path, tested free on a fake kiro-cli (fake-kp-kiro.js): the spend-checked call (paidcall.js),
+// writing a unit baseline with the one-fix rule (unitauthor.js), the paid quick stage run (kiroprovider.js through
+// runUnitStage), and the two owner scripts in bench/cap/pilot on their paid path. No model, no network, no spend.
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+const { tmp, write } = require('./helpers.js');
+const { paidCall, paidJson, ledgerSpent, assertOutsideHome, PaidCallRefused } = require('../../cap/paidcall.js');
+const { authorUnit } = require('../../cap/unitauthor.js');
+const { runUnitStage, loadUnitBaseline, PILOT_JUDGES } = require('../../cap/unitstage.js');
+const { unitManifest } = require('../../cap/units.js');
+
+const FAKE = path.join(__dirname, 'fake-kp-kiro.js');
+const BENCH = path.join(__dirname, '..', '..');
+const REPO = path.join(BENCH, '..');
+const spec = (name, contexts = []) => JSON.stringify({ name, config: { description: `${name} desc`, systemPrompt: `You are ${name}.` },
+  dependencies: { skills: { skillNames: [] }, agentSops: { agentSopNames: [] }, context: { contextNames: contexts }, subagents: { agentNames: [] } } });
+
+/** A scratch tree: a repo with one listed context file, a work dir, a fake sign-in db, and a log of fake calls. */
+function rig() {
+  const root = tmp();
+  const repo = path.join(root, 'repo');
+  write(path.join(repo, 'agents', 'konductor.agent-spec.json'), spec('konductor', ['k-rules.md']));
+  write(path.join(repo, 'context', 'k-rules.md'), '# Rules\n\nHand a third note in a row back to the user.\n');
+  const authDb = path.join(root, 'auth.sqlite3');
+  write(authDb, 'fake');
+  const log = path.join(root, 'calls.log');
+  const paid = { cap: 1000, ledger: path.join(root, 'ledger.jsonl'), workDir: path.join(root, 'work'), bin: FAKE, authDb };
+  const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean) : []);
+  return { root, repo, paid, log, calls, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
+}
+
+/** Runs `fn` with the fake's env set, then puts the env back. */
+function withEnv(env, fn) {
+  const old = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
+  Object.assign(process.env, env);
+  try { return fn(); } finally { for (const [k, v] of Object.entries(old)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
+}
+
+test('a paid call counts at the larger of 15 and its real credits, resumes free, and is refused before the cap', () => {
+  const r = rig();
+  try {
+    withEnv({ FAKE_KP_LOG: r.log, FAKE_KP_CREDITS: '0.5' }, () => {
+      const a = paidCall({ ...r.paid, model: 'glm-5', prompt: 'hello', out: path.join(r.root, 'out', 'a') });
+      assert.equal(a.counted, 15);
+      assert.equal(a.real, 0.5);
+      assert.equal(paidCall({ ...r.paid, model: 'glm-5', prompt: 'hello', out: path.join(r.root, 'out', 'a') }).resumed, true);
+      assert.equal(r.calls().length, 1, 'the rerun read the saved reply back');
+      const [, , home] = r.calls()[0].split(' ');
+      assert.ok(home.startsWith(r.paid.workDir), 'the call ran in a scratch HOME under the work dir');
+      assert.equal(fs.existsSync(home), false, 'and the scratch HOME is gone');
+    });
+    withEnv({ FAKE_KP_LOG: r.log, FAKE_KP_CREDITS: '20' }, () => {
+      assert.equal(paidCall({ ...r.paid, model: 'glm-5', prompt: 'big', out: path.join(r.root, 'out', 'b') }).counted, 20);
+    });
+    assert.equal(ledgerSpent(r.paid.ledger), 35);
+    const out = path.join(r.root, 'out', 'c');
+    assert.throws(() => paidCall({ ...r.paid, cap: 49, model: 'glm-5', prompt: 'more', out }), PaidCallRefused);
+    assert.match(fs.readFileSync(`${out}.refused`, 'utf8'), /spent 35 \+ worst 15 would pass the cap 49/);
+    assert.equal(r.calls().length, 2, 'a refused call never starts kiro-cli');
+  } finally { r.cleanup(); }
+});
+
+test('a call that never finished is counted at 15 and leaves nothing to resume; an unreadable reply is moved aside', () => {
+  const r = rig();
+  try {
+    const out = path.join(r.root, 'out', 'u');
+    withEnv({ FAKE_KP_UNFINISHED: '1' }, () => assert.throws(() => paidCall({ ...r.paid, model: 'glm-5', prompt: 'x', out }), /no finished reply.*counted 15/));
+    assert.equal(fs.existsSync(`${out}.json`), false);
+    assert.equal(ledgerSpent(r.paid.ledger), 15);
+    const bad = path.join(r.root, 'out', 'bad');
+    assert.throws(() => paidJson({ ...r.paid, model: 'glm-5', prompt: 'Write exactly 2 checklist items', out: bad }, (j) => { if (!j.nope) throw new Error('no nope'); }), /could not be read.*bad-1\.json/);
+    assert.ok(fs.existsSync(`${bad}.bad-1.json`));
+    assert.equal(fs.existsSync(`${bad}.json`), false, 'a rerun asks again');
+  } finally { r.cleanup(); }
+});
+
+test('work dirs must be absolute and outside the home folder', () => {
+  assert.throws(() => assertOutsideHome(path.join(os.homedir(), 'kp-work')), /outside/);
+  assert.throws(() => assertOutsideHome('relative/dir'), /outside/);
+  assert.doesNotThrow(() => assertOutsideHome('/var/tmp/konductor-kp-pilot'));
+});
+
+/** 16 briefs in two batches for the rig's unit. */
+function briefsFile(r) {
+  const file = path.join(r.root, 'briefs.json');
+  const briefs = Array.from({ length: 16 }, (_, i) => ({ id: `t${String(i + 1).padStart(2, '0')}`, batch: i < 8 ? 'b1' : 'b2', section: 'Handoffs', situation: `case ${i + 1}`, good: 'asks the user' }));
+  write(file, JSON.stringify({ unit: 'context:k-rules', briefs }));
+  return file;
+}
+
+test('writing a baseline: two families, one fix, then a still failing task is dropped and recorded; reruns resume', () => {
+  const r = rig();
+  try {
+    const out = path.join(r.root, 'baseline', 'baseline.json');
+    const args = { kind: 'context', name: 'k-rules', repo: r.repo, briefsFile: briefsFile(r), out, paid: r.paid };
+    const plan = authorUnit({ ...args, dryRun: true });
+    assert.equal(plan.plan.length, 8);
+    assert.equal(plan.worst, 120);
+    assert.equal(r.calls().length, 0, 'the dry run made no call');
+
+    const ok = withEnv({ FAKE_KP_LOG: r.log, FAKE_KP_FAIL: 't03,t12' }, () => authorUnit(args));
+    assert.equal(ok.status, 'frozen');
+    assert.deepEqual(r.calls().map((l) => l.split(' ').slice(0, 2).join(' ')), [1, 2].flatMap(() => ['glm-5 write', 'deepseek-3.2 review', 'glm-5 fix', 'deepseek-3.2 review']), 'per batch: write, review, one fix, recheck');
+    const b = loadUnitBaseline(out);
+    assert.equal(b.unit_sha256, unitManifest({ repo: r.repo, kind: 'context', name: 'k-rules' }).sha256);
+    assert.deepEqual(b.source.fixed, ['t03', 't12']);
+    assert.match(b.batches[0].tasks[2].prompt, / FIXED$/);
+    assert.equal(withEnv({ FAKE_KP_LOG: r.log }, () => authorUnit(args)).status, 'frozen');
+    assert.equal(r.calls().length, 8, 'a rerun reads every step back');
+    assert.equal(ledgerSpent(r.paid.ledger), 120);
+  } finally { r.cleanup(); }
+});
+
+test('a task the fix does not save is dropped: a draft and the drop are written, never a frozen baseline', () => {
+  const r = rig();
+  try {
+    const out = path.join(r.root, 'baseline', 'baseline.json');
+    const res = withEnv({ FAKE_KP_FAIL: 't05', FAKE_KP_NOFIX: 't05' }, () => authorUnit({ kind: 'context', name: 'k-rules', repo: r.repo, briefsFile: briefsFile(r), out, paid: r.paid }));
+    assert.equal(res.status, 'dropped');
+    assert.equal(fs.existsSync(out), false);
+    const draft = JSON.parse(fs.readFileSync(res.file, 'utf8'));
+    assert.deepEqual(draft.source.dropped.map((d) => d.id), ['t05']);
+    assert.equal(draft.batches[0].tasks.length, 7);
+  } finally { r.cleanup(); }
+});
+
+/** A frozen baseline for the rig's unit, so its stage can run. */
+function freeze(r) {
+  const dir = path.join(r.root, 'unit-baselines');
+  const tasks = (batch) => Array.from({ length: 8 }, (_, i) => ({ id: `${batch}-${i}`, prompt: `Third note in a row ${batch} ${i}: what next?`, rubric: ['The answer stops.', 'The answer asks the user.'] }));
+  write(path.join(dir, 'context-k-rules', 'baseline.json'), JSON.stringify({ format_version: 1, kind: 'context', name: 'k-rules', unit_sha256: unitManifest({ repo: r.repo, kind: 'context', name: 'k-rules' }).sha256,
+    source: { writtenBy: 'test' }, batches: [{ batch: 'b1', tasks: tasks('b1') }, { batch: 'b2', tasks: tasks('b2') }] }));
+  return dir;
+}
+
+test('the paid stage refuses before any call: a stub run id, a deep depth, a short panel, no cap, or no baseline', () => {
+  const r = rig();
+  try {
+    const base = { kind: 'context', name: 'k-rules', repo: r.repo, outDir: path.join(r.root, 'runs'), provider: 'kiro', paid: r.paid, depths: ['quick'], subjectModel: 'claude-sonnet-5.5', judges: [...PILOT_JUDGES] };
+    withEnv({ FAKE_KP_LOG: r.log }, () => {
+      assert.throws(() => runUnitStage({ ...base, runId: 'stub-1', baselinesDir: freeze(r) }), /not a stub one/);
+      assert.throws(() => runUnitStage({ ...base, runId: 'p1', depths: ['quick', 'deep'], baselinesDir: freeze(r) }), /quick depth only/);
+      assert.throws(() => runUnitStage({ ...base, runId: 'p1', judges: ['qwen3-coder-next', 'claude-opus-5.5'], baselinesDir: freeze(r) }), /not enough judge families/);
+      assert.throws(() => runUnitStage({ ...base, runId: 'p1', paid: { ...r.paid, cap: NaN }, baselinesDir: freeze(r) }), /--cap/);
+      assert.throws(() => runUnitStage({ ...base, runId: 'p1', baselinesDir: path.join(r.root, 'none') }), /no paid call made.*no frozen baseline/);
+    });
+    assert.equal(r.calls().length, 0);
+  } finally { r.cleanup(); }
+});
+
+test('the paid quick stage runs keep against drop through the real pipeline, stops at the cap, and resumes', { timeout: 600000 }, () => {
+  const r = rig();
+  try {
+    const baselinesDir = freeze(r);
+    const outDir = path.join(r.root, 'runs');
+    const base = { kind: 'context', name: 'k-rules', repo: r.repo, runId: 'kp-test', outDir, provider: 'kiro', depths: ['quick'], subjectModel: 'claude-sonnet-5.5', judges: [...PILOT_JUDGES], baselinesDir };
+    withEnv({ FAKE_KP_LOG: r.log }, () => assert.throws(() => runUnitStage({ ...base, paid: { ...r.paid, cap: 45 } }), PaidCallRefused));
+    assert.equal(r.calls().length, 3, 'three calls fit a 45 credit cap at 15 each');
+    const { record } = withEnv({ FAKE_KP_LOG: r.log }, () => runUnitStage({ ...base, paid: { ...r.paid, cap: 100000 } }));
+    const made = r.calls().length;
+    assert.equal(ledgerSpent(r.paid.ledger), made * 15);
+    assert.equal(record.deep, null);
+    assert.equal(record.quick.provider, 'kiro');
+    assert.equal(record.quick.coverage.tasksTotal, 16);
+    assert.deepEqual(record.quick.judges.map((j) => j.model), [...PILOT_JUDGES]);
+    assert.ok(record.quick.gapA.mean > 0, 'the fake judges score the keep arm above the drop arm');
+    assert.match(record.claim, /paid run kp-test, quick depth/);
+    const answers = r.calls().filter((l) => l.split(' ')[1] === 'answer');
+    assert.ok(answers.every((l) => l.startsWith('claude-sonnet-5.5 ')), 'only the agent answers');
+    withEnv({ FAKE_KP_LOG: r.log }, () => runUnitStage({ ...base, paid: { ...r.paid, cap: 100000 } }));
+    assert.equal(r.calls().length, made, 'a rerun of the same run id makes no call');
+  } finally { r.cleanup(); }
+});
+
+/** Runs one owner script with the fake kiro-cli and a scratch work dir. */
+const script = (name, args, env) => spawnSync('bash', [path.join(BENCH, 'cap', 'pilot', name), ...args], { encoding: 'utf8', env: { ...process.env, ...env } });
+
+test('the owner scripts: dry runs are free, a paid run needs --cap, and the paid path runs end to end on the fake', { timeout: 120000 }, () => {
+  const r = rig();
+  try {
+    const env = { KP_PILOT_WORK: path.join(r.root, 'kp'), KP_KIRO_BIN: FAKE, KP_AUTH_DB: r.paid.authDb, KP_PILOT_LOCK: path.join(r.root, 'kp.lock'), FAKE_KP_LOG: r.log, KP_BASELINE_OUT: path.join(r.root, 'baseline.json') };
+    const dry = script('author-baseline.sh', ['--dry-run', '--cap', '120'], env);
+    assert.equal(dry.status, 0, dry.stderr);
+    assert.match(dry.stdout, /at most 8 calls, worst case 120 credits at 15 per call; ledger spent 0; cap 120; the worst case fits/);
+    assert.equal(script('author-baseline.sh', [], env).status, 64);
+    const paid = script('author-baseline.sh', ['--cap', '120'], env);
+    assert.equal(paid.status, 0, paid.stderr);
+    assert.equal(loadUnitBaseline(env.KP_BASELINE_OUT).name, 'k-orchestrator-shared');
+    assert.equal(r.calls().length, 4);
+
+    const runDry = script('run-pilot.sh', ['--dry-run', '--cap', '1200'], env);
+    assert.equal(runDry.status, 0, runDry.stderr);
+    assert.match(runDry.stdout, /dry run, no call made: context:k-orchestrator-shared at quick depth, agent claude-sonnet-5\.5, judges qwen3-coder-next, gpt-5\.6-luna, grok-4\.7/);
+    assert.equal(script('run-pilot.sh', [], env).status, 64);
+    // The repo has no signed-off baseline yet, so the paid path stops before its first call.
+    const run = script('run-pilot.sh', ['--cap', '1200'], env);
+    assert.notEqual(run.status, 0);
+    assert.match(run.stderr, /no paid call made/);
+    assert.equal(r.calls().length, 4);
+  } finally { r.cleanup(); }
+});
+
+test('the pilot briefs file matches Appendix C: 16 briefs in two batches of 8 for the pilot unit', () => {
+  const { loadBriefs } = require('../../cap/unitauthor.js');
+  const b = loadBriefs(path.join(BENCH, 'cap', 'unit-baselines', 'context-k-orchestrator-shared', 'briefs.json'), 'context:k-orchestrator-shared');
+  assert.deepEqual(b.batches, ['b1', 'b2']);
+  assert.ok(fs.existsSync(path.join(REPO, 'context', 'k-orchestrator-shared.md')));
+});
