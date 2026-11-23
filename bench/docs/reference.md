@@ -122,9 +122,8 @@ node bench/runner/bench.js cap list --base main                     # agents, sk
 node bench/runner/bench.js cap audit --base main --out /tmp/audit   # description lint, size, near duplicates, reachability
 node bench/runner/bench.js cap scenarios --cap skill:backend-review --dry-run --out /tmp/scn   # writes the prompt to /tmp/scn/scenarios/, no model call
 node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out /tmp/kp   # keep-or-prune record from the stub provider
-node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"   # unit tests (the full suite)
+bench/scripts/test.sh [--tap]                                       # the full suite: node unit tests, then the Python plant tests as TAP lines
 node --test bench/physical/test/*.test.js bench/agenteval/test/*.test.js   # plant step 0 fixtures and agenteval
-python3 -m unittest discover -s bench/physical/test -p 'test_*.py'   # plant simulator, gateway and Strands forwarder
 ```
 
 `--base REF` reads local refs only; the runner never fetches. `main` means `origin/main`, and `HEAD` is not accepted (use a branch, tag or remote-tracking name).
@@ -328,9 +327,8 @@ node bench/runner/bench.js compare --base $OLD --head $OUT          # regression
 node bench/runner/bench.js recheck --run $OUT [--dry-run]                    # re-apply corrected task checks to saved workspaces
 node bench/runner/bench.js backfill --run $OUT [--credits] [--skills] [--write]  # repair finished runs from stream.jsonl: credits (default) and/or skill-load fields (dry run by default)
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
-node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"   # unit tests (the full suite)
+bench/scripts/test.sh [--tap]                                       # the full suite: node unit tests, then the Python plant tests as TAP lines
 node --test bench/physical/test/*.test.js bench/agenteval/test/*.test.js   # plant step 0 fixtures and agenteval
-python3 -m unittest discover -s bench/physical/test -p 'test_*.py'   # plant simulator, gateway and Strands forwarder
 node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
 ```
 Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--replicate-offset N`, `--parallel N`, `--budget-credits X`,

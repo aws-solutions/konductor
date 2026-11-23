@@ -1,5 +1,5 @@
 # Agreed base set of the full bench suite: tests that fail on feat/bench-pilot-nk with TMPDIR under /tmp.
 # One test name per line. The set is empty. See DEBT D-44 and D-45.
-# Command: node --test --test-concurrency=1 "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"
-# with BENCH_ARM_PYTHON (an arm venv), its LD_LIBRARY_PATH and BENCH_REQUIRE_ARM=1, then
-# $BENCH_ARM_PYTHON -m unittest discover -s bench/physical/test -p 'test_*.py' (DEBT D-175).
+# Command: bench/scripts/test.sh --tap with BENCH_ARM_PYTHON (an arm venv) and its LD_LIBRARY_PATH (DEBT D-175, D-217).
+# It runs node --test --test-concurrency=1 "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js", then the
+# bench/physical/test unittest files as TAP lines, with BENCH_REQUIRE_ARM=1, and fails when an arm test skips.
