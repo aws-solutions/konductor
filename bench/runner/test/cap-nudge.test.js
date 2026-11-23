@@ -219,6 +219,25 @@ test('nudge-check: hook seen from the session record, the hook source alone does
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('nudge-check: a cell that never started (budget_skipped, or no stream and no session) is not run, never hook missing', () => {
+  const { checkRuns } = require('../../cap/nudgecli.js');
+  const root = scratch();
+  try {
+    const cell = (rep, r) => write(path.join(root, 'run', 'konductor-list', 't1', String(rep), 'result.json'), JSON.stringify({ armId: 'konductor-list', taskId: 't1', replicate: rep, ...r }));
+    // As the frozen runner writes a budget skip: a result.json alone, no stream, no session record.
+    cell(1, { status: 'budget_skipped', credits: null });
+    cell(2, { status: 'error', credits: 0 });
+    const rows = checkRuns([path.join(root, 'run')]);
+    assert.deepEqual(rows.map((r) => [r.replicate, r.ran, r.hookSeen]), [[1, false, null], [2, false, null]]);
+    // A started cell with no hook text is still hook missing.
+    write(path.join(root, 'run', 'konductor-list', 't1', '3', 'stream.jsonl'), '');
+    cell(3, { status: 'success', credits: 1 });
+    const r3 = checkRuns([path.join(root, 'run')]).find((r) => r.replicate === 3);
+    assert.equal(r3.ran, true);
+    assert.equal(r3.hookSeen, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('matcher variants: the frozen one is v2-weighted, each variant runs in a hook, the hybrid adds the broad skills', () => {
   const s = setup();
   try {

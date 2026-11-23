@@ -342,7 +342,7 @@ const USAGE = `Usage:
        (free: what a built nudge arm prints for each task, with the rank-1 margin, for a person's leak check)
   node bench/runner/bench.js cap nudge-check --run DIR,DIR [--json]
        (free: per finished run, whether the hook text reached the agent, the skills loaded, those loaded in full and the preview-only loads;
-       exit 1 when a hook arm ran without its hook text)
+       exit 1 when a hook arm ran without its hook text; a cell that never started, budget skipped or with no stream and no session, is "not run", never a miss)
   node bench/runner/bench.js cap keep-prune --skill NAME --run stub-ID [--out DIR] [--depth quick|deep|both] [--provider stub] [--subject-model ID] [--judges A,B,C] [--replicates N] [--rejudge] [--selection FILE] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap select --skill NAME (--run stub-ID [--reps N] [--stub-behaviour always|never|correct|fake] | --from-run DIR | --write-tasks DIR) [--requests FILE] [--usage-runs DIR,DIR] [--out DIR] [--repo-root DIR] [--json]
        (free: the keep-or-prune check at a quick and a deep depth under Michael Lin's copied rules; writes DIR/<run>/records/NAME.json with both verdicts side by side. Phase A has only the stub provider)

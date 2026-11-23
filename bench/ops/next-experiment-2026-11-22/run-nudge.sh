@@ -5,7 +5,8 @@
 # no request data) and konductor-filler (same hook shape, neutral text of the same size, no skill named), 3 runs each,
 # on the same 8 tasks, frozen bench, konductor ref, kiro-cli, model and seed as run-forced-aa-r2.sh. Hard cap 450
 # credits. Design B (the top-3 matcher) is not run: about half top-3 recall on held-out tasks.
-# Tasks with runs-nudge/<task>.done are skipped, so a rerun resumes.
+# Tasks with runs-nudge/<task>.done are skipped, and a task folder without .done is run again with --resume (only
+# its cells with no result or a budget skip), so a rerun resumes. A task with a cell still not run gets no .done.
 #
 #   sh run-nudge.sh          dry run: arm and host checks, then each task's budget assuming every task spends its worst case
 #   sh run-nudge.sh --go     PAID run (approved: cap 450 credits). Waits for run-forced-aa*.sh to finish first.
@@ -16,13 +17,16 @@
 #
 # Test hooks: STUB=<cmd> replaces the paid bench command and skips the user-namespace check; HERE=<dir> points at a
 # copy of this folder; FORCED_PAT=<pattern> is the process pattern of the run to wait for; LOAD_MAX=<n> is the load
-# a task waits under (default 4); HEAVY_LOCK=<file> is the heavy lock a task waits for (default /var/tmp/konductor-heavy.lock).
+# a task waits under (default 4); HEAVY_LOCK=<file> is the heavy lock a task waits for (default /var/tmp/konductor-heavy.lock);
+# CHECK_BENCH=<dir> is the checkout whose cap nudge-check runs (default: the one holding this script).
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 WS=$KONDUCTOR_WS
 REPO=$WS/worktrees/konductor-plant
 NB=$REPO/.worktrees/nudge-nk                             # bench with cap variant --hook and cap nudge-check
 NB_MIN=6e67dcf3                                          # NB must contain this commit (cap variant --hook list)
+# cap nudge-check comes from the checkout holding this script (it knows a cell that never started); NB only builds arms.
+CHECK_BENCH=${CHECK_BENCH:-$(cd "$(dirname "$0")/../../.." && pwd)}
 BENCH_SHA=69149846ad65f1016ec386e88ec9043bdec57203       # frozen runner, as in run-forced-aa-r2.sh
 KONDUCTOR_SHA=f5d184596378ae72ae531d80647548512c14cacf   # base of both hook arms (the LITE konductor ref)
 R=$WS/worktrees/lite-frozen-69149846                     # read only; never worktrees/pilot
@@ -138,7 +142,10 @@ wait_host() {
 run_task() {
   task=$1; batch=$2; limit=$3; budget=$4; s=0; after=0; fs=''
   [ -e "$OUT/$task.done" ] && { echo "$task: done, skipped"; return 0; }
-  [ -e "$OUT/$task" ] && stop "$OUT/$task exists without .done: check it by hand before a rerun"
+  # A task folder without .done was cut short (budget skip, crash): --resume runs only its cells with no result.json or
+  # a budget_skipped one, and keeps the rest, errors included.
+  resume=''
+  [ -e "$OUT/$task" ] && { resume=--resume; echo "$task: folder without .done, resuming its unfinished cells"; }
   if [ "$GO" = --go ]; then wait_host; s=$(spent_all); else s=$DRY_SPENT; fi
   budget=$(budget_for "$s" "$limit" "$budget")
   if [ "$budget" = STOP ]; then
@@ -154,16 +161,21 @@ run_task() {
     --arms "konductor-list=dir:$LIST/tree,konductor-filler=dir:$FILLER/tree" \
     --replicates 3 --parallel 1 --extra-tasks "$R/bench/scenarios/$batch" --repo-root "$R" --hide "$R" \
     --isolate unshare --seed 20261121 --model claude-sonnet-5.5 --effort high --agent-engine v3 --kiro-bin "$KBIN" \
-    --python "$PY312" --cache "$CACHE" --budget-credits "$budget" --run-credit-limit "$limit" --out "$OUT/$task"
+    --python "$PY312" --cache "$CACHE" --budget-credits "$budget" --run-credit-limit "$limit" --out "$OUT/$task" $resume
   if [ "$GO" = --go ]; then
     mkdir -p "$OUT"
     # </dev/null: the task list is on this loop's stdin, and the command must not read it.
     if [ -n "$STUB" ]; then $STUB "$@" </dev/null || stop "$task stub exited $?"
     else nice -n 10 "$@" </dev/null || stop "$task exited $?"; fi
     # The treatment check: every hook-arm run must show its hook text (exit 1 otherwise). No .done until it passes.
+    # A cell that never started is "not run", not a hook miss; it leaves the task without .done, so a rerun resumes it.
     if [ -d "$OUT/$task" ]; then
-      node "$NB/bench/runner/bench.js" cap nudge-check --run "$OUT/$task" > "$OUT/$task.check.md" \
+      node "$CHECK_BENCH/bench/runner/bench.js" cap nudge-check --run "$OUT/$task" > "$OUT/$task.check.md" \
         || stop "$task: a hook arm ran without its hook text (see $OUT/$task.check.md); fix before the next task"
+      if grep -q '| not run (' "$OUT/$task.check.md"; then
+        echo "[$(date -u +%H:%M)] $task: $(grep -c '| not run (' "$OUT/$task.check.md") cell(s) not run; no .done, a rerun resumes them"
+        return 0
+      fi
     fi
     touch "$OUT/$task.done"
   else
