@@ -9,6 +9,7 @@ const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js')
 const { RUBRIC_POLICY, exclusionClassOfRun, reasonLabel } = require('../judge/exclusion.js');
 const { lengthOf, summarizeLength } = require('./length.js');
 const { serviceCancelled } = require('../runner/lib/result.js');
+const { costUnitOf, descriptorOf, DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
 
 const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy', 'physical'];
 const MIN_REPLICATES = 3;
@@ -51,12 +52,13 @@ const sumTallies = (ts) => ts.reduce((a, t) => Object.fromEntries(Object.keys(a)
 const chargedCredits = (r) => num(r.creditsCharged) ?? (r.creditsCensored ? Math.max(num(r.credits) ?? 0, num(r.creditsLowerBound) ?? 0) : num(r.credits) ?? 0);
 const chargedUsd = (r) => num(r.costUsdCharged) ?? num(r.costUsd) ?? 0;
 
-// Per-harness cost basis. kiro-cli is metered in credits; opencode reports tokens and list-price USD.
+// Cost basis per cost unit: kiro-cli is metered in credits; the USD runtimes report tokens and list-price USD.
 const BASIS = {
-  'kiro-cli': { unit: 'credits', efficiency: EFFICIENCY, charged: chargedCredits, observed: (r) => num(r.credits), censored: (r) => r.creditsCensored === true, perSuccess: 'creditsPerSuccess' },
-  opencode: { unit: 'usd', efficiency: EFFICIENCY_OC, charged: chargedUsd, observed: (r) => num(r.costUsd), censored: (r) => r.costCensored === true, perSuccess: 'costPerSuccess' },
+  credits: { unit: 'credits', efficiency: EFFICIENCY, charged: chargedCredits, observed: (r) => num(r.credits), censored: (r) => r.creditsCensored === true, perSuccess: 'creditsPerSuccess' },
+  usd: { unit: 'usd', efficiency: EFFICIENCY_OC, charged: chargedUsd, observed: (r) => num(r.costUsd), censored: (r) => r.costCensored === true, perSuccess: 'costPerSuccess' },
 };
-BASIS['claude-code'] = BASIS.opencode;
+/** The cost basis of runtime `harness` (its descriptor's costUnit); a run with no harness field is the default runtime's. */
+const basisOf = (harness) => BASIS[costUnitOf(harness ?? DEFAULT_RUNTIME)];
 
 // Mutually exclusive outcome of one executed run. Only 'good' runs feed the efficiency medians.
 function outcomeOf(r) {
@@ -168,7 +170,7 @@ function integrityExcluded(executed, notJudged, judges, rubricIdx) {
   return executed.filter((e) => exclusionClassOfRun(reasons.get(keyOf(e)), e.result) === 'integrity' && !judges.some((j) => typeof rubricIdx.get(`${j}|${keyOf(e)}`)?.score === 'number'));
 }
 
-function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], stamped = false, lengthByKey = null, basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
+function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], stamped = false, lengthByKey = null, basis = BASIS.credits, rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
   const charged = basis.charged;
   const executed = entries.filter((e) => e.result.status !== 'budget_skipped');
   const n = executed.length;
@@ -351,7 +353,7 @@ function recheckSummary(runs) {
 
 // vanilla when the run has it; a run without vanilla (for example --no-vanilla) uses the release arm, then the first arm.
 function defaultBaseline(run) {
-  const prefix = run.harness === 'opencode' ? 'oc-' : run.harness === 'claude-code' ? 'cc-' : '';
+  const prefix = descriptorOf(run.harness ?? DEFAULT_RUNTIME).armPrefix;
   const present = [...new Set((run.runs || []).map((r) => r.armId))];
   const prefer = [`${prefix}vanilla`, `${prefix}v1.2.0`];
   return prefer.find((a) => present.includes(a)) ?? (present.length ? [...present].sort()[0] : prefer[0]);
@@ -375,10 +377,10 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
   const classes = [...new Set(run.runs.map((r) => classOf(r.taskId)))].sort((a, b) => (CLASS_ORDER.indexOf(a) + 1 || 99) - (CLASS_ORDER.indexOf(b) + 1 || 99));
 
   const stamped = j?.rubricPolicy === RUBRIC_POLICY;
-  const basis = BASIS[run.harness ?? 'kiro-cli'];
+  const basis = basisOf(run.harness);
   const report = {
     schemaVersion: 1,
-    harness: run.harness ?? 'kiro-cli',
+    harness: run.harness ?? DEFAULT_RUNTIME,
     costUnit: basis.unit,
     run: { dir: run.dir, suite: run.config.suite ?? null, model: run.config.model ?? run.runs[0].result.model, effort: run.config.effort ?? run.runs[0].result.effort, taskIds: run.config.taskIds ?? [...new Set(run.runs.map((r) => r.taskId))].sort(), kiroCliVersion: run.runs[0].result.kiroCliVersion ?? null, harnessVersion: run.config.harnessVersion ?? run.runs[0].result.harnessVersion ?? run.runs[0].result.kiroCliVersion ?? null },
     baseline, judges, scopes: ['overall', ...classes], arms: {},
@@ -456,4 +458,4 @@ function judgingSummary(j, isStale, stale, resultByKey = new Map()) {
   return out;
 }
 
-module.exports = { buildReport, defaultBaseline, outcomeOf, OUTCOMES, CLASS_ORDER, MIN_REPLICATES, EFFICIENCY, EFFICIENCY_OC, BASIS };
+module.exports = { buildReport, defaultBaseline, outcomeOf, OUTCOMES, CLASS_ORDER, MIN_REPLICATES, EFFICIENCY, EFFICIENCY_OC, BASIS, basisOf };

@@ -5,11 +5,12 @@
 // It reuses compare's noise rules, so "worse" here means what a regression means in `compare`.
 
 const { statFor, classify, armIdentity, MIN_RUNS_FOR_CI } = require('./compare.js');
-const { buildReport, outcomeOf, OUTCOMES, CLASS_ORDER, BASIS } = require('./aggregate.js');
+const { buildReport, outcomeOf, OUTCOMES, CLASS_ORDER, basisOf } = require('./aggregate.js');
 const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
 const { requireTasks } = require('../runner/lib/tasks.js');
 const { enrichOrch, phaseTotals } = require('./orch.js');
 const { correlationLine } = require('./length.js');
+const { DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 // Autonomy figures exist only on runs of a task with an autonomy block; the others report null and drop out of the mean.
@@ -164,7 +165,7 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by
   if (!headArms.length) throw new Error(`nothing to contrast: the run has only the arm "${baseArm}"`);
 
   requireTasks(run.runs.map((r) => r.taskId), tasks);
-  const basis = BASIS[run.harness ?? 'kiro-cli'];
+  const basis = basisOf(run.harness);
   const classOf = by === 'task' ? (taskId) => taskId : (taskId) => tasks.get(taskId)?.class ?? 'unknown';
   const { series, report: built } = buildReport({ run, tasks, baseline: baseArm });
   const classes = [...new Set(run.runs.map((r) => classOf(r.taskId)))].sort(by === 'task' ? (a, b) => (a < b ? -1 : a > b ? 1 : 0) : (a, b) => (CLASS_ORDER.indexOf(a) + 1 || 99) - (CLASS_ORDER.indexOf(b) + 1 || 99));
@@ -200,7 +201,7 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by
     }
   }
   return {
-    schemaVersion: 1, harness: run.harness ?? 'kiro-cli', costUnit: basis.unit,
+    schemaVersion: 1, harness: run.harness ?? DEFAULT_RUNTIME, costUnit: basis.unit,
     run: { dir: run.dir, suite: run.config.suite ?? null, model: run.config.model ?? run.runs[0].result.model, effort: run.config.effort ?? run.runs[0].result.effort },
     base: baseArm, heads: headArms, minRel, rule, by, scopes, arms, cells, anecdotal, notes,
   };

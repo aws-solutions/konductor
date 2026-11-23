@@ -22,4 +22,13 @@ module.exports = Object.freeze({
     timeNote: 'stream.jsonl has no timestamps per event; time is only known per turn',
     skillsListing: 'agent-filter',
   }),
+  // What the reports say about the runtime (report/*.js): see CONTRACT.md.
+  report: Object.freeze({ factorialKey: 'kiro', usdNote: null, killNote: null, costWords: null }),
+  // How the cap commands reach a capability on this runtime (cap/cli.js, cap/registry.js): see CONTRACT.md.
+  capabilities: Object.freeze({
+    tools: Object.freeze({ skill: 'get_skill', sop: 'prompt', agent: 'subagent', context: 'resource' }),
+    actingAgents: true,
+    surface: 'agent-filter',
+    proxyCallsPerQuery: 2,
+  }),
 });

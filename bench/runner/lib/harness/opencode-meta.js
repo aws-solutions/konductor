@@ -17,4 +17,16 @@ module.exports = Object.freeze({
   plant: null,
   multiTurnNote: null,
   trace: Object.freeze({ sessionFiles: false, timeNote: null, skillsListing: null }),
+  report: Object.freeze({
+    factorialKey: null,
+    usdNote: 'USD is list price computed by opencode from token counts (input, output, cache read, cache write); it is not a bill. Tokens and calls are summed over the parent session and every subagent session read from the session database.',
+    killNote: 'A timed-out run is charged the rows present at the kill or the arm median, whichever is larger.',
+    costWords: null,
+  }),
+  capabilities: Object.freeze({
+    tools: Object.freeze({ skill: 'skill', sop: 'skill', agent: 'task', context: 'resource' }),
+    actingAgents: false,
+    surface: 'skill-index',
+    proxyCallsPerQuery: 1,
+  }),
 });

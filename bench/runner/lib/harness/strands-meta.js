@@ -36,4 +36,6 @@ module.exports = Object.freeze({
   plant: Object.freeze({ mount: 'forwarder', pinKey: 'strands' }),
   multiTurnNote: 'the launcher runs one prompt per run',
   trace: Object.freeze({ sessionFiles: false, timeNote: null, skillsListing: null }),
+  report: Object.freeze({ factorialKey: null, usdNote: null, killNote: null, costWords: null }),
+  capabilities: null,
 });
