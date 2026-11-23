@@ -1,8 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
+import os
 import unittest
 import zlib
 
 import _paths  # noqa: F401
+
+# The headless GL backend (EGL) unless the host chose one: the render test then runs on a host with no display.
+os.environ.setdefault("MUJOCO_GL", "egl")
 from sim.arm_replay import flat_poses, key_moments, png_bytes
 
 try:
@@ -55,7 +59,7 @@ class RenderTest(unittest.TestCase):
         try:
             frame = render_frame(arm._body.pose(), arm.state.block_mm[:2], size_px=32)
         except RenderUnavailable:
-            self.skipTest("no GL backend on this host (MUJOCO_GL=osmesa needs libOSMesa)")
+            self.skipTest("no GL backend on this host (MUJOCO_GL=egl needs libEGL, osmesa needs libOSMesa)")
         self.assertEqual(frame[:4], b"\x89PNG")
 
 
