@@ -71,9 +71,11 @@ function loadKeyOf({ name, baseHash, initialText }: YamlDraftInput): string {
  * Another workflow opens a fresh draft in the same render: its text, answers
  * and failure start over, and the pause and the check of the one before are
  * aborted. The same workflow loaded again, after a save or because the file
- * changed underneath, replaces the text only while the draft has no unsaved
- * edits; with unsaved edits the typed text is kept and `baseMoved` says the
- * file moved under it. Unmounting aborts both. It never writes the file.
+ * changed underneath, replaces the text only while the draft has nothing
+ * unsaved, which a draft holding the very text that arrived has not: a
+ * finished save moves the baseline on to it and a later reload is taken.
+ * With text that still differs the typed text is kept and `baseMoved` says
+ * the file moved under it. Unmounting aborts both. It never writes the file.
  */
 export function useYamlDraft(input: YamlDraftInput): YamlDraftControls {
   const [draft, dispatch] = useReducer(
@@ -90,7 +92,12 @@ export function useYamlDraft(input: YamlDraftInput): YamlDraftControls {
   // so the page never shows the draft of the workflow before.
   if (loaded.key !== loadKey) {
     setLoaded({ key: loadKey, name });
-    const unsaved = draft.revision !== draft.opened;
+    // The edit count alone is not the dirty check: it stays above `opened`
+    // after any edit, and a save brings those very edits back as the file. A
+    // draft whose text is the text that arrived has nothing left to lose, so
+    // the baseline moves on to it; only text that still differs is unsaved.
+    const unsaved =
+      draft.revision !== draft.opened && draft.text !== input.initialText;
     if (loaded.name !== name || !unsaved) {
       dispatch({ type: 'opened', text: input.initialText });
     } else {
