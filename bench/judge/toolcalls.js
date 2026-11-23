@@ -12,10 +12,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseStream } = require('../runner/lib/stream.js');
-const { runtimeOf, descriptorOf } = require('../runner/lib/harness/runtime.js');
-const { kiroTimeline, claudeTimeline } = require('../runner/lib/trace.js');
+const { streamsOf } = require('../runner/lib/harness/streams.js');
 
-const TIMELINES = { 'kiro-acp': kiroTimeline, 'claude-stream-json': claudeTimeline };
 const INPUT_CHARS = 300;
 // Test output puts its summary at the end, so a long result keeps more of its tail than its head.
 const RESULT_HEAD = 200;
@@ -60,7 +58,7 @@ function entryText(e) {
 function toolSessions(runDir, result) {
   const file = path.join(runDir, 'stream.jsonl');
   if (!fs.existsSync(file)) return [];
-  const timeline = TIMELINES[descriptorOf(runtimeOf(result)).streamFormat];
+  const { timeline } = streamsOf(result);
   if (!timeline) return [];
   const { events } = parseStream(fs.readFileSync(file, 'utf8'));
   const calls = timeline(events).filter((e) => e.kind === 'tool' && !armTooling(e)).map((e) => ({ text: entryText(e) }));

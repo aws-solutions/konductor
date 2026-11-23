@@ -400,7 +400,7 @@ const strictMcp = true;
 
 module.exports = {
   id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
-  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, streams: require('./claude-code-streams.js'), credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };

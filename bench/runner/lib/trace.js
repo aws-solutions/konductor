@@ -312,9 +312,6 @@ function failedSkillSplit(result) {
   return split && Object.values(split).some((n) => n > 0) ? split : null;
 }
 
-// The timeline reader for each stream format. A format with none is read as kiro-cli updates, as before the descriptors.
-const TIMELINES = { 'claude-stream-json': claudeTimeline };
-
 /**
  * The trace of one run directory (the one holding result.json and stream.jsonl).
  * opts.instructions adds inferred pointers to instruction text; opts.repoRoot says where the arm's commit can be read.
@@ -328,7 +325,8 @@ function buildTrace(runDir, { instructions = false, repoRoot = null } = {}) {
   const desc = descriptorOf(harness);
   if (!desc.supports.trace) throw new Error(`trace reads ${joinNames(supporting('trace').map((d) => d.proseName))} streams; this run is ${/^[aeiou]/i.test(desc.proseName) ? 'an' : 'a'} ${desc.proseName} run`);
   const { events } = parseStream(streamText);
-  const entries = (TIMELINES[desc.streamFormat] ?? kiroTimeline)(events);
+  // The harness's own timeline reader (harness/streams.js); every runtime that supports trace has one.
+  const entries = require('./harness/streams.js').streamsOf(result).timeline(events);
   const command = readText(path.join(runDir, 'command.txt'));
   // The prompt is in prompt.txt when the harness passed it on stdin, else the longest quoted argument of the saved command line.
   const promptFile = readText(path.join(runDir, 'prompt.txt'));
