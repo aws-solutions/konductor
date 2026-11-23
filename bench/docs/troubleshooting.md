@@ -37,3 +37,14 @@ bench stops early, before it spends, and says why. Find the message (or its star
 | `refused before calling ...: spent X + worst 15 would pass the cap Y` | the ledger check before a paid call | the work so far is saved; rerun the same command with a larger approved cap to resume |
 | `... gave no finished reply ...; counted 15 credits` | the call ran but returned nothing usable (timeout, service error, expired sign-in) | rerun the same command; finished calls are read back free |
 | `the reply of ... could not be read` | a model replied without the JSON it was asked for | it was moved aside as `.bad-N.json`; a rerun asks again and counts again |
+
+## An owner script runs old code
+
+The owner's scripts in `<workspace>/scripts/` are launchers. They run the copy in the ops checkout
+(`<workspace>/worktrees/ops`), not the branch head ([bench/ops/README.md](../ops/README.md)).
+
+| You see | Why | What to do |
+| --- | --- | --- |
+| A fix that landed on `feat/bench-pilot-nk` does not show in an owner script | the ops checkout is still on an older commit | move it: `git -C <workspace>/worktrees/ops fetch origin feat/bench-pilot-nk`, then `git -C <workspace>/worktrees/ops checkout --detach FETCH_HEAD` |
+| `No such file` for a script that is new on the branch | it has no launcher yet | after moving the checkout, `bash <workspace>/worktrees/ops/bench/ops/make-launchers.sh <workspace> --replace` |
+| `set KONDUCTOR_WS to the owner workspace` | a versioned script was run directly, not through its launcher | run the launcher in `<workspace>/scripts/`, or set `KONDUCTOR_WS` |
