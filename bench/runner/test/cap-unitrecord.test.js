@@ -67,3 +67,46 @@ test('a reader refuses an unknown major and marks a record stale when the unit c
     assert.match(stale.stale.why, /the unit changed after the record was made/);
   } finally { r.cleanup(); }
 });
+
+// Per-task gaps and the reviewers' task grades (KEEP, WEAK, BAD) printed beside them: a reader of a pilot record sees
+// which gaps come from tasks a review already distrusted.
+const { taskGaps, readTaskGrades, renderUnitRecord } = require('../../cap/unitrecord.js');
+
+const row = (task, reading, arm, replicate, median) => ({ task, batch: 'b1', reading, arm, replicate, median, judges: [] });
+
+test('taskGaps is the mean with median minus the mean without median, per task and reading, null when one is missing', () => {
+  const block = { scores: [
+    row('t2', 'A', 'with', 0, 4), row('t2', 'A', 'without', 0, 2), row('t2', 'B', 'with', 0, 3), row('t2', 'B', 'without', 0, null),
+    row('t1', 'A', 'with', 0, 5), row('t1', 'A', 'with', 1, 3), row('t1', 'A', 'without', 0, 1), row('t1', 'A', 'without', 1, 1), row('t1', 'A', 'aa', 0, 5),
+  ] };
+  assert.deepEqual(taskGaps(block), [{ task: 't2', A: 2, B: null }, { task: 't1', A: 3, B: null }]);
+  assert.deepEqual(taskGaps({ scores: [] }), []);
+});
+
+test('readTaskGrades reads a review file, and refuses an unknown grade or a task the baseline does not have', () => {
+  const r = rig();
+  try {
+    const file = path.join(r.root, 'review.json');
+    assert.equal(readTaskGrades(file, ['b1-0']), null, 'no file: no grades');
+    fs.writeFileSync(file, JSON.stringify({ format_version: 1, reviewers: ['x', 'y'], rule: 'the lower of the two', grades: { 'b1-0': 'BAD', 'b1-1': 'KEEP' } }));
+    assert.deepEqual(readTaskGrades(file, ['b1-0', 'b1-1', 'b1-2']), { reviewers: ['x', 'y'], rule: 'the lower of the two', grades: { 'b1-0': 'BAD', 'b1-1': 'KEEP' } });
+    assert.throws(() => readTaskGrades(file, ['b1-0']), /b1-1 is not a task of the baseline/);
+    fs.writeFileSync(file, JSON.stringify({ format_version: 1, reviewers: ['x'], grades: { 'b1-0': 'GOOD' } }));
+    assert.throws(() => readTaskGrades(file, ['b1-0']), /b1-0: grade "GOOD" is not KEEP, WEAK or BAD/);
+  } finally { r.cleanup(); }
+});
+
+test('the rendered record lists each task with its gaps, and its review grade beside them when there is one', () => {
+  const r = rig();
+  try {
+    const plain = renderUnitRecord(r.record);
+    assert.match(plain, /\| task \| grade \| quick gap A \| quick gap B \| deep gap A \| deep gap B \|/);
+    const num = '-?\\d+\\.\\d\\d';
+    assert.match(plain, new RegExp(`\\| b1-0 \\| - \\| ${num} \\| ${num} \\| ${num} \\| ${num} \\|`));
+    const { A, B } = taskGaps(r.record.quick).find((g) => g.task === 'b1-0');
+    const graded = renderUnitRecord(r.record, { reviewers: ['x', 'y'], rule: 'the lower of the two', grades: { 'b1-0': 'BAD' } });
+    assert.ok(graded.includes(`| b1-0 | BAD | ${A.toFixed(2)} | ${B.toFixed(2)} |`), 'the grade sits beside the gaps of its own task');
+    assert.match(graded, /\| b1-1 \| - \|/);
+    assert.match(graded, /Task grades by x and y \(the lower of the two\): read a BAD task's gap as noise/);
+  } finally { r.cleanup(); }
+});

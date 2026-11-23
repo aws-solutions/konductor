@@ -23,7 +23,7 @@ const { createStubProvider, assertStubRun, isStubRun } = require('./stubprovider
 const { STUB_SUBJECT_MODEL, STUB_JUDGES } = require('./kprun.js');
 const { STAGE_OF_KIND, KIND_LABEL, UNIT_BASELINES_DIR, PAID_FRAME, listUnits, unitManifest, renderUnitMap } = require('./units.js');
 const { readJsonFile } = require('./checkedjson.js');
-const { UNIT_SCHEMA_ID, writeUnitRecord, renderUnitRecord } = require('./unitrecord.js');
+const { UNIT_SCHEMA_ID, writeUnitRecord, readUnitRecord, renderUnitRecord, readTaskGrades } = require('./unitrecord.js');
 const { WORST_PER_CALL, ledgerSpent } = require('./paidcall.js');
 const { createKiroProvider } = require('./kiroprovider.js');
 const { minCounted } = require('./labels.js');
@@ -106,6 +106,29 @@ function blockers({ unit, row, baselinesDir }) {
 }
 
 /**
+ * The review grades of a unit's baseline tasks (`<kind>-<name>/review.json` beside baseline.json; unitrecord.js
+ * readTaskGrades), or null when there is no baseline or no review. They only label the rendered record.
+ */
+function reviewOf({ kind, name, baselinesDir, baseline }) {
+  if (!baseline) return null;
+  const ids = baseline.batches.flatMap((b) => b.tasks.map((t) => t.id));
+  return readTaskGrades(path.join(baselinesDir, `${kind}-${name}`, 'review.json'), ids);
+}
+
+/**
+ * Redraws the .md of a finished stage record `file` with the review grades of its baseline (`cap unit-stage --render`),
+ * for a review written after the run. The JSON record is read and checked, never changed. Returns the markdown.
+ */
+function rerenderUnitRecord({ file, baselinesDir = UNIT_BASELINES_DIR }) {
+  const record = readUnitRecord(file);
+  const baseFile = path.join(baselinesDir, `${record.kind}-${record.name}`, 'baseline.json');
+  const baseline = fs.existsSync(baseFile) ? loadUnitBaseline(baseFile) : null;
+  const markdown = renderUnitRecord(record, reviewOf({ kind: record.kind, name: record.name, baselinesDir, baseline }));
+  fs.writeFileSync(file.replace(/\.json$/, '.md'), markdown);
+  return markdown;
+}
+
+/**
  * Runs one unit's stage and writes `<outDir>/<runId>/stage-<n>/<kind>-<name>.json` and its .md. Judgments and paid
  * replies are saved under `<outDir>/<runId>`, so a rerun of the same run id resumes where it stopped.
  * @param {object} o
@@ -168,7 +191,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
     stale: { value: false, why: null }, signoff: { by: null, date: null, decision: null, note: null },
   };
   const file = writeUnitRecord(path.join(outDir, runId, `stage-${record.stage}`, `${kind}-${name}.json`), record);
-  const markdown = renderUnitRecord(record);
+  const markdown = renderUnitRecord(record, reviewOf({ kind, name, baselinesDir, baseline }));
   fs.writeFileSync(file.replace(/\.json$/, '.md'), markdown);
   return { record, file, markdown };
 }
@@ -242,6 +265,12 @@ const fmt = (n) => n.toLocaleString('en-US');
 
 /** The command: `--estimate` prints the free estimate of one stage (or all with no --kind); else runs one unit on the stub. */
 function cmdUnitStage(opts) {
+  if (val(opts.render)) {
+    const baselinesDir = val(opts.baselines) ? path.resolve(val(opts.baselines)) : UNIT_BASELINES_DIR;
+    const file = path.resolve(val(opts.render));
+    console.log(`${rerenderUnitRecord({ file, baselinesDir })}\nwrote ${file.replace(/\.json$/, '.md')}`);
+    return;
+  }
   const repo = repoRootOf(opts);
   const kinds = val(opts.kind) ? [val(opts.kind)] : Object.keys(STAGE_OF_KIND);
   if (opts.estimate) {
@@ -324,4 +353,4 @@ function cmdUnits(opts) {
   if (val(opts.out)) { fs.writeFileSync(path.resolve(val(opts.out)), text); console.log(`wrote ${path.resolve(val(opts.out))}`); } else process.stdout.write(text);
 }
 
-module.exports = { COSTS, commitOf, PILOT_SUBJECT, PILOT_JUDGES, PILOT_WRITER, baselineProblems, loadUnitBaseline, runUnitStage, estimateStage, cmdUnitStage, cmdUnits };
+module.exports = { COSTS, commitOf, PILOT_SUBJECT, PILOT_JUDGES, PILOT_WRITER, baselineProblems, loadUnitBaseline, runUnitStage, rerenderUnitRecord, estimateStage, cmdUnitStage, cmdUnits };
