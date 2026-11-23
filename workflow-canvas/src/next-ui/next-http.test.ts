@@ -505,6 +505,26 @@ describe('createNextPorts, when a call cannot be made', () => {
     );
   });
 
+  it('keeps the fix of an error, which says what to do about it', async () => {
+    const { fetchFn } = serverOf({
+      status: 409,
+      body: {
+        error: 'The workflow is not trusted.',
+        fix: 'Run flow trust and open the address again.',
+        code: 'trust_required',
+      },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const failed = await ports.loadExtras().catch((error: unknown) => error);
+
+    expect(failed).toBeInstanceOf(ApiError);
+    expect((failed as ApiError).message).toBe(
+      'The workflow is not trusted. Run flow trust and open the address again.',
+    );
+    expect((failed as ApiError).code).toBe('trust_required');
+  });
+
   it('says the server did not answer when the call fails', async () => {
     const fetchFn = vi.fn(() =>
       Promise.reject(new TypeError('network error')),

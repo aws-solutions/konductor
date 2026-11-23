@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError } from '../api/api';
+import { bodyOf, withTimeout } from '../api/http-api';
+import { BAD_REPLY, errorCodeOf, errorMessageOf, isObject } from '../api/parse';
 import {
   parseWorkflowExtras,
   type WorkflowExtras,
 } from '../api/workflow-extras';
 import type { AgentOption } from '../designer-view/field-rules';
-import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
+import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import type { ReadEvents } from '../run-client/follow-run-events';
 import { runEventsPath } from '../run-client/follow-run-events';
@@ -16,15 +18,15 @@ import type { ListRuns } from '../run-view/use-run-history';
  * not have yet: the extra fields of the workflow, the agents, the past runs,
  * the events of a run and a check of a text that keeps the lines of each
  * stage. They talk to the relative `/api`, as the client does, so the page
- * and the server share one origin.
+ * and the server share one origin, and they carry the transport and the
+ * error reading of `api/http-api.ts` and `api/parse.ts`, so an error of
+ * these calls says what to do about it in the same words.
  */
 
 type Fetch = typeof fetch;
 
 const UNREACHABLE =
   'The server did not answer. Check that it is still running.';
-
-const BAD_REPLY = 'The server sent a reply that this page does not understand.';
 
 const NO_SESSION =
   'The page has no session with the server. Reload it with a fresh launch address.';
@@ -50,51 +52,9 @@ export interface NextPorts {
   readonly readEvents: ReadEvents;
   /** Checks a text and keeps the lines of each stage of its view. */
   readonly validate: (
-    request: CheckRequest,
+    request: ValidateRequest,
     signal: AbortSignal,
   ) => Promise<CheckAnswer>;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function messageOf(body: unknown, status: number): string {
-  const error = isObject(body) ? body.error : undefined;
-  return typeof error === 'string' && error !== ''
-    ? error
-    : `The server answered ${status}.`;
-}
-
-async function bodyOf(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch (error) {
-    // Text that is not JSON is a bad reply; a body that stopped arriving is
-    // no reply at all, so it counts as no answer.
-    if (error instanceof SyntaxError) return undefined;
-    throw error;
-  }
-}
-
-// Gives the call a signal that aborts after the timeout or when `outer` does,
-// and leaves no timer or listener behind.
-async function withTimeout<T>(
-  outer: AbortSignal | undefined,
-  timeoutMs: number,
-  call: (signal: AbortSignal) => Promise<T>,
-): Promise<T> {
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  const timer = setTimeout(abort, timeoutMs);
-  if (outer?.aborted) abort();
-  outer?.addEventListener('abort', abort, { once: true });
-  try {
-    return await call(controller.signal);
-  } finally {
-    clearTimeout(timer);
-    outer?.removeEventListener('abort', abort);
-  }
 }
 
 function agentOf(value: unknown): AgentOption {
@@ -341,7 +301,7 @@ export function createNextPorts(
     const auth = headers();
     let reply: { response: Response; body: unknown };
     try {
-      reply = await withTimeout(outer, timeoutMs, async (signal) => {
+      reply = await withTimeout(timeoutMs, outer, async (signal) => {
         const response = await fetchFn(path, {
           ...init,
           signal,
@@ -355,7 +315,13 @@ export function createNextPorts(
     const { response, body } = reply;
     if (response.ok) return body;
     if (response.status === SESSION_LOST_STATUS) sessionLost();
-    throw new ApiError(messageOf(body, response.status), response.status);
+    // The sentence of the body with its `fix`, which says what to do about
+    // the error, and the `code`, which tells a proxy's 401 from the server's.
+    throw new ApiError(
+      errorMessageOf(body) ?? `The server answered ${response.status}.`,
+      response.status,
+      errorCodeOf(body),
+    );
   };
   return {
     loadExtras: async (signal) =>
