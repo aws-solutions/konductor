@@ -75,6 +75,7 @@ set -u -o pipefail
 SELF=$(readlink -f "${BASH_SOURCE[0]}")
 SELF_DIR=$(dirname "$SELF")
 . "$SELF_DIR/state-dir.sh"
+bench_strict
 AC_STATE_DIR=$(bench_state_dir "${AC_STATE_DIR:-}") || exit 1
 export AC_STATE_DIR
 for a in "$@"; do
