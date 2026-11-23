@@ -29,6 +29,17 @@ function contractMembers(title) {
 const REQUIRED = contractMembers('Required members');
 const OPTIONAL = contractMembers('Optional members');
 
+/** Problems with `harness.streams` (CONTRACT.md, `streams`): finalText always, timeline and stopEvent when the descriptor supports them. */
+function streamsProblems(harness) {
+  const s = harness.streams;
+  if (!s || typeof s !== 'object') return ['streams must be an object with finalText (CONTRACT.md, "streams")'];
+  const out = [];
+  if (typeof s.finalText !== 'function') out.push('streams.finalText must be a function');
+  if (harness.meta?.supports?.trace && typeof s.timeline !== 'function') out.push('streams.timeline must be a function when meta.supports.trace');
+  if (harness.meta?.supports?.stopOn && typeof s.stopEvent !== 'function') out.push('streams.stopEvent must be a function when meta.supports.stopOn');
+  return out;
+}
+
 /** Problems with `harness`'s members against the contract tables; `id` is the name it must carry. */
 function memberProblems(id, harness) {
   const out = [];
@@ -37,10 +48,12 @@ function memberProblems(id, harness) {
   for (const name of OPTIONAL) {
     const v = harness[name];
     if (v === undefined) continue;
+    if (name === 'streams') continue;
     const list = name === 'requiredPaths' || name === 'credentialEnv';
     if (list ? !(Array.isArray(v) && v.every((p) => typeof p === 'string')) : typeof v !== 'function') out.push(`${name} must be ${list ? 'a string array' : 'a function'} when present`);
   }
   if (harness.cleanupRun && typeof harness.describeCleanup !== 'function') out.push('describeCleanup is required when cleanupRun is defined');
+  out.push(...streamsProblems(harness));
   return out;
 }
 

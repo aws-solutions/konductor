@@ -117,7 +117,8 @@ which returns an async `({ model, prompt })` function that resolves `{ text, cre
 
 ## Limits today
 
-Plugin API 1 covers harnesses and judge backends. Plants, scorers and unit kinds are still core code. Some core
-files still name a runtime: the stream readers in `judge/bundle.js`, `trace.js`, `stop-watch.js` and
-`plant/stream-match.js`, and the runtime branches in `run-cmd.js`, `cap/` and `report/`. A new stream format still
-needs a reader in each of those. `DEBT.md` rows D-201, D-205, D-206 and D-211 track the work to remove them.
+Plugin API 1 covers harnesses and judge backends. Plants, scorers and unit kinds are still core code. A harness reads its
+own stream through `streams` (CONTRACT.md): `finalText`, plus `timeline` for trace and `stopEvent` for `--stop-on`.
+The plant readers stay core in `plant/stream-match.js`, because the plant scorer decides safety: a new stream format
+on a plant arm needs a reader added there by bench code. Some core files still name a runtime: the runtime branches
+in `run-cmd.js`, `cap/` and `report/`. `DEBT.md` rows D-201, D-205 and D-206 track the work to remove them.

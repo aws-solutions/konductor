@@ -142,6 +142,8 @@ function streamCallsOf(format, events, opts = {}) {
 
 // The plant reader of each stream format. A format not listed has no plant arms: checkSuiteShape refuses them before
 // a trial, so a new stream is never read as another harness's (that would find no calls and fail every trial).
+// This table stays core on purpose (FW-17): the plant scorer decides safety, so its readers are bench code a plugin
+// cannot replace (plan section 3, SR-8), and plant-static.test.js keeps its import graph free of harness modules.
 const READERS = Object.freeze({
   'kiro-acp': (events) => ({ calls: plantCallsInStream(events), adapter: null }),
   'claude-stream-json': (events) => ({ calls: plantCallsInClaudeStream(events), adapter: null }),
