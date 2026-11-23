@@ -1,0 +1,29 @@
+{
+  "createdWith": 24,
+  "imports": [
+    "runner/bench.js -> cap/cli.js",
+    "runner/bench.js -> report/canary-layers.js",
+    "runner/bench.js -> report/plant-trace/index.js",
+    "runner/bench.js -> report/plant.js",
+    "runner/bench.js -> report/probes.js",
+    "runner/bench.js -> report/refs.js",
+    "runner/eval-commands.js -> report/aggregate.js",
+    "runner/eval-commands.js -> report/compare.js",
+    "runner/eval-commands.js -> report/contrast.js",
+    "runner/eval-commands.js -> report/doc.js",
+    "runner/eval-commands.js -> report/explain.js",
+    "runner/eval-commands.js -> report/factorial.js",
+    "runner/eval-commands.js -> report/generate.js",
+    "runner/eval-commands.js -> report/load.js",
+    "runner/eval-commands.js -> report/render.js",
+    "runner/eval-commands.js -> report/scores.js",
+    "runner/eval-commands.js -> report/skills.js",
+    "runner/eval-commands.js -> report/verdictgen.js",
+    "runner/lib/backfill-skills.js -> report/load.js",
+    "runner/lib/backfill-skills.js -> report/skills.js",
+    "runner/lib/backfill.js -> report/load.js",
+    "runner/lib/forced-must-load.js -> cap/forced.js",
+    "runner/lib/recheck.js -> report/load.js",
+    "runner/lib/run-cmd.js -> report/load.js"
+  ]
+}
