@@ -1,7 +1,7 @@
 {
   "id": "t11-twin-pricing-validation",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "bugfix",
   "role": "developer",
   "questions": "allowed",
@@ -153,7 +153,8 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-23)",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

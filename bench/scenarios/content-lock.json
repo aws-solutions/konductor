@@ -172,8 +172,8 @@
       "sha256": "b3e1c4ad51088b917fa18a1271dec51ba5eee8093382ed75fcc96d6d36c9a23b"
     },
     "t11-merge-pricing-branches": {
-      "version": 4,
-      "sha256": "7b661987dbefd54f6389555b1670cf7c748d054ecbe34c3ea316fe7ec52d7915"
+      "version": 5,
+      "sha256": "c23aac3d3add51158d2ff4c50f1b2c8ca3a1d5e0ef977fb674c045ceef6b057e"
     },
     "t11-resume-csv-export": {
       "version": 2,
@@ -181,8 +181,8 @@
       "legacyRecheckVersion": 2
     },
     "t11-twin-pricing-validation": {
-      "version": 2,
-      "sha256": "46368c50108a1a30af6f336fc6b2f7a604a6f035c7663299f4c46775de5480c0",
+      "version": 3,
+      "sha256": "ddea36f998e0bbe5d73bed3989a96490d594c7ff3dfbed863c52d272e61bc9fb",
       "legacyRecheckVersion": 2
     },
     "t11-wide-settings-refactor": {

@@ -114,3 +114,13 @@ hidden tests only measure by output. Each has Fail, Partial and Pass anchors. No
 change; gates stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck: pending
 (`handEdited.version` 3).
 The v3 hash also covers the hidden-test regex change that LITE fixes 2-6 landed in place (52f23a25) under the same number.
+
+## t11-merge-pricing-branches v5 and t11-twin-pricing-validation v3 (2026-11-23, mate debt worker, claude; DEBT D-119)
+
+The shared fixture's `npm test` and CI ran `node --test test/`, a bare directory, which Node 22 and later read as a
+file, so the run failed before any test. The fixture is a git repository (`dotgit/`), so the fix is a new commit on
+`main` in that history ("Run the test files by name pattern in npm test and CI", same author and a date after the
+last commit): `package.json` and `.github/workflows/ci.yml` now run `node --test test/*.test.js`. The two feature
+branches do not touch either file, so the merge the task asks for is unchanged. No prompt, check, key, hidden test or
+answer changed. Gates unchanged: merge reference 100, stub 14.6, lazy 29.3, alt 100; twin reference 100, stub 14.3,
+lazy 35.7, alt 100. Non-Claude recheck: pending (`handEdited.version` 5 and 3).

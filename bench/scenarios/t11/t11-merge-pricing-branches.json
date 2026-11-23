@@ -1,7 +1,7 @@
 {
   "id": "t11-merge-pricing-branches",
   "class": "hard",
-  "version": 4,
+  "version": 5,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -150,9 +150,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate wave 11/12 review-fix worker (2026-11-21)",
+    "editor": "mate debt worker (2026-11-23)",
     "log": "HAND-EDITS.md",
-    "version": 4
+    "version": 5
   },
   "pilot": {
     "scores": {},
