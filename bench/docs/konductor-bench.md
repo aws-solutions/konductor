@@ -106,18 +106,10 @@ run where the target skill never loaded does not count toward that skill's effec
 
 ## Three run levels
 
-The same pack, scorer and report, at three sizes:
-
-| | LITE | STANDARD | FULL |
-| --- | --- | --- | --- |
-| Use it for | a quick check after any change | a broader look; the only level where tuning is allowed | the pre-registered verdict |
-| Tasks | about 16: one per phase, plus a twin and a control | every DEV task, about 50 | the whole pack; the verdict from HELD-OUT tasks only |
-| Arms | `konductor` against a stored `vanilla` baseline | all three | all three, plus drop-one and forced-load arms |
-| Runtime | Kiro CLI | Kiro CLI, plus Claude Code on 15 tasks | Kiro CLI and Claude Code |
-| Runs | 1 per task | 2 per arm per task | 3 per arm per task; 5 per side on each unit's effect tasks |
-| May say | "no regression seen", "this skill failed to load", "this task is broken" | a direction, labelled "DEV, not a verdict" | one verdict word, and keep-or-prune evidence per unit |
-
-Pick a level with `run --level lite|standard|full`. FULL needs `--prereg FILE`. Only FULL may give a verdict.
+The same pack, scorer and report run at three sizes: LITE (a quick check after any change), STANDARD (a broader look,
+the only level where tuning is allowed) and FULL (the pre-registered verdict). Only FULL may give a verdict. Tasks,
+arms, runs, costs and caps for each are in one table in [run-levels.md](run-levels.md). Pick a level with
+`run --level lite|standard|full`; FULL needs `--prereg FILE`.
 
 **DEV and HELD-OUT.** Every task is split by a fixed hash of its id, decided before any run: one in three is DEV,
 the rest HELD-OUT. Tuning happens on DEV only. The verdict comes from HELD-OUT only, so nothing was tuned on the
