@@ -331,10 +331,11 @@ function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BAS
     `controls loaded: convention control (${convention} tasks) and dose ladder (${pairs} pairs)`,
     `tasks: ${tasks}; a reading needs ${minCounted(tasks)} of them counted (the copied rule, 12 of every 16, rounded up)`,
   ];
-  if (paid) lines.push(`ledger ${paid.ledger ?? '(none given)'}: spent ${spent}; cap ${Number.isFinite(paid.cap) ? paid.cap : '(none given)'}; ${spent + e.credits.worst <= paid.cap ? 'the worst case fits' : 'the worst case does not fit: the run stops at the cap and a rerun with a larger cap resumes it'}`);
-  if (baseline) lines.push(`baseline ${baseline.unit_sha256 === unit.sha256 ? 'fresh' : 'stale'}, signed off by ${signedOffBy(baseline) ?? 'nobody yet'}`);
   // With a run id, the plan reads the saved replies of that run: a rerun pays only the calls not made yet.
   const plan = paid && runId && baseline && depths.length === 1 && depths[0] === 'quick' ? planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir, subjectModel, judges }) : null;
+  const fitText = plan ? 'what this step needs is below, by section' : (spent + e.credits.worst <= paid?.cap ? 'the worst case fits' : 'the worst case does not fit: the run stops at the cap and a rerun with a larger cap resumes it');
+  if (paid) lines.push(`ledger ${paid.ledger ?? '(none given)'}: spent ${spent}; cap ${Number.isFinite(paid.cap) ? paid.cap : '(none given)'}; ${fitText}`);
+  if (baseline) lines.push(`baseline ${baseline.unit_sha256 === unit.sha256 ? 'fresh' : 'stale'}, signed off by ${signedOffBy(baseline) ?? 'nobody yet'}`);
   if (plan) {
     const line = (label, t, paidNow) => `${label}: ${t.calls} calls, ${t.cached} cached (free), ${t.new} new${paidNow ? `, ${fmt(t.new * WORST_PER_CALL)} counted at ${WORST_PER_CALL} per call` : ' (not run in this step)'}`;
     lines.push(`run ${runId}, by section${controlsOnly ? ' (controls only: the unit is not run in this step)' : ''}:`);
