@@ -447,6 +447,8 @@ const USAGE = `Usage:
   node bench/runner/bench.js calibrate export-reference --tasks ID,ID --criteria ID,ID --out DIR [--seed S] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (free, no model call: a blind sheet of the named pack criteria over each task's reference, partial solutions and keyword stub laid on its fixture)
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE] [--criteria-pack quality]
+  node bench/runner/bench.js plugins [--json]
+       (free: every harness and judge backend, built-in or from bench/plugins, with each plugin's version, api and hash, and any refused plugin folder with its reason)
   node bench/runner/bench.js list-arms [--arms a,b,c] [--repo-root DIR]
 
 ${ARM_SYNTAX}
@@ -506,6 +508,7 @@ async function main(argv) {
   if (problem) { console.error(`bench: ${problem}`); process.exitCode = 2; return; }
   if (cmd === 'run') return cmdRun(opts);
   if (cmd === 'list-arms') return cmdListArms(opts);
+  if (cmd === 'plugins') return require('./lib/plugins-cmd.js').cmdPlugins(opts);
   if (cmd === 'pr-plan') return cmdPrPlan(opts);
   if (cmd === 'contrast') return evalCommands.cmdContrast(opts);
   if (cmd === 'judge') return evalCommands.cmdJudge(opts);
