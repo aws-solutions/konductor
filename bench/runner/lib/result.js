@@ -6,7 +6,7 @@ const { resultFields, capInvocationOf } = require('./skills.js');
 const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./check-matcher.js');
 const { autonomyFields } = require('./autonomy.js');
 const { provenanceOf } = require('./runconfig.js');
-const { kiroInstallHarness, costUnitOf, DEFAULT_RUNTIME } = require('./harness/runtime.js');
+const { kiroInstallHarness, costUnitOf, DEFAULT_RUNTIME, RUNTIMES } = require('./harness/runtime.js');
 const { isComparableMode } = require('./isolate.js');
 const { oracleResult } = require('./oracle.js');
 const { forcedLoadResult } = require('./forced-must-load.js');
@@ -216,8 +216,11 @@ function skippedResult({ arm, task, replicate, config, env, reason = 'budget rea
   return { ...errorResult({ arm, task, replicate, config, env, message: reason }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(costUnitOf(arm.runtime) === 'usd' ? { costCensored: false } : {}) };
 }
 
+/** Schema errors of `result`, plus one when its `harness` is not a registered runtime. */
 function validateResult(result) {
-  return validate(loadSchema('result'), result);
+  const errors = validate(loadSchema('result'), result);
+  if (typeof result?.harness === 'string' && !RUNTIMES.includes(result.harness)) errors.push(`$.harness: "${result.harness}" is not a registered harness (${RUNTIMES.join(', ')})`);
+  return errors;
 }
 
 module.exports = { serviceCancelled, streamFields, buildResult, errorResult, skippedResult, classifyStatus, validateResult, crossCheckCredits };
