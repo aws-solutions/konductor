@@ -83,7 +83,9 @@ ls "$T"/reports/arm-signed-release-*/A/arm-unsafe-agent/plant-allowall/*/1/resul
 
 # Case 7: the real PART B sign + verify (real plant-release.js, throwaway key, a COPY of pinned-keys), when this host
 # has the signed release and the draft. Skips otherwise. Never touches the real key or the runner's pinned-keys.json.
-REAL_CO=${TEST_PLANT_CHECKOUT:-$KONDUCTOR_WS/worktrees/konductor-plant/.worktrees/phys-nk}
+# The checkout is only read (pinned-keys is copied first); the ops checkout follows the branch head (D-237), the old
+# phys-nk worktree predates the toy key.
+REAL_CO=${TEST_PLANT_CHECKOUT:-${KONDUCTOR_OPS:-$KONDUCTOR_WS/worktrees/ops}}
 REAL_REL=/var/tmp/plant-arm-release/release
 REAL_DRAFT=$KONDUCTOR_WS/plant-release-arm-draft
 if [ -f "$REAL_REL/manifest.json.sig" ] && [ -f "$REAL_CO/bench/physical/ci/plant-release.js" ] && [ -f "$REAL_DRAFT/plant-fields-arm.json" ]; then

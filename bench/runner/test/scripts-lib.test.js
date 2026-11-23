@@ -144,6 +144,42 @@ test('every lib/sh.js command a script calls exists, and no script under bench/s
   assert.ok(calls >= 6, `only ${calls} sh.js calls found`);
 });
 
+test('bench_strict: the first failing command stops the script and says where; $( ) and conditions stay quiet', (t) => {
+  const d = tmp(t);
+  const stateDir = path.join(LIB, '..', 'state-dir.sh');
+  const f = path.join(d, 'strict.sh');
+  put(f, `. ${JSON.stringify(stateDir)}\nbench_strict\nx=$(false; echo y)\nif false; then :; fi\nf() { [ -n "" ] && echo no; }\nf || echo "f failed quietly"\nfalse\necho not-reached\n`);
+  const r = spawnSync('bash', [f], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, 'f failed quietly\n');
+  assert.equal(r.stderr, 'strict.sh: line 7: exit 1: false (stopped by set -e)\n');
+  // shortcut: run-real-pilot.sh gets bench_strict with FW-2 (another session owns its spend lines).
+  for (const s of ['monitor.sh', 'run-judging.sh', 'run-skill-bench.sh', 'run-after-capability.sh']) {
+    assert.match(fs.readFileSync(path.join(LIB, '..', s), 'utf8'), /state-dir\.sh"\n(?:#.*\n)*bench_strict\n/, `${s} calls bench_strict right after sourcing state-dir.sh`);
+  }
+});
+
+test('sh.js smoke and jsummary print what run-judging.sh reads', (t) => {
+  const d = tmp(t);
+  const out = path.join(d, 'smoke.txt');
+  put(out, 'noise\n{"model":"a"}\n{"model":"b","error":"denied"}\n{"model":"c","jsonOk":false}\n');
+  assert.deepEqual(run('smoke', [out, '0', 'a']), { text: 'OK a', code: 0 });
+  assert.deepEqual(run('smoke', [out, '0', '']), { text: 'OK a\nFAIL b: denied | c: reply was not valid JSON', code: 1 });
+  assert.deepEqual(run('smoke', [out, '2', 'a z']), { text: 'OK a\nFAIL z: no result printed | smoke script exit status 2', code: 1 });
+  const r = spawnSync(process.execPath, [path.join(LIB, 'sh.js'), 'smoke', out, '0', 'b'], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, 'FAIL b: denied\n');
+  const study = path.join(d, 'S'), rj = path.join(study, 'reports-judged');
+  put(path.join(study, 'claude', 'judgments.json'), { backend: 'opencode', subjectModel: 'm', judges: ['j1'], spentUsd: 1, spentUsdByJudge: { j1: 1 }, invocations: [{ calls: 2, cachedCalls: 1 }], rubric: [{ judge: 'j1', judgeError: 'x' }] });
+  put(path.join(rj, 'platform-claude', 'verdict.json'), { arms: [{ label: 'k', verdict: 'same' }] });
+  const s = run('jsummary', [study, rj, 'claude=0;gpt=not-run;', '15', 'claude gpt']);
+  assert.match(s, /^Judging summary, generated \d{4}-/);
+  assert.match(s, /Budget cap per cell and command: \$15/);
+  assert.match(s, /- claude: judge exit status 0\n    backend opencode, subject m, judges j1\n    spent \$1\.0000 over 1 invocation\(s\) \(j1 \$1\.0000\)\n    calls 2 \(1 served from cache\), records: 1 rubric, 0 pairwise, 0 graded\n    parse failures 0, judge errors 1 \(j1 1\), runs not judged 0\n    judge errors were not cached/);
+  assert.match(s, /- gpt: judge exit status not-run\n    judgments.json missing or unreadable/);
+  assert.match(s, /claude:\n- k \| same\ngpt:\n    report missing/);
+});
+
 test('the sh.js command line: prints each answer on one line, exit 3 when the repo has no hygiene scanner, 64 on an unknown command', (t) => {
   const d = tmp(t);
   const sh = (...a) => spawnSync(process.execPath, [path.join(LIB, 'sh.js'), ...a], { encoding: 'utf8' });
