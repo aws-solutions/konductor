@@ -68,6 +68,7 @@ BUDGET_USD=${BUDGET_USD:-15}
 CONCURRENCY=${CONCURRENCY:-2}
 . "$(dirname "$SELF")/state-dir.sh"
 STATE_DIR=$(bench_state_dir "${STATE_DIR:-}") || exit 1
+hj() { node "$(dirname "$SELF")/lib/sh.js" "$@"; } # JSON reads (read only)
 EXPECT_RUNS=${EXPECT_RUNS:-}
 EXPECT_CALLS=${EXPECT_CALLS:-}
 REQUIRED_COMMIT=${REQUIRED_COMMIT:-}
@@ -301,7 +302,7 @@ check_prior_state() {
   cached=0
   [ -d "$cache" ] && cached=$(find "$cache" -name '*.json' 2>/dev/null | wc -l)
   if [ -f "$j" ]; then
-    backend=$(node -e 'try{process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).backend||"kiro"))}catch(e){process.stdout.write("unreadable")}' "$j")
+    backend=$(hj backend "$j")
     if [ "$backend" != "opencode" ]; then
       say "FAILED at step 1: $j was written by the '$backend' backend; one backend per study. Move it aside by hand if you really want to rejudge."
       return 1
@@ -430,14 +431,7 @@ step3_judge() {
 # marks those records with a judgeError). Failed calls are not cached, so a rerun retries exactly those.
 check_cell_errors() {
   local c=$1 info total budget
-  info=$(node -e '
-    const fs = require("fs");
-    try {
-      const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-      const e = [...(j.rubric || []), ...(j.pairwise || []), ...(j.graded || [])].filter((r) => r.judgeError);
-      const b = e.filter((r) => /budget reached/.test(String(r.judgeError))).length;
-      console.log(e.length + " " + b + " " + (j.notJudged || []).length);
-    } catch (e) { console.log("unreadable 0 0"); }' "$STUDY/$c/judgments.json")
+  info=$(hj cellerrors "$STUDY/$c/judgments.json")
   read -r total budget _ <<<"$info"
   if [ "$total" = "unreadable" ]; then
     note_failure 3 "cell $c: judgments.json is missing or unreadable after the judge finished"
@@ -562,12 +556,7 @@ show_status() {
     n=0
     [ -d "$cache" ] && n=$(find "$cache" -name '*.json' 2>/dev/null | wc -l)
     if [ -f "$STUDY/$c/credit-ledger.jsonl" ]; then
-      # shellcheck disable=SC2016  # the JS program is deliberately single-quoted
-      ok=$(node -e '
-        const fs=require("fs");let lines=0,okc=0,usd=0;
-        for(const l of fs.readFileSync(process.argv[1],"utf8").split("\n")){ if(!l)continue; let r;try{r=JSON.parse(l)}catch{continue}
-          if(r.kind!=="judge")continue; lines++; if(r.ok)okc++; if(!r.cached&&typeof r.usd==="number")usd+=r.usd; }
-        process.stdout.write(`${lines} ledger entries, ${okc} ok, live spend $${usd.toFixed(4)}`);' "$STUDY/$c/credit-ledger.jsonl")
+      ok=$(hj judgeledger "$STUDY/$c/credit-ledger.jsonl")
     else
       ok="no ledger yet"
     fi

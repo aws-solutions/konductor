@@ -149,16 +149,7 @@ TASKS=$("${BJ[@]}" scenarios ready --batch "$B" --ids) || stop "'bench.js scenar
 [ -n "$TASKS" ] || stop "no ready task in $B: see '${BJ[*]} scenarios ready --batch $B'"
 if [ -n "$SKIPFROM" ]; then
   [ -d "$SKIPFROM" ] || stop "$SKIPFROM is not a wave output dir"
-  ONLY=$(node -e '
-    const fs = require("fs"), path = require("path");
-    const root = process.argv[1], ids = new Set();
-    for (const arm of fs.readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith(".")))
-      for (const task of fs.readdirSync(path.join(root, arm.name), { withFileTypes: true }).filter((d) => d.isDirectory()))
-        for (const rep of fs.readdirSync(path.join(root, arm.name, task.name))) {
-          const f = path.join(root, arm.name, task.name, rep, "result.json");
-          try { if (JSON.parse(fs.readFileSync(f, "utf8")).status === "budget_skipped") ids.add(task.name); } catch {}
-        }
-    process.stdout.write([...ids].sort().join(","));' "$SKIPFROM")
+  ONLY=$(node "$here/lib/sh.js" skipped "$SKIPFROM")
   [ -n "$ONLY" ] || stop "no budget_skipped task in $SKIPFROM: nothing to rerun"
   say "skipped in $SKIPFROM: $ONLY"
 fi
@@ -213,10 +204,9 @@ rc=${PIPESTATUS[0]}
 set -e
 "${BJ[@]}" scenarios pilot-table "$OUT" | tee "$OUT-table.md" || say "WARNING: pilot-table failed; paste $OUT.log"
 
-# Retry once: the runs the service throttled, within what is left of the ceiling (DEBT D-138).
-retry=$(node "$R/bench/scenarios/wave-retry.js" "$OUT" --ceiling "$CEIL" || true)
-rtasks=$(printf '%s' "$retry" | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).tasks.join(","))}catch{}})')
-rleft=$(printf '%s' "$retry" | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).left))}catch{process.stdout.write("0")}})')
+# Retry once: the runs the service throttled, within what is left of the ceiling (DEBT D-138; scenarios/wave-retry.js).
+rleft=0; rtasks=""
+read -r rleft rtasks < <(node "$here/lib/sh.js" retry "$OUT" "$CEIL" || echo 0) || true
 if [ -n "$rtasks" ]; then
   if [ "$rleft" -ge "$RUNLIM" ] && [ ! -e "$OUT-retry" ]; then
     say "throttled by the service: $rtasks. Retrying once into $OUT-retry (ceiling $rleft credits)"

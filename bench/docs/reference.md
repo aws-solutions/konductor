@@ -708,7 +708,9 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   database (kiro-cli's `~/Library/Application Support/kiro-cli` on macOS, `~/.local/share/kiro-cli`
   elsewhere, copied to the same place under the scratch HOME) that is deleted when the agent exits. The agent and the check commands get an allowlisted
   environment (PATH, locale, proxies, TERM=dumb, TMPDIR, pins); `--env-keep` adds Kiro variables.
-  Mandatory-MCP variables are never passed. `env.json` lists the final variable names.
+  Mandatory-MCP variables are never passed. `env.json` lists the final variable names. Core checks every harness's
+  environment before the agent starts: a credential-like name the harness did not declare in `credentialEnv` is
+  dropped, and the run is flagged `envDropped` (see `runner/lib/harness/CONTRACT.md`).
 - The arm build (cargo on the ref under test) also gets an allowlisted environment: PATH, locale, TERM, toolchain variables (CC, CFLAGS, LDFLAGS,
   LD_LIBRARY_PATH, PKG_CONFIG_PATH, RUSTFLAGS and similar) and, for `--cargo-online` only, the proxy variables. Cloud, forge, registry and agent
   credentials and the SSH agent are not passed. HOME is a scratch directory removed after the build; CARGO_HOME and RUSTUP_HOME point at the real

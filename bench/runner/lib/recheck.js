@@ -16,7 +16,7 @@ const { buildCheckEnv } = require('./env.js');
 const { loadTasks, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
 const { makeIsolation, workingMode } = require('./isolate.js');
-const { loadRun } = require('../../report/load.js');
+const { loadRun } = require('./load-run.js');
 const { archivedWorkspace } = require('./archive.js');
 
 const checksRevision = (task) => crypto.createHash('sha256').update(JSON.stringify(task.checks)).digest('hex').slice(0, 12);

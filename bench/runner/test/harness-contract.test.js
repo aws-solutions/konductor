@@ -69,7 +69,7 @@ test('CONTRACT.md lists the members this test checks', () => {
   for (const name of ['id', 'prepareArm', 'trialInstall', 'installInto', 'buildCommand', 'env', 'removeCredentials', 'keepPaths', 'turnSummary', 'parseResult', 'collectArtifacts']) {
     assert.ok(REQUIRED.includes(name), `required table lost ${name}`);
   }
-  for (const name of ['requiredPaths', 'orchMetrics', 'finalize', 'secrets', 'cleanupRun', 'describeCleanup']) {
+  for (const name of ['requiredPaths', 'credentialEnv', 'orchMetrics', 'finalize', 'secrets', 'cleanupRun', 'describeCleanup']) {
     assert.ok(OPTIONAL.includes(name), `optional table lost ${name}`);
   }
 });
@@ -81,7 +81,7 @@ for (const [key, harness] of Object.entries(HARNESSES)) {
     for (const name of REQUIRED.filter((n) => n !== 'id')) assert.equal(typeof harness[name], 'function', `${key}.${name} must be a function`);
     for (const name of OPTIONAL) {
       if (harness[name] === undefined) continue;
-      if (name === 'requiredPaths') assert.ok(Array.isArray(harness.requiredPaths) && harness.requiredPaths.every((p) => typeof p === 'string'), `${key}.requiredPaths must be a string array`);
+      if (name === 'requiredPaths' || name === 'credentialEnv') assert.ok(Array.isArray(harness[name]) && harness[name].every((p) => typeof p === 'string'), `${key}.${name} must be a string array`);
       else assert.equal(typeof harness[name], 'function', `${key}.${name} must be a function when present`);
     }
     if (harness.cleanupRun) assert.equal(typeof harness.describeCleanup, 'function', 'describeCleanup is required when cleanupRun is defined');
