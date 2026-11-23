@@ -77,3 +77,23 @@ test('results built by the code validate: kiro-cli, opencode, with provenance, e
   assert.equal(built.konductor.contentHash, 'b'.repeat(64));
   assert.deepEqual(built.konductor.changedSkills, { names: ['x'] });
 });
+
+test('every new result carries schemaVersion 1; an old result without one still validates and reads as 1 (FW-8, D-202)', () => {
+  const { RESULT_SCHEMA_VERSION, schemaVersionOf } = require('../lib/result.js');
+  assert.equal(RESULT_SCHEMA_VERSION, 1);
+  const cfg = { model: 'm', effort: 'high' };
+  const built = [
+    buildResult(base(ARM)),
+    errorResult({ arm: ARM, task: TASK, replicate: 1, config: cfg, env: {}, message: 'boom', meta: { isolation: 'none' } }),
+    skippedResult({ arm: ARM, task: TASK, replicate: 1, config: cfg, env: {} }),
+  ];
+  for (const r of built) {
+    assert.equal(r.schemaVersion, 1);
+    assert.deepEqual(validate(schema, r), []);
+  }
+  const old = { ...built[0] };
+  delete old.schemaVersion;
+  assert.deepEqual(validate(schema, old), []);
+  assert.equal(schemaVersionOf(old), 1);
+  assert.ok(validate(schema, { ...built[0], schemaVersion: 'one' }).length > 0);
+});
