@@ -8,7 +8,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { armIdentities, armGaps, renderGaps } = require('../../scenarios/pilot-gaps.js');
+const { spawnSync } = require('node:child_process');
+const { armIdentities, armGaps, renderGaps, aaFloorText } = require('../../scenarios/pilot-gaps.js');
 const { mkResult } = require('./helpers.js');
 
 const TASKS = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'];
@@ -41,6 +42,24 @@ test('armGaps: no A/A pair says so; one arm gives no section; a noisy gap reads 
   assert.match(renderGaps(g).join('\n'), /no gap over \d+\.\d points .*\| no A\/A pair in these runs \|[\s\S]*No A\/A pair in these runs, so no noise floor/);
   assert.equal(armGaps(rowsOf('vanilla', BASE), new Map()), null);
   assert.deepEqual(renderGaps(null), []);
+});
+
+test('aaFloorText and --aa: two sets of vanilla in separate dirs give the floor and the detectable gap', (t) => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'pilot-gaps-aa-'));
+  t.after(() => fs.rmSync(d, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(d, 'pack'));
+  fs.writeFileSync(path.join(d, 'pack', 'README.md'), 'empty pack\n');
+  const tests = (p, n) => ({ type: 'tests', passed: p === n, tests: { passed: p, total: n } });
+  const put = (set, task, rep, passed) => {
+    const f = path.join(d, set, 'vanilla', task, String(rep), 'result.json');
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify(mkResult({ armId: 'vanilla', taskId: task, replicate: rep, checks: [tests(passed, 10)] })));
+  };
+  ['t1', 't2', 't3'].forEach((task, i) => { put('a', task, 1, 5 + i); put('b', task, 4, 6 + (i % 2)); });
+  const text = aaFloorText([path.join(d, 'a')], [path.join(d, 'b')], { packDir: path.join(d, 'pack') });
+  assert.match(text, /^A\/A floor \(code score, set b against set a, paired by task\): gap [+-]\d+\.\d, half-width \d+\.\d over 3 tasks\ndetectable gap at 80% power: \d+\.\d points/);
+  const r = spawnSync(process.execPath, [path.join(__dirname, '..', '..', 'scenarios', 'pilot-gaps.js'), '--aa', path.join(d, 'a')], { encoding: 'utf8' });
+  assert.equal(r.status, 64);
 });
 
 test('armIdentities: two vanilla ids are one condition; a konductor arm at a commit is another', (t) => {

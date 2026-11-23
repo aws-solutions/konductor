@@ -7,7 +7,7 @@
 const { loadRuns } = require('../report/load.js');
 const { pairedCellCI } = require('../report/stats.js');
 const { prefixIdentity } = require('../report/aa-identity.js');
-const { detectableGap, gapWords } = require('../report/power.js');
+const { detectableGap, gapWords, powerLine } = require('../report/power.js');
 const { aaNoise, noiseMark } = require('../report/aa.js');
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -92,4 +92,30 @@ function renderGaps(g) {
   return L;
 }
 
-module.exports = { armIdentities, armGaps, renderGaps, cellsOf, aaPair };
+/**
+ * The A/A floor of two sets of one arm (run-aa-pack.sh: set a and set b of vanilla in separate dirs), code score.
+ * @param {string[]} dirsA set a wave dirs
+ * @param {string[]} dirsB set b wave dirs
+ * @param {object} [o] { packDir } for pilotRows
+ * @returns {string} the floor line and the detectable gap it implies
+ */
+function aaFloorText(dirsA, dirsB, o = {}) {
+  const { pilotRows, pairedRows } = require('./pilot-table.js');
+  const label = (rows, arm) => pairedRows(rows).map((r) => ({ ...r, arm }));
+  const rows = [...label(pilotRows(dirsA, o), 'set-a'), ...label(pilotRows(dirsB, o), 'set-b')];
+  const aa = aaNoise(cellsOf(rows, 'set-b', 'set-a'));
+  if (aa.halfWidth === null) return `A/A floor: unknown (${aa.tasks} paired task(s); needs 2 or more)\n`;
+  return `A/A floor (code score, set b against set a, paired by task): gap ${signed(aa.delta)}, half-width ${aa.halfWidth.toFixed(1)} over ${aa.tasks} tasks\n${powerLine({ sd: aa.sd, tasks: aa.tasks })}\n`;
+}
+
+if (require.main === module) {
+  const a = process.argv.slice(2);
+  const sep = a.indexOf('--');
+  if (a[0] !== '--aa' || sep < 2 || sep === a.length - 1) {
+    process.stderr.write('usage: node pilot-gaps.js --aa SET_A_DIR... -- SET_B_DIR...\n');
+    process.exit(64);
+  }
+  process.stdout.write(aaFloorText(a.slice(1, sep), a.slice(sep + 1)));
+}
+
+module.exports = { armIdentities, armGaps, renderGaps, cellsOf, aaPair, aaFloorText };
