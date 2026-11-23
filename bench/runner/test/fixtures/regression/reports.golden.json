@@ -1765,6 +1765,7 @@
  },
  "results": {
   "kiro": {
+   "schemaVersion": 1,
    "armId": "v1",
    "armLabel": "v1",
    "ref": "v1.2.0",
@@ -1880,6 +1881,7 @@
    "armConfig": null
   },
   "oc": {
+   "schemaVersion": 1,
    "armId": "oc-v1",
    "armLabel": "oc-v1",
    "ref": "v1.2.0",
