@@ -46,6 +46,13 @@ test('existing kiro-cli and opencode results still build and report exactly as b
   assert.deepEqual(produce(BENCH_ROOT), golden);
 });
 
+test('the golden results changed only by schemaVersion (FW-8): each built result carries the current version', () => {
+  const { RESULT_SCHEMA_VERSION } = require('../lib/result.js');
+  const golden = JSON.parse(fs.readFileSync(path.join(FX, 'regression', 'reports.golden.json'), 'utf8'));
+  // A version bump must regenerate this golden on purpose, so it fails here by name rather than as a large diff above.
+  for (const key of ['kiro', 'oc']) assert.equal(golden.results[key].schemaVersion, RESULT_SCHEMA_VERSION, key);
+});
+
 test('arm specs: the cc- prefix selects the Claude Code runtime and keeps the same conditions', () => {
   assert.equal(parseArmSpec('cc-vanilla').cc, true);
   assert.equal(parseArmSpec('cc-pr-105=pr-105').cc, true);

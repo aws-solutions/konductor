@@ -39,6 +39,7 @@ const FLAGS = {
   'calibrate export-reference': ['tasks', 'criteria', 'out', 'seed', 'bench-dir', 'extra-tasks'],
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min', 'save', 'criteria-pack'],
   'list-arms': ['arms', 'repo-root'],
+  plugins: ['json'],
   gc: ['root', 'older-than', 'kind', 'keep-last', 'apply', 'json', 'protect-file', 'protect', 'adopt'],
   archive: ['run', 'out', 'compress', 'remove-originals', 'apply', 'restore', 'dry-run'],
   'cap list': ['cap', 'kind', 'all', 'base', 'repo-root', 'bench-dir', 'extra-tasks', 'init', 'json'],

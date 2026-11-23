@@ -45,6 +45,7 @@ const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
 const { profileCredentials } = require('./aws-creds.js');
 const { writeRunConfig } = require('./run-configs.js');
+const { makeRunnerLog } = require('./log.js');
 const { preloadSchemas } = require('./schema.js');
 const { snapshotTaskInputs } = require('./task-inputs.js');
 const { requirePrereg } = require('../../scenarios/prereg.js');
@@ -588,10 +589,13 @@ async function cmdRun(opts, deps = {}) {
   const { maxAuthFailures, maxToolCalls, seed, isolate, envKeep } = runLimitsOpt(opts);
   const { pairOrder, fillBudget } = fillOpts(opts, budgetCredits);
 
-  const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);
+  // Console lines as before, and the same lines plus start, cell and end events in <out>/runner.log once the out dir is known.
+  const log = makeRunnerLog({ write: (s) => console.error(s) });
   const isolation = announceRun({ opts, profile, aa, tasks, arms, replicates, parallel, budgetCredits, budgetFlag, unit, timeoutOverride, isolate, log });
 
   const { outDir, resume, armDrift, cacheDir, cargoTarget, authDb, awsCredsFile, awsProfile } = runPaths({ opts, repo: REPO, arms, isUsd, runtime: runtimes[0], log });
+  log.attach(outDir);
+  log.event('info', 'start', { suite: suite.name, harness: runtimes[0], arms: arms.map((a) => a.id), tasks: tasks.map((t) => t.id), replicates, resume: Boolean(resume) });
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
   // Pins python3 for the agent, the checks and the gateway (S6); refuses when tasks run Python and 3.12 is not found.
@@ -681,7 +685,9 @@ async function cmdRun(opts, deps = {}) {
       log(judged.alarm);
       process.exitCode = 4;
     }
-    log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
+    const counts = summarize(runConfig, { ...state, results }, {}).counts;
+    log(`finished: ${JSON.stringify(counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
+    log.event(gate.ok ? 'info' : 'error', 'end', { counts, observed, charged, unit, isolationGateOk: gate.ok });
     logOutcome({ results, studyLine, fill, authStop, infra, guard, log });
     if (profile?.calibrationSample) writeSampleOf(profile, outDir, log);
   } finally {
