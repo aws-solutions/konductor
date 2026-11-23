@@ -644,17 +644,6 @@ not per individual commit.
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
 
-## [1.2.1] - 2026-11-20
-
-### Changed
-
-- Update the aws-mcp proxy to mcp-proxy-for-aws-cli 2.0.0.
-
-### Security
-
-- Update Rust dependencies, with fixes for RUSTSEC-2026-0381, -0382, -0386, -0457, -0462 and
-  -0486.
-
 ## [1.2.0] - 2026-10-26
 
 ### Added
