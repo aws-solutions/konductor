@@ -11,12 +11,16 @@ const path = require('node:path');
 
 // Keys whose value changes on every run.
 const VOLATILE_KEY = /(At|Ms|Sec|Seconds|Time|Timestamp)$|^(at|pid|pgid|elapsed|duration|uptime|hostname)$/;
-// Fields the refactors added on purpose (FW-7 plugin hashes, FW-8 schemaVersion); not a regression.
-const ADDED_KEYS = new Set(['schemaVersion', 'plugins']);
+// Fields the refactors added on purpose (FW-7 plugin hashes, FW-8 schemaVersion), and the commit of the bench under
+// test itself (.bench-owner.json benchCommit), which differs by construction; not a regression.
+const ADDED_KEYS = new Set(['schemaVersion', 'plugins', 'benchCommit']);
+// A file name stamped with the time it was written (run-configs/2026-11-23T06-58-37-368Z.json).
+const FILE_TIME = /\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(-\d+)?Z/g;
 const ISO_TIME = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z/g;
 const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 const CLOCK = /\b\d{2}:\d{2}:\d{2}\b/g;
-const SCRATCH = /\/tmp\/(w|r|bench-judge|kplant|b-cache)-[A-Za-z0-9_]+/g;
+// A per-run directory made by mkdtemp: /tmp/w-AbC123, .../r-AbC123, /tmp/bench-judge-AbC123.
+const SCRATCH = /\/(w|r|bench-judge|kplant|dry|home)-[A-Za-z0-9_]{6}\b/g;
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -24,7 +28,7 @@ const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function normString(s, roots) {
   let out = s;
   for (const r of [...roots].sort((a, b) => b.length - a.length)) out = out.replace(new RegExp(escape(r), 'g'), '<ROOT>');
-  return out.replace(SCRATCH, '<SCRATCH>').replace(ISO_TIME, '<TIME>').replace(CLOCK, '<CLOCK>').replace(UUID, '<UUID>');
+  return out.replace(SCRATCH, '/$1-<RAND>').replace(ISO_TIME, '<TIME>').replace(CLOCK, '<CLOCK>').replace(UUID, '<UUID>');
 }
 
 /**
@@ -91,13 +95,21 @@ function filesOf(dir) {
  * same }. A `.json` file is compared as normalised JSON, a `.jsonl` file line by line as JSON, anything else as text.
  */
 function diffTrees(baseDir, headDir, { baseRoots = [baseDir], headRoots = [headDir] } = {}) {
-  const a = filesOf(baseDir);
-  const b = filesOf(headDir);
-  const inB = new Set(b);
-  const out = { onlyBase: a.filter((f) => !inB.has(f)), onlyHead: b.filter((f) => !a.includes(f)), changed: [], same: 0 };
-  for (const f of a.filter((x) => inB.has(x))) {
-    const ta = fs.readFileSync(path.join(baseDir, f), 'utf8');
-    const tb = fs.readFileSync(path.join(headDir, f), 'utf8');
+  // Files pair by relative path with a time stamp in a name taken out; two files that map to one key keep their names.
+  const keyed = (dir) => {
+    const m = new Map();
+    for (const f of filesOf(dir)) {
+      const k = f.replace(FILE_TIME, '<TIME>');
+      m.set(m.has(k) ? f : k, f);
+    }
+    return m;
+  };
+  const a = keyed(baseDir);
+  const b = keyed(headDir);
+  const out = { onlyBase: [...a.keys()].filter((k) => !b.has(k)), onlyHead: [...b.keys()].filter((k) => !a.has(k)), changed: [], same: 0 };
+  for (const f of [...a.keys()].filter((k) => b.has(k))) {
+    const ta = fs.readFileSync(path.join(baseDir, a.get(f)), 'utf8');
+    const tb = fs.readFileSync(path.join(headDir, b.get(f)), 'utf8');
     let entry = null;
     if (f.endsWith('.json') || f.endsWith('.jsonl')) {
       const parse = (t) => (f.endsWith('.json') ? JSON.parse(t) : t.split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l)));
@@ -117,4 +129,7 @@ function diffTrees(baseDir, headDir, { baseRoots = [baseDir], headRoots = [headD
   return out;
 }
 
-module.exports = { normalize, normString, diffJson, diffText, diffTrees, filesOf, VOLATILE_KEY, ADDED_KEYS };
+/** A line with every number replaced by #: two lines that differ only in their numbers mask the same. */
+const maskNumbers = (l) => l.replace(/\d+(\.\d+)?/g, '#');
+
+module.exports = { maskNumbers, normalize, normString, diffJson, diffText, diffTrees, filesOf, VOLATILE_KEY, ADDED_KEYS };

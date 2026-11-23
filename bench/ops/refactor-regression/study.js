@@ -123,7 +123,7 @@ function main(argv) {
   if (plantPython) {
     const { makeToyRelease } = require(path.join(path.resolve(tree), 'bench', 'physical', 'toy', 'toy-release.js'));
     const toy = makeToyRelease(path.join(root, 'in', 'toy'));
-    const plant = ['--suite', 'lite', '--tasks', PLANT_TASK, '--extra-tasks', path.join(toy.dir, 'tasks'), '--plant-release', toy.dir, '--plant-release-sha256', toy.sha256, '--plant-python', plantPython, '--isolate', 'none', '--allow-unisolated', '--parallel', '1', '--replicates', '1', '--repo-root', inp.repo, '--seed', '1'];
+    const plant = ['--suite', 'lite', '--tasks', PLANT_TASK, '--bench-dir', inp.bench, '--extra-tasks', path.join(toy.dir, 'tasks'), '--plant-release', toy.dir, '--plant-release-sha256', toy.sha256, '--plant-python', plantPython, '--isolate', 'none', '--allow-unisolated', '--parallel', '1', '--replicates', '1', '--repo-root', inp.repo, '--seed', '1'];
     const pProbe = path.join(fakeDir, 'plant-claude', 'probe');
     fs.mkdirSync(pProbe, { recursive: true });
     const pBin = makeFakePlantClaude(path.join(fakeDir, 'plant-claude', 'tools'), { dir: pProbe, calls: [{ tool: 'get_state', args: {} }, { tool: 'stop', args: {} }] });
@@ -141,7 +141,7 @@ function main(argv) {
     if (name.startsWith('plant-')) continue;
     bench(`report-${name}`, ['report', '--run', path.join(runs, name), '--bench-dir', inp.bench, '--detail', 'full', '--format', 'md', '--out', path.join(root, 'reports', name)]);
   }
-  fs.writeFileSync(path.join(root, 'study.json'), `${JSON.stringify({ tree: path.resolve(tree), plantPython, strandsPython, steps: results.map((r) => ({ name: r.name, exitCode: r.exitCode })) }, null, 2)}\n`);
+  fs.writeFileSync(path.join(root, 'study.json'), `${JSON.stringify({ tree: path.resolve(tree), driver: path.resolve(__dirname, '..', '..', '..'), plantPython, strandsPython, steps: results.map((r) => ({ name: r.name, exitCode: r.exitCode })) }, null, 2)}\n`);
   return 0;
 }
 

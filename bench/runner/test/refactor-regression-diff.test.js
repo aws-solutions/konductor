@@ -18,7 +18,7 @@ test('normalize replaces the study root, scratch dirs, times and ids, and drops 
     schemaVersion: 1, plugins: [{ name: 'strands', sha256: 'f'.repeat(64) }], nested: { latencyMs: 3, keep: 'x', createdAt: 'now' },
   };
   assert.deepEqual(normalize(v, { roots: ['/var/tmp/s-a/root'] }), {
-    dir: '<ROOT>/out/vanilla', cwd: '<SCRATCH>/work', note: 'started <TIME> in <ROOT>', session: '<UUID>', nested: { keep: 'x' },
+    dir: '<ROOT>/out/vanilla', cwd: '/tmp/w-<RAND>/work', note: 'started <TIME> in <ROOT>', session: '<UUID>', nested: { keep: 'x' },
   });
 });
 
@@ -81,6 +81,37 @@ test('report.js lists a real difference and marks one that also differs between 
     const { text } = renderDiff({ base, head, noise });
     assert.match(text, /\| `credits` \| 1 \| 3 \|/);
     assert.doesNotMatch(text, /`order`/);
-    assert.match(text, /1 path\(s\) also differ between two head runs \(noise\), not listed\./);
+    assert.match(text, /1 more row\(s\) also move between two head runs \(noise\), not listed\./);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('diffTrees pairs files whose names carry the time they were written', () => {
+  const root = tmp();
+  try {
+    write(path.join(root, 'a', 'run-configs', '2026-11-23T06-58-37-368Z.json'), '{"m":1}');
+    write(path.join(root, 'b', 'run-configs', '2026-11-23T07-01-02-001Z.json'), '{"m":1}');
+    const d = diffTrees(path.join(root, 'a'), path.join(root, 'b'));
+    assert.deepEqual([d.onlyBase, d.onlyHead, d.same], [[], [], 1]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('in a noisy text file, a line that differs only in its numbers is noise; another line is listed', () => {
+  const { renderDiff } = require('../../ops/refactor-regression/report.js');
+  const root = tmp();
+  try {
+    const study = (name, md) => {
+      const dir = path.join(root, name);
+      write(path.join(dir, 'study.json'), JSON.stringify({ tree: path.join(root, `tree-${name}`), steps: [] }));
+      write(path.join(dir, 'commands', 'x.out.txt'), '');
+      write(path.join(dir, 'reports', 'k', 'report.md'), md);
+      return dir;
+    };
+    const base = study('base', '| wall | 120.00 |\n| arm | old |\n');
+    const head = study('head', '| wall | 83.00 |\n| arm | new |\n');
+    const noise = study('head2', '| wall | 99.00 |\n| arm | new |\n');
+    const { text } = renderDiff({ base, head, noise });
+    assert.doesNotMatch(text, /wall/);
+    assert.match(text, /- base: `\| arm \| old \|`/);
+    assert.match(text, /- head: `\| arm \| new \|`/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
