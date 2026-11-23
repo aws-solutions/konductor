@@ -270,7 +270,7 @@ flowchart TD
     G3 -->|"Errors present"| Stop3["STOP — fix lint errors<br/>(warnings are acceptable)"]
     G3 -->|"None"| S5{"CDK code<br/>present?"}
 
-    S5 -->|Yes| CDK["5. cdk ls → cdk diff → cdk synth<br/>flag unexpected stack changes"]
+    S5 -->|Yes| CDK["5. CDK checks, once you confirm<br/>the app is trusted: cdk ls, cdk synth --strict<br/>cdk diff only on request<br/>flag unexpected stack changes"]
     S5 -->|No| S6
     CDK --> S6["6. Manual verification<br/>what was tested, steps, observed<br/>— cannot be skipped"]
 
@@ -316,6 +316,19 @@ project-specific.
 - **The final checklist is all-or-nothing.** Seven items: success criteria met, build passes,
   tests pass, lint passes, manual verification complete, no regressions, documentation updated
   if applicable. Any failure means the task is not complete.
+- **CDK commands wait for your confirmation; build, test and lint do not.** `cdk synth`, `cdk ls` and `cdk diff` all run the
+  CDK app's own code, and `cdk diff` also reads the deployed stack, so the SOP runs none of them
+  until you confirm the CDK app is trusted to run where the agent is working. A CDK app the agent
+  created in the same session, or one you say you own, counts as confirmed. Editing a checkout
+  under review does not make it trusted, so the agent asks first. Once you confirm, it runs
+  `cdk ls` and `cdk synth --strict`. If you have not named credentials, it runs both with
+  `--no-lookups` and reports a missing-context failure as not run (needs a context lookup). It
+  runs `cdk diff` only when you also ask for a check against the deployed stack, and it runs
+  `cdk diff` and any context lookup only with the credentials you name. Without confirmation it
+  validates an existing `cdk.out/` template or reads the stacks, and reports all three commands
+  as not run. It never deploys, bootstraps or creates a change set. Steps 2 to 4 already run the
+  checkout's code, so what this gate adds is that nothing reaches an AWS account without your
+  confirmation and the credentials you name.
 
 ---
 
