@@ -10,7 +10,7 @@ const { createRegistry } = require('../../../core/registry.js');
 const PLUGINS_DIR = path.resolve(__dirname, '..', '..', '..', 'plugins');
 
 const REGISTRY = createRegistry({
-  builtins: [require('./kiro-meta.js'), require('./opencode-meta.js'), require('./claude-code-meta.js'), require('./strands-meta.js')].map((meta) => ({ kind: 'harness', meta })),
+  builtins: [require('./kiro-meta.js'), require('./opencode-meta.js'), require('./claude-code-meta.js')].map((meta) => ({ kind: 'harness', meta })),
   pluginRoots: [PLUGINS_DIR],
 });
 const DESCRIPTORS = REGISTRY.descriptors();
