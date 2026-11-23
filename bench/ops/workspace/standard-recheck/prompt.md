@@ -1,0 +1,11 @@
+You are re-checking several benchmark tasks after someone other than their author edited them. Each folder `tasks/<id>/` holds `task.json` (the request in `prompt`, its `checks`, `rubric` and any `expertKey`), `fixture/` (the repository the agent starts in), `hidden/` (hidden tests or key, copied over the repository root before they run), `solution/` (the reference change) and `edits.md` (what was edited and why). Work only inside the current directory, change none of these files, and use no network. Be brief: read what you need to decide, not every file.
+
+For EACH task answer four questions, each with evidence from its files:
+1. no-method-or-decoy: the request names no method, process, framework or tool for how to work, and holds no misleading hint (a decoy) that points away from the real problem.
+2. fixture-lists-no-answer: nothing in `fixture/` (comments, docs, tests, names) lists the answer or describes the finished behaviour the hidden tests check.
+3. key-matches-fixture: the hidden tests, checks, expert key and rubric match the fixture and the request: every name, path, format and behaviour they rely on exists in the fixture or is stated in the request, and the rubric's Fail / Partial / Pass anchors reward the outcome the request asks for, not the reference's own wording or file names.
+4. solvable-from-fixture: a competent developer could solve the task from the fixture and the request alone, without seeing the hidden tests or the solution, and a correct answer that differs from the reference (other names, order or structure) would still pass.
+
+Some tasks have no `hidden/` or `solution/`: for them the `checks` and `rubric` in `task.json` are the whole key. Where `edits.md` says rubric anchors were added, check that each Fail / Partial / Pass anchor follows the item's own sentence and the request, and asks for nothing the request does not. Look hardest at what `edits.md` says was changed. Use "fail" only for a real defect a task author must fix, and name it exactly (file and line or rubric id).
+
+Write `recheck.json`: {"tasks": {"<id>": {"items": [{"check": "no-method-or-decoy" | "fixture-lists-no-answer" | "key-matches-fixture" | "solvable-from-fixture", "verdict": "pass" | "fail", "note": "one or two sentences of evidence"}]}}}, four items per task, one entry per task folder. Then stop.
