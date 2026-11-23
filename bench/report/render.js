@@ -4,6 +4,8 @@
 const { renderSkillsMarkdown } = require('./skills.js');
 const { externalFetchCell } = require('../runner/lib/contamination.js');
 const { exclusionTable } = require('../judge/exclusion.js');
+const { isUsdRuntime, descriptorOf } = require('../runner/lib/harness/runtime.js');
+const { DEFAULT_BACKEND } = require('../judge/backends.js');
 
 const pct = (v) => (v === null || v === undefined ? 'n/a' : `${(v * 100).toFixed(0)}%`);
 const f = (v, d = 2) => (v === null || v === undefined ? 'n/a' : Number(v).toFixed(d));
@@ -148,8 +150,8 @@ function autonomySection(report) {
   return out.join('\n');
 }
 
-// opencode and Claude Code report tokens and list-price USD; kiro-cli reports credits.
-const isUsdHarness = (harness) => harness === 'opencode' || harness === 'claude-code';
+// The USD runtimes (descriptor costUnit 'usd') report tokens and list-price USD; kiro-cli reports credits.
+const isUsdHarness = (harness) => isUsdRuntime(harness);
 
 function scopeSection(report, scope) {
   if (isUsdHarness(report.harness)) return scopeSectionOpencode(report, scope);
@@ -195,8 +197,16 @@ function scopeSectionOpencode(report, scope) {
   ].join('\n');
 }
 
-const HOW_TO_READ_OPENCODE = 'How to read: efficiency cells (USD, tokens, calls, wall clock) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median; they are shown as rates beside every cost figure. "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "USD per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it. USD is list price computed by opencode from token counts (input, output, cache read, cache write); it is not a bill. Tokens and calls are summed over the parent session and every subagent session read from the session database. Prompt-cache reads depend on whether a run started within about 5 minutes of another, so cache read and cost carry run-order noise. A timed-out run is charged the rows present at the kill or the arm median, whichever is larger. "asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.';
-const HOW_TO_READ_CLAUDE_CODE = 'How to read: efficiency cells (USD, tokens, calls, wall clock) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median; they are shown as rates beside every cost figure. "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "USD per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it. USD is the list price Claude Code reports (`total_cost_usd`, cost basis list); it is not a bill. Tokens are summed from the per-model usage of the last result line, which covers the main session and its sub-agents; calls are the distinct assistant messages. Prompt-cache reads depend on whether a run started within about 5 minutes of another, so cache read and cost carry run-order noise. A run killed before its result line reports no cost; it is charged the runner\'s ledger value when one was recorded. "asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.';
+// The "How to read" of a USD runtime: the shared text around the runtime's own `report.usdNote` (where USD and tokens
+// come from) and `report.killNote` (how a killed run is charged), from its descriptor.
+const HOW_TO_READ_USD_HEAD = 'How to read: efficiency cells (USD, tokens, calls, wall clock) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median; they are shown as rates beside every cost figure. "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "USD per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it.';
+const HOW_TO_READ_USD_CACHE = 'Prompt-cache reads depend on whether a run started within about 5 minutes of another, so cache read and cost carry run-order noise.';
+const HOW_TO_READ_USD_TAIL = '"asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.';
+const DEFAULT_USD_NOTE = 'USD is list price; it is not a bill.';
+function howToReadUsd(harness) {
+  const { usdNote, killNote } = descriptorOf(harness).report;
+  return [HOW_TO_READ_USD_HEAD, usdNote ?? DEFAULT_USD_NOTE, HOW_TO_READ_USD_CACHE, killNote, HOW_TO_READ_USD_TAIL].filter(Boolean).join(' ');
+}
 
 function renderMarkdown(report) {
   const r = report.run;
@@ -204,10 +214,10 @@ function renderMarkdown(report) {
     '# Benchmark report',
     '',
     `Run: ${r.dir}  `,
-    `Suite: ${r.suite ?? 'n/a'}, model ${r.model}, effort ${r.effort}, ${r.taskIds.length} task(s), ${isUsdHarness(report.harness) ? `${report.harness} ${r.harnessVersion ?? 'n/a'}` : `kiro-cli ${r.kiroCliVersion ?? 'n/a'}`}  `,
+    `Suite: ${r.suite ?? 'n/a'}, model ${r.model}, effort ${r.effort}, ${r.taskIds.length} task(s), ${isUsdHarness(report.harness) ? `${report.harness} ${r.harnessVersion ?? 'n/a'}` : `${descriptorOf(report.harness).proseName} ${r.kiroCliVersion ?? 'n/a'}`}  `,
     `Baseline: ${report.baseline}. Judges: ${report.judges.join(', ') || 'none (run the judge command for rubric and pairwise results)'}`,
     '',
-    report.harness === 'claude-code' ? HOW_TO_READ_CLAUDE_CODE : isUsdHarness(report.harness) ? HOW_TO_READ_OPENCODE : 'How to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "credits per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner\'s ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. "asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.',
+    isUsdHarness(report.harness) ? howToReadUsd(report.harness) : 'How to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "credits per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner\'s ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. "asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.',
     '',
     ...rubricPolicyNote(report),
   ];
@@ -246,11 +256,12 @@ function renderMarkdown(report) {
   return out.join('\n');
 }
 
-// States which program asked the judge models: kiro, or opencode with the settings that shaped the replies.
+// States which program asked the judge models: kiro (the default backend), or opencode with the settings that shaped
+// the replies (only the opencode backend records backendInfo).
 function judgeBackendLine(jg) {
   if (jg.backend === 'mixed') return `Judge backend: mixed (${jg.backends.join(', ')}). Verdicts from different backends are not comparable.`;
   const i = jg.backendInfo;
-  if (jg.backend !== 'opencode' || !i) return `Judge backend: ${jg.backend}.`;
+  if (jg.backend === DEFAULT_BACKEND || !i) return `Judge backend: ${jg.backend}.`;
   const models = Object.entries(i.models || {}).map(([j, m]) => `${j} = ${m.bedrockModelId}${m.temperatureApplied ? ', temperature 0' : ', no temperature'}`).join('; ');
   return `Judge backend: opencode (opencode ${i.opencodeVersion ?? 'unknown'}, ${i.region ?? 'unknown region'}, system prompt sha256 ${String(i.systemPromptSha256 ?? '').slice(0, 12)}). Bedrock models: ${models}.`;
 }

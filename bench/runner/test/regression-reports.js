@@ -4,6 +4,8 @@
 // Builds a kiro-cli run and an opencode run on disk and renders their reports, scorecard facts, formulas, verdict and orchestrator-pass documents with the code under `benchRoot`.
 // The golden files were produced with the code from before the Claude Code harness was added, so a test that
 // renders the same runs with the current code and compares proves existing results still report the same.
+// One planned change since (D-238, 2026-11-23): the opencode verdict and orchestrator-pass text say USD at list price,
+// not credits. Regenerate with `JSON.stringify(produce(benchRoot), null, 1)` only for a change like that, and say so.
 
 const fs = require('node:fs');
 const path = require('node:path');

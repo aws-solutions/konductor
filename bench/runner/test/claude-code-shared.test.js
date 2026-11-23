@@ -15,7 +15,7 @@ const { produce } = require('./regression-reports.js');
 const { parseArmSpec, resolveArm, listArms, KNOWN_ARMS } = require('../lib/arms.js');
 const { runtimeOf, isUsdRuntime } = require('../lib/harness/runtime.js');
 const { loadRun } = require('../../report/load.js');
-const { buildReport, defaultBaseline, BASIS } = require('../../report/aggregate.js');
+const { buildReport, defaultBaseline, BASIS, basisOf } = require('../../report/aggregate.js');
 const { renderMarkdown } = require('../../report/render.js');
 const { analyze } = require('../../report/generate.js');
 const { buildVerdict, sentenceFor } = require('../../report/verdict.js');
@@ -82,7 +82,8 @@ test('a Claude Code run reports in USD and tokens like opencode, with cc-vanilla
     const dir = makeCcRun(path.join(root, 'run'), bench, [...reps('cc-vanilla', () => ({ usd: 0.04, tok: 20000 })), ...reps('cc-k', (r) => ({ usd: 0.1 * r, tok: 50000 * r }))]);
     const run = loadRun(dir);
     assert.equal(run.harness, 'claude-code');
-    assert.equal(BASIS['claude-code'], BASIS.opencode);
+    assert.equal(basisOf('claude-code'), basisOf('opencode'));
+    assert.equal(basisOf('claude-code'), BASIS.usd);
     assert.equal(defaultBaseline(run), 'cc-vanilla');
     const r = buildReport({ run, tasks: loadTasks(bench) });
     assert.equal(r.report.costUnit, 'usd');

@@ -16,7 +16,7 @@ const { kiroArgs } = require('../lib/harness/kiro.js');
 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'result.schema.json'), 'utf8'));
 const SUPPORTS = ['trace', 'stopOn', 'effort', 'runCreditLimit', 'multiTurn', 'freshSessions', 'capCommands', 'skillStudy', 'agentEngine', 'prepareOnly', 'armConfig'];
-const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'noPrompt', 'plant', 'multiTurnNote', 'trace'];
+const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'noPrompt', 'plant', 'multiTurnNote', 'trace', 'report', 'capabilities'];
 const STREAM_FORMATS = ['kiro-acp', 'opencode-json', 'claude-stream-json', 'strands-jsonl'];
 const CONTRACT = fs.readFileSync(path.join(__dirname, '..', 'lib', 'harness', 'CONTRACT.md'), 'utf8');
 
@@ -133,6 +133,30 @@ test('flags: own and refused names are real run flags, own flags belong to one r
     for (const f of ['stop-on', 'max-tool-calls']) assert.equal(f in d.flags.refused, !d.supports.stopOn, `${id}: --${f} is refused exactly when supports.stopOn is false`);
     assert.ok(d.flags.perRunCapFlag === null || d.flags.own.includes(d.flags.perRunCapFlag), `${id}.perRunCapFlag must be one of its own flags`);
   }
+});
+
+test('report facts: a USD runtime may name its cost source; factorial keys are unique', () => {
+  const keys = [];
+  for (const [id, d] of entries) {
+    assert.deepEqual(Object.keys(d.report).sort(), ['costWords', 'factorialKey', 'killNote', 'usdNote'], `${id}.report keys`);
+    assert.ok(Object.isFrozen(d.report), `${id}.report must be frozen`);
+    if (d.costUnit !== 'usd') assert.equal(d.report.usdNote, null, `${id}: only a USD runtime has a usdNote`);
+    assert.equal(d.report.killNote === null, d.report.usdNote === null, `${id}: usdNote and killNote come together`);
+    if (d.report.factorialKey !== null) keys.push(d.report.factorialKey);
+  }
+  assert.equal(new Set(keys).size, keys.length, 'one runtime per factorial key');
+});
+
+test('capabilities: present exactly when cap commands accept the runtime; one runtime reads acting agents', () => {
+  for (const [id, d] of entries) {
+    assert.equal(d.capabilities !== null, d.supports.capCommands, `${id}.capabilities is set exactly when supports.capCommands`);
+    if (!d.capabilities) continue;
+    assert.ok(Object.isFrozen(d.capabilities) && Object.isFrozen(d.capabilities.tools), `${id}.capabilities must be frozen`);
+    assert.deepEqual(Object.keys(d.capabilities.tools).sort(), ['agent', 'context', 'skill', 'sop'], `${id}.capabilities.tools keys`);
+    assert.ok(['agent-filter', 'skill-index'].includes(d.capabilities.surface), `${id}.capabilities.surface`);
+    assert.ok(Number.isInteger(d.capabilities.proxyCallsPerQuery) && d.capabilities.proxyCallsPerQuery > 0, `${id}.capabilities.proxyCallsPerQuery`);
+  }
+  assert.equal(entries.filter(([, d]) => d.capabilities?.actingAgents).length, 1, 'exactly one runtime reaches capabilities through acting agents');
 });
 
 test('multiTurnNote is a sentence exactly when the runtime has no multi-turn support', () => {

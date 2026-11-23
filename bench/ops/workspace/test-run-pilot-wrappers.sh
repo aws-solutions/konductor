@@ -5,7 +5,9 @@
 # repo's fake kiro-cli (bench/runner/test/fake-kp-kiro.js): no model, no credits. Own worktree (kp-pilot-stub, removed
 # at the end), own work dir, baselines and logs under a new /tmp dir. Checks: both --dry-run passes make no call; step 1
 # writes a baseline; step 3 refuses it unsigned (gate 1) and makes no call; after a sign-off it passes the three gates
-# and runs the whole quick pilot within the cap; a rerun makes no new call.
+# and runs the whole quick pilot within the cap; a rerun makes no new call. Then run-pilot-rerun.sh: the unit step
+# refuses before the controls part; the controls part reuses the ladder cache, prints each check and stops; the unit
+# step runs after both controls passed.
 #
 #   bash scripts/test-run-pilot-wrappers.sh [COMMIT]     # COMMIT: what to check out (default the arm-free-prep head)
 set -uo pipefail
@@ -59,6 +61,23 @@ spent=$(node -e 'console.log(require("fs").readFileSync(process.argv[1],"utf8").
 [ "$spent" -le 8760 ] && ok "run: $n calls, $spent counted credits, within 8,760" || bad "spent $spent"
 run run-pilot-run.sh; rc=$?
 [ "$rc" = 0 ] && [ "$(grep -vc whoami "$T/calls")" = "$n" ] && ok "a rerun makes no new call" || bad "rerun rc $rc, calls $(grep -vc whoami "$T/calls")"
+
+# --- the rerun (run-pilot-rerun.sh): controls only on kp-pilot-2 from kp-pilot-1's cache, then the unit step ---
+rerun() { KP_REF="$REF" run run-pilot-rerun.sh "$@"; }
+: > "$T/calls"
+rerun --unit --dry-run; rc=$?
+[ "$rc" = 1 ] && grep -q "run the controls part first" "$T/out" && ok "rerun: the unit step refuses before the controls part" || { bad "unit-first rc $rc"; tail -n 20 "$T/out"; }
+rerun --dry-run; rc=$?
+[ "$rc" = 0 ] && [ "$(grep -c '^gate .*PASS$' "$T/out")" = 4 ] && grep -q '^  dose ladder: 120 calls, 120 cached (free), 0 new' "$T/out" && ok "rerun --dry-run: four gates pass, the ladder comes from the cache" || { bad "rerun dry rc $rc"; tail -n 20 "$T/out"; }
+[ "$(grep -vc whoami "$T/calls")" = 0 ] && ok "rerun --dry-run makes no call" || bad "rerun dry calls: $(cat "$T/calls")"
+[ -z "$(find "$T/work/runs/kp-pilot-2/judgments" -path '*convention-control*' -type f 2>/dev/null)" ] && ok "rerun: the old convention judgments are not copied" || bad "old convention judgments copied"
+rerun; rc=$?
+[ "$rc" = 0 ] && grep -q "^both controls passed. STOP here" "$T/out" && grep -q '^  pass  ' "$T/out" && grep -q -- '--unit$' "$T/out" && ok "rerun controls: each control's checks printed, then it stops at the unit step" || { bad "rerun controls rc $rc"; tail -n 30 "$T/out"; }
+grep -qx "$REF" "$T/pinned-commit" && grep -q "rerun: convention control fix" "$T/pinned-commit.log" && ok "rerun: the pin moved once, logged" || bad "pin: $(cat "$T/pinned-commit")"
+rec2="$T/work/runs/kp-pilot-2/stage-4/context-k-orchestrator-shared.json"
+node -e 'const r=require(process.argv[1]);process.exit(r.quick.controls.results.every((x)=>(x.checks||[]).length>0)?0:1)' "$rec2" && ok "rerun record: each control keeps its checks" || bad "no checks in $rec2"
+rerun --unit; rc=$?
+[ "$rc" = 0 ] && grep -q "^done: the record is" "$T/out" && grep -q "^gate 4, this step fits its cap:        PASS" "$T/out" && ok "rerun --unit: runs after both controls passed, within 3,375" || { bad "rerun unit rc $rc"; tail -n 20 "$T/out"; }
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

@@ -172,3 +172,16 @@ test('familyOf sees through Bedrock routing prefixes so a Claude judge is still 
   assert.equal(familyOf('us.anthropic.claude-haiku-5-5'), 'claude');
   assert.equal(familyOf('gpt-5.6-luna'), 'gpt');
 });
+
+test('an opencode verdict and orchestrator pass speak of USD at list price, not credits (D-238)', () => {
+  const { oc, kiro } = require('./regression-reports.js').produce(path.join(__dirname, '..', '..'));
+  const verdictText = JSON.stringify(oc.legends.verdict);
+  assert.match(verdictText, /cost is USD at list price per successful run/);
+  assert.match(verdictText, /cost \(ledger\)/);
+  assert.doesNotMatch(verdictText, /cost is credits|credits \(ledger\)/);
+  assert.match(oc.legends.orchPass.rule.cost, /mean USD at list price per executed run/);
+  assert.doesNotMatch(oc.legends.orchPass.rule.cost, /credits/);
+  // kiro-cli is metered in credits and keeps the credits words.
+  assert.match(JSON.stringify(kiro.legends.verdict), /cost is credits per successful run/);
+  assert.match(kiro.legends.orchPass.rule.cost, /mean credits per executed run/);
+});
