@@ -44,14 +44,24 @@ function plan(costFile) {
   const pack = path.join(R, 'bench/scenarios');
   const lock = JSON.parse(fs.readFileSync(path.join(pack, 'content-lock.json'), 'utf8')).tasks;
   const ready = new Map(readiness(pack).map((r) => [r.id, r]));
-  const files = new Map(loadTaskFiles(pack).map(({ task }) => [task.id, task]));
+  const taskFiles = loadTaskFiles(pack);
+  const files = new Map(taskFiles.map(({ task }) => [task.id, task]));
+  // readiness() reads the t<N> batches only. A task in another pack dir (probe/) gets the same fix and lock rules
+  // here, with its dir as its batch; its dry run is that dir's own test (probe.test.js), not `scenarios ready`.
+  const { fixReasons, lockBlockers } = need('bench/scenarios/ready.js');
+  const content = new Map(need('bench/scenarios/content-lock.js').compare(pack).map((c) => [c.id, c]));
+  for (const { task, file } of taskFiles) {
+    if (ready.has(task.id)) continue;
+    const fix = fixReasons(task);
+    ready.set(task.id, { batch: path.basename(path.dirname(file)), ready: !fix.length, reasons: fix, lockBlockers: lockBlockers(task, content.get(task.id)) });
+  }
   const cost = new Map(costFile && fs.existsSync(costFile) ? JSON.parse(fs.readFileSync(costFile, 'utf8')).map((r) => [r.id, r.credits]) : []);
   const { sel } = devTasks();
   const run = []; const skipped = [];
   for (const id of sel.ids) {
     const t = files.get(id); const r = ready.get(id);
     const skip = (why, needs) => skipped.push({ id, why, needs });
-    if (!t || !r) { skip('not in the scenario pack readiness list', 'a task file under bench/scenarios/t*'); continue; }
+    if (!t || !r) { skip('not in the scenario pack', 'a task file under bench/scenarios'); continue; }
     const v = t.version; const rc = t.review?.recheck;
     if (!r.ready) { skip(`not ready: ${r.reasons.join('; ')}`, 'a passing dry run (scenarios ready)'); continue; }
     if (r.lockBlockers.length) { skip(`lock blocked: ${r.lockBlockers.join('; ')}`, 'a version bump and a non-Claude recheck of the new version (D-150)'); continue; }

@@ -36,6 +36,18 @@ test('kit standard: no local read after the branch that binds it (D-157)', () =>
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
 
+test('kit standard: helper plan places every DEV task in run or skipped, a probe task under its own dir', () => {
+  const repo = path.join(__dirname, '..', '..', '..');
+  const r = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'plan', repo], { encoding: 'utf8', maxBuffer: 1 << 26 });
+  assert.equal(r.status, 0, r.stderr);
+  const p = JSON.parse(r.stdout);
+  const placed = [...p.run.map((t) => t.id), ...p.skipped.map((s) => s.id)].sort();
+  assert.deepEqual(placed, [...p.levelIds].sort());
+  for (const t of p.run) assert.ok(p.batches[t.batch].tasks.includes(t.id));
+  const probe = [...p.run, ...p.skipped].find((t) => t.id.startsWith('probe-'));
+  if (probe) assert.ok(!/not in the scenario pack/.test(probe.why || ''), 'a probe DEV task is gated, not dropped as unknown');
+});
+
 for (const t of TESTS) {
   test(`kit standard: ${t} (paid path on stubs)`, () => {
     const r = spawnSync('bash', [path.join(KIT, t)], { encoding: 'utf8', timeout: 240000, env: { ...process.env, TMPDIR: '/tmp' } });
