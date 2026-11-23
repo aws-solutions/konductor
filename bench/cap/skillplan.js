@@ -140,6 +140,71 @@ function buildScreens({ recs, tasks, repsN, scale, screenTasks }) {
   return out;
 }
 
+const costPart = (w) => ({ runs: w.runs, credits: w.credits, judgeUsd: w.judgeUsd, wallHours: w.wallHours });
+
+/**
+ * Fills a lift skill's record `rec` in place: the tasks it runs on (and the shortfall to draft), the judged share, the
+ * section ablation (none for the duplicates tier), the three waves and their worst and expected cost. `o` carries the
+ * study settings: base, prof, tasks, target, repsN, allowRegex, texts (skill name -> SKILL.md text), maxSections,
+ * minSectionBytes, scale (runs, judged share -> cost) and the wave 2 and 3 shares.
+ */
+function planLift(rec, cap, tier, o) {
+  const { base, prof, tasks, target, repsN, scale } = o;
+  rec.lift = true;
+  const pk = pickTasks({ name: cap.name, linked: cap.linkedTasks ?? [], tasks, tasksLoaded: rec.tasksLoaded, target, allowRegex: o.allowRegex });
+  const shortfall = Math.max(0, target - pk.chosen.length);
+  rec.tasks = {
+    chosen: pk.chosen, target, shortfall, sources: pk.sources, skippedRegexOnly: pk.skippedRegexOnly, skippedReal: pk.skippedReal,
+    scenarioCommand: shortfall ? `node bench/runner/bench.js cap scenarios --cap ${cap.id} --n ${shortfall} --base ${base}` : null,
+  };
+  if (shortfall) rec.warnings.push(`${shortfall} more scenario${shortfall === 1 ? '' : 's'} needed (profile ${prof.name} wants ${target} per skill): draft them with cap scenarios, review, add them as tasks`);
+  if (pk.skippedRegexOnly.length) rec.warnings.push(`left out regex-only tasks: ${pk.skippedRegexOnly.join(', ')}`);
+  if (pk.skippedReal.length) rec.warnings.push(`left out real-repo tasks (they need a repo cache the study does not pass): ${pk.skippedReal.join(', ')}`);
+  if (!rec.exposure.runsLoaded) rec.warnings.push('never loaded in the supplied runs: if the study tasks do not make the agent load it, the result is NEEDS DATA, not a delete; draft tasks that should load it with cap scenarios --mode trigger, and add --forced-load low-load to the study to see what it does once loaded (reported apart, never a call)');
+  const judged = (pk.chosen.filter((id) => scoringOf(tasks.get(id)) !== 'hidden').length + shortfall) / Math.max(1, target);
+  rec.judgedShare = judged;
+
+  const text = o.texts.get(cap.name) ?? '';
+  const ablation = tier === 'duplicates' ? { candidates: [], variants: [] } : ablationFor({ name: cap.name, text, max: o.maxSections, minBytes: o.minSectionBytes });
+  rec.sections = ablation.candidates.map((s) => ({ id: s.id, title: s.title, level: s.level, kind: s.kind, startLine: s.startLine, endLine: s.endLine, bytes: s.bytes, estTokens: s.estTokens }));
+  rec.variants = ablation.variants.filter((v) => v.kind !== 'control').map((v) => ({ id: v.id, kind: v.kind, section: v.section?.id ?? null, range: v.range ?? null, tokensSaved: v.tokensSaved ?? cap.estTokens }));
+
+  const wave = (n, arms, conditional, condition, share) => {
+    const runs = arms.length * target * repsN;
+    return { wave: n, arms, conditional, condition, share, ...scale(runs, judged), judged: judged };
+  };
+  rec.waves.push(wave(1, ['ctl', 'ctl-b', 'del'], false, null, 1));
+  if (rec.sections.length) {
+    const k = rec.sections.length;
+    rec.waves.push(wave(2, ['ctl', 'ctl-b', ...rec.sections.map((_, i) => `rm${i + 1}`)], true, 'runs only if the delete variant lost quality (the skill is needed); this wave then tests each section removal', o.wave2Share));
+    rec.waves.push(wave(3, ['ctl', 'ctl-b', ...Array.from({ length: k }, (_, i) => `mv${i + 1}`)], true, 'runs only for sections whose removal lost quality; the move arms are narrowed to those at run time', o.wave3Share));
+  }
+  rec.cost.worst = addCosts(rec.waves.map(costPart));
+  rec.cost.expected = addCosts(rec.waves.map((w) => weighted(costPart(w), w.share)));
+}
+
+/** Per tier: its skills, their expected and worst cost, and the cost of each wave. */
+function summarizeTiers(fitted) {
+  return Object.fromEntries(TIERS.map((tn) => {
+    const members = fitted.filter((s) => s.tier === tn);
+    const waveParts = (n) => members.flatMap((s) => s.waves.filter((w) => w.wave === n).map(costPart));
+    const waves = Object.fromEntries([1, 2, 3].map((n) => [n, addCosts(waveParts(n))]));
+    return [tn, { skills: members.map((s) => s.id), expected: addCosts(members.map((s) => s.cost.expected)), worst: addCosts(members.map((s) => s.cost.worst)), waves }];
+  }));
+}
+
+/** The plan's stated assumptions, one sentence each: credits, tasks and replicates, wave shares, judge cost, wall clock. */
+function planAssumptions({ credits, creditsPerRun, obs, model, armConfig, target, repsN, wave2Share, wave3Share, judgeUsdPerRun, sec }) {
+  return [
+    credits ? (creditsPerRun ? `credits per run given: low ${credits.low}, mid ${credits.mid}, high ${credits.high}` : `credits per run observed in ${obs.n} finished runs (model ${model}${armConfig ? ', coordinator mode where present' : ''}): low ${credits.low.toFixed(2)} (p25), mid ${credits.mid.toFixed(2)} (mean), high ${credits.high.toFixed(2)} (p90); ${obs.censored} timed-out run(s) had no credits and are left out, so the figures lean low`)
+      : 'no observed runs and no --credits-per-run: credits are not estimated',
+    `${target} tasks per skill, ${repsN} replicates per cell, parallel 1; waves rerun ctl and ctl-b so drift between waves is measured`,
+    `wave 2 runs for ${Math.round(wave2Share * 100)}% of skills and wave 3 for ${Math.round(wave3Share * 100)}% (our own assumptions, replace them with measured shares); the worst case runs every wave`,
+    `judge cost USD ${judgeUsdPerRun} per judged run (inferred from the judging runbook estimate), applied to the share of runs on rubric-scored tasks`,
+    sec ? `wall clock ${Math.round(sec)} s per run (observed mean), sequential` : 'wall clock not estimated (no observed runs)',
+  ];
+}
+
 /**
  * The plan as data. Throws for an unknown tier or skill. `runDirs` are finished run directories (read only).
  * Cost: `creditsPerRun` ({low,mid,high}) wins over the observed figures; with neither, credits are null.
@@ -225,38 +290,7 @@ function planSkillStudy({
       continue;
     }
 
-    rec.lift = true;
-    const pk = pickTasks({ name: cap.name, linked: cap.linkedTasks ?? [], tasks, tasksLoaded: rec.tasksLoaded, target, allowRegex });
-    const shortfall = Math.max(0, target - pk.chosen.length);
-    rec.tasks = {
-      chosen: pk.chosen, target, shortfall, sources: pk.sources, skippedRegexOnly: pk.skippedRegexOnly, skippedReal: pk.skippedReal,
-      scenarioCommand: shortfall ? `node bench/runner/bench.js cap scenarios --cap ${cap.id} --n ${shortfall} --base ${base}` : null,
-    };
-    if (shortfall) rec.warnings.push(`${shortfall} more scenario${shortfall === 1 ? '' : 's'} needed (profile ${prof.name} wants ${target} per skill): draft them with cap scenarios, review, add them as tasks`);
-    if (pk.skippedRegexOnly.length) rec.warnings.push(`left out regex-only tasks: ${pk.skippedRegexOnly.join(', ')}`);
-    if (pk.skippedReal.length) rec.warnings.push(`left out real-repo tasks (they need a repo cache the study does not pass): ${pk.skippedReal.join(', ')}`);
-    if (!rec.exposure.runsLoaded) rec.warnings.push('never loaded in the supplied runs: if the study tasks do not make the agent load it, the result is NEEDS DATA, not a delete; draft tasks that should load it with cap scenarios --mode trigger, and add --forced-load low-load to the study to see what it does once loaded (reported apart, never a call)');
-    const judged = (pk.chosen.filter((id) => scoringOf(tasks.get(id)) !== 'hidden').length + shortfall) / Math.max(1, target);
-    rec.judgedShare = judged;
-
-    const text = texts.get(cap.name) ?? '';
-    const ablation = t.tier === 'duplicates' ? { candidates: [], variants: [] } : ablationFor({ name: cap.name, text, max: maxSections, minBytes: minSectionBytes });
-    rec.sections = ablation.candidates.map((s) => ({ id: s.id, title: s.title, level: s.level, kind: s.kind, startLine: s.startLine, endLine: s.endLine, bytes: s.bytes, estTokens: s.estTokens }));
-    rec.variants = ablation.variants.filter((v) => v.kind !== 'control').map((v) => ({ id: v.id, kind: v.kind, section: v.section?.id ?? null, range: v.range ?? null, tokensSaved: v.tokensSaved ?? cap.estTokens }));
-
-    const wave = (n, arms, conditional, condition, share) => {
-      const runs = arms.length * target * repsN;
-      return { wave: n, arms, conditional, condition, share, ...scale(runs, judged), judged: judged };
-    };
-    rec.waves.push(wave(1, ['ctl', 'ctl-b', 'del'], false, null, 1));
-    if (rec.sections.length) {
-      const k = rec.sections.length;
-      rec.waves.push(wave(2, ['ctl', 'ctl-b', ...rec.sections.map((_, i) => `rm${i + 1}`)], true, 'runs only if the delete variant lost quality (the skill is needed); this wave then tests each section removal', wave2Share));
-      rec.waves.push(wave(3, ['ctl', 'ctl-b', ...Array.from({ length: k }, (_, i) => `mv${i + 1}`)], true, 'runs only for sections whose removal lost quality; the move arms are narrowed to those at run time', wave3Share));
-    }
-    const part = (w) => ({ runs: w.runs, credits: w.credits, judgeUsd: w.judgeUsd, wallHours: w.wallHours });
-    rec.cost.worst = addCosts(rec.waves.map(part));
-    rec.cost.expected = addCosts(rec.waves.map((w) => weighted(part(w), w.share)));
+    planLift(rec, cap, t.tier, { base, prof, tasks, target, repsN, allowRegex, texts, maxSections, minSectionBytes, scale, wave2Share, wave3Share });
   }
 
   const screens = screen ? buildScreens({ recs: out, tasks, repsN, scale, screenTasks }) : [];
@@ -273,15 +307,9 @@ function planSkillStudy({
   out.sort(order);
   const fitted = budgetCredits === null ? out.map((s) => ({ ...s, inBudget: true })) : fitBudget(out, budgetCredits);
 
-  const tierSummary = Object.fromEntries(TIERS.map((tn) => {
-    const members = fitted.filter((s) => s.tier === tn);
-    const waveParts = (n) => members.flatMap((s) => s.waves.filter((w) => w.wave === n).map((w) => ({ runs: w.runs, credits: w.credits, judgeUsd: w.judgeUsd, wallHours: w.wallHours })));
-    const waves = Object.fromEntries([1, 2, 3].map((n) => [n, addCosts(waveParts(n))]));
-    return [tn, { skills: members.map((s) => s.id), expected: addCosts(members.map((s) => s.cost.expected)), worst: addCosts(members.map((s) => s.cost.worst)), waves }];
-  }));
-  const lift = fitted.filter((s) => s.lift);
+  const tierSummary = summarizeTiers(fitted);
   const totals = {
-    liftSkills: lift.length, triageSkills: fitted.filter((s) => !s.lift).length,
+    liftSkills: fitted.filter((s) => s.lift).length, triageSkills: fitted.filter((s) => !s.lift).length,
     expected: addCosts([...fitted.map((s) => s.cost.expected), ...screens.map(part)]), worst: addCosts([...fitted.map((s) => s.cost.worst), ...screens.map(part)]),
     inBudget: budgetCredits === null ? null : addCosts(fitted.filter((s) => s.inBudget).map((s) => s.cost.expected)),
   };
@@ -289,14 +317,7 @@ function planSkillStudy({
   const forced = forcedLoad ? forcedEstimate({ skills: fitted, mode: forcedLoad, target, repsN, scale }) : null;
   if (forced) totals.withForced = addCosts([totals.expected, forced.cost]);
 
-  const assumptions = [
-    credits ? (creditsPerRun ? `credits per run given: low ${credits.low}, mid ${credits.mid}, high ${credits.high}` : `credits per run observed in ${obs.n} finished runs (model ${model}${armConfig ? ', coordinator mode where present' : ''}): low ${credits.low.toFixed(2)} (p25), mid ${credits.mid.toFixed(2)} (mean), high ${credits.high.toFixed(2)} (p90); ${obs.censored} timed-out run(s) had no credits and are left out, so the figures lean low`)
-      : 'no observed runs and no --credits-per-run: credits are not estimated',
-    `${target} tasks per skill, ${repsN} replicates per cell, parallel 1; waves rerun ctl and ctl-b so drift between waves is measured`,
-    `wave 2 runs for ${Math.round(wave2Share * 100)}% of skills and wave 3 for ${Math.round(wave3Share * 100)}% (our own assumptions, replace them with measured shares); the worst case runs every wave`,
-    `judge cost USD ${judgeUsdPerRun} per judged run (inferred from the judging runbook estimate), applied to the share of runs on rubric-scored tasks`,
-    sec ? `wall clock ${Math.round(sec)} s per run (observed mean), sequential` : 'wall clock not estimated (no observed runs)',
-  ];
+  const assumptions = planAssumptions({ credits, creditsPerRun, obs, model, armConfig, target, repsN, wave2Share, wave3Share, judgeUsdPerRun, sec });
 
   return {
     schemaVersion: 1, toolVersion: TOOL_VERSION, createdAt: now.toISOString(), base: report.base, engine: agentEngine, model, armConfig,
