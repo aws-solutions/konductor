@@ -30,6 +30,7 @@ const SKIPPED_DIRS = new Set(['evals']);
 const DECLARED = /(?<![A-Za-z0-9_./-])(?:skills\/)?(?:([a-z0-9][a-z0-9-]*)\/)?((?:references|scripts)\/[A-Za-z0-9_./-]*[A-Za-z0-9_])/g;
 
 const { sha256 } = require('../runner/lib/util.js');
+const { UNIT_KINDS, pathOf } = require('./unitkinds.js');
 
 /** Why each kind other than a skill is refused, as the message names it. */
 // Stage 1 (this design) measures skills; stages 2 to 4 (agent files, SOPs, context) are `cap unit-stage` (unitstage.js).
@@ -40,14 +41,11 @@ const REFUSED_KINDS = Object.freeze({
   context: `always-loaded context is in both arms of every run, so it is not ablatable by this design (${STAGES_2_TO_4}, which drops it from one arm)`,
   steering: 'always-loaded steering is in both arms of every run, so it is not ablatable by this design',
 });
-const KIND_NAMES = Object.freeze({ agent: 'an agent', sop: 'a SOP', context: 'a context file', steering: 'a steering file' });
-/** Where each kind lives below the repository root (as in scan.js), plus steering. */
-const KIND_PATHS = Object.freeze({
-  agent: (n) => [`agents/${n}.agent-spec.json`],
-  sop: (n) => [`agent-sops/${n}.sop.md`],
-  context: (n) => [`context/${n}.md`],
-  steering: (n) => [`.kiro/steering/${n}.md`, `steering/${n}.md`],
-});
+/** Each kind a name can have (cap/units/*.json, plus steering): its noun with article and where it lives below the root. */
+const KINDS = Object.freeze([
+  ...UNIT_KINDS.map((k) => ({ kind: k.kind, article: k.article, paths: (n) => [pathOf(k, n)] })),
+  { kind: 'steering', article: 'a steering file', paths: (n) => [`.kiro/steering/${n}.md`, `steering/${n}.md`] },
+]);
 
 /**
  * One entry of the unit: { path, exec, sha256 }, or { path, missing: true } when the file is not there.
@@ -140,9 +138,7 @@ function subjectSource({ repo, name, paths = [name] }) {
  * @returns {string[]} e.g. ['skill'] or ['agent']; empty when the tree has nothing of that name
  */
 function kindsOf({ repo, name }) {
-  const kinds = fs.existsSync(path.join(repo, 'skills', name, 'SKILL.md')) ? ['skill'] : [];
-  for (const [kind, paths] of Object.entries(KIND_PATHS)) if (paths(name).some((p) => fs.existsSync(path.join(repo, p)))) kinds.push(kind);
-  return kinds;
+  return KINDS.filter((k) => k.paths(name).some((p) => fs.existsSync(path.join(repo, p)))).map((k) => k.kind);
 }
 
 /**
@@ -157,7 +153,7 @@ function assertSkillSubject({ repo, name }) {
   const kinds = kindsOf({ repo, name });
   if (kinds.includes('skill')) return;
   if (!kinds.length) throw new Error(`${name} is not a skill in ${repo} (no skills/${name}/SKILL.md, and no identity entry maps it to one)`);
-  throw new Error(`${name} is ${KIND_NAMES[kinds[0]]}, not a skill: ${REFUSED_KINDS[kinds[0]]}`);
+  throw new Error(`${name} is ${KINDS.find((k) => k.kind === kinds[0]).article}, not a skill: ${REFUSED_KINDS[kinds[0]]}`);
 }
 
 module.exports = { REFUSED_KINDS, SKIPPED_DIRS, declaredPaths, subjectManifest, subjectSource, kindsOf, assertSkillSubject };

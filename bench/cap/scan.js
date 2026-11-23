@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Lists the capabilities of a tree (skills/, agents/, agent-sops/, context/) and reads the agent specs.
+// Lists the capabilities of a tree (one folder per kind in cap/units/*.json: skills/, agents/, agent-sops/, context/)
+// and reads the agent specs.
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { frontmatter, fmInfo } = require('../runner/lib/frontmatter.js');
+const { UNIT_KINDS, layoutOf, pathOf } = require('./unitkinds.js');
 
-const KINDS = ['skill', 'agent', 'sop', 'context'];
+const KINDS = UNIT_KINDS.map((k) => k.kind);
 
 // Where a capability of each kind lives, relative to the tree root.
-const PATH_OF = {
-  skill: (n) => `skills/${n}/SKILL.md`,
-  agent: (n) => `agents/${n}.agent-spec.json`,
-  sop: (n) => `agent-sops/${n}.sop.md`,
-  context: (n) => `context/${n}.md`,
-};
+const PATH_OF = Object.freeze(Object.fromEntries(UNIT_KINDS.map((k) => [k.kind, (n) => pathOf(k, n)])));
 
 const { readTextOrNull: readText } = require('../runner/lib/util.js');
 const names = (dir, pick) => {
@@ -28,33 +25,37 @@ function sopOverview(text) {
   return m ? m[1].replace(/\s+/g, ' ').trim() : '';
 }
 
-function descriptionOf(kind, name, text) {
-  if (kind === 'skill') {
+// How a unit says what it is, by the kind file's `description` field.
+const DESCRIBE = {
+  frontmatter: (text) => {
     const info = fmInfo(frontmatter(text), 'description');
     return { text: info.value, style: info.style, present: info.present && info.value.length > 0 };
-  }
-  if (kind === 'sop') { const t = sopOverview(text); return { text: t, style: 'overview', present: t.length > 0 }; }
-  if (kind === 'agent') {
+  },
+  overview: (text) => { const t = sopOverview(text); return { text: t, style: 'overview', present: t.length > 0 }; },
+  'agent-spec': (text) => {
     let d = '';
     try { d = JSON.parse(text)?.config?.description ?? ''; } catch { /* reported by the spec loader */ }
     return { text: d, style: 'json', present: d.length > 0 };
-  }
-  return { text: '', style: 'none', present: false };
-}
+  },
+  none: () => ({ text: '', style: 'none', present: false }),
+};
 
-/** Every capability under `root`, keyed by id (`skill:alpha`). `bytes` is the size of the defining file. */
-function scanRepo(root) {
+/**
+ * Every capability under `root`, keyed by id (`skill:alpha`), kinds in stage order. `bytes` is the size of the
+ * defining file. `kinds` (default: cap/units/*.json) is the kind list to scan.
+ */
+function scanRepo(root, kinds = UNIT_KINDS) {
   const out = new Map();
-  const add = (kind, name) => {
-    const rel = PATH_OF[kind](name);
-    const text = readText(path.join(root, rel));
-    if (text === null) return;
-    out.set(`${kind}:${name}`, { id: `${kind}:${name}`, kind, name, path: rel, bytes: Buffer.byteLength(text), description: descriptionOf(kind, name, text), text });
-  };
-  for (const n of names(path.join(root, 'skills'), (e) => (e.isDirectory() ? e.name : null))) add('skill', n);
-  for (const n of names(path.join(root, 'agents'), (e) => (/\.agent-spec\.json$/.test(e.name) ? e.name.replace(/\.agent-spec\.json$/, '') : null))) add('agent', n);
-  for (const n of names(path.join(root, 'agent-sops'), (e) => (/\.sop\.md$/.test(e.name) ? e.name.replace(/\.sop\.md$/, '') : null))) add('sop', n);
-  for (const n of names(path.join(root, 'context'), (e) => (e.isFile() && /\.md$/.test(e.name) ? e.name.replace(/\.md$/, '') : null))) add('context', n);
+  for (const k of kinds) {
+    const { dir, nameOf } = layoutOf(k);
+    for (const name of names(path.join(root, dir), nameOf)) {
+      const rel = pathOf(k, name);
+      const text = readText(path.join(root, rel));
+      if (text === null) continue;
+      const description = DESCRIBE[k.description](text);
+      out.set(`${k.kind}:${name}`, { id: `${k.kind}:${name}`, kind: k.kind, name, path: rel, bytes: Buffer.byteLength(text), description, text });
+    }
+  }
   return out;
 }
 

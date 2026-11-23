@@ -12,7 +12,10 @@ const BENCH = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(BENCH, 'scripts');
 const doc = fs.readFileSync(path.join(BENCH, 'docs', 'runbook.md'), 'utf8');
 const sources = Object.fromEntries(fs.readdirSync(SCRIPTS).filter((f) => f.endsWith('.sh')).map((f) => [f, fs.readFileSync(path.join(SCRIPTS, f), 'utf8')]));
-const allSource = Object.values(sources).join('\n');
+// run-after-capability.sh is a launcher; the chain it runs is bench/scripts/lib/chain/*.js.
+const CHAIN = path.join(SCRIPTS, 'lib', 'chain');
+const chainSource = fs.readdirSync(CHAIN).filter((f) => f.endsWith('.js')).map((f) => fs.readFileSync(path.join(CHAIN, f), 'utf8')).join('\n');
+const allSource = [...Object.values(sources), chainSource].join('\n');
 
 test('every script the runbook names exists, and every pipeline script is named in it', () => {
   const named = new Set([...doc.matchAll(/\b([a-z][a-z-]*\.sh)\b/g)].map((m) => m[1]));
@@ -52,9 +55,8 @@ test('every upper-case variable the runbook names in code font appears in a scri
 });
 
 test('the phase table matches the chain\'s phase names', () => {
-  const m = /PHASE_NAMES=\(""((?: \w+)+)\)/.exec(sources['run-after-capability.sh']);
-  assert.ok(m);
-  const names = m[1].trim().split(/\s+/);
+  const names = require(path.join(CHAIN, 'context.js')).PHASE_NAMES.slice(1);
+  assert.equal(names.length, 6);
   const rows = [...doc.matchAll(/^\| P(\d) \| (\w+) \|/gm)].map((r) => [Number(r[1]), r[2]]);
   assert.deepEqual(rows, names.map((n, i) => [i + 1, n]));
 });
@@ -79,6 +81,8 @@ test('the runbook uses no em or en dashes and no first-person chat wording', () 
 });
 
 test('the scripts document their credentials rule: no default path, refusal when unset', () => {
-  for (const n of ['run-after-capability.sh', 'run-judging.sh']) assert.match(sources[n], /CREDS is not set/, n);
+  assert.match(sources['run-judging.sh'], /CREDS is not set/);
+  assert.match(chainSource, /CREDS is not set/);
+  assert.match(sources['run-after-capability.sh'], /has no default\. A launch and --dry-run refuse/);
   assert.match(doc, /There is no default and a launch refuses without it/);
 });

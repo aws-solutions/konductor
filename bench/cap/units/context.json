@@ -1,0 +1,21 @@
+{
+  "$comment": "Stage 4 unit kind: always-loaded context. See skill.json for the format; cap/unitkinds.js documents each field.",
+  "kind": "context",
+  "stage": 4,
+  "label": "always-loaded context",
+  "article": "a context file",
+  "path": "context/{name}.md",
+  "listedIn": "contexts",
+  "description": "none",
+  "perSession": true,
+  "claimNoun": "context file",
+  "selection": {
+    "test": "none: always loaded",
+    "note": "every session of each agent that lists it carries it, so its cost is paid on every session"
+  },
+  "paidFrame": {
+    "answer": "The file below is part of your instructions for this session. Follow it.",
+    "noun": "always-loaded instruction file of a coding-agent orchestrator",
+    "tasks": "Each task gives the orchestrator a situation and asks what it does next."
+  }
+}
