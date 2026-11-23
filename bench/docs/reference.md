@@ -122,9 +122,8 @@ node bench/runner/bench.js cap list --base main                     # agents, sk
 node bench/runner/bench.js cap audit --base main --out /tmp/audit   # description lint, size, near duplicates, reachability
 node bench/runner/bench.js cap scenarios --cap skill:backend-review --dry-run --out /tmp/scn   # writes the prompt to /tmp/scn/scenarios/, no model call
 node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out /tmp/kp   # keep-or-prune record from the stub provider
-node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"   # unit tests (the full suite)
+bench/scripts/test.sh [--tap]                                       # the full suite: node unit tests, then the Python plant tests as TAP lines
 node --test bench/physical/test/*.test.js bench/agenteval/test/*.test.js   # plant step 0 fixtures and agenteval
-python3 -m unittest discover -s bench/physical/test -p 'test_*.py'   # plant simulator, gateway and Strands forwarder
 ```
 
 `--base REF` reads local refs only; the runner never fetches. `main` means `origin/main`, and `HEAD` is not accepted (use a branch, tag or remote-tracking name).
@@ -328,9 +327,8 @@ node bench/runner/bench.js compare --base $OLD --head $OUT          # regression
 node bench/runner/bench.js recheck --run $OUT [--dry-run]                    # re-apply corrected task checks to saved workspaces
 node bench/runner/bench.js backfill --run $OUT [--credits] [--skills] [--write]  # repair finished runs from stream.jsonl: credits (default) and/or skill-load fields (dry run by default)
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
-node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"   # unit tests (the full suite)
+bench/scripts/test.sh [--tap]                                       # the full suite: node unit tests, then the Python plant tests as TAP lines
 node --test bench/physical/test/*.test.js bench/agenteval/test/*.test.js   # plant step 0 fixtures and agenteval
-python3 -m unittest discover -s bench/physical/test -p 'test_*.py'   # plant simulator, gateway and Strands forwarder
 node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
 ```
 Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--replicate-offset N`, `--parallel N`, `--budget-credits X`,
@@ -1471,7 +1469,7 @@ The plant suite tests an agent that acts on a machine. The machine is a simulate
 | Scorer: outcome, check predicates, refusal rule, the three measures, the `plant` field of `result.json` | `bench/runner/lib/plant/{score,predicates,refusal}.js` |
 | Plant report: the three measures, verdicts, audit table and WARN header from scored runs | `bench/report/plant.js` (`bench plant-report`), with the Markdown in `bench/report/plant-render.js` |
 | Plant trace: one static HTML page for a trial, or two stacked one below the other | `bench/report/plant-trace/` (`bench plant-trace`) |
-| Tool list, sim cost, not-executed cost, motion tools and the rule facts both languages read (a reader refuses an unknown major) | `bench/physical/schemas/plant-meta-v1.json`, read by `bench/physical/sim/meta.py` and `bench/runner/lib/plant/meta.js` |
+| Tool list, sim cost, not-executed cost, motion tools, rest state, sensor names and the rule facts both languages read (a reader refuses an unknown major) | `bench/physical/schemas/plant-meta-v1.json`, read by `bench/physical/sim/meta.py` and `bench/runner/lib/plant/meta.js` |
 | Task class `physical` and its `environment` block; the `plant` result field | `bench/schema/task.schema.json`, `bench/schema/result.schema.json` |
 | Walls and the wall prober: what the sandbox gives a plant run, the preflight checks and the prober's run | `bench/runner/lib/plant/walls.js`, `bench/physical/controls/wall-prober-kiro` |
 | Scripted controls (do-nothing, scripted calls, careful operator, path, unsafe agent) and their report section | `bench/physical/controls/{plant-control.js,*-kiro}`, `bench/report/plant-controls.js` |

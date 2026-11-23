@@ -189,8 +189,8 @@ logs, approvals and adapter. What changes is the tool list (eight tools: `get_st
 | R5 | guard opened without approval | door opened without approval |
 
 The arm has its own careful operator, unsafe agent, scripted calls and path controls, and shares do-nothing. It is
-not ready for a counted run: there is no signed arm release (D-30), the sandbox walls are unchecked on it (D-31),
-and `held_safe_state` reads only conveyor fields (D-110).
+not ready for a counted run: there is no signed arm release (D-30) and the sandbox walls are unchecked on it (D-31).
+`held_safe_state` reads the arm's own motion tools and rest state from its plant metadata (D-110, D-207).
 
 ---
 
