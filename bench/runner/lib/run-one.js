@@ -30,6 +30,7 @@ const { plantWalls, withCgroup } = require('./plant/walls.js');
 const introspect = require('./introspect/index.js');
 const { startupRecord } = require('./startup.js');
 const introspectReport = require('./introspect/report.js');
+const { listingMismatch: claudeListingMismatch } = require('./harness/claude-listing.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -550,7 +551,11 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   const listing = ctx.skillListings?.get(arm.id);
   if (listing) {
     result.skillListing = listing.listing;
-    if (harness.id === 'claude-code') result.claudeCode = { ...(result.claudeCode ?? {}), skillListing: listing.listing };
+    if (harness.id === 'claude-code') {
+      const mismatch = claudeListingMismatch(listing.listing, result.claudeCode?.runListing);
+      result.claudeCode = { ...(result.claudeCode ?? {}), skillListing: listing.listing, listingMismatch: mismatch };
+      if (mismatch) result.flags = [...new Set([...(result.flags || []), 'listingMismatch'])];
+    }
   }
   const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
   result = scrubbed.value;

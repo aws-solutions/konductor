@@ -666,3 +666,25 @@ test('two runs at once each remove only their own claude-<uid> directory and lea
     a.cleanup();
   }
 });
+
+// D-33: each run's own listing (its --debug-file lines) is read and compared with the arm's probe record.
+test('a run that sent another skill listing than the arm probe measured is flagged listingMismatch; the same listing is not', async () => {
+  const arm = CC_VANILLA;
+  const record = { skillsSent: 7, overBudget: false };
+  const s = setup('vanilla-success', { runDebugLines: ['[DEBUG] Sending 8 skills via attachment (initial)'] });
+  try {
+    s.ctx.skillListings = new Map([[arm.id, { listing: record }]]);
+    const r = await run(s, arm);
+    assert.ok(started(s).args.includes('--debug-file'), 'the run passes --debug-file');
+    assert.deepEqual(r.claudeCode.runListing, { sent: 8, overBudget: null });
+    assert.deepEqual(r.claudeCode.listingMismatch, { probe: { sent: 7, overBudget: false }, run: { sent: 8, overBudget: false } });
+    assert.ok(r.flags.includes('listingMismatch'));
+  } finally { s.cleanup(); }
+  const same = setup('vanilla-success', { runDebugLines: ['[DEBUG] Sending 7 skills via attachment (initial)'] });
+  try {
+    same.ctx.skillListings = new Map([[arm.id, { listing: record }]]);
+    const r = await run(same, arm);
+    assert.equal(r.claudeCode.listingMismatch, null);
+    assert.equal(r.flags.includes('listingMismatch'), false);
+  } finally { same.cleanup(); }
+});

@@ -22,7 +22,11 @@ if (args[0] === '--version') { console.log(cfg.version || '9.9.9 (fake)'); proce
 // The listing probes (lib/harness/claude-listing.js): /context, and -p with --debug-file and no credentials. They are
 // answered from the skills in CLAUDE_CONFIG_DIR by the real fill rule (built-ins first, then name order while it fits),
 // and never touch started.json or the files of a run.
-if (args.includes('/context') || args.includes('--debug-file')) {
+// A real run also passes --debug-file (D-33), so a probe is told apart by its "-p ok" prompt. In a run the fake writes
+// cfg.runDebugLines into that file, as the real claude logs the listing it sent.
+const isProbe = args.includes('/context') || (args.includes('--debug-file') && args[args.indexOf('-p') + 1] === 'ok');
+if (!isProbe && args.includes('--debug-file') && cfg.runDebugLines) fs.writeFileSync(args[args.indexOf('--debug-file') + 1], cfg.runDebugLines.join('\\n') + '\\n');
+if (isProbe) {
   fs.appendFileSync(path.join(cfg.dir, 'probe-env.jsonl'), JSON.stringify({ aws: Object.keys(process.env).filter((k) => k.startsWith('AWS_')).sort(), args }) + '\\n');
   const dir = path.join(process.env.CLAUDE_CONFIG_DIR, 'skills');
   const builtins = [['dataviz', 1440], ['code-review', 840]];

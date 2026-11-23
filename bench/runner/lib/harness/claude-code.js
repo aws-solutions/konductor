@@ -37,6 +37,8 @@ const ALLOWED_TOOLS = ['Bash', 'Edit', 'Write', 'Read'];
 // execute_bash, glob and grep (agent-file.js BUILTIN_TOOLS). `mcp__plant` allows every tool of the plant server.
 const PLANT_TOOLS = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'];
 const PLANT_ALLOWED_TOOLS = [`mcp__${PLANT_SERVER}`, ...PLANT_TOOLS];
+// The run's own debug log, in its scratch HOME (removed with the run).
+const RUN_DEBUG_FILE = 'claude-run-debug.log';
 // The levels `claude --effort` takes (`claude --help` of 2.1.326: low, medium, high, xhigh, max). bench passes the level
 // as given, so a Claude Code arm and a Kiro CLI arm at --effort high run at the same named level.
 const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -123,6 +125,9 @@ function buildCommand({ arm, task, config, ctx, resume = null, home = null }) {
   // --strict-mcp-config ignores every MCP configuration but --mcp-config (user, project, enterprise): a plant arm gets the
   // shim only, every other arm no server. konductor's Claude install declares none, so its arm loses nothing.
   args.push('--strict-mcp-config');
+  // The run's own skill listing lines ("Sending N skills"), read by parseResult and compared with the arm's probe (D-33).
+  // Plant arms skip it: their controls read --debug-file as a listing probe.
+  if (!arm.plant && home) args.push('--debug-file', path.join(home, RUN_DEBUG_FILE));
   // Last: the tool list is variadic.
   args.push('--allowedTools', ...(arm.plant ? PLANT_ALLOWED_TOOLS : ALLOWED_TOOLS));
   return { file: ctx.claude.bin, args, stdin: resume ? resume.prompt : promptFor(arm, task), display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')} < prompt.txt` };
@@ -291,6 +296,12 @@ function sumSessions(a, outDir, canonical) {
   a.tokens = Object.fromEntries(Object.keys(a.tokens).map((k) => [k, per.reduce((x, p) => x + (p.tokens[k] ?? 0), 0)]));
 }
 
+/** The listing lines of a run's own debug log in `home` (`{ sent, overBudget }`), or null when the run wrote none. */
+function runListingOf(home) {
+  const text = readIfPresent(path.join(home, RUN_DEBUG_FILE));
+  return text ? listing.parseDebug(text) : null;
+}
+
 function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config, freshSessions = false }) {
   const streamText = fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8');
   const { events, badLines } = parseStream(streamText);
@@ -328,6 +339,7 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config, freshSession
     permissionDenials: a.permissionDenials.length, hookEvents: a.hooks.length, spawned: a.spawn.spawned, spawnFailed: a.spawn.failed,
     maxSpawnDepth: a.spawn.maxDepth, resultLines: a.resultCount, numTurns: a.numTurns, apiDurationMs: a.apiDurationMs,
     badLines, initAgents: a.init?.agents?.length ?? null, initSkills: a.init?.skills?.length ?? null, initTools: a.init?.tools ?? null,
+    runListing: home ? runListingOf(home) : null,
   };
   return acc;
 }

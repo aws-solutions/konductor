@@ -65,6 +65,18 @@ function parseDebug(text) {
   return { sent: sent ? Number(sent[1]) : null, overBudget: over ? { skills: Number(over[1]), chars: Number(over[2]), budget: Number(over[3]) } : null };
 }
 
+/**
+ * Where a run's own listing (`run`, parseDebug of its --debug-file) differs from the arm's probe `record` (DEBT D-33):
+ * `{ probe, run }`, each `{ sent, overBudget }`, or null when they agree or either is missing. A run that found more
+ * skills (project skills from its cwd) sends another count; a run over the budget when the probe was not differs too.
+ */
+function listingMismatch(record, run) {
+  if (!record || !run || run.sent === null) return null;
+  const probe = { sent: record.skillsSent ?? null, overBudget: Boolean(record.overBudget) };
+  const seen = { sent: run.sent, overBudget: Boolean(run.overBudget) };
+  return probe.sent === seen.sent && probe.overBudget === seen.overBudget ? null : { probe, run: seen };
+}
+
 /** The budget Claude Code computes: the env override, else window x chars-per-token x skillListingBudgetFraction. */
 function formulaBudget({ window, model, fraction, override }) {
   if (override != null) return Number(override);
@@ -190,4 +202,4 @@ function skillListing({ claude, model, home, envFor, cacheDir = null, scratch = 
   }
 }
 
-module.exports = { skillListing, measure, parseContext, parseDebug, formulaBudget, installedSkills, tokensOf, BUDGET_VAR, RUN_FLAGS };
+module.exports = { skillListing, measure, parseContext, parseDebug, listingMismatch, formulaBudget, installedSkills, tokensOf, BUDGET_VAR, RUN_FLAGS };

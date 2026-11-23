@@ -572,6 +572,11 @@ field the 2x2 kit's `gate` reads). The runner logs a `WARNING` at prepare when a
 listing could not be measured, and `report-2x2` shows the listing in its header and refuses a konductor cell whose runs
 sent a konductor skill by name only.
 
+Each Claude Code run (not a plant arm) also writes its own debug log (`--debug-file` in its scratch HOME). The runner
+reads its listing lines into `claudeCode.runListing` (`{ sent, overBudget }`); when the count sent or the over-budget state
+differs from the arm's probe record, the result carries `claudeCode.listingMismatch` (`{ probe, run }`) and the flag
+`listingMismatch`: that run saw another listing than the arm record says (more skills found from its cwd, say).
+
 Every probe passes `--strict-mcp-config`, as a real run does. Claude Code walks up from the run cwd and loads every
 `.claude/skills` it finds as project skills, so a scratch dir under the owner's HOME would hand a vanilla run the
 owner's skills. `bench run` with Claude Code arms therefore refuses a TMPDIR under the real HOME, or below any
