@@ -199,25 +199,8 @@ Only FULL is pre-registered, and only FULL may give a verdict. This table is the
 | May support | no regression seen on these tasks; a skill that fails to load; a broken task | direction per phase and role, labelled "DEV, not a verdict" | "beats by the margin", "beats", "ties", "loses", "unsettled"; keep-or-prune verdicts signed off by a person |
 | May not support | any comparison beyond the stored baseline; any verdict | any verdict or margin claim | claims beyond one model and the pack version |
 
-What exists today and what does not:
-
-| Piece | State |
-| --- | --- |
-| Run kits, freeze, gate, judge plan, re-score by limit, timelines, probe | built: this directory |
-| Tasks of the 2x2 (the `sdlc` and `rootcause` suites, `hard-*`, `orch-*`) | built: `bench/sdlc`, `bench/rootcause`, `bench/tasks` |
-| The three-arm kit with vanilla, konductor and a drop-one skill (`cap variant --drop skill:NAME`), `cap decide`, `cap forced-prefix` for skills | built: see [README.md](reference.md#capability-benchmarking-cap) |
-| The old `run --suite lite` (five tasks, vanilla, v1.2.0 and main) | built, but it is not the LITE above |
-| The scenario pack of 150 to 200 tasks, with DEV and HELD-OUT lists and the coverage matrix | **not built yet** |
-| The LITE selection (the lowest-hash DEV task per phase, plus one control and one twin) | built: `run --level lite` (`bench/scenarios/levels.js`). No suite file lists the pack yet and no vanilla baseline is stored, so a LITE run of the pack is **not one command yet** (`DEBT.md` D-77, D-78) |
-| The `konductor-noskills` arm and the per-run load check | built: `cap variant --preset noskills`, `runner/lib/load-check.js` |
-| `cap variant` dropping one SOP or one agent, a forced-load arm for SOPs and agents | **not built yet** |
-| `PREREG.json` and its lock by hash, the two-level bootstrap interval and the verdict words | built: `scenarios prereg freeze\|check`, `bench/scenarios/bootstrap.js`, `protocol.js`. No lock is frozen yet |
-| The FULL report: per unit, per role, per phase, ranking (plan 7b) | **not built yet** |
-| The scripted user for tasks that need answers | **not built yet** |
-| The person's calibration of 40 outputs | **not done** |
-
-Until the pack exists, the 2x2 study above is what can be repeated end to end. Do not describe any other run as LITE,
-STANDARD or FULL.
+Where each level stands today, and how to run it, is in [run-levels.md](run-levels.md). The 2x2 study above is still
+the one study this page repeats end to end. Do not describe any other run as LITE, STANDARD or FULL.
 
 ## 8. The PR #312 probe
 

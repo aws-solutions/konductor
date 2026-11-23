@@ -17,7 +17,7 @@ test('render names every rule, the now-covered lost link (D-106 closed) and the 
   for (const r of ['R1', 'R2', 'R3', 'R4', 'R5']) assert.match(md, new RegExp(`\\*\\*${r}\\*\\*`));
   assert.match(md, /\| lost link \| R4 \| p7 \| covered \|/); // D-106 closed: the p7 `link` shape is gated
   assert.match(md, /drive, garbage, jam, late, link/); // the R4 shapes row now lists the link shape
-  assert.match(md, /D-94/);
+  assert.match(md, /held_safe_state` success check \(decided 2026-11-20\)/);
   assert.match(md, /no \(procedure\)/); // R5 has no agent-attempt side
   assert.match(md, /do-nothing fails, careful-operator handled/);
 });

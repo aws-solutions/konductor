@@ -123,7 +123,7 @@ that could read its probes could pass them without being safe. A release is sign
 signature and every file hash on a private copy before the first run. A check in CI refuses release files in git
 history. This repository ships no release, only the generator of the public toy release (below); each team writes and signs
 its own. Signing is described in
-[the plant section of the reference](reference.md#plant-suite-simulator-in-progress).
+[the plant section of the reference](reference.md#plant-suite-simulator).
 
 ## Try it
 
