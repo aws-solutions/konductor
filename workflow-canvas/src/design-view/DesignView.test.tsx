@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
-import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
+import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
 import { textOf } from '../designer/core';
 import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
@@ -264,7 +264,7 @@ function Harness({
   edits: FakeEdits;
   scheduler: FakeScheduler;
   validate: (
-    request: CheckRequest,
+    request: ValidateRequest,
     signal: AbortSignal,
   ) => Promise<CheckAnswer>;
   stageFields?: StageFieldsByKind;
@@ -296,6 +296,7 @@ function drawn({
   document: workflow = HELLO_DOCUMENT,
   answers,
   openedFails,
+  openedRecovers = false,
   openedHeld = false,
   agents,
 }: {
@@ -304,6 +305,8 @@ function drawn({
   answers?: CheckAnswer[];
   /** The check of the loaded text fails with this message. */
   openedFails?: string;
+  /** Only the first check of the loaded text fails; a later one answers. */
+  openedRecovers?: boolean;
   /** The check of the loaded text never answers, as one in flight. */
   openedHeld?: boolean;
   /** The agents on offer for the `agent` key. */
@@ -313,12 +316,17 @@ function drawn({
   const edits = acceptingEdits();
   const queued = [...(answers ?? [])];
   const savedText = workflow.text ?? '';
+  let openedTries = 0;
   // The check of the text as loaded is its own call; the queued answers are
   // for the checks that follow an edit.
-  const validate = vi.fn(async (request: CheckRequest) => {
+  const validate = vi.fn(async (request: ValidateRequest) => {
     if (request.text === savedText) {
+      openedTries += 1;
       if (openedHeld) return new Promise<CheckAnswer>(() => undefined);
-      if (openedFails !== undefined) throw new Error(openedFails);
+      const stillFails = !openedRecovers || openedTries === 1;
+      if (openedFails !== undefined && stillFails) {
+        throw new Error(openedFails);
+      }
       return goodAnswer(request.text);
     }
     return queued.length > 0 ? queued.shift()! : goodAnswer(request.text);
@@ -597,13 +605,59 @@ describe('DesignView, the Properties tab', () => {
     expect(screen.getByTestId('reading-keys')).toBeTruthy();
   });
 
-  it('says so when the keys could not be read', async () => {
+  it('says so when the keys could not be read, and that a save is refused', async () => {
     drawn({ document: WITH_PROMPT, openedFails: 'The server said no.' });
     await settle();
+    const said = screen.getByTestId('reading-keys-failed').textContent ?? '';
 
-    expect(screen.getByTestId('reading-keys-failed').textContent).toContain(
-      'The server said no.',
-    );
+    expect(said).toContain('The server said no.');
+    expect(said).toContain('a save of a stage that was loaded is refused');
+  });
+
+  it('refuses a save after a failed first check, and says how to get out', async () => {
+    const { edits } = drawn({
+      document: WITH_PROMPT,
+      openedFails: 'The server said no.',
+    });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).not.toHaveBeenCalled();
+    const said = screen.getByTestId('save-refused').textContent ?? '';
+    expect(said).toContain('not known');
+    expect(said).toContain('Check the file again, or reload the page.');
+  });
+
+  it('reads the keys again on Check again, which lets the save go ahead', async () => {
+    // A file whose stages hold the name and the agent alone, so nothing but
+    // the failed check stands in the way of the save.
+    const { edits } = drawn({
+      openedFails: 'The server said no.',
+      openedRecovers: true,
+    });
+    await settle();
+    expect(screen.getByTestId('reading-keys-failed')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(button('Check again'));
+    });
+    await settle();
+
+    expect(screen.queryByTestId('reading-keys-failed')).toBeNull();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    expect(screen.queryByTestId('save-refused')).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).toHaveBeenCalledTimes(1);
   });
 
   it('leaves the name and the agent editable', async () => {
@@ -935,10 +989,9 @@ describe('DesignView, saving', () => {
     // The writer reads that comment as part of the stage that follows it.
     expect(edits.save).not.toHaveBeenCalled();
     expect(screen.getByTestId('save-refused').textContent).toContain(
-      'A comment, a blank line or a value not written plainly',
+      'a comment or a blank line in front of it',
     );
   });
-
   it('lets a save go ahead for the stage the comment is not part of', async () => {
     const { edits } = drawn({ document: COMMENT_BEFORE });
     await settle();
@@ -1160,7 +1213,8 @@ describe('DesignView, choosing a stage in the drawing', () => {
 
     // The arrow keys walk the tabs, and the focus stays on the one reached.
     await act(async () => {
-      fireEvent.keyDown(tab('YAML'), { key: 'ArrowRight' });
+      tab('YAML').focus();
+      fireEvent.keyDown(tab('YAML'), { key: 'ArrowRight', keyCode: 39 });
     });
 
     expect(panelOf('Properties').hidden).toBe(false);

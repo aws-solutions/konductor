@@ -53,7 +53,7 @@ import {
   saveRefusal,
   sourceStageOf,
 } from './view-stage';
-import { writerKeepsStage } from './stage-item';
+import { stageRefusal } from './stage-item';
 import { useInitialCheck } from './use-initial-check';
 import { useStageSources, type StageSources } from './use-stage-sources';
 
@@ -100,11 +100,14 @@ const REWRITE_REFUSAL =
   'A save would write this whole file in the plain layout, because its stages are not a list under stages:, and its other keys, its comments and its version would be lost. So it is refused. Edit the file by hand until a save can keep them.';
 
 // The writer builds a stage it changed from its name and its agent alone, so
-// anything else the file wrote inside that stage goes with the save: a
-// comment, a blank line, a quoted value. None of it is in the parsed stage,
-// so only the lines of the file say whether a save would keep them.
-const itemRefusal = (name: string) =>
-  `A save would write ${name} as its name and its agent alone, and the lines the file holds for it say more than that, so it is refused. A comment, a blank line or a value not written plainly inside the stage would be lost. Edit the file by hand until a save can keep them.`;
+// anything else the file wrote in or in front of that stage goes with the
+// save: a comment, a blank line, a quoted value, the keys the other way
+// round, a line break of another kind, the missing one at the end of a file.
+// None of it is in the parsed stage, so only the lines of the file say what a
+// save would lose, and the message names that one thing rather than the list
+// of what it could have been.
+const itemRefusal = (name: string, reason: string) =>
+  `A save would write ${name} as its name and its agent alone, and the lines the file holds for it say more than that, so it is refused: ${reason}. Edit the file by hand until a save can keep them.`;
 
 const STATUS_WORDS: Readonly<Record<DraftStatus, string>> = {
   unchecked: 'Not checked yet',
@@ -277,7 +280,7 @@ export function DesignView({
   });
   const sources = useStageSources({
     text: savedText,
-    stages: state.draft.stages,
+    draft: state.draft,
     // The text of the save in flight, which is about to become the file. The
     // editor takes edits while it is in flight, so the places of the stages
     // must come from the draft that sent it, not from the one on the page
@@ -374,19 +377,19 @@ export function DesignView({
     changed: changed.has(one.id),
   }));
   // The changed stage whose lines the writer would not write back as the file
-  // has them. Read from the file itself, because what would be lost, such as
-  // a comment, is not in the parsed stage.
-  const rewritten = guarded.find(
-    (one) =>
-      one.changed &&
-      one.source.kind === 'loaded' &&
-      fileView !== null &&
-      !writerKeepsStage(savedText, fileView.stages, one.source.index),
-  );
+  // has them, and what it is that would be lost. Read from the file itself,
+  // because none of it, a comment least of all, is in the parsed stage.
+  const rewritten = guarded.flatMap((one) => {
+    if (!one.changed || one.source.kind !== 'loaded' || fileView === null) {
+      return [];
+    }
+    const reason = stageRefusal(savedText, fileView.stages, one.source.index);
+    return reason === undefined ? [] : [{ name: one.draft.name, reason }];
+  })[0];
   const refusal = willRewriteWhole(savedText)
     ? REWRITE_REFUSAL
     : (saveRefusal(guarded, fileView) ??
-      (rewritten ? itemRefusal(rewritten.draft.name) : undefined));
+      (rewritten ? itemRefusal(rewritten.name, rewritten.reason) : undefined));
 
   const onKeyDown = (event: KeyboardEvent) => {
     const asked = undoShortcut(shortcutKeyOf(event));
@@ -435,8 +438,14 @@ export function DesignView({
           </div>
         )}
         {opened.failure !== undefined && (
-          <Alert type="warning" data-testid="reading-keys-failed">
-            {opened.failure} Only the name and the agent of a stage are shown.
+          <Alert
+            type="warning"
+            data-testid="reading-keys-failed"
+            action={<Button onClick={opened.checkAgain}>Check again</Button>}
+          >
+            {opened.failure} Only the name and the agent of a stage are shown,
+            and a save of a stage that was loaded is refused until the keys are
+            known.
           </Alert>
         )}
         <CheckLine status={draft.status} failure={draft.failure} />

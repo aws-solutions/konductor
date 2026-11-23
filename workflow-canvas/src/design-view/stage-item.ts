@@ -117,14 +117,50 @@ export function writerKeepsItem(
   /** The break the writer ends a line it writes with. */
   eol: string,
 ): boolean {
-  if (item === undefined) return false;
+  return itemRefusal(item, name, agent, eol) === undefined;
+}
+
+/**
+ * What the lines of the stage hold that the writer would not write back, as
+ * a phrase to put after "so it is refused:", or `undefined` when the writer
+ * would keep them. It names one thing, the first it finds, so a person is
+ * told what to look for rather than the whole list of what it could be.
+ */
+export function itemRefusal(
+  item: string | undefined,
+  name: string,
+  agent: string,
+  /** The break the writer ends a line it writes with. */
+  eol: string,
+): string | undefined {
+  if (item === undefined) return 'lines this page cannot read';
   const lines = brokenLinesOf(item);
-  if (lines.length !== 2) return false;
-  const dash = /^([ \t]*)- name: (.*)$/.exec(lines[0]?.text ?? '');
-  if (!dash || dash[2] !== writerScalar(name)) return false;
+  if (lines.length !== 2) {
+    return lines.length > 2
+      ? 'a comment, a blank line or another key inside it'
+      : 'fewer lines than the name and the agent take';
+  }
+  const first = lines[0]?.text ?? '';
+  const dash = /^([ \t]*)- name: (.*)$/.exec(first);
+  if (!dash) {
+    const other = /^[ \t]*- ([^:]+):/.exec(first);
+    return other
+      ? `${other[1]} written before name`
+      : 'a first line the writer would not write';
+  }
+  if (dash[2] !== writerScalar(name)) {
+    return `the name written as ${dash[2]}, not as ${writerScalar(name)}`;
+  }
   const agentLine = `${dash[1]}  agent: ${writerScalar(agent)}`;
-  if (lines[1]?.text !== agentLine) return false;
-  return lines.every((line) => line.eol === eol);
+  if (lines[1]?.text !== agentLine) {
+    return `the agent written as ${(lines[1]?.text ?? '').trim()}, not as ${agentLine.trim()}`;
+  }
+  if (lines.some((line) => line.eol === '')) {
+    return 'no line break at the end of the file';
+  }
+  return lines.every((line) => line.eol === eol)
+    ? undefined
+    : 'line breaks that are not the ones of the stages: key';
 }
 
 /**
@@ -148,17 +184,38 @@ export function writerKeepsStage(
   stages: readonly CheckViewStage[],
   index: number,
 ): boolean {
+  return stageRefusal(text, stages, index) === undefined;
+}
+
+/**
+ * What a save of the stage at `index` would lose, as a phrase to put after
+ * "so it is refused:", or `undefined` when it would lose nothing. It names
+ * the first thing it finds, so the message says what to look for in the
+ * file, inside the stage or in front of it, rather than listing everything
+ * it could have been.
+ */
+export function stageRefusal(
+  text: string,
+  stages: readonly CheckViewStage[],
+  index: number,
+): string | undefined {
   const stage = stages[index];
   const at = linesOf(stage);
-  if (stage === undefined || at === undefined) return false;
+  if (stage === undefined || at === undefined) {
+    return 'lines this page cannot read';
+  }
   const eol = keyBreakOf(brokenLinesOf(text));
-  if (eol === undefined) return false;
+  if (eol === undefined) return 'no stages: key the writer can write under';
   const name = typeof stage.name === 'string' ? stage.name : '';
   const agent = typeof stage.agent === 'string' ? stage.agent : '';
-  if (!writerKeepsItem(itemTextOf(text, stage), name, agent, eol)) return false;
-  if (index === 0) return true;
+  const inside = itemRefusal(itemTextOf(text, stage), name, agent, eol);
+  if (inside !== undefined) return inside;
+  if (index === 0) return undefined;
   const before = linesOf(stages[index - 1]);
   // A stage whose place in the file cannot be told from the one before it
   // may have anything between them.
-  return before !== undefined && before.last === at.first - 1;
+  if (before === undefined) return 'lines this page cannot read';
+  return before.last === at.first - 1
+    ? undefined
+    : 'a comment or a blank line in front of it';
 }

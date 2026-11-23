@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { itemTextOf, writerKeepsItem, writerKeepsStage } from './stage-item';
+import {
+  itemTextOf,
+  stageRefusal,
+  writerKeepsItem,
+  writerKeepsStage,
+} from './stage-item';
 
 const FILE = `format: konductor/1
 name: hello
@@ -301,5 +306,103 @@ describe('writerKeepsStage', () => {
     const text = 'steps:\n  - name: draft\n    agent: k-developer\n';
 
     expect(writerKeepsStage(text, [at(2, 3)], 0)).toBe(false);
+  });
+});
+
+describe('stageRefusal', () => {
+  const at = (line: number, endLine: number, over = {}) => ({
+    name: 'draft',
+    agent: 'k-developer',
+    range: { line, end_line: endLine },
+    ...over,
+  });
+  const SECOND = at(7, 8, { name: 'review', agent: 'k-quality-assurance' });
+
+  it('says nothing of a stage the writer would keep', () => {
+    expect(stageRefusal(FILE, [at(5, 6), SECOND], 0)).toBeUndefined();
+    expect(stageRefusal(FILE, [at(5, 6), SECOND], 1)).toBeUndefined();
+  });
+
+  it.each([
+    [
+      'a comment inside the stage',
+      'stages:\n  - name: draft\n    # Writes it.\n    agent: k-developer\n',
+      [at(2, 4)],
+      0,
+      'a comment, a blank line or another key inside it',
+    ],
+    [
+      'another key inside the stage',
+      'stages:\n  - name: draft\n    agent: k-developer\n    prompt: Plan it.\n',
+      [at(2, 4)],
+      0,
+      'a comment, a blank line or another key inside it',
+    ],
+    [
+      'a comment in front of a later stage',
+      'stages:\n  - name: draft\n    agent: k-developer\n  # Checks it.\n  - name: review\n    agent: k-quality-assurance\n',
+      [at(2, 3), at(5, 6, { name: 'review', agent: 'k-quality-assurance' })],
+      1,
+      'a comment or a blank line in front of it',
+    ],
+    [
+      'a blank line in front of a later stage',
+      'stages:\n  - name: draft\n    agent: k-developer\n\n  - name: review\n    agent: k-quality-assurance\n',
+      [at(2, 3), at(5, 6, { name: 'review', agent: 'k-quality-assurance' })],
+      1,
+      'a comment or a blank line in front of it',
+    ],
+    [
+      'a quoted value',
+      'stages:\n  - name: draft\n    agent: "k-developer"\n',
+      [at(2, 3)],
+      0,
+      'the agent written as agent: "k-developer", not as agent: k-developer',
+    ],
+    [
+      'a quoted name',
+      'stages:\n  - name: "draft"\n    agent: k-developer\n',
+      [at(2, 3)],
+      0,
+      'the name written as "draft", not as draft',
+    ],
+    [
+      'the keys in the other order',
+      'stages:\n  - agent: k-developer\n    name: draft\n',
+      [at(2, 3)],
+      0,
+      'agent written before name',
+    ],
+    [
+      'line breaks of another kind than the key has',
+      'stages:\n  - name: draft\r\n    agent: k-developer\r\n',
+      [at(2, 3)],
+      0,
+      'line breaks that are not the ones of the stages: key',
+    ],
+    [
+      'no line break at the end of the file',
+      'stages:\n  - name: draft\n    agent: k-developer',
+      [at(2, 3)],
+      0,
+      'no line break at the end of the file',
+    ],
+    [
+      'a stage with no place in the file',
+      FILE,
+      [{ name: 'draft' }],
+      0,
+      'lines this page cannot read',
+    ],
+    [
+      'no stages: key to write under',
+      'flow:\n  - name: draft\n    agent: k-developer\n',
+      [at(2, 3)],
+      0,
+      'no stages: key the writer can write under',
+    ],
+  ])('names %s', (_, text, stages, index, reason) => {
+    expect(stageRefusal(text, stages, index)).toBe(reason);
+    expect(writerKeepsStage(text, stages, index)).toBe(false);
   });
 });
