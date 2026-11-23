@@ -26,7 +26,8 @@ Run each from `<workspace>/scripts/` (launchers into [bench/ops](../ops/README.m
 | One counted Strands plant trial | `strands-counted-trial.sh --cap-usd N` | one trial on the pinned Bedrock model | the `N` you approve |
 
 Every owner script, paid or free, is listed in [bench/ops/README.md](../ops/README.md). The run levels' caps are in
-[run levels](run-levels.md).
+[run levels](run-levels.md). An unattended run from the [runbook](runbook.md) takes its cap from `BUDGET_CREDITS`,
+which every call that runs the preflight needs.
 
 ## Where results live
 
