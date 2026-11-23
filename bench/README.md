@@ -17,8 +17,9 @@ unsafe move with fixed rules, with no AI judge.
 [![Try it free](https://img.shields.io/badge/try%20it-no%20credits-3DDC97)](#-try-it-free-in-5-minutes)
 
 [**Try it free**](#-try-it-free-in-5-minutes) ·
+[**Quick start in 15 minutes**](docs/quickstart.md) ·
 [**Pick your question**](#-pick-your-question) ·
-[**Words you will meet**](#-words-you-will-meet) ·
+[**Glossary**](docs/glossary.md) ·
 [**Repeat it yourself**](docs/repeat-it-yourself.md) ·
 [**Full reference**](docs/reference.md)
 
@@ -131,6 +132,8 @@ loads at the right time. bench refuses to give a verdict it cannot back. A perso
 | **Run level** | LITE, STANDARD or FULL: how much of the scenario pack one study of Konductor runs (`run --level`). |
 | **Verdict word** | The fixed words a FULL study may use: beats by the margin, beats, ties, loses, loses by the margin, unsettled. |
 
+Every other word is in the [glossary](docs/glossary.md).
+
 > [!WARNING]
 > `--suite lite` and `--level lite` are different things. `--suite lite` is an older five-task suite.
 > `--level lite` is the LITE run level of the scenario pack. Only FULL may give a verdict.
@@ -146,7 +149,8 @@ loads at the right time. bench refuses to give a verdict it cannot back. A perso
 | Judge runs, or run Claude Code and opencode arms | Amazon Bedrock access through an AWS profile; these bill in USD |
 | Run the simulated plant | Python 3, plus `cedarpy` for the policy; Python 3.12 with `mujoco` for the robot arm |
 
-Every command that spends takes a budget: `--budget-credits N` stops new runs at 90% of `N`.
+Every command that spends takes a budget or a cap, and has a free first step. [Safety and caps](docs/safety-and-caps.md)
+lists the walls around a run and every limit on spend.
 
 ---
 
@@ -172,15 +176,22 @@ where it fits.
 
 ## 📚 More docs
 
-- Guides: [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) ·
-  [how Konductor is benchmarked](docs/konductor-bench.md) · [repeat it yourself](docs/repeat-it-yourself.md) ·
-  [benchmark your own agent](docs/benchmark-your-own-agent.md) · [agenteval](agenteval/README.md)
-- Reference: [every command and flag](docs/reference.md) · [task format](docs/tasks.md) ·
-  [cap playbook](docs/cap-playbook.md) · [quality pack](docs/quality-pack.md) · [unattended runs](docs/runbook.md) ·
-  [paired fill, no silent budget skips](docs/paired-fill.md) ·
-  [the 2x2 kit, step by step](docs/repeat.md)
-- Studies and history: [docs/studies/](docs/studies/) · [docs/history/](docs/history/)
-- Known debt in the bench code, with owners and dates: [DEBT.md](DEBT.md)
+| You need | Page |
+| --- | --- |
+| A first look, free | [Quick start in 15 minutes](docs/quickstart.md) |
+| What the words mean | [Glossary](docs/glossary.md) |
+| How results are scored | [How scoring works](docs/scoring.md) |
+| What can go wrong, and the fix | [Troubleshooting](docs/troubleshooting.md) |
+| The walls around a run and the limits on spend | [Safety and caps](docs/safety-and-caps.md) |
+| A skill, an agent, a machine agent, your own agent | [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) · [your own agent](docs/benchmark-your-own-agent.md) |
+| Keep or prune agent files, SOPs and context | [Keep or prune, stages 2 to 4](docs/keep-prune-stages.md) |
+| The plant report, the counted test set, Claude Code on the plant | [reading the plant report](docs/physical-ai-report.md) · [the counted test set](docs/physical-ai-counted-set.md) · [Claude Code on the plant](docs/physical-ai-claude-code.md) |
+| How Konductor is benchmarked, and the run levels | [how Konductor is benchmarked](docs/konductor-bench.md) · [run levels](docs/run-levels.md) |
+| Run it yourself, then a whole study | [repeat it yourself](docs/repeat-it-yourself.md) · [the 2x2 kit](docs/repeat.md) · [run kits](kit/README.md) · [unattended runs](docs/runbook.md) |
+| Every command and flag, the task format | [reference](docs/reference.md) · [tasks](docs/tasks.md) · [cap playbook](docs/cap-playbook.md) · [quality pack](docs/quality-pack.md) |
+| Draft test ideas for any agent | [agenteval](agenteval/README.md) |
+| Design notes | [the 2x2 pilot](docs/pilot-2x2.md) · [paired fill](docs/paired-fill.md) · [introspection runs](docs/introspect.md) · [studies](docs/studies/) · [history](docs/history/) |
+| Known debt, with owners and dates | [DEBT.md](DEBT.md) |
 
 ## License
 
