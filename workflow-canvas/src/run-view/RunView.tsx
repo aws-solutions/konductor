@@ -21,6 +21,7 @@ const GOAL_DESCRIPTION =
 function GoalPanel({
   goal,
   ofThisRun,
+  touched,
   canStart,
   disabledReason,
   onGoal,
@@ -28,12 +29,18 @@ function GoalPanel({
 }: {
   goal: string;
   ofThisRun: boolean;
+  /** Whether the person has typed a goal or asked for a run. */
+  touched: boolean;
   canStart: boolean;
   disabledReason: string | undefined;
   onGoal: (goal: string) => void;
   onStart: () => void;
 }) {
-  const problem = goalProblem(goal);
+  // An untouched box of a workflow with no default goal is empty because
+  // nothing has been typed yet, not because the person emptied it, so it is
+  // not marked wrong. The disabled reason on Run already says a goal is
+  // needed.
+  const problem = touched ? goalProblem(goal) : undefined;
   return (
     <Container header={<Header variant="h2">Run</Header>}>
       <SpaceBetween size="m">
@@ -93,6 +100,7 @@ export function RunView({
       <GoalPanel
         goal={controller.goal}
         ofThisRun={controller.ofThisRun}
+        touched={controller.goalTouched}
         canStart={controller.canStart}
         disabledReason={controller.disabledReason}
         onGoal={controller.goalTyped}
@@ -112,8 +120,18 @@ export function RunView({
           type="error"
           header="The run is no longer followed."
           data-testid="run-follow-error"
+          action={
+            <Button
+              disabled={!controller.canFollowAgain}
+              onClick={controller.followAgain}
+            >
+              Follow again
+            </Button>
+          }
         >
-          {follow.status.message}
+          {follow.status.message} The run may still be going on the server.
+          Follow it again to read on from where this page stopped, or reload the
+          page.
         </Alert>
       )}
       {follow.status.kind === 'session_lost' && (
@@ -132,6 +150,7 @@ export function RunView({
       )}
       <RunFloor
         run={controller.run}
+        runId={controller.runId}
         progress={controller.progress}
         history={history.runs}
         ended={controller.ended}

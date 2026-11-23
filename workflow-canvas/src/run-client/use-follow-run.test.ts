@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Scheduler } from '../execution/core/ports';
 import {
+  MAX_FAILURES_IN_A_ROW,
   REQUEST_LIMIT_MS,
   runEventsPath,
   type EventsReply,
@@ -21,6 +22,12 @@ class HeldSession {
   readonly paths: string[] = [];
   inFlight = 0;
   mostInFlight = 0;
+  /**
+   * Keeps a call answerable after its abort, so a test can deliver a reply
+   * that was already on its way. Off by default, where an abort rejects the
+   * call as `fetch` does.
+   */
+  answersPastAbort = false;
   private held: {
     resolve: (reply: EventsReply) => void;
     reject: (error: Error) => void;
@@ -45,7 +52,7 @@ class HeldSession {
         () => {
           if (settled) return;
           this.log.push(`${this.name} aborted`);
-          reject(new Error('aborted'));
+          if (!this.answersPastAbort) reject(new Error('aborted'));
         },
         { once: true },
       );
@@ -112,8 +119,10 @@ function renderFollow(
   session: HeldSession,
   input: Partial<FollowRunInput> = {},
 ) {
-  return renderHook((props: Partial<FollowRunInput>) =>
-    useFollowRun({
+  let renders = 0;
+  const rendered = renderHook((props: Partial<FollowRunInput>) => {
+    renders += 1;
+    return useFollowRun({
       readEvents: session.readEvents,
       scheduler,
       now: () => 0,
@@ -121,21 +130,34 @@ function renderFollow(
       order: ['draft', 'review'],
       ...input,
       ...props,
-    }),
-  );
+    });
+  });
+  return { ...rendered, renders: () => renders };
 }
 
 const pathRun = (path: string | undefined) => path?.split('/')[3];
 
+// Drops as many calls in a row as the follower allows, so it gives up.
+const giveUp = async (session: HeldSession) => {
+  for (let i = 0; i < MAX_FAILURES_IN_A_ROW; i += 1) await session.drop();
+};
+
+const UNREACHABLE =
+  'The server did not answer. Check that it is still running.';
+
 describe('useFollowRun', () => {
-  it('is idle with no run id or no session, and reads nothing', async () => {
+  it('is idle with no run id or no session, and reads nothing, retry included', async () => {
     const session = new HeldSession();
     const noRun = renderFollow(session, { runId: undefined });
     const noSession = renderFollow(session, { readEvents: undefined });
     await settle();
 
-    expect(noRun.result.current).toEqual({ status: { kind: 'idle' } });
-    expect(noSession.result.current).toEqual({ status: { kind: 'idle' } });
+    expect(noRun.result.current.status).toEqual({ kind: 'idle' });
+    expect(noRun.result.current.run).toBeUndefined();
+    expect(noSession.result.current.status).toEqual({ kind: 'idle' });
+
+    act(() => noRun.result.current.retry());
+    await settle();
     expect(session.paths).toEqual([]);
   });
 
@@ -189,13 +211,20 @@ describe('useFollowRun', () => {
 
   it('keeps no update of the old run once the id has changed', async () => {
     const session = new HeldSession();
-    const { result, rerender } = renderFollow(session);
+    // The reply of the first run is already on its way when the id changes,
+    // so the abort does not take it away: it arrives and must be dropped.
+    session.answersPastAbort = true;
+    const { result, rerender, renders } = renderFollow(session);
     await settle();
     rerender({ runId: 'r2' });
     await settle();
+    const rendersBefore = renders();
+
     await session.answer(page([stageState(1, 'draft', 'blocked')]));
 
     expect(result.current.run?.stages[0]?.status).toBe('pending');
+    expect(renders()).toBe(rendersBefore);
+    expect(session.paths.map(pathRun)).toEqual(['r1', 'r2']);
   });
 
   it('aborts the old follower first for a new session, and reads the next events through the new one', async () => {
@@ -272,6 +301,7 @@ describe('useFollowRun', () => {
     const session = new HeldSession();
     const { result, rerender } = renderFollow(session);
     await settle();
+    await session.answer(page([stageState(1, 'draft', 'running')]));
     await session.answer({ error: 'There is no run with this id.' }, 404);
 
     expect(result.current.status).toEqual({
@@ -282,8 +312,83 @@ describe('useFollowRun', () => {
     rerender({ runId: 'r2' });
     await settle();
     expect(result.current.status).toEqual({ kind: 'following' });
+    expect(result.current.run?.stages[0]?.status).toBe('pending');
+    expect(session.paths.at(-1)).toContain('after=0');
     await session.answer(page([finishedEvent(1)], true));
     expect(result.current.status).toEqual({ kind: 'finished' });
+  });
+
+  it('follows again on retry after giving up, from the next event', async () => {
+    const session = new HeldSession();
+    const { result } = renderFollow(session);
+    await settle();
+    await session.answer(page([stageState(1, 'draft', 'running')]));
+    await giveUp(session);
+
+    expect(result.current.status).toEqual({
+      kind: 'failed',
+      message: UNREACHABLE,
+    });
+    const reads = session.paths.length;
+
+    act(() => result.current.retry());
+    await settle();
+
+    expect(result.current.status).toEqual({ kind: 'following' });
+    expect(result.current.run?.stages[0]?.status).toBe('running');
+    expect(session.paths).toHaveLength(reads + 1);
+    expect(session.paths.at(-1)).toContain('after=1');
+
+    await session.answer(
+      page([stageState(2, 'draft', 'passed'), finishedEvent(3)], true),
+    );
+    expect(result.current.status).toEqual({ kind: 'finished' });
+    expect(session.mostInFlight).toBe(1);
+  });
+
+  it('reads nothing on retry while following, when finished, or with the session lost', async () => {
+    const following = new HeldSession();
+    const followingRun = renderFollow(following);
+    await settle();
+    act(() => followingRun.result.current.retry());
+    await settle();
+    expect(followingRun.result.current.status).toEqual({ kind: 'following' });
+    expect(following.paths).toHaveLength(1);
+
+    const ended = new HeldSession();
+    const endedRun = renderFollow(ended);
+    await settle();
+    await ended.answer(page([finishedEvent(1)], true));
+    act(() => endedRun.result.current.retry());
+    await settle();
+    expect(endedRun.result.current.status).toEqual({ kind: 'finished' });
+    expect(ended.paths).toHaveLength(1);
+
+    const lost = new HeldSession();
+    const lostRun = renderFollow(lost);
+    await settle();
+    await lost.answer({ error: 'The session is not known.' }, 401);
+    act(() => lostRun.result.current.retry());
+    await settle();
+    expect(lostRun.result.current.status.kind).toBe('session_lost');
+    expect(lost.paths).toHaveLength(1);
+  });
+
+  it('reads nothing on retry after unmount', async () => {
+    const session = new HeldSession();
+    const { result, unmount } = renderFollow(session);
+    await settle();
+    await giveUp(session);
+    expect(result.current.status.kind).toBe('failed');
+    const { retry } = result.current;
+    const reads = session.paths.length;
+
+    unmount();
+    act(() => retry());
+    await settle();
+
+    expect(session.paths).toHaveLength(reads);
+    expect(session.inFlight).toBe(0);
   });
 
   it('says the session is lost on a 401, and reads no more', async () => {

@@ -15,31 +15,32 @@ import type {
   WorkflowView,
 } from './types';
 
-type Json = Record<string, unknown>;
+export type Json = Record<string, unknown>;
 
-const BAD_REPLY = 'The server sent a reply that this page does not understand.';
+export const BAD_REPLY =
+  'The server sent a reply that this page does not understand.';
 
-function fail(): never {
+export function fail(): never {
   throw new ApiError(BAD_REPLY, 200);
 }
 
-function isObject(value: unknown): value is Json {
+export function isObject(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function objectOf(value: unknown): Json {
+export function objectOf(value: unknown): Json {
   return isObject(value) ? value : fail();
 }
 
-function stringOf(value: unknown): string {
+export function stringOf(value: unknown): string {
   return typeof value === 'string' ? value : fail();
 }
 
-function booleanOf(value: unknown): boolean {
+export function booleanOf(value: unknown): boolean {
   return typeof value === 'boolean' ? value : fail();
 }
 
-function arrayOf(value: unknown): unknown[] {
+export function arrayOf(value: unknown): unknown[] {
   return Array.isArray(value) ? value : fail();
 }
 

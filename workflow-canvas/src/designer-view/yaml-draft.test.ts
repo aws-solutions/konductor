@@ -178,4 +178,40 @@ describe('reduceDraft', () => {
     expect(currentAnswer(draft)).toBeUndefined();
     expect(draft.lastGood).toBe(GOOD);
   });
+
+  it('keeps a lost session whatever comes after, until an open', () => {
+    const lost = after(edited('v1'), sent(1), {
+      type: 'session-lost',
+      message: 'Open the workflow again.',
+    });
+
+    expect(lost.sessionLost).toBe('Open the workflow again.');
+    expect(lost.sent).toBeUndefined();
+    expect(draftStatus(lost)).toBe('failed');
+
+    const typed = reduceDraft(lost, edited('v2'));
+    expect(typed.sessionLost).toBe('Open the workflow again.');
+    expect(draftStatus(typed)).toBe('failed');
+
+    const opened = reduceDraft(typed, { type: 'opened', text: 'other' });
+    expect(opened.sessionLost).toBeUndefined();
+    expect(draftStatus(opened)).toBe('unchecked');
+  });
+
+  it('keeps the text, its revision and its answer when the base moves', () => {
+    const before = after(edited('v1'), sent(1), checked(1, GOOD));
+    const moved = reduceDraft(before, { type: 'base-moved' });
+
+    expect(moved.text).toBe('v1');
+    expect(moved.revision).toBe(before.revision);
+    expect(moved.baseMoved).toBe(true);
+    expect(currentAnswer(moved)).toBe(GOOD);
+    expect(draftStatus(moved)).toBe('valid');
+
+    expect(reduceDraft(moved, { type: 'base-moved' })).toBe(moved);
+    expect(reduceDraft(moved, edited('v2')).baseMoved).toBe(true);
+    expect(
+      reduceDraft(moved, { type: 'opened', text: 'v1' }).baseMoved,
+    ).toBeUndefined();
+  });
 });

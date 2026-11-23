@@ -49,10 +49,16 @@ const HISTORY: RunSummaryRow[] = [
   },
 ];
 
-function renderFloor(run: FollowedRun | undefined, ended = false) {
-  return render(
+const RUN_ID = '20261024-0412-a7b3c';
+
+function floor(
+  run: FollowedRun | undefined,
+  { runId = RUN_ID, ended = false } = {},
+) {
+  return (
     <RunFloor
       run={run}
+      runId={run ? runId : undefined}
       progress={
         run
           ? runProgress(run, { startedAt: 0 }, () => 65_000, { ended })
@@ -61,8 +67,12 @@ function renderFloor(run: FollowedRun | undefined, ended = false) {
       history={HISTORY}
       ended={ended}
       reasonSentence={reasonSentence}
-    />,
+    />
   );
+}
+
+function renderFloor(run: FollowedRun | undefined, ended = false) {
+  return render(floor(run, { ended }));
 }
 
 const stageButton = (name: string) =>
@@ -153,16 +163,24 @@ describe('RunFloor', () => {
     const { rerender } = renderFloor(RUNNING);
     fireEvent.click(stageButton('draft'));
     const later = applyRunEvents(RUNNING, [line(6, 'review', 2, 'More')]);
-    rerender(
-      <RunFloor
-        run={later}
-        progress={runProgress(later, { startedAt: 0 }, () => 66_000)}
-        history={HISTORY}
-        reasonSentence={reasonSentence}
-      />,
-    );
+    rerender(floor(later));
 
     expect(stageButton('draft').getAttribute('aria-current')).toBe('true');
+  });
+
+  it('drops the pick when the floor moves to another run', () => {
+    const { rerender } = renderFloor(RUNNING);
+    fireEvent.click(stageButton('draft'));
+    expect(stageButton('draft').getAttribute('aria-current')).toBe('true');
+
+    const second = runWith([
+      { seq: 1, type: 'stage_state', stage: 'draft', status: 'passed' },
+      { seq: 2, type: 'stage_state', stage: 'review', status: 'running' },
+    ]);
+    rerender(floor(second, { runId: '20261024-0501-b8c4d' }));
+
+    expect(stageButton('review').getAttribute('aria-current')).toBe('true');
+    expect(stageButton('draft').getAttribute('aria-current')).toBeNull();
   });
 
   it('says a run with no stages has none, and one not started yet', () => {
