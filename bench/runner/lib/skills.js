@@ -20,9 +20,16 @@ const SKILL_FIELDS = [
 // kiro-cli and opencode results, and the backfill of older results, stay as they are.
 const CLAUDE_SKILL_FIELDS = ['skillsPreloaded', 'skillBytesPreloaded', 'skillLoadsByScope', 'skillLoadsNoBody', 'skillReferenceReads'];
 
-// Loads whose whole text reached the model, and loads that delivered only kiro-cli's cut preview. Kept out of SKILL_FIELDS
-// for the same reason: the backfill of older results leaves them as they are.
-const FULL_TEXT_FIELDS = ['skillsLoadedFull', 'skillLoadsPreview'];
+// Loads whose whole text reached the model, loads that delivered only kiro-cli's cut preview, and every load with its own
+// whole-or-cut flag. Kept out of SKILL_FIELDS for the same reason: the backfill of older results leaves them as they are.
+const FULL_TEXT_FIELDS = ['skillsLoadedFull', 'skillLoadsPreview', 'skillLoads'];
+// The SKILL.md size a get_skill answer reports, whole or in the preview's tail.
+const SIZE_RE = /"size_bytes"\s*:\s*(\d+)/;
+// shortcut: read-back slices count as covering the file at 99% of its bytes (slices overlap or drop a byte at the seam);
+// track byte ranges per read if a near-whole read ever matters.
+const COVER = 0.99;
+// Load paths that read the SKILL.md file, not the skills server.
+const FILE_VIAS = new Set(['read-skill-md', 'shell-read-skill-md']);
 
 // kiro-cli 3.5.0 cuts a tool answer over 30,000 characters to a 500-character head and tail plus a saved-file path, and
 // says so with this sentence. A load answered that way gave the model a preview, not the skill.
@@ -203,9 +210,10 @@ function firstDecisionOf(events, runtime) {
 function extractSkills(events, runtime) {
   // Both report a loaded skill's text on the call and a status; the kiro-cli path reads a skills-server answer instead.
   const oc = runtime === 'opencode' || runtime === 'claude-code';
-  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillsLoadedFull: [], skillLoadsPreview: 0, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], failedCalls: [], failedByTool: { get_skill: 0, load_resource: 0, find_skills: 0 }, firstDecision: firstDecisionOf(events, runtime) };
+  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillsLoadedFull: [], skillLoadsPreview: 0, skillLoads: [], skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], failedCalls: [], failedByTool: { get_skill: 0, load_resource: 0, find_skills: 0 }, firstDecision: firstDecisionOf(events, runtime) };
   const byName = new Map();
-  const fullByName = new Map();
+  const sizes = new Map();
+  const readBack = new Map();
   const requested = new Set();
   // opencode's and Claude Code's skill tool is the analogue of get_skill.
   const fail = (tool) => { out.skillCallsFailed++; out.failedByTool[tool === 'skill' ? 'get_skill' : tool]++; };
@@ -215,14 +223,29 @@ function extractSkills(events, runtime) {
     if (cur) cur.count++;
     else map.set(key, { name: rawName, via, count: 1 });
   };
-  // `preview`: the answer was kiro-cli's cut preview, so the load is not a full one.
-  const load = (rawName, via, bytes, preview = false) => {
+  // One load. `preview`: the answer was kiro-cli's cut preview. A file read (a SKILL.md read back after a cut, or read
+  // on its own) is cut when it is shorter than the size a get_skill answer reported; its bytes add up per skill, and once
+  // they cover the file every earlier cut server load of that skill becomes whole (recovered).
+  const load = (rawName, via, bytes, preview = false, sizeBytes = null) => {
     const key = lower(rawName);
     count(byName, rawName, via);
     if (preview) out.skillLoadsPreview++;
-    else count(fullByName, rawName, via);
     out.skillBytesLoaded += bytes;
     out.bytesByName[key] = (out.bytesByName[key] ?? 0) + bytes;
+    if (sizeBytes) sizes.set(key, sizeBytes);
+    const size = sizes.get(key) ?? null;
+    const entry = { name: rawName, via, cut: preview, whole: !preview, sizeBytes: size, bytes };
+    if (FILE_VIAS.has(via) && !preview) {
+      const read = (readBack.get(key) ?? 0) + bytes;
+      readBack.set(key, read);
+      if (size && bytes < size * COVER) { entry.cut = true; entry.whole = false; }
+      if (size && read >= size * COVER) {
+        entry.whole = true;
+        // A slice stays not whole on its own; the server load it completes becomes whole.
+        for (const e of out.skillLoads) if (lower(e.name) === key && !e.whole && !FILE_VIAS.has(e.via)) { e.whole = true; e.recovered = true; }
+      }
+    }
+    out.skillLoads.push(entry);
   };
   for (const c of runtime === 'claude-code' ? claudeParse.skillCalls(events) : oc ? opencodeCalls(events) : kiroCalls(events)) {
     if (c.tool === 'find_skills') {
@@ -269,9 +292,14 @@ function extractSkills(events, runtime) {
       fail(c.tool);
       const recorded = Object.keys(c.input ?? {}).some((k) => !k.startsWith('_'));
       out.failedCalls.push({ tool: c.tool, name: name ?? (recorded ? null : ARGS_NOT_RECORDED) });
-    } else load(name, c.via ?? (oc ? 'skill-tool' : 'get_skill'), bytes, isPreviewText(c.output?.message) || texts.some(isPreviewText));
+    } else {
+      const sized = SIZE_RE.exec([c.output?.message ?? '', ...texts].join('\n'));
+      load(name, c.via ?? (oc ? 'skill-tool' : 'get_skill'), bytes, isPreviewText(c.output?.message) || texts.some(isPreviewText), sized ? Number(sized[1]) : null);
+    }
   }
   out.skillsLoaded = [...byName.values()];
+  const fullByName = new Map();
+  for (const e of out.skillLoads) if (e.whole) count(fullByName, e.name, e.via);
   out.skillsLoadedFull = [...fullByName.values()];
   out.requested = [...requested];
   return out;
@@ -572,6 +600,7 @@ function resultFields({ extraction, info, task, arm, extras = null, order = null
     skillBytesLoaded: extraction.skillBytesLoaded,
     skillsLoadedFull: (extraction.skillsLoadedFull ?? []).map((s) => ({ ...s })),
     skillLoadsPreview: extraction.skillLoadsPreview ?? 0,
+    skillLoads: (extraction.skillLoads ?? []).map((l) => ({ ...l })),
     skillCallsFailed: extraction.skillCallsFailed,
     skillCallsFailedByTool: { ...extraction.failedByTool },
     findSkillsCalls: extraction.findSkillsCalls,

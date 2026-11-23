@@ -8,6 +8,7 @@ const { taskRevision } = require('../judge/revision.js');
 const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
 const { RUBRIC_POLICY, exclusionClassOfRun, reasonLabel } = require('../judge/exclusion.js');
 const { lengthOf, summarizeLength } = require('./length.js');
+const { serviceCancelled } = require('../runner/lib/result.js');
 
 const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy', 'physical'];
 const MIN_REPLICATES = 3;
@@ -59,7 +60,8 @@ BASIS['claude-code'] = BASIS.opencode;
 
 // Mutually exclusive outcome of one executed run. Only 'good' runs feed the efficiency medians.
 function outcomeOf(r) {
-  if (r.infraError) return 'infraError';
+  // An older result saved before the runner marked a service-cancelled turn is read the same way.
+  if (r.infraError || serviceCancelled(r)) return 'infraError';
   if ((r.flags || []).includes('modelMismatch')) return 'modelMismatch';
   if (r.status === 'timeout') return 'timeout';
   if (r.status !== 'success') return 'error';

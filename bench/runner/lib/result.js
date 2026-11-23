@@ -60,6 +60,15 @@ function streamFields(agg, orch = null) {
  * meta: runner-side facts {agentStarted, flags, infraError, runError, modelNormalized, rewrittenAgents, mcpSha256,
  *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal, plant (the scored plant field of a plant run)}.
  */
+// A turn the model service cancelled on its own: stopReason "cancelled", no error text, no infra cause already named,
+// and not the bench's own stop (credit limit, early stop). It is infra, not an agent failure (Fable review 2026-11-23).
+const BENCH_STOPS = ['creditLimit', 'creditLimitExceeded', 'earlyStopped'];
+function serviceCancelled(r) {
+  if (!r || r.stopReason !== 'cancelled' || r.error || r.infraError) return false;
+  return !(r.flags || []).some((f) => BENCH_STOPS.includes(f));
+}
+const CANCELLED_MSG = 'the model service cancelled the turn (stopReason cancelled, no error text)';
+
 function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, checks, transcript, env, meta = {}, conv = null }) {
   const runtime = arm.runtime ?? DEFAULT_RUNTIME;
   const usd = costUnitOf(runtime) === 'usd';
@@ -83,6 +92,10 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   const fromStream = streamFields(agg, orch);
   flags.push(...fromStream.flags);
   if (transcript?.partial) flags.push('transcriptPartial');
+  if (serviceCancelled({ stopReason: agg?.stopReason, error, infraError: meta.infraError, flags })) {
+    flags.push('serviceCancelled');
+    meta = { ...meta, infraError: CANCELLED_MSG };
+  }
   if (meta.infraError && status === 'success') status = 'error';
 
   const { credits } = fromStream;
@@ -207,4 +220,4 @@ function validateResult(result) {
   return validate(loadSchema('result'), result);
 }
 
-module.exports = { streamFields, buildResult, errorResult, skippedResult, classifyStatus, validateResult, crossCheckCredits };
+module.exports = { serviceCancelled, streamFields, buildResult, errorResult, skippedResult, classifyStatus, validateResult, crossCheckCredits };

@@ -62,12 +62,71 @@ test('reading the SKILL.md after a preview makes the skill a full load', () => {
 });
 
 test('resultFields carries both fields, and the result validates', () => {
-  assert.deepEqual(FULL_TEXT_FIELDS, ['skillsLoadedFull', 'skillLoadsPreview']);
+  assert.deepEqual(FULL_TEXT_FIELDS, ['skillsLoadedFull', 'skillLoadsPreview', 'skillLoads']);
   const extraction = extractSkills([call('c1', 'a'), answer('c1', 'a', preview('a'))], 'kiro-cli');
   const f = resultFields({ extraction, info: null, task: { id: 't' }, arm: { id: 'konductor' } });
   assert.deepEqual(f.skillsLoadedFull, []);
   assert.equal(f.skillLoadsPreview, 1);
   const empty = resultFields({ extraction: null });
   assert.equal('skillsLoadedFull' in empty || 'skillLoadsPreview' in empty, false, 'no extraction: the fields are left out, as in older results');
+  assert.deepEqual(validateResult(mkResult({ harness: 'kiro-cli', ...f, loadCheck: null })), []);
+});
+
+// ---- per-load whole or cut (skillLoads) ----
+
+// A preview whose tail carries the skill's size, as kiro-cli's does (the JSON ends with "size_bytes").
+const sizedPreview = (name, size) => ({ ...preview(name), message: `${preview(name).message}\n--- TAIL ---\n","size_bytes":${size}}\n--- END ---` });
+const shell = (id, cmd, text) => [
+  up({ sessionUpdate: 'tool_call', toolCallId: id, title: 'Run Command', rawInput: { command: cmd } }),
+  up({ sessionUpdate: 'tool_call_update', toolCallId: id, status: 'completed', title: 'Run Command', content: [{ type: 'content', content: { type: 'text', text } }] }),
+];
+const FILE = '/tmp/h/home/.konductor/skills/big/SKILL.md';
+
+test('skillLoads: one entry per load in order, cut and whole per load', () => {
+  const x = extractSkills([
+    call('c1', 'small'), answer('c1', 'small', whole('small')),
+    call('c2', 'big'), answer('c2', 'big', sizedPreview('big', 1000)),
+  ], 'kiro-cli');
+  assert.deepEqual(x.skillLoads.map(({ name, via, cut, whole: w }) => ({ name, via, cut, whole: w })), [
+    { name: 'small', via: 'get_skill', cut: false, whole: true },
+    { name: 'big', via: 'get_skill', cut: true, whole: false },
+  ]);
+  assert.equal(x.skillLoads[1].sizeBytes, 1000);
+});
+
+test('a cut load read back in two slices that cover the file becomes whole; the slices are not whole on their own', () => {
+  const x = extractSkills([
+    call('c1', 'big'), answer('c1', 'big', sizedPreview('big', 1000)),
+    ...shell('s1', `head -c 500 ${FILE}`, 'a'.repeat(500)),
+    ...shell('s2', `tail -c +500 ${FILE} | head -c 600`, 'b'.repeat(501)),
+  ], 'kiro-cli');
+  assert.deepEqual(x.skillLoads.map((l) => [l.via, l.cut, l.whole]), [['get_skill', true, true], ['shell-read-skill-md', true, false], ['shell-read-skill-md', true, true]]);
+  assert.equal(x.skillLoads[0].recovered, true);
+  assert.deepEqual(x.skillsLoadedFull.map((s) => s.name), ['big']);
+});
+
+test('a read back that covers 96% of the file leaves the load cut', () => {
+  const x = extractSkills([
+    call('c1', 'big'), answer('c1', 'big', sizedPreview('big', 1000)),
+    ...shell('s1', `head -c 960 ${FILE}`, 'a'.repeat(960)),
+  ], 'kiro-cli');
+  assert.equal(x.skillLoads[0].whole, false);
+  assert.deepEqual(x.skillsLoadedFull, []);
+});
+
+test('a SKILL.md read that itself came back as a preview is cut, and recovers nothing', () => {
+  const x = extractSkills([
+    call('c1', 'big'), answer('c1', 'big', sizedPreview('big', 1000)),
+    ...shellRead('r1', FILE, preview('big').message),
+  ], 'kiro-cli');
+  assert.deepEqual(x.skillLoads.map((l) => [l.cut, l.whole]), [[true, false], [true, false]]);
+  assert.deepEqual(x.skillsLoadedFull, []);
+});
+
+test('resultFields carries skillLoads, and the result validates', () => {
+  const extraction = extractSkills([call('c1', 'big'), answer('c1', 'big', sizedPreview('big', 1000))], 'kiro-cli');
+  const f = resultFields({ extraction, info: null, task: { id: 't' }, arm: { id: 'konductor' } });
+  assert.equal(f.skillLoads.length, 1);
+  assert.ok(FULL_TEXT_FIELDS.includes('skillLoads'));
   assert.deepEqual(validateResult(mkResult({ harness: 'kiro-cli', ...f, loadCheck: null })), []);
 });
