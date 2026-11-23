@@ -56,6 +56,8 @@ test('a plant cell killed mid-trial is redone by --resume, its attempt kept, and
   const opts = {
     suite: 'lite', arms: ARM, tasks: TASK, 'extra-tasks': path.join(toy.dir, 'tasks'), 'plant-release': toy.dir, 'plant-release-sha256': toy.sha256,
     'claude-bin': bin, model: CC_CONFIG.model, 'plant-python': PYTHON, isolate: 'none', 'allow-unisolated': true, parallel: '1', replicates: '1', out,
+    // A run with a model needs a spend cap (runner/lib/paid-run.js, d3f62959); the fake claude costs nothing, so 1 is never reached.
+    'budget-usd': '1',
   };
 
   const first = benchRun(opts);
