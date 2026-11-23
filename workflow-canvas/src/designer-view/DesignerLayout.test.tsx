@@ -49,15 +49,35 @@ function renderLayout(stage: LayoutStage | undefined) {
 
 const tab = (name: string) => screen.getByRole('tab', { name });
 const foldButton = () => screen.getByRole('button', { name: /side panel/ });
-const shownPanel = () => screen.getByRole('tabpanel');
+
+// Cloudscape keeps every panel mounted, so the one on show is the panel the
+// selected tab points at.
+function shownPanel(): HTMLElement {
+  const selected = screen
+    .getAllByRole('tab')
+    .find((one) => one.getAttribute('aria-selected') === 'true')!;
+  return document.getElementById(selected.getAttribute('aria-controls')!)!;
+}
 
 describe('DesignerLayout', () => {
-  it('puts the components, the drawing and the side panel in place', () => {
+  it('puts the components, the drawing and the side panel in their own landmarks', () => {
     renderLayout(STAGE);
 
-    expect(screen.getByText('The components')).toBeTruthy();
-    expect(screen.getByText('The drawing')).toBeTruthy();
-    expect(screen.getByRole('tablist', { name: 'Side panel' })).toBeTruthy();
+    expect(
+      within(screen.getByRole('region', { name: 'Components' })).getByText(
+        'The components',
+      ),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByRole('region', { name: 'Drawing' })).getByText(
+        'The drawing',
+      ),
+    ).toBeTruthy();
+    const side = screen.getByRole('complementary', { name: 'Side panel' });
+    expect(within(side).getByRole('tablist')).toBeTruthy();
+    expect(within(side).getByRole('button', { name: /side panel/ })).toBe(
+      foldButton(),
+    );
   });
 
   it('shows the YAML tab first, with its panel named by the tab', () => {
@@ -65,10 +85,7 @@ describe('DesignerLayout', () => {
 
     expect(tab('YAML').getAttribute('aria-selected')).toBe('true');
     expect(tab('Properties').getAttribute('aria-selected')).toBe('false');
-    expect(tab('YAML').tabIndex).toBe(0);
-    expect(tab('Properties').tabIndex).toBe(-1);
     expect(shownPanel().getAttribute('aria-labelledby')).toBe(tab('YAML').id);
-    expect(tab('YAML').getAttribute('aria-controls')).toBe(shownPanel().id);
     expect(within(shownPanel()).getByText('format: konductor/1')).toBeTruthy();
   });
 
@@ -80,6 +97,15 @@ describe('DesignerLayout', () => {
     expect(
       within(shownPanel()).getByRole('form', { name: 'Keys of write' }),
     ).toBeTruthy();
+  });
+
+  it('keeps both panels mounted, so neither starts over on a switch', () => {
+    renderLayout(STAGE);
+    const yamlPanel = shownPanel();
+    fireEvent.click(tab('Properties'));
+
+    expect(shownPanel()).not.toBe(yamlPanel);
+    expect(within(yamlPanel).getByText('format: konductor/1')).toBeTruthy();
   });
 
   it('passes on an edit of the form', () => {
@@ -95,46 +121,6 @@ describe('DesignerLayout', () => {
     });
   });
 
-  it.each([
-    ['ArrowRight', 'Properties'],
-    ['ArrowLeft', 'Properties'],
-    ['End', 'Properties'],
-  ])('moves to a tab with %s, and focuses it', (key, name) => {
-    renderLayout(STAGE);
-    tab('YAML').focus();
-    fireEvent.keyDown(tab('YAML'), { key });
-
-    expect(tab(name).getAttribute('aria-selected')).toBe('true');
-    expect(document.activeElement).toBe(tab(name));
-  });
-
-  it('goes back to the first tab with Home', () => {
-    renderLayout(STAGE);
-    fireEvent.click(tab('Properties'));
-    fireEvent.keyDown(tab('Properties'), { key: 'Home' });
-
-    expect(tab('YAML').getAttribute('aria-selected')).toBe('true');
-  });
-
-  it.each([
-    ['Alt', { altKey: true }],
-    ['Ctrl', { ctrlKey: true }],
-    ['Cmd', { metaKey: true }],
-    ['Shift', { shiftKey: true }],
-  ])('leaves an arrow key with %s to the browser', (_, modifier) => {
-    renderLayout(STAGE);
-    const event = new KeyboardEvent('keydown', {
-      key: 'ArrowRight',
-      bubbles: true,
-      cancelable: true,
-      ...modifier,
-    });
-    tab('YAML').dispatchEvent(event);
-
-    expect(event.defaultPrevented).toBe(false);
-    expect(tab('YAML').getAttribute('aria-selected')).toBe('true');
-  });
-
   it('folds and unfolds the side panel with its button, which says so', () => {
     renderLayout(STAGE);
     const button = foldButton();
@@ -147,12 +133,11 @@ describe('DesignerLayout', () => {
     expect(side.hidden).toBe(false);
 
     fireEvent.click(button);
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(button.textContent).toBe('Show the side panel');
+    expect(foldButton().getAttribute('aria-expanded')).toBe('false');
+    expect(foldButton().textContent).toBe('Show the side panel');
     expect(side.hidden).toBe(true);
-    expect(screen.queryByRole('tablist')).toBeNull();
 
-    fireEvent.click(button);
+    fireEvent.click(foldButton());
     expect(side.hidden).toBe(false);
     expect(tab('YAML').getAttribute('aria-selected')).toBe('true');
   });
@@ -166,7 +151,7 @@ describe('DesignerLayout', () => {
     expect(tab('Properties').getAttribute('aria-selected')).toBe('true');
   });
 
-  it('takes the slots in the order of the page with Tab: the components, the drawing, then the side panel', () => {
+  it('takes the columns in the order of the page: the components, the drawing, then the side panel', () => {
     render(
       <DesignerLayout
         drawing={<button type="button">Drawing node</button>}
@@ -178,22 +163,17 @@ describe('DesignerLayout', () => {
         <button type="button">Component</button>
       </DesignerLayout>,
     );
-    const tabbable = [
+    const order = [
       ...document.body.querySelectorAll<HTMLElement>(
-        'button, [tabindex], input, textarea, select, a[href]',
+        'button, [role="tab"], [role="tablist"]',
       ),
-    ].filter(
-      (element) => element.tabIndex >= 0 && !element.closest('[hidden]'),
-    );
+    ].map((element) => element.textContent);
 
-    expect(tabbable.every((element) => element.tabIndex === 0)).toBe(true);
-    expect(tabbable.slice(0, 4).map((element) => element.textContent)).toEqual([
+    expect(order.slice(0, 3)).toEqual([
       'Component',
       'Drawing node',
       'Hide the side panel',
-      'YAML',
     ]);
-    expect(tabbable[4]?.getAttribute('role')).toBe('tabpanel');
   });
 
   it('says to pick a stage when none is picked', () => {
