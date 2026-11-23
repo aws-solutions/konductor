@@ -6,8 +6,11 @@
  * reworked to give them.
  */
 
-/** The body of `POST /api/validate`. */
-export interface CheckRequest {
+/**
+ * The body of `POST /api/validate`. It is named apart from `designer/core`'s
+ * `CheckRequest`, which is the argument of `checkAfterPause`.
+ */
+export interface ValidateRequest {
   /** The workflow the text is for; the server takes the root without it. */
   readonly name?: string;
   readonly text: string;
@@ -54,15 +57,14 @@ export interface CheckAnswer {
 
 /**
  * Checks a text, as `POST /api/validate` does. It rejects when its signal
- * aborts, and writes nothing.
+ * aborts, with `SessionLost` when the server answered 401, and writes
+ * nothing. The pause before each call is `CHECK_DELAY_MS` of
+ * `designer/core/run-check.ts`, which the hook holds.
  */
 export type ValidatePort = (
-  request: CheckRequest,
+  request: ValidateRequest,
   signal: AbortSignal,
 ) => Promise<CheckAnswer>;
-
-/** How long the person must stop typing before the text is checked. */
-export const CHECK_PAUSE_MS = 400;
 
 /** The edited text of a workflow, and what the checks have said of it. */
 export interface YamlDraft {
@@ -85,13 +87,26 @@ export interface YamlDraft {
   readonly lastGood?: CheckAnswer;
   /** Why the check of a revision could not be made. */
   readonly failure?: { readonly revision: number; readonly message: string };
+  /**
+   * The server no longer knows the session, so no check or save will work.
+   * It is not tied to a revision and no edit clears it, as the editor path
+   * reports a lost session at once and keeps reporting it.
+   */
+  readonly sessionLost?: string;
+  /**
+   * The file was written under the draft while it had unsaved edits, so the
+   * typed text was kept and its base moved. Cleared only by an open.
+   */
+  readonly baseMoved?: boolean;
 }
 
 /** What happened to the draft. */
 export type DraftEvent =
   | { readonly type: 'opened'; readonly text: string }
+  | { readonly type: 'base-moved' }
   | { readonly type: 'edited'; readonly text: string }
   | { readonly type: 'check-sent'; readonly revision: number }
+  | { readonly type: 'session-lost'; readonly message: string }
   | {
       readonly type: 'checked';
       readonly revision: number;
@@ -108,15 +123,19 @@ export function startDraft(text: string): YamlDraft {
   return { text, revision: 0, opened: 0 };
 }
 
-// The draft with no check in flight and no failure.
+// The draft with no check in flight and no failure. A lost session and a
+// moved base are not of one revision, so both are kept.
 function settled(draft: YamlDraft): YamlDraft {
-  const { text, revision, opened, checked, lastGood } = draft;
+  const { text, revision, opened, checked, lastGood, sessionLost, baseMoved } =
+    draft;
   return {
     text,
     revision,
     opened,
     ...(checked ? { checked } : {}),
     ...(lastGood ? { lastGood } : {}),
+    ...(sessionLost === undefined ? {} : { sessionLost }),
+    ...(baseMoved ? { baseMoved } : {}),
   };
 }
 
@@ -126,15 +145,23 @@ function isGood(answer: CheckAnswer): boolean {
 
 /**
  * The draft after `event`. An open, as of another workflow, starts again
- * from its text: every answer, failure and check of the text before is
- * dropped. An edit to the same text changes nothing. An answer or a failure
- * for an older revision is dropped, as the text it was for is gone, and so
- * is the answer of a check that was not sent.
+ * from its text: every answer, failure, lost session and check of the text
+ * before is dropped. A moved base keeps the typed text and its revision, so
+ * the check already made for it still stands. An edit to the same text
+ * changes nothing. An answer or a failure for an older revision is dropped,
+ * as the text it was for is gone, and so is the answer of a check that was
+ * not sent. A lost session is kept whatever comes after it.
  */
 export function reduceDraft(draft: YamlDraft, event: DraftEvent): YamlDraft {
   if (event.type === 'opened') {
     const revision = draft.revision + 1;
     return { text: event.text, revision, opened: revision };
+  }
+  if (event.type === 'base-moved') {
+    return draft.baseMoved ? draft : { ...draft, baseMoved: true };
+  }
+  if (event.type === 'session-lost') {
+    return { ...settled(draft), sessionLost: event.message };
   }
   if (event.type === 'edited') {
     if (event.text === draft.text) return draft;
@@ -175,9 +202,11 @@ export function currentAnswer(draft: YamlDraft): CheckAnswer | undefined {
  * Where the check of the current text is: `unchecked` before any edit,
  * `waiting` for the person to stop typing, `checking` while the call is in
  * flight, then `valid`, `invalid` or `failed`. An answer is `valid` only with
- * no error and a view to draw, the rule `lastGood` follows.
+ * no error and a view to draw, the rule `lastGood` follows. A lost session is
+ * `failed` from then on, as no later check can be made.
  */
 export function draftStatus(draft: YamlDraft): DraftStatus {
+  if (draft.sessionLost !== undefined) return 'failed';
   if (draft.sent === draft.revision) return 'checking';
   if (draft.failure?.revision === draft.revision) return 'failed';
   const answer = currentAnswer(draft);

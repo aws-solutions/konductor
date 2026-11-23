@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api';
 import type { StageFieldRule } from '../designer-view/field-rules';
-import { parseWorkflowExtras, type StageFieldInfo } from './workflow-extras';
+import { parseWorkflowExtras, type StageField } from './workflow-extras';
 
 const FIELDS = {
   agent: [
@@ -45,7 +45,7 @@ const body = (over: Record<string, unknown> = {}) => ({
 
 // The rules of the form take a field as the server sends it.
 const asRules: readonly StageFieldRule[] =
-  FIELDS.agent satisfies readonly StageFieldInfo[];
+  FIELDS.agent satisfies readonly StageField[];
 
 describe('parseWorkflowExtras', () => {
   it('reads the editable keys of a stage by kind', () => {
