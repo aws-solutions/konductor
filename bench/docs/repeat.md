@@ -184,20 +184,8 @@ tasks. Unchanged, it equals the report. It is not the verdict; the verdict comes
 
 ## 7. Run levels: LITE, STANDARD, FULL
 
-Three levels share one pack, one scorer and one report. They differ in how many tasks, arms, runs and judges they use.
-Only FULL is pre-registered, and only FULL may give a verdict. This table is the definition (owner decision, 2026-11-19).
-
-| | LITE | STANDARD | FULL |
-| --- | --- | --- | --- |
-| Purpose | quick smoke of the harness, the tasks and a stratified sample; run after every harness, task or konductor change | between LITE and FULL; the only level where tuning is allowed | the pre-registered verdict run; tests every skill, SOP and agent |
-| Tasks | about 16 stratified DEV tasks, plus every task added or changed since the last LITE | all DEV tasks, about 50 | the whole pack, 150 to 200; verdicts from HELD-OUT only |
-| Arms | `konductor` against a stored `vanilla` baseline | `vanilla`, `konductor`, `konductor-noskills` | the same three, plus a drop-one arm per unit and a forced-load arm for units that load in under 50% of runs |
-| Harness | Kiro CLI | Kiro CLI; Claude Code on 15 tasks, one run each | Kiro CLI and Claude Code |
-| Runs | 1 per task | 2 per arm per task | 3 per arm per task; 5 per side on each unit's 3 effect tasks |
-| Scoring | code-scored parts only; no judge calls | code parts plus the three-judge rubric (median) | the same, after a person's 40-output calibration |
-| Cost (estimate) | about 80 credits | about 1,500 credits, $20 Claude Code, $40 judges | about 19,500 credits and $1,400 |
-| May support | no regression seen on these tasks; a skill that fails to load; a broken task | direction per phase and role, labelled "DEV, not a verdict" | "beats by the margin", "beats", "ties", "loses", "unsettled"; keep-or-prune verdicts signed off by a person |
-| May not support | any comparison beyond the stored baseline; any verdict | any verdict or margin claim | claims beyond one model and the pack version |
+Three levels share one pack, one scorer and one report: LITE, STANDARD and FULL. Only FULL is pre-registered, and
+only FULL may give a verdict. Their tasks, arms, runs, costs and caps are in one table in [run-levels.md](run-levels.md).
 
 Where each level stands today, and how to run it, is in [run-levels.md](run-levels.md). The 2x2 study above is still
 the one study this page repeats end to end. Do not describe any other run as LITE, STANDARD or FULL.

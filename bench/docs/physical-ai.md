@@ -130,10 +130,10 @@ its own. Signing is described in
 ### The 15-minute path: the toy walkthrough
 
 It is free: no model, no credits, no AWS keys, no login, and no Claude Code install (the controls stand in for the
-agent). You need Linux, Node 22 or newer, and a Python 3 with the policy engine. From the repository root:
+agent). You need Linux, Node 22 or newer, and Python 3.10 or newer with the policy engine. From the repository root:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2
+python3.12 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2
 bash bench/physical/toy/walkthrough.sh
 ```
 

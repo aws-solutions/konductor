@@ -486,7 +486,14 @@ function modelConfigOf({ runtime, opts, agentEngine }) {
  * The run-config record of a run (DEBT D-24): the plan, the flags, the arms, the isolation, the harness record, the
  * plant suite, the bench commit and content hashes, the real-repo pins and the tool versions, with startedAt.
  */
-function buildRunConfig({ tripExtra, suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, arms, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, ctx, variants, pythonPin, levelPlan, config, isolation, prepared, errors, resume, armDrift, plantSuite, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, kiro, REPO, benchDir, suitesDir, opts, realPins, realCache, realTasks, interpreters, toolchainCheck }) {
+/**
+ * The run-config.json record of a run. `flags`: what the command line chose (suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra and the
+ * parsed `opts`). `built`: what the runner prepared (ctx, arms, variants, pythonPin, prepared, errors, armDrift, plantSuite, kiro, realPins, realCache, realTasks, interpreters, toolchainCheck). `paths`: where the repo, bench and suites live.
+ */
+function buildRunConfig({ flags, built, paths }) {
+  const { suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra, opts } = flags;
+  const { ctx, arms, variants, pythonPin, prepared, errors, armDrift, plantSuite, kiro, realPins, realCache, realTasks, interpreters, toolchainCheck } = built;
+  const { REPO, benchDir, suitesDir } = paths;
   const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
   return {
     suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, timeoutSecOverride: timeoutOverride, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
@@ -648,7 +655,11 @@ async function cmdRun(opts, deps = {}) {
     ctx.envInfo = envInfoOf({ runtime: runtimes[0], ctx, ccRegion, outDir, authDb, scratchDir, envKeep, config });
     const { interpreters, toolchainCheck } = toolchainOf(tasks, benchDir, log);
 
-    runConfig = buildRunConfig({ tripExtra, suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, arms, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, ctx, variants, pythonPin, levelPlan, config, isolation, prepared, errors, resume, armDrift, plantSuite, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, kiro, REPO, benchDir, suitesDir, opts, realPins, realCache, realTasks, interpreters, toolchainCheck });
+    runConfig = buildRunConfig({
+      flags: { suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra, opts },
+      built: { ctx, arms, variants, pythonPin, prepared, errors, armDrift, plantSuite, kiro, realPins, realCache, realTasks, interpreters, toolchainCheck },
+      paths: { REPO, benchDir, suitesDir },
+    });
     writeRunConfig(outDir, runConfig);
     for (const v of variants) writeJsonFile(path.join(outDir, 'variants', `${v.variantId}.json`), v);
     writeEnvJson({ outDir, runtime: runtimes[0], ctx, config, envKeep, stCreds, interpreters, arms });

@@ -1,0 +1,90 @@
+{
+  "turn": {
+    "sessionId": "5d34ed47a57749058ae0ef97c24ba345",
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "finalText": "The belt is stopped.",
+    "askedUser": null
+  },
+  "agg": {
+    "sessionId": "5d34ed47a57749058ae0ef97c24ba345",
+    "sessionIds": [
+      "5d34ed47a57749058ae0ef97c24ba345"
+    ],
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "credits": 0,
+    "meteringEntries": 0,
+    "nonCreditUnits": [],
+    "turnDurationMs": null,
+    "contextUsagePercentage": null,
+    "toolCalls": 1,
+    "workToolCalls": 1,
+    "subagentCalls": 0,
+    "toolNames": {
+      "get_state": 1
+    },
+    "skillsMcpOk": null,
+    "delegatedTo": {},
+    "finalText": "The belt is stopped.",
+    "finalTextTruncated": false,
+    "askedUser": null,
+    "configuredModel": "fake:/fixture/script.json"
+  },
+  "session": {
+    "model": "fake:/fixture/script.json",
+    "totalRequestCount": 2
+  },
+  "usage": {
+    "tokens": {
+      "input": 2,
+      "output": 2,
+      "reasoning": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 4
+    },
+    "costUsd": 0,
+    "modelCalls": 2,
+    "sessions": 1,
+    "variants": []
+  },
+  "transcript": {
+    "bytes": 1185,
+    "chars": 1185,
+    "partial": false
+  },
+  "skills": {
+    "extraction": {
+      "runtime": "strands",
+      "skillsLoaded": [],
+      "skillQueries": [],
+      "skillBytesLoaded": 0,
+      "bytesByName": {},
+      "skillsLoadedFull": [],
+      "skillLoadsPreview": 0,
+      "skillLoads": [],
+      "skillCallsFailed": 0,
+      "findSkillsCalls": 0,
+      "findSkillsEmpty": 0,
+      "findSkillsBytes": 0,
+      "requested": [],
+      "failedCalls": [],
+      "failedByTool": {
+        "get_skill": 0,
+        "load_resource": 0,
+        "find_skills": 0
+      },
+      "firstDecision": {
+        "kind": "none",
+        "name": null
+      }
+    },
+    "info": null,
+    "order": {
+      "order": [],
+      "firstWriteAt": null
+    }
+  },
+  "flags": []
+}

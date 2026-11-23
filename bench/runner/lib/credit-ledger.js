@@ -4,17 +4,16 @@
 // The study credit ledger: one JSON line per agent run and per judge call, appended to credit-ledger.jsonl in the
 // results directory. By default it only tracks and prints totals. A budget passed with --budget-credits turns it into a
 // guard for the command that was given it: at 90% of the budget no new work starts, at 100% the stop is hard.
-// A credit line with no known cost never counts as 0: it counts at the larger of UNKNOWN_FLOOR and the highest
-// per-line cost seen so far in the same ledger, so a run that lost its metering cannot slip under the guard. A USD line
-// with no known cost follows the same rule in USD: the larger of UNKNOWN_USD_FLOOR and the highest USD cost seen.
+// Lines are read and counted by core/spend.js, the one spend count: a credit line with no known cost counts at the
+// larger of UNKNOWN_FLOOR and the highest cost seen, never 0. A USD line with no known cost follows the same rule in
+// USD: the larger of UNKNOWN_USD_FLOOR and the highest USD cost seen.
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { UNKNOWN_FLOOR, readJsonl, knownCredits, creditsOf } = require('../../core/spend.js');
 
 const LEDGER_FILE = 'credit-ledger.jsonl';
 const SOFT_STOP = 0.9;
-/** The owner's spend rule: a call of unknown cost counts at 15 credits at least. */
-const UNKNOWN_FLOOR = 15;
 /** The USD floor of a call of unknown cost: the worst case of one opencode judge call (judge/run.js REASK_WORST_USD). */
 const UNKNOWN_USD_FLOOR = 0.05;
 
@@ -31,9 +30,6 @@ function emptyTotals() {
   return { run: 0, judge: 0, other: 0, total: 0, calls: 0, unknown: 0, maxCall: 0, unknownUsd: 0, maxUsd: 0 };
 }
 
-// A run killed before its last metering event has a lower-bound `credits` and a higher `charged` estimate; the total uses the charge.
-const amountOf = (entry) => (finite(entry.charged) ? entry.charged : finite(entry.credits) ? entry.credits : null);
-
 // Judge calls on the opencode backend carry their cost in `usd` (with `credits: 0`), so they never add to a credit total or guard.
 // `totals.usd` exists once such a line has been seen.
 const usdOf = (entry) => (entry.unit === 'usd' && finite(entry.usd) ? entry.usd : null);
@@ -43,9 +39,9 @@ const usdOf = (entry) => (entry.unit === 'usd' && finite(entry.usd) ? entry.usd 
  * at UNKNOWN_FLOOR or the highest seen; an unknown USD cost on a USD line at UNKNOWN_USD_FLOOR or the highest seen.
  */
 function addTo(t, entry) {
-  const known = amountOf(entry);
+  const known = knownCredits(entry);
   const inUsd = entry.unit === 'usd';
-  const c = known ?? (inUsd ? 0 : Math.max(UNKNOWN_FLOOR, t.maxCall));
+  const c = creditsOf(entry, t.maxCall);
   const key = entry.kind === 'run' || entry.kind === 'judge' ? entry.kind : 'other';
   t[key] += c;
   t.total += c;
@@ -67,18 +63,8 @@ function addTo(t, entry) {
 /** The ledger file of a results directory, parsed. A line that is not JSON is counted in `bad`, never fatal. */
 function readLedger(dir) {
   const file = path.join(dir, LEDGER_FILE);
-  const out = { file, exists: false, entries: [], bad: 0, totals: emptyTotals() };
-  let text;
-  try { text = fs.readFileSync(file, 'utf8'); } catch { return out; }
-  out.exists = true;
-  for (const line of text.split('\n')) {
-    if (!line.trim()) continue;
-    try {
-      const e = JSON.parse(line);
-      out.entries.push(e);
-      addTo(out.totals, e);
-    } catch { out.bad++; }
-  }
+  const out = { file, ...readJsonl(file), totals: emptyTotals() };
+  for (const e of out.entries) addTo(out.totals, e);
   return out;
 }
 

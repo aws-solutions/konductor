@@ -229,13 +229,44 @@ folder, rewrite its harness for your agent, and run the free kit until it passes
 walks through it. Its descriptor says what the reports say about its cost (`report`) and, if the `cap` commands
 should accept it, how they reach a capability (`capabilities`).
 
+**Where it is registered.** The plugin registry, `bench/core/registry.js`, is the one list of the parts bench can run:
+the three built-in harnesses, then every `bench/plugins/<name>/plugin.json`. A manifest looks like this:
+
+```json
+{ "benchApi": 1, "kind": "harness", "name": "strands", "version": "1.0.0", "meta": "meta.js", "entry": "harness.js" }
+```
+
+`benchApi` is the plugin interface version (1 today). `kind` is `harness` or `judge-backend`. `name` must equal the
+folder name. `meta` is the descriptor file and `entry` the module, both inside the folder. A manifest with another
+`benchApi`, an unknown kind or a missing file is refused with its reason and never loaded; two parts with one name
+is an error. Each run's `run-config.json` records every loaded plugin with a hash of its folder. Check a plugin for
+free with `node bench/kit/plugin/check.js bench/plugins/<name>`.
+
 Two limits to know before you start. Arms are Konductor refs or the bare CLI today, so an agent that does not
 install Konductor also needs a new arm source and a `prepareArm` that builds nothing. And a few places outside the
 harness folder still switch on the runtime name; the guide lists them.
 
 The full contract, with every member, argument and field, is
-[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md). What works today for an agent bench does not run
-yet, on the plant and on code tasks, is in [benchmark your own agent](benchmark-your-own-agent.md).
+[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md). [Benchmark your own agent](benchmark-your-own-agent.md)
+says what works today for a new agent, on the plant and on code tasks, and what does not yet.
+
+## Add a judge
+
+A judge is a model that scores answers. Adding one takes up to three steps.
+
+1. **Give its model id a family.** bench seats a judge only when it knows the model's family, and never one from the
+   agent's own family (`bench/judge/family.js`). `familyOf` first looks the id up in `MODEL_FAMILIES`, then tries the
+   family name patterns in `FAMILIES`. If your id matches neither, add it to `MODEL_FAMILIES`. A new family also
+   needs a pattern in `FAMILIES`. `judge-family-one-rule.test.js` and `gpt-cell.test.js` check the rule.
+2. **Name it.** Pass it in `--judges A,B,C` (on `judge`, `cap keep-prune` and `cap unit-stage`), or in the suite file.
+   A panel needs three judges from three families, none the agent's. With fewer, keep-or-prune records say NO DATA,
+   and `judge` refuses to start unless you pass `--allow-small-panel`.
+3. **Reach it.** The judge backend is the program that asks the model: `kiro` (credits, the default) or `opencode`
+   (Amazon Bedrock, USD), chosen with `--judge-backend`. A model neither can call needs a `judge-backend` plugin: a
+   descriptor `{ id, costUnit, label }` and an entry module that exports `makeCaller`.
+   [Write a plugin](write-a-plugin.md#a-judge-backend) shows it, and `judge-backend-plugin.test.js` loads a fake one.
+
+How the panel's scores become one number is in [scoring](scoring.md).
 
 > [!IMPORTANT]
 > **Common mistakes.** bench cannot run any agent you point it at: it runs the four runtimes above. Strands runs the

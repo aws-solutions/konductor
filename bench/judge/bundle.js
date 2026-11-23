@@ -47,7 +47,7 @@ function walk(root, rel = '') {
       const log = execSync("git log --all --format='%h %s%n%b' --merges", { cwd: path.join(root, rel), encoding: 'utf8' });
       fs.writeFileSync(logPath, log);
       out.push(path.join(rel, 'GIT-LOG.txt').replace(/\\/g, '/'));
-    } catch {}
+    } catch { /* git missing or the repo unreadable: the bundle goes without GIT-LOG.txt, as for a tree with no .git */ }
   }
   
   return { files: out, excluded: excluded.count, ephemeral: excluded.ephemeral };

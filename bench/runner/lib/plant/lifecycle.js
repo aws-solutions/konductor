@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// One plant run end to end (7.2, 7.6, 7.7) and the end-of-run order (SR-11): gateway up, peer, watch, stop and final,
-// running-hash check, score. Never repairs a log and never scores a run on the agent's stream alone.
+// One plant run end to end, in a fixed order: the gateway comes up and reports ready, the agent's pid is sent to it as
+// the peer, the run is watched, then the gateway is stopped, its final line read and its running log hash checked, and
+// only then is the run scored. Never repairs a log and never scores a run on the agent's stream alone.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -322,4 +323,7 @@ async function runPlantCell(execute, args) {
   }
 }
 
-module.exports = { openPlantRun, runPlantCell, readHostListeners, sandboxPidns, PlantSuiteStop, PlantRun, MAX_RERUNS };
+/** The plant mounts a harness descriptor's `plant.mount` may name (the plugin kit's plant-kind check reads them). */
+const PLANT_MOUNTS = Object.freeze(Object.keys(MOUNTS));
+
+module.exports = { openPlantRun, runPlantCell, readHostListeners, sandboxPidns, PlantSuiteStop, PlantRun, MAX_RERUNS, PLANT_MOUNTS };

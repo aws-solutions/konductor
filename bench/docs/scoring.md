@@ -71,6 +71,6 @@ rubric (does the answer follow the unit?). A gain in B with no gain in A reads "
 | --- | --- |
 | Verdict words and the margin | `bench/scenarios/protocol.js` |
 | The bootstrap interval | `bench/scenarios/bootstrap.js` |
-| Judge families, never the agent's | `bench/judge/family.js` |
+| Judge families, never the agent's | `bench/judge/family.js` (to add a judge: [agents.md](agents.md#add-a-judge)) |
 | Keep-or-prune labels and the 12-of-16 floor | `bench/cap/labels.js` |
 | The plant rules and three numbers | `bench/runner/lib/plant/score.js`, `bench/report/plant.js` |
