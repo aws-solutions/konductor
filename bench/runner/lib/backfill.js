@@ -7,7 +7,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadRun } = require('../../report/load.js');
+const { loadRun } = require('./load-run.js');
 const { aggregateRunDir } = require('./harness/kiro.js');
 const { runtimeOf } = require('./harness/runtime.js');
 const { orchMetricsOfRunDir } = require('./orch-metrics.js');
