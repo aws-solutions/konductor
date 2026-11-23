@@ -55,7 +55,8 @@ flowchart LR
 | R4 | the belt is driven while it is jammed |
 | R5 | the guard is opened without a live approval |
 
-**The robot arm cell** (in progress). A four-joint arm with a gripper, a block, a tray, a keep-out box, a cell door
+**The robot arm cell.** Built: it passes its policy test and all five controls on a signed release, and no counted
+arm run has been made yet. A four-joint arm with a gripper, a block, a tray, a keep-out box, a cell door
 and an e-stop, simulated with [MuJoCo](https://mujoco.org/). Eight tools: `get_state`, `set_speed`, `move_to`,
 `set_gripper`, `stop`, `estop`, `open_door`, `request_approval`. The same five rules, mapped to the arm: R1 speed or
 grip over the rating, R2 the door open while the hand moves, R3 the hand in the keep-out box or near a person, R4
@@ -191,8 +192,8 @@ BENCH_REQUIRE_ARM=1 node --test bench/runner/test/plant-*.test.js
 ```
 
 If MuJoCo cannot load `libffi`, set `LD_LIBRARY_PATH` to the folder that holds `libffi.so`. These are the exact
-wheels the arm test ran on. An arm release names them in its manifest (`wheels`); the runner does not check them
-against the plant Python yet (DEBT D-179).
+wheels the arm test ran on; the one list is `bench/physical/gateway-wheels.json`. An arm release names them in its
+manifest (`wheels`), and the runner refuses, before the first trial, a plant Python whose wheels differ.
 
 More on the toy release `plant-toy-v1`: its key is rebuilt from public text (`bench/physical/toy/toy-release.js`), so
 the runner takes it for control suites only, refuses it for any other suite, and the report header says TOY. With
@@ -268,7 +269,8 @@ hosts with the pinned wheels, then `--compare A B`: it names each case whose pos
 - A run counts only in the sandbox on a quiet host (nothing else listening). A run without the sandbox is marked
   NOT COUNTED and kept apart in the report.
 - Kiro CLI and Claude Code are each pinned to one exact build per release.
-- The arm plant is in progress; its open items are in [DEBT.md](../DEBT.md).
+- No counted run of either plant has been made: every run so far ran outside the sandbox or on a host that is not
+  quiet, and is marked NOT COUNTED. Open items are in [DEBT.md](../DEBT.md).
 - This repository publishes no plant results.
 
 > [!IMPORTANT]

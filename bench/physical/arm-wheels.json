@@ -1,6 +1,0 @@
-{
-  "_comment": "The exact wheels the arm gateway was tested on (arm venv, 2026-11-22; DEBT D-30, D-179). The one copy: arm_release_stub.py reads it, the docs quote it (arm-wheels.test.js checks), and an arm release carries it as manifest wheels, which the runner checks against the plant Python.",
-  "mujoco": "3.13.0",
-  "numpy": "2.5.5",
-  "cedarpy": "4.12.2"
-}

@@ -185,3 +185,40 @@ does not.
 | 14 | b2 | Routing | "Turn this PDF diagram into notes" | routes to `k-media-analyzer` |
 | 15 | b2 | Routing | A need no row covers (a mainframe console) | says so plainly and offers an alternative |
 | 16 | b2 | Control | A plain question with no handoff, denial, brief or routing in it | answers directly; adds no routing talk |
+
+## Appendix D: stages 3 and 4 checked against the pilot design (2026-11-23)
+
+The pilot design is quick depth on the paid provider: one answer per task and arm, in one turn, with no tools, no
+repository and no skills server. The keep arm reads its kind's frame line and the unit's text ahead of the request
+(`PAID_FRAME` in `bench/cap/units.js`); the drop arm reads the request alone. So a quick answer can only show what the
+unit's text changes in an answer whose inputs fit in the prompt. These checks use `cap units` and the SOP texts.
+
+**Stage 4, always-loaded context (5 units).** Four can run as the pilot does. `k-coordinator-digest` is listed by no
+agent, so it stays an audit finding.
+
+| Unit | Est. tokens | Read by | Fits quick? | What its 16 tasks must cover |
+| --- | --- | --- | --- | --- |
+| `k-orchestrator-shared` | 1,397 | the 3 entry agents | yes (the pilot) | Appendix C |
+| `k-direct-work` | 2,025 | `konductor` | yes | when the orchestrator works itself and when it delegates |
+| `k-orchestrator-routing-rules` | 6,585 | the mux and cmux orchestrators | yes | mux and cmux routing, not plain `konductor` |
+| `k-core-rules` | 3,029 | 11 agents, specialists too | yes | both roles: tasks for an orchestrator and for a specialist |
+
+One limit holds for the whole stage. A real session loads its context files together, and the quick keep arm loads
+only the unit, so quick measures the unit alone. Dropping it from the full set is the deep check's
+`cap variant --drop` arm.
+
+**Stage 3, SOPs (19 units).** A user starts an SOP, so the keep arm's frame says the user has started it. Eleven fit
+quick depth: their inputs (a diff, a design doc, a goal) can be put in the prompt, and their output is text. For those
+that name skills or sub-agents, quick measures the SOP's own text and the plan or brief it produces, not the
+delegated work.
+
+| Fits quick | Needs deep (tools, a repository or a browser) |
+| --- | --- |
+| `about-konductor`, `k-plan`, `k-delegate`, `k-pre-cr-critique`, `k-adversarial-pull-request-review`, `k-design-doc-creation` (first turn only: it asks the user questions), `k-existing-design-review`, `k-principal-engineer-design-review`, `k-code-review-workflow`, `k-test-coverage-review`, `kiro-spec-workflow` | `k-code-cleanup`, `k-codebase-analysis`, `k-comprehensive-search`, `k-context-gathering`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-verify`, `k-full-sdlc` (about 30,000 tokens) |
+
+The deep-only eight wait for a deep paid provider (What is missing, item 2). A stage 3 pilot should start with one
+small, read-only SOP whose input fits in a prompt: `k-pre-cr-critique` (about 2,500 tokens; the task gives the diff).
+
+**Stage 2, agent files (8 units).** Quick depth fits: the keep arm reads "You are the agent defined below" and the
+agent's prompt, and each task is a brief the orchestrator hands it. The selection test (does the orchestrator hand it
+the work) runs on the stub only; a live delegation run is paid and not built.

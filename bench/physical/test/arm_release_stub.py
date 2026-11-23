@@ -5,9 +5,9 @@ They are public stubs, not a signed release (bench/.gitignore keeps release file
 writes them under the file names a release uses; a team signs its own copy, which may differ.
 `python3 arm_release_stub.py DIR` writes the same files into DIR.
 
-An arm run's gateway needs Python 3.12 with the wheels in bench/physical/arm-wheels.json (D-30, D-179), the exact
-versions the 2026-11-22 arm test ran on. A real arm release manifest pins them in its fields file (as `wheels`), and
-the runner refuses a plant Python whose wheels differ before the first trial.
+An arm run's gateway needs Python 3.12 with these wheels (D-30); a real arm release manifest pins them in its
+fields file (as `wheels`) so a run records which wheels produced its poses, and the runner refuses a plant Python
+whose wheels differ. The one list is bench/physical/gateway-wheels.json: the versions the 2026-11-22 arm test ran on.
 """
 import json
 import os
@@ -16,10 +16,9 @@ import sys
 import _paths  # noqa: F401
 from arm_truth_rows import render
 
-# The Python wheels an arm gateway needs; a release manifest's fields should carry these under `wheels` (D-30). The one
-# copy is bench/physical/arm-wheels.json (D-179).
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "arm-wheels.json"), encoding="utf-8") as _f:
-    ARM_WHEELS = {k: v for k, v in json.load(_f).items() if not k.startswith("_")}
+# The Python wheels an arm gateway needs; a release manifest's fields should carry these under `wheels` (D-30, D-179).
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "gateway-wheels.json")) as _f:
+    ARM_WHEELS = json.load(_f)
 
 CEDAR_POLICY = """\
 // The arm cell's policy. Every rule reads the sensor view the gateway builds, never the true state.
