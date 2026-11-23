@@ -122,3 +122,29 @@ test('withFileLock takes over a lock left by a dead process', () => {
     assert.equal(fs.existsSync(lock), false);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('a caller killed during its call leaves the call counted at 15, and the rerun counts both calls', async () => {
+  const r = rig();
+  const keep = process.env.BENCH_PAID_ENV_KEEP;
+  try {
+    const out = path.join(r.root, 'out', 'k');
+    const script = path.join(r.root, 'killed.js');
+    write(script, `const { paidCall } = require(${JSON.stringify(path.join(__dirname, '..', '..', 'cap', 'paidcall.js'))});
+paidCall({ ...${JSON.stringify(r.paid)}, model: 'glm-5', prompt: 'slow', out: ${JSON.stringify(out)} });\n`);
+    const child = spawn(process.execPath, [script], { detached: true, stdio: 'ignore', env: { ...process.env, BENCH_PAID_ENV_KEEP: 'FAKE_KP_SLEEP_MS', FAKE_KP_SLEEP_MS: '20000' } });
+    const closed = new Promise((res) => child.on('close', res));
+    const until = Date.now() + 15000;
+    while (ledgerSpent(r.paid.ledger) === 0 && Date.now() < until) await new Promise((res) => setTimeout(res, 50));
+    process.kill(-child.pid, 'SIGKILL');
+    await closed;
+    const lines = fs.readFileSync(r.paid.ledger, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+    assert.deepEqual(lines.map((l) => [l.counted, l.reserved]), [[15, true]], 'one pending line after the kill');
+    assert.equal(fs.existsSync(`${out}.json`), false, 'no saved reply, so a rerun calls again');
+    paidCall({ ...r.paid, model: 'glm-5', prompt: 'slow', out });
+    assert.equal(ledgerSpent(r.paid.ledger), 30, 'the rerun total counts the killed call and the new one');
+  } finally {
+    if (keep === undefined) delete process.env.BENCH_PAID_ENV_KEEP; else process.env.BENCH_PAID_ENV_KEEP = keep;
+    fs.rmSync(r.root, { recursive: true, force: true });
+  }
+});
+
