@@ -57,7 +57,7 @@ session reads it. That is an audit finding, and needs no measurement.
 - Each kind is one file in `bench/cap/units/` (`skill.json`, `agent.json`, `sop.json`, `context.json`): its stage,
   where its files live, which agent-spec list names it, its selection test and the frame line the paid steps put
   ahead of its text. `bench/cap/unitkinds.js` lists the fields. A new kind is a new file there; `cap units --list`
-  prints the kinds (the CLI accepts the flag once D-209's flag line lands).
+  prints the kinds.
 - `cap unit-stage --kind K --unit NAME --run stub-ID` runs one unit through the real stage 1 pipeline on the stub
   provider. It needs a frozen unit baseline and refuses a run id that is not `stub-...`; the paid provider is below.
   With no baseline, a stale one, an entry agent or too few judge families, the record says NO DATA and why.
