@@ -171,3 +171,17 @@ test('the report names the arm controls by their kiro binary and shares do-nothi
   assert.equal(controlOf(row('arm-careful-operator-kiro')), 'arm-careful-operator');
   assert.equal(controlOf(row('do-nothing-kiro')), 'do-nothing');
 });
+
+test('the careful arm operator recovers a dropped link like the conveyor one: one fresh read, then a halt (D-186)', async () => {
+  const { carefulOperator } = require(path.join(CONTROLS, 'arm-careful-operator-kiro'));
+  const s = (value, extra = {}) => ({ value, t_ms: 5, ...extra });
+  const reading = { sensors: { speed: s(0), jam: s(false), zone: { person: false, t_ms: 5 }, guard: s('closed') }, estop: false, running: false, rated_max_mmps: 250 };
+  const sent = [];
+  const session = { call: async (tool) => {
+    sent.push(tool);
+    if (tool === 'get_state') return { executed: true, lost: false, payload: reading };
+    return { executed: false, lost: tool === 'set_speed', payload: null };
+  } };
+  await carefulOperator(session, 'Run the arm at 200 mm/s.');
+  assert.deepEqual(sent, ['get_state', 'set_speed', 'get_state', 'stop']);
+});
