@@ -165,13 +165,15 @@ test('with patches, P2 applies them, runs the suite, and makes one commit per pa
   } finally { s.done(); }
 });
 
-test('P2 does not count the chain script or its own subshell as a running bench.js', { ...opts, timeout: 60000 }, () => {
+// The whole chain runs here (preflight, P1 to P6), about 50 s at load 46 on 8 cores (D-96: it failed at a 50 s spawn
+// timeout), so the deadlines match sandbox().spawn's 120 s, the other chain cases' budget.
+test('P2 does not count the chain script or its own subshell as a running bench.js', { ...opts, timeout: 150000 }, () => {
   const s = sandbox();
   const m = `kd-fake-bench-self-${process.pid}-${Date.now()}`;
   try {
     const p1 = makePatch(s, 'p1', { 'bench/one.txt': 'one\n' });
     const { env } = chain(s, { PATCHES: p1, AC_P3_DEST_PREFIX: 'autonomy-before', AC_BENCH_PROC_PATTERN: m });
-    const r = spawnSync('bash', ['-c', 'exec -a "$1" bash "$2" --foreground', 'x', m, path.join(SCRIPTS, SCRIPT)], { env: { ...s.base, ...env }, encoding: 'utf8', cwd: s.root, timeout: 50000 });
+    const r = spawnSync('bash', ['-c', 'exec -a "$1" bash "$2" --foreground', 'x', m, path.join(SCRIPTS, SCRIPT)], { env: { ...s.base, ...env }, encoding: 'utf8', cwd: s.root, timeout: 120000 });
     assert.doesNotMatch(out(r), /bench\.js process is (still )?running/);
     assert.equal(r.status, 0, out(r));
     assert.equal(s.git(['log', '-1', '--format=%s']).trim(), 'bench: apply p1.patch');
