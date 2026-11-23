@@ -703,6 +703,31 @@
         }
       }
     },
+    "skillLoads": {
+      "description": "Every skill load in order, each with cut (the model got a preview or a slice) and whole (the full text reached the model, by this load or by later reads of the SKILL.md that cover it, then recovered is true).",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "via",
+          "cut",
+          "whole"
+        ],
+        "properties": {
+          "name": { "type": "string" },
+          "via": { "type": "string" },
+          "cut": { "type": "boolean" },
+          "whole": { "type": "boolean" },
+          "recovered": { "type": "boolean" },
+          "sizeBytes": { "type": ["integer", "null"] },
+          "bytes": { "type": "integer" }
+        }
+      }
+    },
     "skillLoadsPreview": {
       "description": "Skill loads that delivered only kiro-cli's head-and-tail preview (answer over 30,000 characters).",
       "type": [

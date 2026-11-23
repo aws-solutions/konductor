@@ -130,3 +130,24 @@ test('the toy walkthrough trial: a Claude Code control on the toy release comple
     assert.match(md, /TOY release: signed with the public toy key; its numbers mean nothing about any agent/);
   } finally { r.cleanup(); }
 });
+
+test('the toy arm release: toy key, arm tasks and probes, and every policy cell passes', { skip: !HAS_CEDAR && 'no Python with cedarpy (set BENCH_ARM_PYTHON)' }, () => {
+  const { makeToyArmRelease, ARM_RELEASE_ID, ARM_TASKS } = require('../../physical/toy/toy-release.js');
+  const root = mkScratch('toy-arm-');
+  try {
+    const toy = makeToyArmRelease(root, PYTHON);
+    const bytes = fs.readFileSync(path.join(toy.dir, 'manifest.json'));
+    const checked = checkManifest({ manifestBytes: bytes, signatureText: fs.readFileSync(path.join(toy.dir, 'manifest.json.sig'), 'utf8'), expectedSha256: toy.sha256 });
+    assert.deepEqual([checked.manifest.release, checked.keyStatus], [ARM_RELEASE_ID, 'toy']);
+    assert.ok(ARM_TASKS.every((t) => t.environment.kind === 'arm-sim'));
+    assert.equal(ARM_TASKS.filter((t) => t.environment.probe).length, 2);
+    assert.ok(Object.values(checked.manifest.wheels).every((v) => v === '*'), 'the toy pins its wheels as installed, any version');
+    const cmd = policyTestCommand({ release: toy.dir, python: PYTHON });
+    const r = spawnSync(cmd.file, cmd.args, { encoding: 'utf8', env: { PATH: process.env.PATH, ...(process.env.LD_LIBRARY_PATH ? { LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH } : {}) } });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /(\d+) of \1 cells pass/);
+  } finally {
+    spawnSync('chmod', ['-R', 'u+rwX', root]);
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -10,7 +10,8 @@
 #
 # Everything goes under one new dir outside the repo and HOME (TOY_WORK, default a new /tmp/konductor-toy.XXXXXX).
 # Overrides (env): TOY_PYTHON (default <repo>/.venv/bin/python), TOY_WORK, TOY_STRANDS_PYTHON (a Python with
-# strands-agents: also runs the Strands controls on the scripted fake model, step 6).
+# strands-agents: also runs the Strands controls on the scripted fake model, step 6), TOY_ARM_PYTHON (a Python 3.12
+# with mujoco and cedarpy: also builds the toy arm release and runs the two arm controls on it, step 7).
 set -euo pipefail
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 PY=${TOY_PYTHON:-$REPO/.venv/bin/python}
@@ -66,7 +67,27 @@ if [ -n "${TOY_STRANDS_PYTHON:-}" ]; then
   sed -n '/^## Controls/,$p' "$WORK/report-strands/plant-report.md"
 fi
 
+if [ -n "${TOY_ARM_PYTHON:-}" ]; then
+  # The robot arm: its own toy release (plant-toy-arm-v1), the same two controls as Claude Code, and its own report.
+  step "7. (TOY_ARM_PYTHON set) the arm: toy arm release, policy test, the two arm controls on both arms, report"
+  node "$REPO/bench/physical/toy/toy-release.js" "$WORK/arm" --arm "$TOY_ARM_PYTHON" | tee "$WORK/arm-release.txt"
+  AREL="$WORK/arm/release"
+  ASHA=$(sed -n 's/^manifest SHA-256: //p' "$WORK/arm-release.txt")
+  ATASKS=$(sed -n 's/^tasks: //p' "$WORK/arm-release.txt")
+  "${BENCH[@]}" plant-policy-test --release "$AREL" --python "$TOY_ARM_PYTHON" | tail -n 1
+  for control in arm-careful-operator arm-unsafe-agent; do
+    "${BENCH[@]}" run --suite lite --tasks "$ATASKS" --arms cc-plant-policy,cc-plant-allowall \
+      --claude-bin "$CONTROLS/$control-claude" --model us.anthropic.claude-sonnet-5-5 \
+      --plant-release "$AREL" --plant-release-sha256 "$ASHA" --extra-tasks "$AREL/tasks" --plant-python "$TOY_ARM_PYTHON" \
+      --isolate none --allow-unisolated --parallel 1 --replicates 1 --out "$WORK/arm-runs/$control" > "$WORK/arm-run-$control.log" 2>&1 \
+      || { echo "STOP: the arm $control run failed; see $WORK/arm-run-$control.log" >&2; exit 1; }
+    echo "$control: $(grep -o 'finished: .*' "$WORK/arm-run-$control.log" | tail -1)"
+  done
+  "${BENCH[@]}" plant-report --run "$WORK/arm-runs/arm-careful-operator,$WORK/arm-runs/arm-unsafe-agent" --release "$AREL" --out "$WORK/report-arm"
+  sed -n '/^## Controls/,$p' "$WORK/report-arm/plant-report.md"
+fi
+
 step "done"
-echo "report: $WORK/report/plant-report.md"
+echo "report: $WORK/report/plant-report.md${TOY_ARM_PYTHON:+ (arm: $WORK/report-arm/plant-report.md)}"
 echo "trace:  $WORK/trace.html (open it in a browser; it is one offline page)"
 echo "Remove $WORK when you are done."

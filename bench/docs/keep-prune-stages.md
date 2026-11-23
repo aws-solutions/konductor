@@ -1,8 +1,19 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Keep or prune, stages 2 to 4: agent files, SOPs and always-loaded context
 
-2026-11-23, version 3: the paid path for the first pilot (writing its baseline, and its quick run), built and tested
-on a fake kiro-cli, with no paid call made. [← capability playbook](cap-playbook.md) · [reference](reference.md)
+2026-11-23, version 4: the owner approved the first pilot; a paid run now needs a signed-off baseline; a newcomer
+pass. [← capability playbook](cap-playbook.md) · [reference](reference.md)
+
+**Where it stands.** Everything below is built and tested without a model. No unit has been measured yet. The first
+pilot, the always-loaded context file `k-orchestrator-shared`, is approved (writing cap 120, run cap 8,760 counted
+credits) and waits for the owner to run its three steps: write the 16 tasks, sign them off, run the quick check
+([The paid path](#the-paid-path-built-never-run-on-a-real-model)). Stages 2 to 4 after the pilot each have their own
+plan and cap to approve (Appendix D).
+
+Words used here: a **unit** is one agent file, SOP or context file. The **keep arm** answers with the unit, the
+**drop arm** without it. **Quick depth** is one answer per task and arm; **deep depth** is three, plus a repeat of the
+keep arm to measure noise. A **baseline** is the unit's 16 frozen tasks with their rubrics. A **counted credit** is the
+owner's spend rule: every paid call counts at 15 credits or its real cost, whichever is larger.
 
 ## The problem
 
@@ -61,13 +72,16 @@ session reads it. That is an audit finding, and needs no measurement.
 
 ### The paid path (built, never run on a real model)
 
-Both paid steps of the first pilot are one command each, for the owner to run after approving a cap:
+The pilot has three steps. Steps 1 and 3 are paid and are one command each; step 2 is a person's sign-off:
 
 - `bash bench/cap/pilot/author-baseline.sh --cap N` writes the pilot unit's baseline from its 16 briefs
   (`bench/cap/unit-baselines/context-k-orchestrator-shared/briefs.json`, the table in Appendix C). It runs
   `cap unit-author`: per batch, glm-5 writes the 8 tasks, deepseek-3.2 reviews them, a failed task gets one fix by
   glm-5 and one recheck, and a task that still fails is dropped and recorded. At most 8 calls. With all 16 passing it
-  writes `baseline.json` with `signedOffBy: null`; with any dropped it writes `baseline.draft.json` and stops.
+  writes `baseline.json` with `signedOffBy: null`; with any dropped it writes `baseline.draft.json` and stops. A rerun
+  never overwrites a baseline that is already signed off.
+- Step 2: a person who did not write the tasks reads them, does not edit them, and sets `source.signedOffBy` to their
+  name. A paid run refuses a baseline without it.
 - `bash bench/cap/pilot/run-pilot.sh --cap N` runs `cap unit-stage --provider kiro` at quick depth: claude-sonnet-5.5
   answers each task once with the file (keep arm) and once without (drop arm), glm-5 writes the request-only checklists,
   and qwen3-coder-next, gpt-5.6-luna and grok-4.7 judge. The controls run too, as in stage 1.
@@ -76,15 +90,17 @@ Every call is a one-turn `kiro-cli chat` with no tools, in a scratch HOME under 
 with only the sign-in copied in (`bench/cap/paidcall.js`). Before each call the ledger is read; the call counts at the
 larger of 15 credits and its real credits, and it is refused when spent plus 15 would pass the cap. Every reply is
 saved, so the same command resumes after a stop or a larger cap. The run stops before its first call when the unit
-has no fresh baseline or the panel lacks three families. Both scripts take `--dry-run`, which prints the calls and the
-worst case and makes none. `bench/runner/test/cap-paid.test.js` runs both scripts and both steps end to end on a fake
+has no fresh, signed-off baseline or the panel lacks three families. The baseline can live outside the checkout
+(`KP_BASELINE_OUT` for step 1, `KP_BASELINES` for step 3, which becomes `cap unit-stage --baselines DIR`). Both
+scripts take `--dry-run`, which prints the calls, the worst case, the controls it loaded and anything that would stop
+the run, and makes no call. `bench/runner/test/cap-paid.test.js` runs both scripts and both steps end to end on a fake
 kiro-cli (`fake-kp-kiro.js`).
 
 ## What is missing
 
 1. Unit baselines. No unit has one. Each needs 16 tasks with rubrics, in two batches of 8, written by one model family
-   and reviewed by a second, frozen on the unit's current hash. The pilot unit's writing step is built (above) and
-   waits for the owner's cap; the unit map in the workspace reports lists seed tasks for the rest.
+   and reviewed by a second, frozen on the unit's current hash. The pilot unit's writing step is built (above),
+   approved, and waits for the owner to run it; the unit map in the workspace reports lists seed tasks for the rest.
 2. A deep-depth paid provider. The paid provider answers in one turn, so it runs quick depth only; deep depth needs
    full sessions per replicate.
 3. A live delegation run: the stub test reads streams the stub wrote; a live one needs the orchestrator to run each
@@ -112,10 +128,16 @@ every call at 15 credits, the owner's rule; it is not a true ceiling for agent r
 
 ## What the owner decides
 
-1. Approve or change this design: the three stages, the drop arms, and which units are out of scope.
-2. The first pilot unit, `context:k-orchestrator-shared` (Appendix C), and the writer and reviewer families of its 16
-   tasks.
-3. A spend cap and a provider for the first pilot (one unit, quick depth), and for writing its baseline.
+Decided on 2026-11-23: the design, the pilot unit `context:k-orchestrator-shared` with glm writing and deepseek
+reviewing its tasks, Kiro CLI credits as the provider, and the pilot's caps (120 counted credits to write, 8,760 to
+run). Still open:
+
+1. The sign-off of the pilot's 16 tasks (step 2 above).
+2. After the pilot: each later stage's units and caps (Appendix D lists what fits quick depth).
+3. The deep-depth paid provider and the live delegation run, which are not built.
+
+The cost table above counts both depths. At quick depth a unit is 240 calls (3,600 counted credits), and the controls
+add 344 once per stage run, when the stage's units share one run id.
 
 ## Appendix A: the rules kept from stage 1
 

@@ -26,6 +26,7 @@ const { familyOf } = require('../judge/family.js');
 const { toolNameOf, mcpToolNameOf, mcpInputOf, parseStream, runErrorOf } = require('../runner/lib/stream.js');
 const { aggregateHidden } = require('../runner/lib/check-matcher.js');
 const { lockBlockers, fixReasons } = require('./ready.js');
+const { serviceCancelled } = require('../runner/lib/result.js');
 
 const PACK_DIR = __dirname;
 const EASY = 90;
@@ -105,10 +106,14 @@ function throttled(r, runDir) {
   try { return THROTTLE.test(runErrorOf(parseStream(fs.readFileSync(path.join(runDir, 'stream.jsonl'), 'utf8')).events) ?? ''); } catch { return false; }
 }
 
+// A turn the service cancelled (runner/lib/result.js serviceCancelled), or one the runner already marked.
+const cancelled = (r) => serviceCancelled(r) || (r.flags || []).includes('serviceCancelled');
+
 // A throttled run is reported by its own flag (see throttled), never as broken: its empty hidden result follows from it.
 function brokenReasons(r, runDir) {
   const out = [];
   if (r.status !== 'success' && r.status !== 'timeout' && throttled(r, runDir)) return out;
+  if (cancelled(r)) return out;
   if (r.status === 'timeout') out.push('timeout');
   else if (r.status && r.status !== 'success') out.push(r.status);
   if (r.infraError) out.push('infra error');
@@ -274,13 +279,15 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       const r = e.result;
       const entry = pack.tasks.get(e.taskId) ?? null;
       const batch = batchOf(e.taskId);
-      const score = codeScore(r);
+      // A service-cancelled run never finished the task: no score, so it cannot pull a mean towards 0.
+      const score = cancelled(r) ? null : codeScore(r);
       const flags = {};
       const broken = brokenReasons(r, e.dir);
       if (broken.length) flags.broken = broken.join(', ');
       // A throttled run never reached the task, so its score raises no too-easy or too-hard flag.
       const refused = throttled(r, e.dir) && r.status !== 'success';
       if (refused) flags.throttled = `${r.status}: refused by the model service, rerun it`;
+      if (cancelled(r)) flags.cancelled = 'turn cancelled by the model service (infra), rerun it';
       if (!refused && finite(score) && score >= EASY) flags['too-easy'] = `score ${score.toFixed(0)}`;
       const ref = entry?.task.pilot?.dryRun?.reference;
       if (!refused && finite(score) && score <= HARD) flags['too-hard'] = `score ${score.toFixed(0)}`;
@@ -318,7 +325,7 @@ const fmt = (v, d = 0) => (finite(v) ? v.toFixed(d) : 'n/a');
 // The lazy and alternative scores in pilot.dryRun come from a script, so the table says what they can and cannot show.
 const NOTE_DRY_RUN = 'Dry-run note: the shallow (lazy) and alternative answers behind pilot.dryRun are script-made copies of the reference, not independent attempts. For T4 code tasks the shallow answer equals the empty answer, so the shallow gate says nothing there (D-102).';
 
-const FLAG_NAMES = ['broken', 'throttled', 'too-easy', 'too-hard', 'answer-leak', 'second-family', 'noisy', 'fix', 'hand-edited, recheck missing'];
+const FLAG_NAMES = ['broken', 'throttled', 'cancelled', 'too-easy', 'too-hard', 'answer-leak', 'second-family', 'noisy', 'fix', 'hand-edited, recheck missing'];
 
 /**
  * The (task, replicate) pairs a skipped run breaks. A pair is unpaired when one arm ran and another was budget_skipped;

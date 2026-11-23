@@ -174,9 +174,9 @@ test('v2 is unchanged: skills and contamination output of the v2 fixtures equal 
   for (const [name, want] of Object.entries(snap)) {
     const ev = eventsOf(name);
     // failedCalls, failedByTool and the full-text fields were added after the snapshot; every field the snapshot has must still match.
-    const { failedCalls, failedByTool, skillsLoadedFull, skillLoadsPreview, ...skills } = JSON.parse(JSON.stringify(extractSkills(ev, 'kiro-cli')));
+    const { failedCalls, failedByTool, skillsLoadedFull, skillLoadsPreview, skillLoads, ...skills } = JSON.parse(JSON.stringify(extractSkills(ev, 'kiro-cli')));
     assert.ok(Array.isArray(failedCalls) && failedCalls.length <= skills.skillCallsFailed, name);
-    assert.ok(Array.isArray(skillsLoadedFull) && Number.isInteger(skillLoadsPreview), name);
+    assert.ok(Array.isArray(skillsLoadedFull) && Number.isInteger(skillLoadsPreview) && Array.isArray(skillLoads), name);
     assert.equal(Object.values(failedByTool).reduce((a, b) => a + b, 0), skills.skillCallsFailed, name);
     assert.deepEqual(skills, want.skills, name);
     assert.deepEqual(scanStream(ev, null), want.contamination, name);
