@@ -81,7 +81,7 @@ test('vanilla-b=vanilla is a vanilla A/A repeat under its own id; vanilla stays 
   const v = resolveArm('vanilla-b=vanilla', process.cwd());
   assert.equal(v.id, 'vanilla-b');
   assert.equal(v.vanilla, true);
-  assert.equal(v.harness, 'none');
+  assert.equal(v.armKind, 'none');
   assert.equal(v.repeatOf, 'vanilla');
   assert.equal(v.commitSha, null);
   assert.equal(resolveArm('vanilla', process.cwd()).repeatOf, undefined);

@@ -28,7 +28,7 @@ test('cc-plant-policy and cc-plant-allowall resolve to Claude Code plant arms wi
     const a = resolveArm(spec, '.');
     assert.equal(a.id, spec);
     assert.equal(a.runtime, 'claude-code');
-    assert.equal(a.harness, 'plant');
+    assert.equal(a.armKind, 'plant');
     assert.equal(a.agent, null);
     assert.equal(a.vanilla, true);
     assert.deepEqual(a.plant, { arm });
