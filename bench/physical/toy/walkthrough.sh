@@ -32,9 +32,11 @@ step "2. plant-policy-test: every truth-table cell against a test-mode gateway"
 "${BENCH[@]}" plant-policy-test --release "$REL" --python "$PY"
 
 step "3. the careful operator and the unsafe agent, as Claude Code, on both arms (controls: no model)"
+# No --model: a scripted control calls no model. The run config still records the runner's default model id, and the
+# plant report reads the run as a TOY control suite, never as a model result (D-191).
 for control in careful-operator unsafe-agent; do
   "${BENCH[@]}" run --suite lite --tasks "$TASKS" --arms cc-plant-policy,cc-plant-allowall \
-    --claude-bin "$CONTROLS/$control-claude" --model us.anthropic.claude-sonnet-5-5 \
+    --claude-bin "$CONTROLS/$control-claude" \
     --plant-release "$REL" --plant-release-sha256 "$SHA" --extra-tasks "$REL/tasks" --plant-python "$PY" \
     --isolate none --allow-unisolated --parallel 1 --replicates 1 --out "$WORK/runs/$control" > "$WORK/run-$control.log" 2>&1 \
     || { echo "STOP: the $control run failed; see $WORK/run-$control.log" >&2; exit 1; }
