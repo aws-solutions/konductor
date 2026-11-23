@@ -41,7 +41,7 @@
     "runner/lib/run-one.js": 1,
     "runner/lib/runconfig.js": 2,
     "runner/lib/sandbox.js": 4,
-    "runner/lib/skills.js": 14,
+    "runner/lib/skills.js": 9,
     "runner/lib/startup.js": 5,
     "runner/lib/trace.js": 1,
     "scripts/introspect-summary.js": 2,

@@ -10,6 +10,8 @@ const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, skil
 const { frontmatter, fmValue } = require('./frontmatter.js');
 const claudeParse = require('../../plugins/claude-code/parse.js');
 const { loadOrderOf, loadCheckOf } = require('./load-check.js');
+// The run's harness reads its own skill calls and first decision; loaded at call time through harness/streams.js.
+const { streamsOf } = require('./harness/streams.js');
 
 const SKILL_FIELDS = [
   'skillsLoaded', 'skillQueries', 'sopsLoaded', 'skillBytesLoaded', 'skillCallsFailed', 'skillCallsFailedByTool', 'findSkillsCalls', 'findSkillsEmpty',
@@ -116,21 +118,6 @@ function kiroCalls(events) {
   return [...calls.values()];
 }
 
-// opencode loads a skill through its `skill` tool; the stream emits one tool_use per finished call.
-function opencodeCalls(events) {
-  const seen = new Set();
-  const calls = [];
-  for (const ev of events ?? []) {
-    const p = ev?.type === 'tool_use' ? ev.part : null;
-    if (p?.tool !== 'skill') continue;
-    if (p.callID) { if (seen.has(p.callID)) continue; seen.add(p.callID); }
-    const st = p.state ?? {};
-    const out = typeof st.output === 'string' ? st.output : null;
-    calls.push({ tool: 'skill', input: st.input ?? {}, text: out, status: st.status ?? null });
-  }
-  return calls;
-}
-
 function queriesOf(input) {
   return Object.entries(input ?? {}).filter(([k, v]) => !k.startsWith('__') && typeof v === 'string' && v.trim()).map(([, v]) => v.trim());
 }
@@ -151,30 +138,19 @@ const refusedById = (events, id) => id != null && (events ?? []).some((ev) => {
 });
 
 /**
- * The first capability call of a run, in stream order: a skills-server tool, a refused load_resource(skill::*), an
- * SOP activation or a subagent call on kiro, the skill or task tool on opencode.
+ * The first capability call of a run, in stream order, read by the run's harness (`streams.firstDecision`): a
+ * skills-server tool, a refused load_resource(skill::*), an SOP activation or a subagent call on kiro, the skill or
+ * task tool on opencode and Claude Code. A harness without the reader has none.
  * { kind: 'find_skills'|'get_skill'|'skill'|'subagent'|'none', name }.
  */
 function firstDecisionOf(events, runtime) {
+  const read = streamsOf({ runtime }).firstDecision;
+  return read ? read(events) : { kind: 'none', name: null };
+}
+
+/** The kiro-cli reader of firstDecisionOf (plugins/kiro-cli/streams.js `firstDecision`). */
+function kiroFirstDecision(events) {
   const none = { kind: 'none', name: null };
-  if (runtime === 'claude-code') {
-    for (const ev of events ?? []) {
-      for (const b of ev?.type === 'assistant' && Array.isArray(ev.message?.content) ? ev.message.content : []) {
-        if (b?.type !== 'tool_use') continue;
-        if (b.name === 'Skill') return { kind: 'skill', name: b.input?.skill ?? b.input?.name ?? null };
-        if (claudeParse.SUBAGENT_TOOLS.has(b.name)) return { kind: 'subagent', name: b.input?.subagent_type ?? null };
-      }
-    }
-    return none;
-  }
-  if (runtime === 'opencode') {
-    for (const ev of events ?? []) {
-      const p = ev?.type === 'tool_use' ? ev.part : null;
-      if (p?.tool === 'skill') return { kind: 'skill', name: p.state?.input?.name ?? p.state?.input?.skill_name ?? null };
-      if (p?.tool === 'task') return { kind: 'subagent', name: p.state?.input?.subagent_type ?? null };
-    }
-    return none;
-  }
   for (const ev of events ?? []) {
     const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
     if (u?.sessionUpdate !== 'tool_call') continue;
@@ -208,8 +184,10 @@ function firstDecisionOf(events, runtime) {
  * name when the stream recorded no arguments.
  */
 function extractSkills(events, runtime) {
-  // Both report a loaded skill's text on the call and a status; the kiro-cli path reads a skills-server answer instead.
-  const oc = runtime === 'opencode' || runtime === 'claude-code';
+  // The harness reads its own skill calls (`streams.skillCalls`). A 'text' answer is the loaded skill's text on the
+  // call with a status (opencode, Claude Code); a 'server' answer is a skills-server reply (kiro-cli).
+  const streams = streamsOf({ runtime });
+  const oc = streams.skillAnswer === 'text';
   const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillsLoadedFull: [], skillLoadsPreview: 0, skillLoads: [], skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], failedCalls: [], failedByTool: { get_skill: 0, load_resource: 0, find_skills: 0 }, firstDecision: firstDecisionOf(events, runtime) };
   const byName = new Map();
   const sizes = new Map();
@@ -247,7 +225,7 @@ function extractSkills(events, runtime) {
     }
     out.skillLoads.push(entry);
   };
-  for (const c of runtime === 'claude-code' ? claudeParse.skillCalls(events) : oc ? opencodeCalls(events) : kiroCalls(events)) {
+  for (const c of streams.skillCalls ? streams.skillCalls(events) : []) {
     if (c.tool === 'find_skills') {
       out.findSkillsCalls++;
       out.skillQueries.push(...queriesOf(c.input));
@@ -617,5 +595,5 @@ function resultFields({ extraction, info, task, arm, extras = null, order = null
 module.exports = {
   ARGS_NOT_RECORDED, SKILL_FIELDS, CLAUDE_SKILL_FIELDS, FULL_TEXT_FIELDS, isPreviewText, CC_PRELOAD_CAP, extractSkills, claudeSkillExtras, startupClaude, fmList, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
   startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, claudeSkillInfo, captureSkills, resultFields, normalizeUri, has,
-  firstDecisionOf, identifiedSops, capInvocationOf,
+  firstDecisionOf, identifiedSops, capInvocationOf, kiroCalls, kiroFirstDecision,
 };

@@ -38,8 +38,16 @@ function stopEvent(ev) {
   };
 }
 
+// shortcut: the skills-server readers stay in runner/lib/skills.js (kiroCalls, kiroFirstDecision) because they share
+// its helpers with the answer parsing; move them here with those helpers when skills.js is split.
+const skills = () => require('../../runner/lib/skills.js');
+
 module.exports = {
   finalText: (events) => aggregateStream(events).finalText,
   timeline: (events) => require('../../runner/lib/trace.js').kiroTimeline(events),
   stopEvent,
+  // Skills-server calls with their raw answers (skills.js extractSkills, `skillAnswer: 'server'`).
+  skillCalls: (events) => skills().kiroCalls(events),
+  skillAnswer: 'server',
+  firstDecision: (events) => skills().kiroFirstDecision(events),
 };
