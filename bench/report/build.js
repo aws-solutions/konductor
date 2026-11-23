@@ -160,6 +160,65 @@ function profileBlocks(profile, check) {
   ];
 }
 
+/**
+ * The full report's Judges section, pushed onto `blocks`: panel and agreement line, the agreement heatmap, pairwise
+ * bars versus `base`, and the graded table. `j` is the run's judgments (null when not judged); `add(name, svg, alt)`
+ * adds a chart; a chart that cannot be drawn is listed in `omitted`.
+ */
+function judgeSection({ j, ctx, facts, report, heads, base, taskOrder, blocks, add, omitted }) {
+  blocks.push(D.h(2, 'Judges'));
+  if (!j) {
+    omitted.push('Judge charts (agreement heatmap, pairwise bars) need a judge run: this run has no judgments.json.');
+    blocks.push(D.p('Not judged. The rubric component of quality is missing and is not imputed.'));
+    return;
+  }
+  const recs = j.rubric.filter((x) => !ctx.isStale(x));
+  const ag = facts.judging.agreement;
+  blocks.push(D.p(`Judges: ${j.judges.join(', ')} (${facts.judging.families.join(', ')}); backend: ${(facts.judging.backends ?? []).length > 1 ? `mixed (${facts.judging.backends.join(', ')}), not comparable` : (facts.judging.backends ?? ['kiro'])[0]}. Agreement over criterion pairs of the same run: ${ag ? `exact ${f(ag.exact * 100, 0)}%, within one level ${f(ag.withinOne * 100, 0)}% (n=${ag.pairs}; bars: exact >= ${THRESHOLDS.exactMin * 100}%, within-one >= ${THRESHOLDS.withinOneMin * 100}%)` : 'not computable (one judge or no overlap)'}. Unjudged runs: ${facts.judging.unjudged.length}${facts.judging.unjudged.length ? ` (${facts.judging.unjudged.slice(0, 10).join(', ')})` : ''}.`));
+  const m = agreementMatrix(recs, j.judges, taskOrder);
+  add('judge-agreement', C.heatmap({ title: 'Judge agreement: exact verdict match per judge pair and task', id: 'judge-agreement', rows: m.rows, cols: m.cols, values: m.values, min: 0, max: 1 }), 'Heatmap of exact criterion agreement by judge pair and task');
+  const pw = heads.map((a) => ({ a, t: report.arms[a]?.overall?.pairwise?.total })).filter((x) => x.t);
+  if (pw.length) {
+    add('pairwise', C.stackedBars({ title: `Pairwise verdicts versus ${base} (win, tie, loss)`, id: 'pairwise', normalize: true, segments: [{ key: 'win', name: 'win', color: '#009E73' }, { key: 'tie', name: 'tie', color: '#7A7A7A' }, { key: 'loss', name: 'loss', color: '#D55E00' }], rows: pw.map(({ a, t }) => ({ label: a, values: { win: t.win, tie: t.tie, loss: t.loss }, note: `position-inconsistent ${t.positionInconsistent} of ${t.win + t.tie + t.loss + t.errors}` })) }), 'Stacked pairwise win, tie and loss per arm');
+  } else omitted.push('Pairwise bars need pairwise judgments (judge --mode pairwise).');
+  const graded = gradedSummary(j, { isStale: ctx.isStale });
+  if (graded.present) {
+    const gt = gradedTable(graded);
+    blocks.push(D.h(3, 'Graded judging (1 to 5)'));
+    blocks.push(D.table(gt.head, gt.rows));
+    blocks.push(D.note(gt.note));
+  }
+}
+
+/** The full report's Spend section, pushed onto `blocks`: per-arm spend, the spend-by-phase chart and the ledger line. */
+function spendSection({ run, j, rows, arms, unit, blocks, add }) {
+  blocks.push(D.h(2, 'Spend'));
+  const spendRows = arms.map((a) => { const rs = rows.filter((x) => x.arm === a); return [a, rs.length, f(rs.reduce((n, x) => n + (fin(x.credits) ? x.credits : 0), 0), 2), f(mean(rs.map((x) => x.credits).filter(fin)), 2), rs.filter((x) => x.censored).length]; });
+  blocks.push(D.table(['arm', 'runs', `${unit} charged`, `${unit} per run`, 'censored runs'], spendRows));
+  const runTotal = rows.reduce((n, x) => n + (fin(x.credits) ? x.credits : 0), 0);
+  const phases = { run: runTotal, judge: fin(j?.spentCredits) ? j.spentCredits : 0, ...(run.spend || {}) };
+  add('spend', C.stackedBars({ title: `Spend by phase (${unit})`, id: 'spend', unit, segments: [{ key: 'run', name: 'run' }, { key: 'judge', name: 'judge' }, { key: 'draft', name: 'draft' }, { key: 'trigger', name: 'trigger' }].filter((s) => phases[s.key] > 0), rows: [{ label: 'all phases', values: phases, note: `total ${f(Object.values(phases).reduce((n, v) => n + (fin(v) ? v : 0), 0), 2)}` }] }), 'Stacked bar of spend by phase');
+  const ledgers = (run.dirs || [run.dir]).map((d) => readLedger(d));
+  const found = ledgers.filter((l) => l.exists);
+  if (found.length) {
+    const t = found.reduce((a, l) => ({ run: a.run + l.totals.run, judge: a.judge + l.totals.judge, other: a.other + l.totals.other, total: a.total + l.totals.total, calls: a.calls + l.totals.calls }), { run: 0, judge: 0, other: 0, total: 0, calls: 0 });
+    blocks.push(D.p(`Credit ledger (credit-ledger.jsonl): ${f(t.total, 2)} ${unit} in ${t.calls} call(s): runs ${f(t.run, 2)}, judge ${f(t.judge, 2)}${t.other ? `, other ${f(t.other, 2)}` : ''}.${t.censored ? ` ${t.censored} run(s) timed out or were killed: their share is a lower-bound estimate, not a measured cost.` : ''}`));
+  } else blocks.push(D.p('No credit ledger in this run directory (it predates the ledger); the totals above come from the result files.'));
+  if (phases.draft === undefined && phases.trigger === undefined) blocks.push(D.p('Draft and trigger spend are not part of a run directory; they appear here when a spend.json (draft, trigger) sits beside the results.'));
+}
+
+/** The provenance appendix: each run directory's bench commit and tools, each arm's source, and the commands to reproduce. */
+function appendixBlocks(run, report) {
+  const cfgs = (run.configs || [{ dir: run.dir, config: run.config }]);
+  return [
+    D.h(2, 'Appendix: provenance and how to reproduce'),
+    D.table(['run directory', 'bench commit', 'bench tree', 'content hash', 'tools', 'isolation', 'started'], cfgs.map(({ dir, config }) => [dir, (config.benchCommit || 'not recorded').slice(0, 12), config.benchDirty === true ? 'dirty' : config.benchDirty === false ? 'clean' : 'not recorded', (config.contentHash || 'not recorded').slice(0, 12), config.tools ? Object.entries(config.tools).map(([k, v]) => `${k} ${String(v).replace(/^\S+ /, '')}`).join('; ') : 'not recorded', config.isolation?.mode || 'not recorded', config.startedAt || 'not recorded'])),
+    D.table(['arm', 'ref', 'commit or content hash', 'tree'], (run.config.arms || []).map((a) => [a.id, a.ref || 'n/a', (a.commitSha || a.contentHash || 'not recorded').slice(0, 12), a.dirty === true ? 'dirty' : a.dirty === false ? 'clean' : 'n/a'])),
+    D.p('Commands to reproduce (DIR is a new output directory):'),
+    D.list(commandsFor(run, report, 'full').map((c) => `\`${c}\``)),
+  ];
+}
+
 function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, weights, detail, profile = null, docPhases = null, quote = null, sens = null }) {
   const blocks = [];
   const charts = new Map();
@@ -249,29 +308,8 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
     add('forest-cost', C.forestPlot({ title: `Cost change versus ${base}, per task`, id: 'forest-cost', unit: '% change in cost per run (head vs base)', rows: cRows, noise: { lo: -cBand.v, hi: cBand.v, label: cBand.label } }), 'Forest plot of per-task cost change with noise band');
   } else omitted.push('Delta forest plots need two or more arms.');
 
-  blocks.push(D.h(2, 'Judges'));
   const j = run.judgments;
-  if (!j) {
-    omitted.push('Judge charts (agreement heatmap, pairwise bars) need a judge run: this run has no judgments.json.');
-    blocks.push(D.p('Not judged. The rubric component of quality is missing and is not imputed.'));
-  } else {
-    const recs = j.rubric.filter((x) => !ctx.isStale(x));
-    const ag = facts.judging.agreement;
-    blocks.push(D.p(`Judges: ${j.judges.join(', ')} (${facts.judging.families.join(', ')}); backend: ${(facts.judging.backends ?? []).length > 1 ? `mixed (${facts.judging.backends.join(', ')}), not comparable` : (facts.judging.backends ?? ['kiro'])[0]}. Agreement over criterion pairs of the same run: ${ag ? `exact ${f(ag.exact * 100, 0)}%, within one level ${f(ag.withinOne * 100, 0)}% (n=${ag.pairs}; bars: exact >= ${THRESHOLDS.exactMin * 100}%, within-one >= ${THRESHOLDS.withinOneMin * 100}%)` : 'not computable (one judge or no overlap)'}. Unjudged runs: ${facts.judging.unjudged.length}${facts.judging.unjudged.length ? ` (${facts.judging.unjudged.slice(0, 10).join(', ')})` : ''}.`));
-    const m = agreementMatrix(recs, j.judges, taskOrder);
-    add('judge-agreement', C.heatmap({ title: 'Judge agreement: exact verdict match per judge pair and task', id: 'judge-agreement', rows: m.rows, cols: m.cols, values: m.values, min: 0, max: 1 }), 'Heatmap of exact criterion agreement by judge pair and task');
-    const pw = heads.map((a) => ({ a, t: report.arms[a]?.overall?.pairwise?.total })).filter((x) => x.t);
-    if (pw.length) {
-      add('pairwise', C.stackedBars({ title: `Pairwise verdicts versus ${base} (win, tie, loss)`, id: 'pairwise', normalize: true, segments: [{ key: 'win', name: 'win', color: '#009E73' }, { key: 'tie', name: 'tie', color: '#7A7A7A' }, { key: 'loss', name: 'loss', color: '#D55E00' }], rows: pw.map(({ a, t }) => ({ label: a, values: { win: t.win, tie: t.tie, loss: t.loss }, note: `position-inconsistent ${t.positionInconsistent} of ${t.win + t.tie + t.loss + t.errors}` })) }), 'Stacked pairwise win, tie and loss per arm');
-    } else omitted.push('Pairwise bars need pairwise judgments (judge --mode pairwise).');
-    const graded = gradedSummary(j, { isStale: ctx.isStale });
-    if (graded.present) {
-      const gt = gradedTable(graded);
-      blocks.push(D.h(3, 'Graded judging (1 to 5)'));
-      blocks.push(D.table(gt.head, gt.rows));
-      blocks.push(D.note(gt.note));
-    }
-  }
+  judgeSection({ j, ctx, facts, report, heads, base, taskOrder, blocks, add, omitted });
 
   const aut = arms.map((a) => ({ a, rs: rows.filter((x) => x.arm === a && x.turns > 0) })).filter((x) => x.rs.length);
   if (aut.length) {
@@ -298,31 +336,14 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
 
   blocks.push(...orchBlocks(run, { phases: docPhases }));
 
-  blocks.push(D.h(2, 'Spend'));
-  const spendRows = arms.map((a) => { const rs = rows.filter((x) => x.arm === a); return [a, rs.length, f(rs.reduce((n, x) => n + (fin(x.credits) ? x.credits : 0), 0), 2), f(mean(rs.map((x) => x.credits).filter(fin)), 2), rs.filter((x) => x.censored).length]; });
-  blocks.push(D.table(['arm', 'runs', `${unit} charged`, `${unit} per run`, 'censored runs'], spendRows));
-  const runTotal = rows.reduce((n, x) => n + (fin(x.credits) ? x.credits : 0), 0);
-  const phases = { run: runTotal, judge: fin(j?.spentCredits) ? j.spentCredits : 0, ...(run.spend || {}) };
-  add('spend', C.stackedBars({ title: `Spend by phase (${unit})`, id: 'spend', unit, segments: [{ key: 'run', name: 'run' }, { key: 'judge', name: 'judge' }, { key: 'draft', name: 'draft' }, { key: 'trigger', name: 'trigger' }].filter((s) => phases[s.key] > 0), rows: [{ label: 'all phases', values: phases, note: `total ${f(Object.values(phases).reduce((n, v) => n + (fin(v) ? v : 0), 0), 2)}` }] }), 'Stacked bar of spend by phase');
-  const ledgers = (run.dirs || [run.dir]).map((d) => readLedger(d));
-  const found = ledgers.filter((l) => l.exists);
-  if (found.length) {
-    const t = found.reduce((a, l) => ({ run: a.run + l.totals.run, judge: a.judge + l.totals.judge, other: a.other + l.totals.other, total: a.total + l.totals.total, calls: a.calls + l.totals.calls }), { run: 0, judge: 0, other: 0, total: 0, calls: 0 });
-    blocks.push(D.p(`Credit ledger (credit-ledger.jsonl): ${f(t.total, 2)} ${unit} in ${t.calls} call(s): runs ${f(t.run, 2)}, judge ${f(t.judge, 2)}${t.other ? `, other ${f(t.other, 2)}` : ''}.${t.censored ? ` ${t.censored} run(s) timed out or were killed: their share is a lower-bound estimate, not a measured cost.` : ''}`));
-  } else blocks.push(D.p('No credit ledger in this run directory (it predates the ledger); the totals above come from the result files.'));
-  if (phases.draft === undefined && phases.trigger === undefined) blocks.push(D.p('Draft and trigger spend are not part of a run directory; they appear here when a spend.json (draft, trigger) sits beside the results.'));
+  spendSection({ run, j, rows, arms, unit, blocks, add });
 
   const timeline = rows.filter((x) => fin(x.wall)).sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0)).map((x) => ({ label: `${x.arm}/${x.task}#${x.rep}`, arm: x.arm, ms: x.wall, status: x.status }));
   add('durations', C.durationBars({ title: 'Run durations in start order (T = timeout, E = error)', id: 'durations', runs: timeline }), 'Bars of run durations with timeouts marked');
 
   if (omitted.length) { blocks.push(D.h(2, 'Not shown')); blocks.push(D.list(omitted)); }
 
-  blocks.push(D.h(2, 'Appendix: provenance and how to reproduce'));
-  const cfgs = (run.configs || [{ dir: run.dir, config: run.config }]);
-  blocks.push(D.table(['run directory', 'bench commit', 'bench tree', 'content hash', 'tools', 'isolation', 'started'], cfgs.map(({ dir, config }) => [dir, (config.benchCommit || 'not recorded').slice(0, 12), config.benchDirty === true ? 'dirty' : config.benchDirty === false ? 'clean' : 'not recorded', (config.contentHash || 'not recorded').slice(0, 12), config.tools ? Object.entries(config.tools).map(([k, v]) => `${k} ${String(v).replace(/^\S+ /, '')}`).join('; ') : 'not recorded', config.isolation?.mode || 'not recorded', config.startedAt || 'not recorded'])));
-  blocks.push(D.table(['arm', 'ref', 'commit or content hash', 'tree'], (run.config.arms || []).map((a) => [a.id, a.ref || 'n/a', (a.commitSha || a.contentHash || 'not recorded').slice(0, 12), a.dirty === true ? 'dirty' : a.dirty === false ? 'clean' : 'n/a'])));
-  blocks.push(D.p('Commands to reproduce (DIR is a new output directory):'));
-  blocks.push(D.list(commandsFor(run, report, 'full').map((c) => `\`${c}\``)));
+  blocks.push(...appendixBlocks(run, report));
 
   blocks.push(D.h(2, 'Detailed tables (the existing report, unchanged)'));
   blocks.push(D.md(D.demote(renderMarkdown(report).replace(/^# Benchmark report\n+/, ''), 1)));

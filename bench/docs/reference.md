@@ -1341,6 +1341,11 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   (`orchestrate.js` `DEFAULT_THROTTLE_RETRY`; plant cells excepted): the refused attempt is charged and kept as `<replicate>.throttled-1` with its
   `attempt-result.json`, the cell's `result.json` lists it in `throttleRetries`, and no report reads it. The pilot table gives a throttled run its
   own `throttled` flag, not `broken`.
+- `scenarios pilot-table DIR...` prints an `sd` column: the sample standard deviation of the code score over the
+  replicates of the same task and arm (`n/a` with one run). Over 20 points adds `within-task sd X over 20` to the
+  run's `noisy` flag, so the task lands in "Second run for noisy tasks" (FW-35). The graders are fixed code: the free
+  dry run scores each answer three times and must agree (`t8-deploy-deterministic.test.js` checks the task that
+  flipped most), so a high sd is the agents' answers moving, not the grader.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.
