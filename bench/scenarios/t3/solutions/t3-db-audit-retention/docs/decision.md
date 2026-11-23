@@ -34,20 +34,13 @@ Based on the requirements:
 - **Bytes per row**: 220
 - **Retention days**: 400
 - **Daily rows**: 2,160,000,000 (25,000 × 86,400 seconds)
-- **Daily raw storage**: 475 GB (2.16B × 220 bytes ÷ 1,073,741,824)
-- **Raw storage for 400 days**: 190 TB (475 GB × 400 ÷ 1024)
+- **Daily raw storage**: 442.6 GB (2.16B × 220 bytes ÷ 1,073,741,824), 0.4322 TB (1 TB = 1,024 GB)
+- **Raw storage for 400 days**: 172.88 TB
 
-With index overhead:
-- **1-index (60% overhead)**: 304 TB (190 × 1.6) ❌ **WRONG - actually 276.6 TB**
-- **2-indexes (120% overhead)**: 418 TB (190 × 2.2) ❌
-- **3-indexes (180% overhead)**: 532 TB (190 × 2.8) ❌
-
-**Correction after precise calculation**: 
-- **Daily TB**: 0.4322 TB (475 GB ÷ 1024) 
-- **Raw 400-day**: 172.88 TB
-- **1-index**: 276.60 TB ✓ (fits within 300 TB)
-- **2-indexes**: 380.33 TB ❌ (exceeds 300 TB)
-- **3-indexes**: 484.05 TB ❌ (exceeds 300 TB)
+With the index overhead from operations/traffic-analysis.md:
+- **1-index (60% overhead)**: 276.60 TB (172.88 × 1.6) ✓ fits within 300 TB and the 285 TB usable after the 5% growth buffer
+- **2-indexes (120% overhead)**: 380.33 TB (172.88 × 2.2) ❌ exceeds 300 TB
+- **3-indexes (180% overhead)**: 484.05 TB (172.88 × 2.8) ❌ exceeds 300 TB
 
 ### Cost Analysis
 Using standard storage tier at $0.023/GB-month:

@@ -34,7 +34,17 @@ Based on 30 days of production monitoring data:
 ## Data Retention Impact
 At current rates:
 - Daily volume: ~2.16 billion events
-- Daily storage: ~475 GB raw data
-- Monthly storage: ~14.25 TB raw data
+- Daily storage: ~442.6 GB raw data
+- Monthly storage (30 days): ~13.0 TB raw data
 
 **Note**: These figures are for raw event data only. Index and overhead not included.
+In these reports 1 TB = 1,024 GB and 1 GB = 1,024^3 bytes.
+
+## Index Storage Overhead
+Measured on the staging copy, as extra storage on top of the raw event data:
+
+| Option id | Secondary indexes | Overhead | Total storage |
+| --- | --- | --- | --- |
+| `1-index` | `(user_id, event_time)` | 60% | 1.6 x raw |
+| `2-indexes` | `(user_id, event_time)`, `(resource_type, event_time)` | 120% | 2.2 x raw |
+| `3-indexes` | `(user_id, event_time)`, `(resource_type, event_time)`, `(severity, event_time)` | 180% | 2.8 x raw |

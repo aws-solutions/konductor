@@ -373,3 +373,22 @@ lock list.
 - key-matches-fixture: `hidden/meta.json:3` and `hidden/options.test.js:8-14` accept `two-table-normalized`, but
   `prototype-results.md:22-26` gives it 2.6 TB, and `constraints.txt:4-7` rules it out. The `query-pattern-coverage`
   Pass anchor allows unoptimized patterns, which `constraints.txt:13` and 22-30 forbid.
+
+## t3-db-audit-retention v6 (2026-11-23, mate STANDARD gate worker, claude): the one fix
+
+The v5 recheck (gpt-5.6-luna) failed key-matches-fixture and solvable-from-fixture. Its points held: no fixture file
+gave the indexing option ids or their storage overhead, the key's ~277 TB broke the fixture's 20% headroom rule, and
+the key said the 20% query share was resource_type queries while the fixture says it is user activity. This is the
+one fix the one-fix rule allows; if the v6 recheck fails, the task is dropped.
+
+- Fixture (and `hidden/_pristine/`): `operations/traffic-analysis.md` gains an "Index Storage Overhead" table with the
+  option ids `1-index`, `2-indexes` and `3-indexes`, their indexes and overheads (60%, 120%, 180%), the unit rule
+  (1 TB = 1,024 GB, 1 GB = 1,024^3 bytes) and daily and monthly raw figures in that unit (442.6 GB, 13.0 TB).
+  `finance/budget-constraints.md` asks for a 5% growth buffer (285 TB usable) instead of 20%.
+- Prompt: the option ids are in `operations/traffic-analysis.md`; `limits` holds exactly `storage_limit_tb` and
+  `storage_budget_usd`.
+- Key and rubric: e4, e7 and e8, one weak answer, and two rubric criteria now match the fixture (query shares,
+  the 5% buffer, raw storage about 173 TB). The hidden tests did not change.
+- Reference `docs/decision.md`: the draft calculation and its correction are replaced by the one correct calculation.
+  The scripted alt answer still carries the old draft lines; the grader does not read them.
+- Gates: reference 100, stub 0, lazy 14, alt 100 (unchanged). Non-Claude recheck of v6: pending.

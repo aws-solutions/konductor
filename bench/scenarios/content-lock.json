@@ -408,8 +408,8 @@
       "legacyRecheckVersion": 7
     },
     "t3-db-audit-retention": {
-      "version": 5,
-      "sha256": "31205473b6d5b4d00c1bda67341a3b83a79d24e9544c7c4fdb525f95baddaad5",
+      "version": 6,
+      "sha256": "22b29a6382553b0e82d3319a16d81d5253d098441faa30987996c55694678d3b",
       "legacyRecheckVersion": 5
     },
     "t3-db-audit-retention-twin": {

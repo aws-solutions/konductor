@@ -18,7 +18,7 @@
 ### Storage-Specific Constraints
 - **Maximum storage capacity**: 300 TB (technical limit)
 - **Cost target**: ≤ $0.025/GB-month (based on standard tier pricing)
-- **Growth buffer**: 20% capacity headroom required
+- **Growth buffer**: keep at least 5% of the 300 TB free (285 TB usable); growth past that is handled by the archive tier
 
 ### Compliance Budget
 - External audit support: $15,000/year

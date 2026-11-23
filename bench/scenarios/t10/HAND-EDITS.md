@@ -66,3 +66,10 @@ interface the hidden tests load, which earlier reviews passed as an entry point,
 Independent review (claude-fable-5.1, `reports/review-probe-disposals-fable.md` in the mate workspace): the D19 fail
 is by design, because the request names the interface the hidden tests import. The D19 recheck is now in
 `review.recheck` at version 3, with that disposal in its note.
+
+## t10-tpm-ring-rollout v4 (2026-11-22, mate LITE-fix worker, claude; LITE fix 9), logged 2026-11-23
+
+Commit 53cc33ad added eight `fixture_unchanged` checks, one per file in the fixture's `test/`, and bumped the task to
+v4 (the id took the `-v4` suffix in f8431fc0). The edit was not logged here and `handEdited.version` stayed 3. The
+STANDARD gate worker set `handEdited.version` to 4 and wrote this entry on 2026-11-23. The checks are the only
+content change since the v3 recheck. Non-Claude recheck of v4: pending.

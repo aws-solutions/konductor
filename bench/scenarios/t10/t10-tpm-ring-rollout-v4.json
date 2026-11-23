@@ -329,8 +329,8 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate LITE-fix worker (2026-11-22): a hidden test runs the fixture's own 37 tests unchanged, so a loosened copy cannot hide a regression",
+    "editor": "mate LITE-fix worker (2026-11-22): v3, a hidden test runs the fixture's own 37 tests unchanged, so a loosened copy cannot hide a regression; v4, eight fixture_unchanged checks on the fixture's test/ files",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   }
 }

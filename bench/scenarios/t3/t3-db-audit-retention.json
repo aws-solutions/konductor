@@ -2,7 +2,7 @@
   "id": "t3-db-audit-retention",
   "class": "design",
   "target": null,
-  "prompt": "We need to design the database schema for our audit log system. Review the requirements in the fixture directory carefully. The system handles 25,000 events per second on average, with each event about 220 bytes. Compliance now requires 400 days of retention.\n\nWe need a schema that supports efficient time-range queries and user activity analysis. The retention cleanup must delete by time bucket (like monthly partitions or an indexed bucket column) so deleting a month doesn't require a full table scan.\n\nDeliver two files:\n1. db/schema.sql - The complete database schema with tables, indexes, and partitioning strategy\n2. docs/decision.md - Your architecture decision document\n\nIn docs/decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\" (the option id you selected)\n- \"options\" (array of option ids you considered)\n- \"limits\" (object mapping limit name to {\"limit\": number, \"value\": number} for each hard limit)\n- \"monthly_cost_usd\" (the monthly storage cost for your chosen option)\n\nCalculate the storage needs based on the numbers in the fixture files. Consider the storage limit and monthly budget constraints. Choose an indexing strategy that fits within the storage capacity while supporting the required query patterns.",
+  "prompt": "We need to design the database schema for our audit log system. Review the requirements in the fixture directory carefully. The system handles 25,000 events per second on average, with each event about 220 bytes. Compliance now requires 400 days of retention.\n\nWe need a schema that supports efficient time-range queries and user activity analysis. The retention cleanup must delete by time bucket (like monthly partitions or an indexed bucket column) so deleting a month doesn't require a full table scan.\n\nDeliver two files:\n1. db/schema.sql - The complete database schema with tables, indexes, and partitioning strategy\n2. docs/decision.md - Your architecture decision document\n\nIn docs/decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\" (the option id you selected; the indexing option ids are in operations/traffic-analysis.md)\n- \"options\" (array of option ids you considered)\n- \"limits\" (object with exactly two limit names, `storage_limit_tb` and `storage_budget_usd`, each {\"limit\": number, \"value\": number}: the hard limit and your chosen option's value)\n- \"monthly_cost_usd\" (the monthly storage cost for your chosen option)\n\nCalculate the storage needs based on the numbers in the fixture files. Consider the storage limit and monthly budget constraints. Choose an indexing strategy that fits within the storage capacity while supporting the required query patterns.",
   "fixture": "t3-db-audit-retention",
   "timeoutSec": 900,
   "hidden": "t3-db-audit-retention",
@@ -31,12 +31,12 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints. Fail: indexes are chosen with no storage figure, or uses 90 days. Partial: picks the single index but does not show the storage check. Pass: shows the two-index option (120% overhead, over 380 TB) breaks the 300 TB limit, uses 400 days (the 90-day figure is superseded), and keeps the chosen design near 277 TB and about $6,514 per month under the $7,000 limit with the 20% headroom rule. (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
+      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints. Fail: indexes are chosen with no storage figure, or uses 90 days. Partial: picks the single index but does not show the storage check. Pass: shows the two-index option (120% overhead, over 380 TB) breaks the 300 TB limit, uses 400 days (the 90-day figure is superseded), and keeps the chosen design near 277 TB and about $6,514 per month under the $7,000 limit inside the 5% growth buffer (285 TB usable). (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
       "weight": 1
     },
     {
       "id": "tradeoff_explanation",
-      "criterion": "Explanation of query performance trade-offs given the single-index constraint. Fail: no statement of which queries are slow. Partial: says the index helps user queries but not what suffers. Pass: explains the single (user_id, event_time) index serves the 65% time-range queries with a user filter, resource_type queries (20%) and queries without user_id scan partitions, offers off-peak batch or materialized aggregates, and says a second (resource_type, event_time) index becomes worth it if budget allows. (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
+      "criterion": "Explanation of query performance trade-offs given the single-index constraint. Fail: no statement of which queries are slow. Partial: says the index helps user queries but not what suffers. Pass: explains the single (user_id, event_time) index serves the 65% time-range queries with a user filter and the 20% user activity queries, while resource_type and severity queries without user_id scan partitions, offers off-peak batch or materialized aggregates, and says a second (resource_type, event_time) index becomes worth it if budget allows. (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
       "weight": 1
     },
     {
@@ -69,11 +69,10 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "blockers": [
-      "recheck-failed: key-matches-fixture: The expertKey in task.json lines 45 and 55-60 requires a 2-index option with 120% overhead, a cost near $6,514, and a single-index constraint, but no fixture file defines index overheads, option IDs, or that constraint; traffic-analysis.md lines 34-40 explicitly says index overhead is not included. Also, budget-constraints.md lines 19-21 requires 20% headroom, so the key's ~277 TB usage in task.json line 80 does not leave 20% free within a 300 TB limit.",
-      "recheck-failed: solvable-from-fixture: The fixture supplies raw volume and pricing, but it supplies no mapping from indexing strategies to storage overhead or option IDs, so the requested JSON choice and the key's storage/cost calculations cannot be determined. This gap is explicit in traffic-analysis.md lines 34-40, while query-patterns.md lines 42-49 calls three indexes essential without resolving the storage trade-off."
+      "v5 recheck failed key-matches-fixture and solvable-from-fixture; fixed once at v6 (HAND-EDITS.md); a non-Claude recheck of v6 is pending, and a second fail drops the task (one-fix rule)"
     ],
     "dryRun": {
       "reference": 100,
@@ -83,7 +82,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 5,
+  "version": 6,
   "targetSkills": [
     "system-design-patterns",
     "decision-writing"
@@ -175,7 +174,7 @@
       },
       {
         "id": "e4",
-        "text": "explains the query performance trade-off: the single (user_id, event_time) index optimizes the 65% time-range queries with user filter, but resource_type queries (20%) will require partition scans",
+        "text": "explains the query performance trade-off: the single (user_id, event_time) index serves the 65% time-range queries when they filter by user and the 20% user activity queries, but resource_type queries (compliance reporting, administrative actions by resource type) and severity queries will scan partitions",
         "source": "SQLite query planner docs, https://www.sqlite.org/queryplanner.html (public domain); idea only"
       },
       {
@@ -190,12 +189,12 @@
       },
       {
         "id": "e7",
-        "text": "notes that if budget increases or storage costs drop, adding a second index on (resource_type, event_time) would improve the 20% user activity queries that currently scan partitions",
+        "text": "notes that if budget increases or storage costs drop, adding a second index on (resource_type, event_time) would speed up the resource-type queries that currently scan partitions",
         "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
       },
       {
         "id": "e8",
-        "text": "identifies that the 20% capacity headroom requirement from budget-constraints.md means the 300 TB technical limit should not be fully utilized, and shows that ~277 TB usage leaves adequate buffer",
+        "text": "checks the growth buffer in budget-constraints.md (at least 5% of the 300 TB kept free, 285 TB usable) and shows that ~277 TB fits under it",
         "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
       }
     ],
@@ -204,12 +203,13 @@
       "uses the 90-day retention period from legacy documentation instead of the 400-day requirement, drastically underestimating storage needs",
       "selects 3-index strategy for optimal query performance, ignoring both the 300 TB storage limit and $7,000 budget constraint",
       "proposes daily DELETE operations for retention cleanup without recognizing this requires full table scans and violates the time-bucket deletion requirement",
-      "calculates raw storage (190 TB) but forgets index overhead, incorrectly concluding the 2-index or 3-index options fit within 300 TB"
+      "calculates raw storage (about 173 TB) but forgets index overhead, incorrectly concluding the 2-index or 3-index options fit within 300 TB"
     ]
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate STANDARD gate worker (2026-11-23): one fix for the v5 recheck fails; the fixture now gives the index option ids and overheads and a 5% growth buffer the key meets, the prompt names the two limit keys, and the key and rubric match the fixture query shares",
+    "log": "HAND-EDITS.md",
+    "version": 6
   }
 }
