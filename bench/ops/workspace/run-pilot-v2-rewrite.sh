@@ -22,7 +22,7 @@ set -euo pipefail
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 
 main() {
-  local self dry rc cap lock rewrite from
+  local self dry rc cap lock rewrite from out
   self=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   dry=0
   rc=0
@@ -30,6 +30,7 @@ main() {
   lock=${V2_LOCK:-/var/tmp/konductor-kp-v2.lock}
   from=${V2_FROM:-$KONDUCTOR_WS/reports/kp-pilot/unit-baselines/context-k-orchestrator-shared/baseline.json}
   rewrite=""
+  out=""
   case "${1:-}" in
     --dry-run) dry=1 ;;
     "") ;;
@@ -67,8 +68,12 @@ main() {
   kp_sweep "$KP_WORK/author"
   echo "PAID: the pilot baseline v2 rewrite, cap $cap counted credits"
   "${cmd[@]}" < /dev/null || rc=$?
-  local out=$KP_BASELINE
-  [ "$rc" = 2 ] && out=${KP_BASELINE%.json}.draft.json
+  # Exit 2 is also bench's exit for an error, so a drop is read from the draft file, not from the code alone.
+  out=$KP_BASELINE
+  if [ "$rc" = 2 ]; then
+    out=${KP_BASELINE%.json}.draft.json
+    [ -f "$out" ] || rc=1
+  fi
   if [ "$rc" = 0 ] || [ "$rc" = 2 ]; then
     # The kept tasks must be the same bytes as in the signed-off baseline.
     node -e '
