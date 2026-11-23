@@ -97,17 +97,17 @@ EDITS = [
      "├── skills/                       79 skills (<name>/SKILL.md"),
     # ---- aws-mcp: pinned, and synth bundles it into Claude Code and Kiro CLI agents ----
     ('reference MCP registry note: synth bundles aws-mcp',
-     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==2.0.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
      ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.',
-     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==2.0.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. konductor synth --claude-bundled-mcp-servers aws-mcp (what make synth and the release build run) writes the aws-mcp entry into the Claude Code and Kiro CLI agent files, so konductor, k-architect and k-developer launch it themselves.'
      ' k-architect and k-developer request all its tools (mcp__aws-mcp__* in Claude Code, @aws-mcp in Kiro CLI). konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'
      ' playwright-mcp is not bundled: k-browser requests its tools (mcp__playwright-mcp__* in Claude Code, @playwright-mcp in Kiro CLI) and you configure the server yourself.'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',
-     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==1.7.0 — allowedTools grants documentation '
+     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==2.0.0 — allowedTools grants documentation '
      'search/read, region list, and regional availability.'),
     # ---- every agent loads context/k-core-rules.md ---------------------------
     ('concepts context file paragraph', 'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains', 'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
@@ -622,6 +622,13 @@ EDITS = [
     ("faq: kiro-spec-workflow output",
      '{ k: "kiro-spec-workflow", v: ".kiro/specs/<feature-name>/ \u2014 three files" },',
      '{ k: "kiro-spec-workflow", v: ".kiro/specs/<feature-name>/: three spec files and .config.kiro" },'),
+    ("k-verify flow: CDK step waits for trust",
+     '"Only if CDK code is present: cdk ls → cdk diff → cdk synth, flagging unexpected stack changes."',
+     '"Only if CDK code is present, and only once you confirm the app is trusted: cdk ls and cdk synth --strict, then cdk diff only on request, flagging unexpected stack changes."'),
+    ("k-verify know: CDK trust gate",
+     '{ title: "The final checklist is all-or-nothing.", body: "Seven items: success criteria met, build passes, tests pass, lint passes, manual verification complete, no regressions, documentation updated if applicable. Any failure means the task is not complete." }',
+     '{ title: "The final checklist is all-or-nothing.", body: "Seven items: success criteria met, build passes, tests pass, lint passes, manual verification complete, no regressions, documentation updated if applicable. Any failure means the task is not complete." },\n'
+     '          { title: "CDK commands wait for your confirmation; build, test and lint do not.", body: "cdk synth, cdk ls and cdk diff all run the CDK app\'s own code, and cdk diff also reads the deployed stack, so the SOP runs none of them until you confirm the CDK app is trusted to run where the agent is working. A CDK app the agent created in the same session, or one you say you own, counts as confirmed. Editing a checkout under review does not make it trusted, so the agent asks first. Once you confirm, it runs cdk ls and cdk synth --strict. If you have not named credentials, it runs both with --no-lookups and reports a missing-context failure as not run (needs a context lookup). It runs cdk diff only when you also ask for a check against the deployed stack, and it runs cdk diff and any context lookup only with the credentials you name. Without confirmation it validates an existing cdk.out/ template or reads the stacks, and reports all three commands as not run. It never deploys, bootstraps or creates a change set. Steps 2 to 4 already run the checkout\'s code, so what this gate adds is that nothing reaches an AWS account without your confirmation and the credentials you name." }'),
 ]
 
 _PREREQ_MONO = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">{}</span>"
@@ -652,7 +659,7 @@ _AWS_MCP_KIRO_CONFIG = """{
     "aws-mcp": {
       "command": "uvx",
       "args": [
-        "mcp-proxy-for-aws-cli==1.7.0",
+        "mcp-proxy-for-aws-cli==2.0.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
         "AWS_REGION=us-east-1",
@@ -841,7 +848,8 @@ ROSTER = [
     ("prerequisites integrations: aws-mcp needs",
      _PREREQ_UVX + " installed, plus AWS credentials in " + _PREREQ_CREDS
      + " or environment variables. Both agents work without credentials, just without AWS lookups.</div>",
-     _PREREQ_UVX + " installed. Documentation search and skills work without AWS credentials; calls that"
+     _PREREQ_UVX + " installed. The proxy needs Python 3.11 to 3.14; " + _PREREQ_UVX + " downloads a compatible one if"
+     " none is installed. Documentation search and skills work without AWS credentials; calls that"
      " act on an AWS account need credentials in " + _PREREQ_CREDS + " or environment variables.</div>"),
     ("install-kiro-cli integrations: intro",
      "Two are pre-configured in the agent specs and need only their local dependency.</p>",
@@ -857,8 +865,9 @@ ROSTER = [
      + _mono("--skip-auth") + ", documentation search and skills work without AWS credentials. Configure"
      " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
      " act on an AWS account.</p>",
-     _mono("k-developer") + ". Install " + _mono("uvx") + ". Their agent files carry an " + _mono("aws-mcp")
-     + " entry in " + _mono("mcpServers") + ", launched via " + _mono("uvx mcp-proxy-for-aws-cli==1.7.0")
+     _mono("k-developer") + ". Install " + _mono("uvx") + ". The proxy needs Python 3.11 to 3.14; "
+     + _mono("uvx") + " downloads a compatible one if none is installed. Their agent files carry an " + _mono("aws-mcp")
+     + " entry in " + _mono("mcpServers") + ", launched via " + _mono("uvx mcp-proxy-for-aws-cli==2.0.0")
      + " with " + _mono("--skip-auth") + ", so you do not add it to your own MCP config. Without "
      + _mono("uvx") + " the server fails to start and the agents still work, just without AWS lookups."
      " The first start downloads the proxy through " + _mono("uvx") + ", which can delay the agent's"

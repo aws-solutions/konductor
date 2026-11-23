@@ -18,8 +18,6 @@
 
 use std::path::Path;
 
-use sha2::{Digest, Sha256};
-
 /// Raised when a fetched artifact's SHA-256 doesn't match what we
 /// expected. A runtime failure, not a usage error -- callers must map
 /// it to `EXIT_VERIFY_FAILED` (65), never `EXIT_USAGE_ERROR` (64) or
@@ -62,9 +60,7 @@ pub struct FetchedArtifact {
 /// this encoding so every call site (verification, manifest hashing)
 /// agrees on case.
 pub fn sha256_hex(data: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    format!("{:x}", hasher.finalize())
+    konductor_telemetry::sha256_hex(data)
 }
 
 /// Verifies `data` against `expected_sha256` (case-insensitive; we

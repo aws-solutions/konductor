@@ -118,8 +118,8 @@ def test_guide_mention_that_differs_from_pin_fails(repo_copy):
 
 
 def test_quoted_pin_matching_the_guide_passes(repo_copy):
-    section = lint_section_output(repo_copy, '          RUST_LINT_TOOLCHAIN: "1.98.1"\n')
-    assert "ok    every lint toolchain mention says 1.98.1" in section
+    section = lint_section_output(repo_copy, '          RUST_LINT_TOOLCHAIN: "1.100.0"\n')
+    assert "ok    every lint toolchain mention says 1.100.0" in section
     assert "FAIL" not in section
 
 

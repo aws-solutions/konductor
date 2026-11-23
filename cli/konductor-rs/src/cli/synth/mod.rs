@@ -1847,7 +1847,7 @@ mod tests {
                 "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {
                     "mcpRegistry": {
-                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==2.0.0"]}
                     }
                 },
                 "clientConfig": {"claudeCli": {}}
@@ -1867,7 +1867,7 @@ mod tests {
 
         let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
         assert!(
-            written.contains("mcp-proxy-for-aws-cli==1.7.0"),
+            written.contains("mcp-proxy-for-aws-cli==2.0.0"),
             "expected the agent spec's own pinned command to render \
              unchanged, got:\n{written}"
         );

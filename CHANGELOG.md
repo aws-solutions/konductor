@@ -442,6 +442,8 @@ not per individual commit.
 - `frontend-review` now checks the full `frontend-development` rule set, including `.refine()`
   over `.transform()` for cross-field validation, defensive checks on array index access, and
   TypeScript utility types.
+- Update the aws-mcp proxy to mcp-proxy-for-aws-cli 2.0.0. It needs Python 3.11 to 3.14; `uvx`
+  downloads a compatible one if none is installed.
 
 ### Removed
 
@@ -637,6 +639,9 @@ not per individual commit.
   `kept_changed_paths` and `kept_backups`. Under `--dry-run --json`, `would_delete` holds only real
   removals and a new `would_keep` array lists the kept files, with `would_delete_count` and
   `would_keep_count`.
+- `k-verify` no longer runs `cdk synth`, `cdk ls` or `cdk diff` until the user confirms the CDK
+  app is trusted, since all three run the app's code and `cdk diff` also reads the deployed stack.
+  Without named credentials, `cdk ls` and `cdk synth` run with `--no-lookups`.
 
 ### Security
 
@@ -657,6 +662,8 @@ not per individual commit.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
+- Update Rust dependencies, with fixes for RUSTSEC-2026-0381, -0382, -0386, -0457, -0462 and
+  -0486.
 
 ## [1.2.0] - 2026-10-26
 

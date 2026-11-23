@@ -176,10 +176,7 @@ fn real_synth_produces_packaged_artifact_and_sidecar_on_disk() {
         .chars()
         .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
 
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.update(&artifact_bytes);
-    let expected_hash = format!("{:x}", hasher.finalize());
+    let expected_hash = konductor_telemetry::sha256_hex(&artifact_bytes);
     assert_eq!(
         hash, expected_hash,
         "sidecar's recorded hash must match the real SHA-256 of the artifact bytes actually on disk"

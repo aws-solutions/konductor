@@ -240,7 +240,7 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ### Checks before you open a pull request
 
 ```bash
-TOOLCHAIN=1.98.1  # RUST_LINT_TOOLCHAIN in .github/workflows/validate-pr.yml
+TOOLCHAIN=1.100.0  # RUST_LINT_TOOLCHAIN in .github/workflows/validate-pr.yml
 rustup toolchain install "$TOOLCHAIN" --profile minimal -c clippy -c rustfmt
 make lint CARGO="cargo +$TOOLCHAIN"
 ```

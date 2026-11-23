@@ -285,7 +285,7 @@ jobs:
         # stable, like release.yml. Bump the pin deliberately in its own PR, and
         # update the user guide with it (`make guide-check` compares them).
         env:
-          RUST_LINT_TOOLCHAIN: 1.98.1
+          RUST_LINT_TOOLCHAIN: 1.100.0
         run: |
           rustup toolchain install "$RUST_LINT_TOOLCHAIN" --profile minimal -c clippy -c rustfmt
           make lint CARGO="cargo +$RUST_LINT_TOOLCHAIN"

@@ -118,7 +118,7 @@ through a normal pull request.
 MCP servers are user-configured unless they appear in
 `scripts/claude-plugin-mcp-servers.json`. Today, only `aws-mcp` is bundled for
 Claude Code. The bundled definition pins
-`mcp-proxy-for-aws-cli==1.7.0`; the managed AWS MCP endpoint still supplies
+`mcp-proxy-for-aws-cli==2.0.0`; the managed AWS MCP endpoint still supplies
 current documentation and skills at request time.
 
 Plugin agent frontmatter cannot launch MCP servers, so

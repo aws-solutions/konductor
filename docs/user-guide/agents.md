@@ -321,7 +321,7 @@ The most capable agent in the package, on the strongest model.
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code), the same model every agent runs |
 | **SOPs** (3) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` |
 | **Skills** | **37** — the most of any specialist. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
-| **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==1.7.0`. Kiro CLI's `allowedTools` grants five tools (documentation search, documentation read, skill retrieval, region list, regional availability); Claude Code grants the whole server via `mcp__aws-mcp__*` (8 tools, including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) |
+| **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==2.0.0`. Kiro CLI's `allowedTools` grants five tools (documentation search, documentation read, skill retrieval, region list, regional availability); Claude Code grants the whole server via `mcp__aws-mcp__*` (8 tools, including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 
