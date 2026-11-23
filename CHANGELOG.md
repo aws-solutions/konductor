@@ -649,7 +649,9 @@ not per individual commit.
   non-ASCII characters is rejected. Every `scheme://` is checked in any letter case, including a
   second link glued to an allowed one, and `http`, `https`, `ws`, `wss`, `ftp` and `file` are
   checked with any number of slashes, so `https:evil.test` and `https:/evil.test` no longer skip
-  the allowlist. An interpreter failure during the check is reported as an environment problem.
+  the allowlist. Punctuation that closes a markdown link, quote or emphasis right after the host
+  no longer blocks an allowed link. An interpreter failure during the check is reported as an
+  environment problem.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.

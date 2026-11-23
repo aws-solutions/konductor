@@ -1595,6 +1595,49 @@ def test_prose_with_a_colon_is_not_a_link(tmp_path, text):
     assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Punctuation that closes a markdown link, quote or emphasis is not
+        # part of the host.
+        "see [docs](https://docs.example.com) here",
+        "(https://docs.example.com)",
+        "<https://docs.example.com>",
+        "https://docs.example.com, then",
+        "https://docs.example.com).",
+        '"https://docs.example.com"',
+        "'https://docs.example.com'",
+        "`https://docs.example.com`",
+        "**https://docs.example.com**",
+        "_https://docs.example.com_",
+        "[a](https://evil.test@docs.example.com)",
+        "https://docs.example.com:443)",
+    ],
+)
+def test_allowed_link_with_trailing_prose_punctuation_is_accepted(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[a](https://evil.test)",
+        "<https://evil.test>",
+        "**https://evil.test**",
+        "`https://evil.test`",
+        "(https://docs.example.com.evil.test)",
+        "[a](https://docs.example.com)@evil.test)",
+        "https://docs.example.com)evil.test",
+        "[a](http://docs.example.com)",
+    ],
+)
+def test_blocked_link_with_trailing_prose_punctuation_is_still_rejected(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
 def test_non_https_urls_pass_without_an_allowlist(tmp_path):
     # No allowlist means every URL is allowed, whatever its scheme.
     write_config(tmp_path / ".konductor" / "memory-config.json", [])

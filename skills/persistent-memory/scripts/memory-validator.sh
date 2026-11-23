@@ -243,6 +243,10 @@ from urllib.parse import unquote
 SPECIAL = {"http", "https", "ws", "wss", "ftp", "file"}
 SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):([/\\]*)(\S*)")
 PROSE_TAIL = re.compile(r"[.,;:!?)\]}'\"]*")
+# Punctuation that closes a markdown link, quote, code span or emphasis
+# right after the host, as in [a](https://docs.example.com) or
+# **https://docs.example.com**. None of it can appear in a plain hostname.
+HOST_TAIL = re.compile(r"[.,;:!?)\]}'\"`>*_~]+$")
 
 def links(text):
     pos = 0
@@ -256,12 +260,14 @@ def links(text):
         if is_link:
             yield scheme, m.group(0)[: m.start(3) - m.start()], rest
 
-# The authority ends at the first / ? # or backslash; userinfo before the
-# last @ and a numeric port are dropped. Anything that is not a plain ASCII
-# host afterwards (an empty host, an encoded dot, a raw non-ASCII label, a
-# bracketed address) fails closed: allowlist an IDN by its xn-- form.
+# The authority ends at the first / ? # or backslash. Closing punctuation at
+# its end, userinfo before the last @ and a numeric port are dropped. Anything
+# that is not a plain ASCII host afterwards (an empty host, an encoded dot, a
+# raw non-ASCII label, a bracketed address) fails closed: allowlist an IDN by
+# its xn-- form.
 def hostname(rest):
     authority = re.split(r"[/?#\\]", rest, maxsplit=1)[0]
+    authority = HOST_TAIL.sub("", authority)
     authority = authority.rsplit("@", 1)[-1]
     host, sep, port = authority.rpartition(":")
     if not sep:

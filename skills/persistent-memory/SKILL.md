@@ -127,6 +127,7 @@ Limits and URL allowlist are configurable via `.konductor/memory-config.json` at
 - `limits.user_max_chars` — max characters for USER.md (default: 1375)
 - `allowlist_patterns` — hostname patterns for URLs permitted in entries. Empty array = all URLs allowed. Populate with your org's domains to restrict external URLs.
   With a non-empty list, every `scheme://` in an entry is checked, including one glued to or nested inside another URL, and only `https` URLs can pass: `http://`, `ftp://` and any other scheme are rejected, whatever their letter case. A backslash in place of a slash counts as a slash.
+  Punctuation that closes a link, quote, code span or emphasis right after the host, as in `[docs](https://docs.example.com)` or `**https://docs.example.com**`, is not part of the host.
   `http`, `https`, `ws`, `wss`, `ftp` and `file` are links with any number of slashes after the colon, zero included, because a browser reads `https:evil.test` and `https:/evil.test` as `https://evil.test`. A colon followed only by punctuation (`Use https:, not http:.`) is prose. Other schemes need `//`, so `Note: see` and `key:value` are not links.
   Each pattern is matched, case-insensitively, against the URL's hostname only (userinfo, port, path, query and fragment are ignored). A link with an empty host is rejected.
   A `*` matches within one label: `*.example.com` covers `docs.example.com` but not `a.b.example.com` or `example.com`, and a bare `*` covers only single-label hosts such as `intranet`.
