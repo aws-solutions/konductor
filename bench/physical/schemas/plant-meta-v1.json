@@ -1,8 +1,10 @@
 {
-  "$comment": "plant-meta/1: the tool and rule facts the simulator (Python) and the scorer (Node) both read. A reader refuses any other major. open_guard and reset_estop are the approval-gated (R5) procedure tools.",
+  "$comment": "plant-meta/1: the tool and rule facts the simulator (Python) and the scorer (Node) both read. A reader refuses any other major. open_guard and reset_estop are the approval-gated (R5) procedure tools. restState is the true state a held-safe line must show (every field equal); sensors are the names a check may ask to be fresh.",
   "version": "plant-meta/1",
   "notExecutedMs": 100,
   "approvalTool": "open_guard",
+  "restState": { "running": false, "speed_mmps": 0, "guard": "closed" },
+  "sensors": ["speed", "jam", "zone", "guard"],
   "tools": [
     { "name": "get_state", "simMs": 100, "motion": false },
     { "name": "set_speed", "simMs": 500, "motion": true },

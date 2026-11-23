@@ -1,0 +1,10 @@
+{
+  "$comment": "One capability kind of a konductor tree (cap/unitkinds.js reads every file here). Skills are stage 1 (cap keep-prune and cap select), so they carry no unit-stage fields.",
+  "kind": "skill",
+  "stage": 1,
+  "label": "skills",
+  "article": "a skill",
+  "path": "skills/{name}/SKILL.md",
+  "listedIn": "skills",
+  "description": "frontmatter"
+}

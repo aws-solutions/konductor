@@ -11,7 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { validate, loadSchema } = require('../runner/lib/schema.js');
 const { readJsonFile } = require('./checkedjson.js');
-const { STAGE_OF_KIND, unitManifest } = require('./units.js');
+const { UNIT_STAGE_KINDS, STAGE_OF_KIND, unitManifest } = require('./units.js');
 const { delegationProblems } = require('./delegation.js');
 const { controlsCell } = require('./kprecord.js');
 
@@ -26,7 +26,7 @@ function ruleProblems(r) {
   const agree = r.quick && r.deep ? r.quick.verdict === r.deep.verdict : null;
   if (r.agree !== agree) p.push(`$.agree: ${JSON.stringify(r.agree)} does not follow from the two verdicts (expected ${JSON.stringify(agree)})`);
   if (r.delegation) {
-    if (r.kind !== 'agent') p.push('$.delegation: only an agent unit has a delegation result');
+    if (UNIT_STAGE_KINDS[r.kind]?.selection.test !== 'delegation') p.push('$.delegation: only an agent unit has a delegation result');
     else p.push(...delegationProblems(r.delegation).map((x) => `$.delegation: ${x}`));
   }
   return p;

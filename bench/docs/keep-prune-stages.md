@@ -54,6 +54,10 @@ session reads it. That is an audit finding, and needs no measurement.
 
 - `cap units [--kind agent|sop|context] [--coverage FILE]` lists every unit, with its hash, size, who reaches it,
   its drop arm, its selection test, the bench tasks that target it, and what it needs next.
+- Each kind is one file in `bench/cap/units/` (`skill.json`, `agent.json`, `sop.json`, `context.json`): its stage,
+  where its files live, which agent-spec list names it, its selection test and the frame line the paid steps put
+  ahead of its text. `bench/cap/unitkinds.js` lists the fields. A new kind is a new file there; `cap units --list`
+  prints the kinds (the CLI accepts the flag once D-209's flag line lands).
 - `cap unit-stage --kind K --unit NAME --run stub-ID` runs one unit through the real stage 1 pipeline on the stub
   provider. It needs a frozen unit baseline and refuses a run id that is not `stub-...`; the paid provider is below.
   With no baseline, a stale one, an entry agent or too few judge families, the record says NO DATA and why.
@@ -260,7 +264,7 @@ does not.
 
 The pilot design is quick depth on the paid provider: one answer per task and arm, in one turn, with no tools, no
 repository and no skills server. The keep arm reads its kind's frame line and the unit's text ahead of the request
-(`PAID_FRAME` in `bench/cap/units.js`); the drop arm reads the request alone. So a quick answer can only show what the
+(`paidFrame` in its kind file, `bench/cap/units/<kind>.json`); the drop arm reads the request alone. So a quick answer can only show what the
 unit's text changes in an answer whose inputs fit in the prompt. These checks use `cap units` and the SOP texts.
 
 **Stage 4, always-loaded context (5 units).** Four can run as the pilot does. `k-coordinator-digest` is listed by no

@@ -9,7 +9,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
-const { listUnits, unitManifest, renderUnitMap, STAGE_OF_KIND, ENTRY_AGENTS } = require('../../cap/units.js');
+const { cmdUnits } = require('../../cap/unitstage.js');
+const { listUnits, unitManifest, renderUnitMap, STAGE_OF_KIND, KIND_LABEL, SELECTION, PAID_FRAME, ENTRY_AGENTS } = require('../../cap/units.js');
+const { loadUnitKinds, renderKindList, UNIT_KINDS_DIR } = require('../../cap/unitkinds.js');
+const { scanRepo, PATH_OF } = require('../../cap/scan.js');
 
 const REPO = path.join(__dirname, '..', '..', '..');
 const spec = (name, { prompt = `You are ${name}.`, skills = [], sops = [], contexts = [], subagents = [] } = {}) => JSON.stringify({
@@ -29,6 +32,53 @@ function tree() {
   write(path.join(root, 'context', 'k-shared.md'), '# Shared\n\nShared text.\n');
   return root;
 }
+
+test('each unit kind is one JSON file in cap/units; the stage, label, path and frame tables come from them', () => {
+  assert.deepEqual(loadUnitKinds().map((k) => k.kind), ['skill', 'agent', 'sop', 'context']);
+  assert.deepEqual(KIND_LABEL, { agent: 'agent files', sop: 'SOPs', context: 'always-loaded context' });
+  assert.equal(PATH_OF.agent('k-dev'), 'agents/k-dev.agent-spec.json');
+  assert.equal(PATH_OF.skill('alpha'), 'skills/alpha/SKILL.md');
+  assert.equal(SELECTION.agent.test, 'delegation');
+  assert.deepEqual(Object.keys(PAID_FRAME), ['agent', 'sop', 'context']);
+});
+
+test('a kind file missing a field, or two files naming one kind, is refused', () => {
+  const dir = tmp();
+  try {
+    write(path.join(dir, 'a.json'), JSON.stringify({ kind: 'a', stage: 5 }));
+    assert.throws(() => loadUnitKinds(dir), /a\.json: needs label/);
+    const ok = { kind: 'a', stage: 1, label: 'as', article: 'an a', path: 'as/{name}.md', listedIn: 'skills', description: 'none' };
+    write(path.join(dir, 'a.json'), JSON.stringify(ok));
+    write(path.join(dir, 'b.json'), JSON.stringify(ok));
+    assert.throws(() => loadUnitKinds(dir), /b\.json: kind a is also in a\.json/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a sixth kind JSON shows in the kinds list and is scanned from its own folder', () => {
+  const dir = tmp();
+  const root = tree();
+  try {
+    for (const f of fs.readdirSync(UNIT_KINDS_DIR)) fs.copyFileSync(path.join(UNIT_KINDS_DIR, f), path.join(dir, f));
+    write(path.join(dir, 'note.json'), JSON.stringify({
+      kind: 'note', stage: 5, label: 'notes', article: 'a note', path: 'notes/{name}.md', listedIn: 'contexts', description: 'none',
+      selection: { test: 'none: always loaded', note: 'test kind' }, paidFrame: { answer: 'a', noun: 'n', tasks: 't' }, claimNoun: 'note',
+    }));
+    write(path.join(root, 'notes', 'n1.md'), '# Note\n');
+    const kinds = loadUnitKinds(dir);
+    assert.match(renderKindList(kinds), /\| note \| 5 \| notes \| `notes\/\{name\}\.md` \|/);
+    assert.ok(scanRepo(root, kinds).has('note:n1'));
+    assert.ok(!scanRepo(root).has('note:n1'));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('cap units --list prints every kind of this checkout and reads no tree', (t) => {
+  // shortcut: calls cmdUnits directly; the CLI refuses --list until cli-flags.js (FW-7's file) lists it for cap units (DEBT D-209).
+  let out = '';
+  t.mock.method(process.stdout, 'write', (s) => { out += s; return true; });
+  cmdUnits({ list: true, 'repo-root': '/nonexistent' });
+  t.mock.restoreAll();
+  for (const k of ['skill', 'agent', 'sop', 'context']) assert.match(out, new RegExp(`^\\| ${k} \\|`, 'm'));
+});
 
 test('each stage lists its own kind: 2 agent files, 3 SOPs, 4 always-loaded context', () => {
   assert.deepEqual(STAGE_OF_KIND, { agent: 2, sop: 3, context: 4 });

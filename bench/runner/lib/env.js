@@ -67,6 +67,24 @@ function buildCheckEnv(baseEnv, opts) {
   return build(baseEnv, opts, false);
 }
 
+/**
+ * The agent process environment of one run: `harness.env(args)` with the core rules applied after it, so no harness
+ * (built in or a plugin) decides alone what reaches the agent. A name matching NEVER_PASS is always dropped. A name that
+ * looks like a credential (CREDENTIAL_NAME) is dropped unless the harness lists it in its `credentialEnv` array or the
+ * operator kept it with --env-keep (`args.ctx.envKeep`). Returns `{ env, dropped }`; `dropped` holds names only, sorted.
+ */
+function agentEnv(harness, args) {
+  const declared = new Set([...(harness.credentialEnv ?? []), ...(args.ctx?.envKeep ?? [])]);
+  const env = {};
+  const dropped = [];
+  for (const [k, v] of Object.entries(harness.env(args) ?? {})) {
+    const never = NEVER_PASS.some((re) => re.test(k));
+    if (never || (CREDENTIAL_NAME.test(k) && !declared.has(k))) dropped.push(k);
+    else env[k] = v;
+  }
+  return { env, dropped: dropped.sort() };
+}
+
 // What env.json records: names of everything the agent sees, values only for pins.
 function describeEnv(baseEnv, childSetup) {
   return {
@@ -110,4 +128,4 @@ function buildBuildEnv(baseEnv, { home, cargoTarget, online = false }) {
   return { env, set: Object.fromEntries(Object.entries(env).map(([k, v]) => [k, maskUrlCredentials(v)])), refused };
 }
 
-module.exports = { buildChildEnv, buildCheckEnv, buildBuildEnv, describeEnv, snapshotKiroEnv, ALLOW, KIRO_KEEP, NEVER_PASS, BUILD_ALLOW };
+module.exports = { agentEnv, buildChildEnv, buildCheckEnv, buildBuildEnv, describeEnv, snapshotKiroEnv, ALLOW, KIRO_KEEP, NEVER_PASS, BUILD_ALLOW };

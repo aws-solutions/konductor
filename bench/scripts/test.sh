@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# One test entry point for the bench (FW-23, DEBT D-217). Runs, from the repo root:
+#   1. the node base set: bench/runner/test and bench/skilleval/test (the command bench/test-base-set.txt names);
+#   2. the Python unittest files in bench/physical/test, printed as TAP lines (bench/scripts/unittest-tap.py).
+# The arm Python is BENCH_ARM_PYTHON, else <repo>/.venv/bin/python. When it imports mujoco and cedarpy, both parts run
+# with it and BENCH_REQUIRE_ARM=1, and any arm test that still skips fails the run (debt review F1: a suite that
+# skipped every arm test once read clean). With no arm Python the arm tests skip and the run says so.
+# Usage: bench/scripts/test.sh [--tap]     --tap: node prints TAP too, so the whole output is one TAP stream.
+# Exit 0 only when no test failed and no arm test skipped with an arm Python present.
+# Free: no model call. Override for tests: R (the repo root).
+set -euo pipefail
+
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+R=${R:-$(cd "$HERE/../.." && pwd -P)}
+REPORTER=()
+case "${1:-}" in
+  --tap) REPORTER=(--test-reporter=tap) ;;
+  '') ;;
+  *) echo "usage: bench/scripts/test.sh [--tap]" >&2; exit 2 ;;
+esac
+
+LOGS=$(mktemp -d "${TMPDIR:-/tmp}/bench-test.XXXXXX")
+trap 'rm -rf "$LOGS"' EXIT
+
+ARM_PY=${BENCH_ARM_PYTHON:-$R/.venv/bin/python}
+ARM=0
+if [ -x "$ARM_PY" ] && "$ARM_PY" -c 'import mujoco, cedarpy' 2>/dev/null; then
+  ARM=1
+  export BENCH_ARM_PYTHON=$ARM_PY BENCH_REQUIRE_ARM=1
+  PY=$ARM_PY
+elif [ -n "${BENCH_ARM_PYTHON:-}" ]; then
+  echo "# BENCH_ARM_PYTHON=$BENCH_ARM_PYTHON cannot import mujoco and cedarpy (set LD_LIBRARY_PATH for libffi?)" >&2
+  exit 2
+else
+  PY=python3
+  echo "# no arm Python ($ARM_PY): the arm tests skip"
+fi
+
+cd "$R"
+node_code=0
+# NODE_TEST_CONTEXT is set when this script runs under a node test; the inner run must report on its own.
+env -u NODE_TEST_CONTEXT node --test --test-concurrency=1 "${REPORTER[@]}" \
+  "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js" 2>&1 | tee "$LOGS/node.log" || node_code=$?
+py_code=0
+"$PY" bench/scripts/unittest-tap.py bench/physical/test 2>"$LOGS/py.err" | tee "$LOGS/py.tap" || py_code=$?
+[ "$py_code" = 0 ] || cat "$LOGS/py.err" >&2
+
+skips=0
+if [ "$ARM" = 1 ]; then
+  node_skips=$(grep -c 'no Python with' "$LOGS/node.log" || true)
+  py_skips=$(grep -Ec '# SKIP .*(MuJoCo|cedarpy)' "$LOGS/py.tap" || true)
+  skips=$((node_skips + py_skips))
+fi
+echo "# arm skips $skips"
+[ "$skips" = 0 ] || echo "# FAIL: $skips arm test(s) skipped although $ARM_PY imports mujoco and cedarpy" >&2
+[ "$node_code" = 0 ] && [ "$py_code" = 0 ] && [ "$skips" = 0 ]

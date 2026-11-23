@@ -6,7 +6,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { runChecks } = require('./checks.js');
 const { buildResult, errorResult, validateResult } = require('./result.js');
-const { buildCheckEnv } = require('./env.js');
+const { agentEnv, buildCheckEnv } = require('./env.js');
 const { harnessFor, runtimeOf, kiro } = require('./harness/index.js');
 const { makeIsolation, liveStdioDir } = require('./isolate.js');
 const { createTripwire, tripwireFlags } = require('./tripwire.js');
@@ -474,7 +474,12 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       let probe = null;
       try {
         const tmpdir = path.join(runRoot, 'tmp');
-        let env = harness.env({ arm, config, ctx, home, tmpdir });
+        const agent = agentEnv(harness, { arm, config, ctx, home, tmpdir });
+        let { env } = agent;
+        if (agent.dropped.length) {
+          meta.flags.push('envDropped');
+          process.stderr.write(`[bench] ${harness.id} env(): dropped ${agent.dropped.join(', ')} (never-pass names, or credential names not in credentialEnv)\n`);
+        }
         if (ctx.introspect) {
           probe = await introspect.startProbe({ harnessId: harness.id, outDir, runRoot, home, dumpRoot: probeDirs[0] ?? null, deps: ctx.introspectDeps ?? {} });
           env = probe.apply(env);
