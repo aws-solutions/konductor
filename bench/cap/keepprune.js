@@ -31,10 +31,11 @@ const { ladderDoses, evaluateLadder, evaluateConventionControl, trustOf } = requ
 const { buildPairs, itemName } = require('./doseladder.js');
 const { judgeSeats } = require('../judge/family.js');
 const { formatGap } = require('./gaptext.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
 
 const DEPTHS = Object.freeze({
   quick: Object.freeze({ arms: ['with', 'without'], harness: 'one-turn' }),
-  deep: Object.freeze({ arms: ['with', 'aa', 'without'], harness: 'kiro-cli' }),
+  deep: Object.freeze({ arms: ['with', 'aa', 'without'], harness: STUDY_RUNTIME }),
 });
 const READINGS = Object.freeze(['A', 'B']);
 const WEIGHT = Object.freeze({ MET: 1, PARTIAL: 0.5, MISSING: 0 });
