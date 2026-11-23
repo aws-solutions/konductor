@@ -13,6 +13,7 @@ const path = require('node:path');
 const { loadTaskFiles } = require('./files.js');
 const { judgedRubric } = require('../runner/lib/expert-rubric.js');
 const { fileFindings } = require('./lint-files.js');
+const { staleDateWarnings } = require('./dates.js');
 const { DEFAULT_WEIGHTS } = require('../report/scores.js');
 
 const BASELINE_FILE = path.join(__dirname, 'lint-baseline.json');
@@ -157,12 +158,15 @@ function readBaseline(file = BASELINE_FILE) {
 }
 
 /**
- * Lints every task under `dir`. Returns { tasks, findings: [{ taskId, file, rule, where, detail, known? }], stale: [key] }.
+ * Lints every task under `dir`. Returns { tasks, findings: [{ taskId, file, rule, where, detail, known? }], stale: [key],
+ * warnings: [{ taskId, file, rule, where, detail }] }; warnings (stale prompt dates as of `now`) never fail the lint.
  * `known` is the baseline entry of a finding it lists; `stale` the baseline keys of the linted tasks that no longer match.
  */
-function lintDir(dir, catalog, { baseline = {} } = {}) {
+function lintDir(dir, catalog, { baseline = {}, now = new Date() } = {}) {
   const matchers = nameMatchers(catalog);
   const items = loadTaskFiles(dir);
+  // Stale dates move with the calendar, so they warn and never fail the lint (a suite that went red by date alone).
+  const warnings = items.flatMap(({ file, task }) => staleDateWarnings(task, { now }).map((w) => ({ taskId: task.id, file, ...w })));
   const findings = items.flatMap(({ file, task }) => [
     ...lintTask(task, matchers),
     ...fileFindings(task, file).map((f) => ({ taskId: task.id, ...f })),
@@ -170,7 +174,7 @@ function lintDir(dir, catalog, { baseline = {} } = {}) {
   const ids = new Set(items.map((i) => i.task.id));
   const seen = new Set(findings.map(findingKey));
   const stale = Object.keys(baseline).filter((k) => ids.has(k.split('|')[0]) && !seen.has(k)).sort();
-  return { tasks: items.length, findings, stale };
+  return { tasks: items.length, findings, stale, warnings };
 }
 
 module.exports = { MIN_CRITERIA, lintTask, lintDir, readBaseline, judgeShare, findingKey, BASELINE_FILE, nameMatchers, catalogOfScan, promptFindings, authorshipFindings, METHOD_ACRONYMS, METHOD_PHRASES };
