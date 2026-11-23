@@ -69,6 +69,18 @@ export interface RunController {
   readonly progress: RunProgress | undefined;
   /** Whether the run has ended, which the stages and the console say too. */
   readonly ended: boolean;
+  /** The id of the run being followed, so a view can key its state on it. */
+  readonly runId: string | undefined;
+  /**
+   * Whether the person has typed a goal or asked for a run, so the Goal box
+   * holds back its error until then.
+   */
+  readonly goalTouched: boolean;
+  /**
+   * Whether the follower gave up, so the run can be followed again. The run
+   * may still be going on the server, which is why Run stays disabled.
+   */
+  readonly canFollowAgain: boolean;
   /**
    * What the page outside the view needs: whether a run would be lost, and
    * the sentences for the one live region it keeps.
@@ -78,6 +90,11 @@ export interface RunController {
   goalTyped(text: string): void;
   /** Starts a run with the goal in the box. */
   startRun(): void;
+  /**
+   * Follows the run again from where the reads stopped. It does nothing
+   * unless `canFollowAgain`.
+   */
+  followAgain(): void;
 }
 
 // The sentence of a follow that ended badly, for the live region. The view
@@ -183,6 +200,7 @@ export function useRunController({
     start: started,
     runFinished,
     goalProblem: goalProblem(goal),
+    followFailed: status === 'failed',
   };
   const timing = runTiming(runId ?? '', history.runs, seen?.at ?? ports.now());
   const progress = run
@@ -198,11 +216,11 @@ export function useRunController({
     started.kind === 'starting' ||
     started.kind === 'going' ||
     started.kind === 'unsure';
-  // A follow that ended badly follows nothing: the reads have stopped, and
-  // the run id is forgotten, so the workflow being swapped away costs no run
-  // this page still holds. The error the view shows says to open a fresh
-  // address, and warning there that a run would be lost would talk a person
-  // out of the very thing that gets them going again.
+  // A follow that ended badly follows nothing: the reads have stopped and the
+  // kept run id is dropped, so no swap warning could save the run. A person
+  // who wants it back presses Follow again, which the view offers, or reloads;
+  // warning about a lost run on the way out would only talk them out of the
+  // very thing that gets them going again.
   const unfollowed = status === 'failed' || gone;
   const lifecycle: RunLifecycle = {
     active: atRisk && !runFinished && !unfollowed,
@@ -223,8 +241,12 @@ export function useRunController({
     history,
     progress,
     ended: status === 'finished',
+    runId,
+    goalTouched: typed !== undefined || started.kind !== 'idle',
+    canFollowAgain: status === 'failed',
     lifecycle,
     goalTyped: (text) => setTypedFor({ source: goalSource, typed: text }),
     startRun: () => begin(goal),
+    followAgain: follow.retry,
   };
 }

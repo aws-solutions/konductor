@@ -169,6 +169,12 @@ function drawn({
 
 const goalBox = () => screen.getByRole('textbox') as HTMLInputElement;
 const runButton = () => screen.getByRole('button', { name: 'Run' });
+const followAgainButton = () =>
+  screen.getByRole('button', { name: 'Follow again' });
+// The error under the Goal box. The disabled Run button says the same
+// sentence in its own tooltip, so the box is read by its class.
+const goalError = () =>
+  document.querySelector('[class*="error__message"]')?.textContent;
 const isOff = (button: HTMLElement) =>
   button.hasAttribute('disabled') ||
   button.getAttribute('aria-disabled') === 'true';
@@ -696,6 +702,63 @@ describe('RunView when the server is gone', () => {
     expect(screen.getByTestId('run-session-error').textContent).toContain(
       'The session is gone.',
     );
+  });
+
+  it('offers Follow again and keeps Run shut once the reads give up', async () => {
+    const { events } = drawn();
+    await press();
+
+    while (events.waiting) {
+      await act(async () => {
+        events.drop();
+      });
+    }
+    const alert = screen.getByTestId('run-follow-error');
+
+    expect(alert.textContent).toContain('Follow it again');
+    expect(alert.textContent).toContain('reload the page');
+    expect(isOff(runButton())).toBe(true);
+    expect(followAgainButton()).toBeTruthy();
+  });
+
+  it('reads the run on when Follow again is pressed', async () => {
+    const { events } = drawn();
+    await press();
+
+    while (events.waiting) {
+      await act(async () => {
+        events.drop();
+      });
+    }
+    await act(async () => {
+      fireEvent.click(followAgainButton());
+    });
+
+    expect(screen.queryByTestId('run-follow-error')).toBeNull();
+    await answer(events, eventsAnswer([running(1, 'draft')]));
+    expect(screen.getByTestId('run-progress').textContent).toContain('draft');
+  });
+});
+
+describe('RunView, the Goal box of a workflow with no default goal', () => {
+  it('shows no error before the person has typed', () => {
+    drawn({ noGoalDefault: true });
+
+    expect(goalBox().value).toBe('');
+    expect(goalError()).toBeUndefined();
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('Enter a goal to run.');
+  });
+
+  it('shows the error once the person has typed and emptied the box', async () => {
+    drawn({ noGoalDefault: true });
+
+    await type('Plan it');
+    expect(goalError()).toBeUndefined();
+
+    await type('');
+
+    expect(goalError()).toBe('Enter a goal to run.');
   });
 });
 
