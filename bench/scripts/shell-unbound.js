@@ -88,6 +88,33 @@ function scan(text) {
   return found.map(({ line, name, declaredAt }) => ({ line, name, declaredAt }));
 }
 
+/** The `$( ... )` bodies on `line`, matched by paren depth. */
+function substitutions(line) {
+  const out = [];
+  for (let at = line.indexOf('$('); at >= 0; at = line.indexOf('$(', at + 2)) {
+    if (line[at + 2] === '(') continue; // $(( arithmetic ))
+    let depth = 0;
+    for (let i = at + 1; i < line.length; i++) {
+      if (line[i] === '(') depth++;
+      else if (line[i] === ')' && --depth === 0) { out.push(line.slice(at + 2, i)); break; }
+    }
+  }
+  return out;
+}
+
+const ASSIGN = /^\s*(?:export\s+|readonly\s+)?[A-Za-z_][A-Za-z0-9_]*=/;
+const TEST_AND = /^\s*(?:\[\[?|test)\s.*&&/;
+
+/**
+ * Second shape (review 2026-11-23 F2): under `set -e`, a plain assignment whose `$( ... )` is a test chained with `&&`
+ * and no `||` takes the test's failure as its own status, so the script exits there with no message. `local` masks the
+ * status and is not reported. Findings: [{ line }].
+ */
+function scanErrexit(text) {
+  if (!/^\s*set\s+-[a-zA-Z]*e|^\s*set\s+-o\s+errexit/m.test(text)) return [];
+  return text.split('\n').flatMap((raw, n) => (ASSIGN.test(raw) && substitutions(raw).some((s) => TEST_AND.test(s) && !s.includes('||')) ? [{ line: n + 1 }] : []));
+}
+
 /** Shell scripts under the given paths (a .sh file, or a file whose first line is a bash or sh shebang). */
 function scripts(paths) {
   const out = [];
@@ -112,15 +139,20 @@ function main(argv) {
   const targets = argv.length ? argv : [path.join(ROOT, 'bench'), path.join(ROOT, 'scripts')];
   let n = 0;
   for (const file of scripts(targets)) {
-    for (const f of scan(fs.readFileSync(file, 'utf8'))) {
+    const text = fs.readFileSync(file, 'utf8');
+    for (const f of scan(text)) {
       n++;
       console.log(`${path.relative(process.cwd(), file)}:${f.line}: ${f.name} is read here but declared local only inside a branch (line ${f.declaredAt.join(', ')}); bind it at the top of the function`);
     }
+    for (const f of scanErrexit(text)) {
+      n++;
+      console.log(`${path.relative(process.cwd(), file)}:${f.line}: under set -e this assignment exits when the test in its $( ) fails; add || true`);
+    }
   }
-  if (!n) console.log('ok: no branch-only local read after its branch');
+  if (!n) console.log('ok: no branch-only local read after its branch, no set -e assignment ending on a failed test');
   return n ? 1 : 0;
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { scan, scripts };
+module.exports = { scan, scanErrexit, scripts };
