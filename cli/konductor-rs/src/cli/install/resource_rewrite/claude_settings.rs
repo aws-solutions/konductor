@@ -2305,25 +2305,48 @@ mod tests {
 
     /// Why a `kiroCli.allowedTools` entry would let Kiro CLI run an aws-mcp
     /// tool outside `AWS_MCP_READ_ONLY_TOOLS` with no prompt, or `None` when
-    /// it cannot. Only an exact read-only name passes: the whole server
-    /// (`@aws-mcp`), any pattern (`@aws-mcp/*`, `@aws-mcp/aws___*`), a
-    /// misspelled or acting tool, and the catch-alls `*` and `@mcp` all fail.
+    /// it cannot. Kiro CLI globs the server part of `@<server>[/<tool>]`, so
+    /// the entry counts as aws-mcp when its server is `aws-mcp` or a `*`/`?`
+    /// pattern that matches it (`@*`, `@aws-*`, `@aws-mc?`). For those, only
+    /// an exact read-only tool name passes: the whole server, any tool
+    /// pattern, and a misspelled or acting tool all fail, as do the
+    /// catch-alls `*` and `@mcp`.
     fn kiro_allowed_tools_aws_mcp_problem(entry: &str) -> Option<&'static str> {
-        let server = format!("@{AWS_MCP_SERVER_NAME}");
         if entry == "*" || entry == "@mcp" {
             return Some("pre-approves every MCP tool, aws-mcp included");
-        }
-        if entry == server {
-            return Some("pre-approves the whole aws-mcp server");
         }
         if entry.starts_with("aws___") && !AWS_MCP_READ_ONLY_TOOLS.contains(&entry) {
             return Some("names an aws-mcp tool outside AWS_MCP_READ_ONLY_TOOLS");
         }
-        let tool = entry.strip_prefix(&server)?.strip_prefix('/')?;
-        if AWS_MCP_READ_ONLY_TOOLS.contains(&tool) {
-            None
-        } else {
-            Some("is not an exact name in AWS_MCP_READ_ONLY_TOOLS")
+        let server_and_tool = entry.strip_prefix('@')?;
+        let (server, tool) = match server_and_tool.split_once('/') {
+            Some((server, tool)) => (server, Some(tool)),
+            None => (server_and_tool, None),
+        };
+        if !kiro_server_glob_matches(server.as_bytes(), AWS_MCP_SERVER_NAME.as_bytes()) {
+            return None;
+        }
+        match tool {
+            None => Some("pre-approves the whole aws-mcp server"),
+            Some(tool) if AWS_MCP_READ_ONLY_TOOLS.contains(&tool) => None,
+            Some(_) => Some("is not an exact name in AWS_MCP_READ_ONLY_TOOLS"),
+        }
+    }
+
+    /// Kiro CLI's server glob: `*` is any run of characters, `?` is exactly
+    /// one, and everything else matches itself, case-sensitive.
+    fn kiro_server_glob_matches(pattern: &[u8], name: &[u8]) -> bool {
+        match (pattern.split_first(), name.split_first()) {
+            (None, _) => name.is_empty(),
+            (Some((b'*', rest)), _) => {
+                kiro_server_glob_matches(rest, name)
+                    || (!name.is_empty() && kiro_server_glob_matches(pattern, &name[1..]))
+            }
+            (Some(_), None) => false,
+            (Some((b'?', rest)), Some((_, name_rest))) => kiro_server_glob_matches(rest, name_rest),
+            (Some((expected, rest)), Some((actual, name_rest))) => {
+                expected == actual && kiro_server_glob_matches(rest, name_rest)
+            }
         }
     }
 
@@ -2342,6 +2365,12 @@ mod tests {
             "@aws-mcp/",
             "aws___run_script",
             "aws___*",
+            "@*/aws___run_script",
+            "@aws-*/*",
+            "@*-mcp/*",
+            "@aws-mc?",
+            "@*",
+            "@a*/aws___get_tasks",
         ] {
             assert!(
                 kiro_allowed_tools_aws_mcp_problem(entry).is_some(),
@@ -2357,6 +2386,7 @@ mod tests {
             "shell",
             "@builtin",
             "@aws-mcp-other/aws___run_script",
+            "@git-*/*",
         ] {
             assert_eq!(kiro_allowed_tools_aws_mcp_problem(entry), None, "{entry}");
         }
