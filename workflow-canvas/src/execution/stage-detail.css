@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/* The detail of one stage. It takes the colours of the pane it sits in. */
+.wf-stage-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.wf-stage-detail-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wf-stage-detail-state,
+.wf-stage-detail-reason {
+  margin: 0;
+}
