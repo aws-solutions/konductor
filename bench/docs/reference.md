@@ -1376,7 +1376,11 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   (`--rule any`: either). It also refuses judgments from two judge passes (the `passId` of each record, see
   "Judge passes" above): judge drift between two days would read as an effect. `--allow-mixed-pass` compares them
   anyway and prints a "Mixed judge passes" line first; `--force` also overrides it. Studies judged before pass ids
-  were recorded count as pass `unrecorded`, so two of them still compare.
+  were recorded count as pass `unrecorded`, so two of them still compare. `--aa ARM` names an arm run in both
+  directories as the A/A pair: paired by task, its gap's 95% half-width is the noise floor, and every other arm's gap
+  on the 0-to-1 mean metrics (success, check pass, rubric) prints in points beside it, marked inside or outside, with
+  the detectable gap at 80% power (`report/power.js`) and "no gap over X" for a smaller gap (`report/compare-aa.js`).
+  An arm not in both runs is refused. The verdict sentence carries the same power reading when it has 2 or more cells.
 
 ## Reports, scores and the diligence scorecard
 `report`, `contrast` and `cap prune-report` take `--detail quick|full` (default full) and `--format md|html|both` (default both). Files: `report.md`,

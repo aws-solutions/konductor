@@ -27,6 +27,8 @@ person.
 2. For each task, the gap is the mean score of one arm minus the other's.
 3. The mean of the task gaps gets a 95% interval, by resampling tasks and then runs (10,000 times).
 4. An A/A pair (the same arm twice under two names) shows the noise. A gap inside the noise is not a result.
+   `compare --aa ARM` reads every gap against ARM run in both directories. The verdict and that compare also print
+   the detectable gap at 80% power, and say "no gap over X points" when a gap is smaller, never just "no gap".
 
 ## From an interval to one word
 

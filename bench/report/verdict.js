@@ -19,6 +19,7 @@ const { computeScores, qualityOfRun, loadScoring, MIN_N } = require('./scores.js
 const { mergeQuote, platformSensitivity } = require('./quotes.js');
 const { otherRule } = require('../judge/views.js');
 const { diffCI, pairedCellCI, MIN_CELLS } = require('./stats.js');
+const { detectableGap, gapWords } = require('./power.js');
 const { THRESHOLDS } = require('./diligence.js');
 const { prefixIdentity } = require('./aa-identity.js');
 const { gradedSummary } = require('./graded.js');
@@ -239,13 +240,21 @@ function censoredNote(c) {
   return n ? ` The cost is a lower-bound estimate: ${n} run(s) timed out or were killed before their final metering event.` : '';
 }
 
+/**
+ * The quality gap read against the design's power (FW-34, report/power.js): "no gap over X points" or "gap Y points,
+ * over the detectable X", never a bare "no gap". Empty when the detectable gap is unknown (fewer than 2 paired cells).
+ */
+function powerNote(q) {
+  return fin(q?.detectable) && fin(q?.delta) ? ` At 80% power: ${gapWords({ gap: q.delta, detectable: q.detectable })}.` : '';
+}
+
 function sentenceFor(a, baseLabel, harness = null) {
   if (a.aaRepeatOf) return `A/A repeat of ${a.aaRepeatOf}. It exists to measure run-to-run noise, so it gets no verdict.`;
-  if (a.verdict === NEE) return `Not enough evidence. ${a.reason}.`;
+  if (a.verdict === NEE) return `Not enough evidence. ${a.reason}.${powerNote(a.quality)}`;
   const dir = a.quality.delta > 0 ? 'higher' : 'lower';
   const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the ${harness ? 'cost' : 'credits'} per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).${censoredNote(a.cost)}`;
   const verb = a.verdict === KEEP ? 'Keep' : 'Discard';
-  return `${verb}. ${a.label} scored ${f1(Math.abs(a.quality.delta))} points ${dir} than ${baseLabel} (paired ${levelText(a.quality.level ?? 0.95)} interval of the difference ${f1(a.quality.deltaCiLow)} to ${f1(a.quality.deltaCiHigh)} over ${a.quality.k} task cells), outside the A/A noise of ${f1(a.noise.pts)} points, over ${a.quality.n} runs against ${a.quality.baseN} at ${a.minReps} or more replicates per cell.${cost}`;
+  return `${verb}. ${a.label} scored ${f1(Math.abs(a.quality.delta))} points ${dir} than ${baseLabel} (paired ${levelText(a.quality.level ?? 0.95)} interval of the difference ${f1(a.quality.deltaCiLow)} to ${f1(a.quality.deltaCiHigh)} over ${a.quality.k} task cells), outside the A/A noise of ${f1(a.noise.pts)} points, over ${a.quality.n} runs against ${a.quality.baseN} at ${a.minReps} or more replicates per cell.${powerNote(a.quality)}${cost}`;
 }
 
 /**
@@ -362,7 +371,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
     Object.assign(out, {
       runs: headC.length, baseRuns: base.length, cells: nCells, minReps, failures, baseFailures, failedAsZero: headC.filter((r) => r.zeroFilled).length, baseFailedAsZero: base.filter((r) => r.zeroFilled).length,
       budgetSkipped: headDirs.reduce((s, x) => s + inputs[x].a.facts.budget.skipped, 0),
-      quality: { value: h?.quality.value ?? null, ciLow: h?.quality.ciLow ?? null, ciHigh: h?.quality.ciHigh ?? null, n: h?.quality.n ?? 0, baseValue: b?.quality.value ?? null, baseN: b?.quality.n ?? 0, delta: dq.delta, deltaCiLow: dq.ciLow, deltaCiHigh: dq.ciHigh, k: dq.k, droppedCells: dq.droppedCells, method: dq.method, level: dq.level, comparisons: dq.comparisons, p: dq.p, pAdjusted: dq.pAdjusted, pExact: dq.pExact, unpaired: { delta: unpaired.delta, ciLow: unpaired.ciLow, ciHigh: unpaired.ciHigh, note: 'descriptive only: treats every run as independent' }, excluded: h?.quality.excluded ?? null },
+      quality: { value: h?.quality.value ?? null, ciLow: h?.quality.ciLow ?? null, ciHigh: h?.quality.ciHigh ?? null, n: h?.quality.n ?? 0, baseValue: b?.quality.value ?? null, baseN: b?.quality.n ?? 0, delta: dq.delta, detectable: detectableGap({ sd: dq.se === null ? null : dq.se * Math.sqrt(dq.k), tasks: dq.k }), deltaCiLow: dq.ciLow, deltaCiHigh: dq.ciHigh, k: dq.k, droppedCells: dq.droppedCells, method: dq.method, level: dq.level, comparisons: dq.comparisons, p: dq.p, pAdjusted: dq.pAdjusted, pExact: dq.pExact, unpaired: { delta: unpaired.delta, ciLow: unpaired.ciLow, ciHigh: unpaired.ciHigh, note: 'descriptive only: treats every run as independent' }, excluded: h?.quality.excluded ?? null },
       reliability: { value: h?.reliability.value ?? null, baseValue: b?.reliability.value ?? null, delta: dr.delta, ciLow: dr.ciLow, ciHigh: dr.ciHigh, n: h?.reliability.n ?? 0 },
       autonomy: h?.autonomy ? { value: h.autonomy.value, baseValue: b?.autonomy?.value ?? null, n: h.autonomy.n, baseN: b?.autonomy?.n ?? 0, interjectionsPerTask: h.autonomy.interjectionsPerTask } : null,
       cost: { ratio: cost?.ratio ?? null, ciLow: cost?.ciLow ?? null, ciHigh: cost?.ciHigh ?? null, perSuccess: cost?.value ?? null, basePerSuccess: cost?.baseValue ?? null, n: cost?.n ?? 0, unit: unit === 'USD' ? 'USD' : 'credits', censoredRuns: headC.filter((r) => r.censored).length, baseCensoredRuns: base.filter((r) => r.censored).length },

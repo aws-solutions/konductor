@@ -249,8 +249,9 @@ const USAGE = `Usage:
        Without --write it only prints what it would change. --credits --write keeps result.json.pre-backfill, adds creditsBackfill and appends a
        "backfill" line to credit-ledger.jsonl, never editing an earlier line. --skills --write keeps result.json.pre-skills-backfill and adds
        skillsBackfill. Run it when the cell has finished; safe to repeat)
-  node bench/runner/bench.js compare --base DIR --head DIR [--min-rel 0.15] [--rule both|any] [--force] [--allow-mixed-pass] [--bench-dir DIR]
-       (exit 0 no regression, 1 regression, 2 refused or error)
+  node bench/runner/bench.js compare --base DIR --head DIR [--min-rel 0.15] [--rule both|any] [--force] [--allow-mixed-pass] [--aa ARM] [--bench-dir DIR]
+       (exit 0 no regression, 1 regression, 2 refused or error. --aa ARM: ARM ran in both, so its gap is the A/A noise; every
+       other gap prints beside its half-width and the detectable gap at 80% power, paired by task)
   node bench/runner/bench.js skills --run DIR [--bench-dir DIR] [--repo-root DIR] [--json] [--extra-tasks DIR,DIR]
        (skill and SOP loads recomputed from stream.jsonl; read-only, works on old and in-progress runs)
   node bench/runner/bench.js scenarios lint DIR --base REF|dir:PATH [--repo-root DIR] [--json]

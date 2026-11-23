@@ -6,6 +6,7 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { buildReport } = require('./aggregate.js');
 const { medianCI, meanCI, ratioCI } = require('./stats.js');
 const { correlationLine } = require('./length.js');
+const { aaSection, aaLines } = require('./compare-aa.js');
 const { DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
 
 const MIN_RUNS_FOR_CI = 3;
@@ -141,9 +142,10 @@ function matchArms(baseArms, headArms, baseIds, headIds) {
 /**
  * Compares two run directories. A difference in the pins (model, tasks, judges, ...) is a refusal (exitCode 2) unless
  * `force`. Judgments from two judge passes are a refusal too, unless `allowMixedPass`; then `mixedPass` names them and
- * the text says so.
+ * the text says so. `aa` names an arm run in both directories: its gap is the A/A noise every other gap is read
+ * against (`result.aa`, compare-aa.js); an arm that is not in both is a refusal.
  */
-function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both', force = false, allowMixedPass = false }) {
+function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both', force = false, allowMixedPass = false, aa = null }) {
   const base = loadRun(baseDir);
   const head = loadRun(headDir);
   const tasks = loadTasks(benchDir);
@@ -166,6 +168,11 @@ function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both',
   result.onlyInBase = baseArms.filter((a) => !pairs.some((p) => p.base === a));
   result.onlyInHead = headArms.filter((a) => !pairs.some((p) => p.head === a));
   result.matchedBySha = pairs.filter((p) => p.by === 'commit').map(({ base: b0, head: h0 }) => ({ base: b0, head: h0 }));
+  if (aa) {
+    const sec = aaSection({ base, head, tasks, pairs, aaArm: aa, baseline: b.report.baseline });
+    if (sec.refusal) return { ...result, refusals: [...refusals, sec.refusal], forced: false, exitCode: 2 };
+    result.aa = sec;
+  }
   for (const p of pairs.filter((x) => x.by === 'name')) {
     const bi = baseIds.get(p.base);
     const hi = headIds.get(p.head);
@@ -231,6 +238,7 @@ function formatCompare(r) {
   lines.push(`REGRESSIONS (${r.regressions.length}):`, ...(r.regressions.length ? r.regressions.map(row) : ['  none']));
   lines.push(`IMPROVEMENTS (${r.improvements.length}):`, ...(r.improvements.length ? r.improvements.map(row) : ['  none']));
   if (r.lengthCorrelation) lines.push(r.lengthCorrelation);
+  if (r.aa) lines.push(...aaLines(r.aa));
   return lines.join('\n');
 }
 
