@@ -21,7 +21,8 @@ const { checkDepth, judgePanel, judgmentStore, DEFAULT_REPLICATES, JUDGE_FAMILIE
 const { blockFromCheck } = require('./kprecord.js');
 const { createStubProvider, assertStubRun, isStubRun } = require('./stubprovider.js');
 const { STUB_SUBJECT_MODEL, STUB_JUDGES } = require('./kprun.js');
-const { STAGE_OF_KIND, KIND_LABEL, UNIT_BASELINES_DIR, PAID_FRAME, listUnits, unitManifest, renderUnitMap } = require('./units.js');
+const { UNIT_STAGE_KINDS, UNIT_KIND_NAMES, STAGE_OF_KIND, KIND_LABEL, UNIT_BASELINES_DIR, PAID_FRAME, listUnits, unitManifest, renderUnitMap } = require('./units.js');
+const { UNIT_KINDS, renderKindList } = require('./unitkinds.js');
 const { readJsonFile } = require('./checkedjson.js');
 const { UNIT_SCHEMA_ID, writeUnitRecord, readUnitRecord, renderUnitRecord, readTaskGrades } = require('./unitrecord.js');
 const { WORST_PER_CALL, ledgerSpent } = require('./paidcall.js');
@@ -66,7 +67,7 @@ const COSTS = Object.freeze({
 function baselineProblems(b) {
   const p = [];
   if (b?.format_version !== 1) p.push(`format_version ${JSON.stringify(b?.format_version)} is not 1`);
-  if (!STAGE_OF_KIND[b?.kind]) p.push(`kind ${JSON.stringify(b?.kind)} is not agent, sop or context`);
+  if (!STAGE_OF_KIND[b?.kind]) p.push(`kind ${JSON.stringify(b?.kind)} is not ${UNIT_KIND_NAMES}`);
   if (!/^[0-9a-f]{64}$/.test(b?.unit_sha256 ?? '')) p.push('unit_sha256 is not a SHA-256');
   if (!Array.isArray(b?.batches) || b.batches.length !== BATCHES) p.push(`a unit baseline has ${BATCHES} batches of ${TASKS_PER_BATCH} tasks`);
   // A task dropped under the one-fix rule (unitauthor.js) is recorded in source.dropped and leaves its batch one short;
@@ -132,7 +133,7 @@ function rerenderUnitRecord({ file, baselinesDir = UNIT_BASELINES_DIR }) {
  * Runs one unit's stage and writes `<outDir>/<runId>/stage-<n>/<kind>-<name>.json` and its .md. Judgments and paid
  * replies are saved under `<outDir>/<runId>`, so a rerun of the same run id resumes where it stopped.
  * @param {object} o
- * @param {string} o.kind agent, sop or context
+ * @param {string} o.kind a unit kind of stage 2 or up (cap/units/*.json: agent, sop or context)
  * @param {string} o.name the unit name
  * @param {string} o.repo the tree under test
  * @param {string} o.runId stub or stub-<name> on the stub; any other id on the paid provider
@@ -149,7 +150,7 @@ function rerenderUnitRecord({ file, baselinesDir = UNIT_BASELINES_DIR }) {
  */
 function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid = null, writerModel = PILOT_WRITER, depths = ['quick', 'deep'], baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES, replicates = DEFAULT_REPLICATES, delegation = null, createdAt = new Date().toISOString() }) {
   if (kind === 'skill') throw new Error('skills are stage 1: use cap keep-prune');
-  if (!STAGE_OF_KIND[kind]) throw new Error(`--kind takes agent, sop or context (got ${JSON.stringify(kind)})`);
+  if (!STAGE_OF_KIND[kind]) throw new Error(`--kind takes ${UNIT_KIND_NAMES} (got ${JSON.stringify(kind)})`);
   if (!PROVIDERS.includes(provider)) throw new Error(`provider ${JSON.stringify(provider)} is not available: stages 2 to 4 have the stub provider and the paid kiro provider`);
   const isPaid = provider === 'kiro';
   if (isPaid) assertPaidRun({ runId, paid, depths, subjectModel, judges }); else assertStubRun(runId);
@@ -183,7 +184,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const panel = judgePanel({ subjectModel, judges });
   const record = {
     schema: UNIT_SCHEMA_ID, createdAt, stage: STAGE_OF_KIND[kind], kind, name,
-    claim: `${CLAIM}, with the ${kind === 'agent' ? 'agent prompt' : kind === 'sop' ? 'SOP' : 'context file'} in place of a skill${isPaid ? ` (paid run ${runId}, ${depths.join(' and ')} depth)` : ' (stub data: never a measurement)'}`,
+    claim: `${CLAIM}, with the ${UNIT_STAGE_KINDS[kind].claimNoun} in place of a skill${isPaid ? ` (paid run ${runId}, ${depths.join(' and ')} depth)` : ' (stub data: never a measurement)'}`,
     unit: { files: unit.files, sha256: unit.sha256, estTokens: row.estTokens }, ablation: row.ablation, selection: row.selection,
     listedBy: row.listedBy, panel: { families: JUDGE_FAMILIES, seated: panel.seats, why: panel.why },
     baseline: baseline ? { unitSha256: baseline.unit_sha256, source: baseline.source ?? null } : null, delegation,
@@ -341,10 +342,12 @@ const signedOffBy = (b) => (typeof b?.source?.signedOffBy === 'string' && b.sour
 const unsignedWhy = (unit, baseline) => (baseline && !signedOffBy(baseline) ? [`the baseline of ${unit.id} is not signed off: a person who did not write its tasks reads them and sets source.signedOffBy`] : []);
 
 /**
- * `cap units`: the unit map of one stage's kind (or all three), as markdown or --json, printed or written to --out.
- * `--coverage FILE` (from `bench.js scenarios coverage`) adds each unit's targeted tasks.
+ * `cap units`: the unit map of one stage's kind (or all of them), as markdown or --json, printed or written to --out.
+ * `--coverage FILE` (from `bench.js scenarios coverage`) adds each unit's targeted tasks. `--list` prints the kinds
+ * (cap/units/*.json) instead and reads no tree.
  */
 function cmdUnits(opts) {
+  if (opts.list) { process.stdout.write(opts.json ? `${JSON.stringify(UNIT_KINDS, null, 2)}\n` : renderKindList(UNIT_KINDS)); return; }
   const repo = repoRootOf(opts);
   const kinds = val(opts.kind) ? [val(opts.kind)] : Object.keys(STAGE_OF_KIND);
   const coverage = val(opts.coverage) ? readJsonFile(path.resolve(val(opts.coverage))) : null;
