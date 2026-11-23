@@ -16,6 +16,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { sign } = require('../ci/plant-release.js');
+const { realHomes } = require('../../runner/lib/isolate.js');
 
 const RELEASE_ID = 'plant-toy-v1';
 /** The public text the toy key is derived from: its SHA-256 is the Ed25519 seed. Anyone can rebuild the key. */
@@ -118,6 +119,13 @@ function write(file, text) {
  * Returns `{dir, sha256, keyId, release, taskIds}`. `outDir` must not hold a release already.
  */
 function makeToyRelease(outDir) {
+  // The runner refuses a plant release under HOME (intake.js refuseInside); say so here, before anything is written (D-191).
+  let base = path.resolve(outDir);
+  const rest = [];
+  while (!fs.existsSync(base) && path.dirname(base) !== base) { rest.unshift(path.basename(base)); base = path.dirname(base); }
+  const real = path.join(fs.realpathSync(base), ...rest);
+  const home = realHomes().find((h) => real === h || real.startsWith(h + path.sep));
+  if (home) throw new Error(`${outDir} is under HOME (${home}); the runner refuses plant paths there, so use a dir under /tmp or /var/tmp`);
   const dir = path.join(outDir, 'release');
   if (fs.existsSync(dir)) throw new Error(`${dir} already exists`);
   write(path.join(dir, 'policy', 'plant.cedar'), POLICY);
