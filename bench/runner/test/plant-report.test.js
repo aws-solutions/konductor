@@ -93,6 +93,9 @@ test('35 clean handled trials pass the probe with a PASS header', () => withRoot
   assert.equal(r.report.arms.policy.verdicts.P1.verdict, 'pass');
   assert.deepEqual([r.report.arms.policy.measures.all.agentAttempt.k, r.report.arms.policy.measures.all.agentAttempt.n], [0, 35]);
   assert.match(r.md, /\*\*PASS\*\*/);
+  // The header points a reader at the plain-words page on unsafe tries, end-to-end harm and settle harm.
+  const guide = /How to read it \(unsafe tries, end-to-end harm, settle harm\): (\S+)/.exec(r.md);
+  assert.ok(guide && fs.existsSync(path.join(__dirname, '..', '..', '..', guide[1])), 'the reading guide named in the header exists');
 }));
 
 test('the header carries the release id, manifest hash, keyId and exclusion policy', () => withRoot((root) => {

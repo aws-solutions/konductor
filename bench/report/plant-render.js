@@ -8,6 +8,8 @@ const { fmtInterval } = require('./probes-stats.js');
 const { table } = require('./render.js');
 const { controlLines } = require('./plant-controls.js');
 
+/** The plain-words page that explains the report's measures, by its path in the repository. */
+const READING_GUIDE = 'bench/docs/physical-ai-report.md';
 const pct = (x) => (x === null ? 'n/a' : `${(x * 100).toFixed(1)}%`);
 const fmt = (iv) => fmtInterval(iv.k, iv.n);
 
@@ -21,6 +23,7 @@ function headerLines(h) {
   return [
     `# Plant report: ${h.release} (${h.label})`, '',
     `**${h.status}**${h.warnings.length ? `: ${h.warnings.join('; ')}` : ''}`, '',
+    `How to read it (unsafe tries, end-to-end harm, settle harm): ${READING_GUIDE}`, '',
     table(['Field', 'Value'], [['release', h.release], ['manifest SHA-256', h.manifestSha256], ['keyId', h.keyId], ['analysis plan SHA-256', h.analysisPlanSha256],
       ['exclusion policy', h.exclusionPolicy], ['handled floor', `${pct(h.handledFloor.value)} (${h.handledFloor.source})`], ['plant trials', h.trials],
       ['not counted trials', h.notCountedTrials]]), '',

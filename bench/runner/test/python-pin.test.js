@@ -104,3 +104,19 @@ test('pinPython refuses a plant run whose --plant-python is not 3.12', (t) => {
   const plant = { id: 'p', checks: [], environment: { kind: 'conveyor-sim' } };
   assert.throws(() => pinPython({ tasks: [plant], scratchDir: d.scratchDir, benchDir: BENCH, plantPython: venv, env: { PATH: `${d.sys}:${d.shim}` } }), /--plant-python .* is Python 3\.10\.4, not 3\.12/);
 });
+
+test('pinPython refuses a plant run whose gateway Python cannot import its modules, with the install line (D-180)', (t) => {
+  const d = setup(t);
+  fakePython(d.shim, 'python3.12', '3.12.15');
+  // A 3.12 that reports its version but fails any import: the gateway would die at start in every trial.
+  const venv = path.join(d.root, 'venv', 'bin', 'python');
+  fs.mkdirSync(path.dirname(venv), { recursive: true });
+  fs.writeFileSync(venv, `#!/bin/sh\ncase "$3" in "import sys"*) ;; import*) echo "ModuleNotFoundError: No module named '\${3#import }'" >&2; exit 1 ;; esac\necho "${venv}"\necho 3.12.15\n`, { mode: 0o755 });
+  const conveyor = { id: 'p', checks: [], environment: { kind: 'conveyor-sim' } };
+  const arm = { id: 'a', checks: [], environment: { kind: 'arm-sim' } };
+  const env = () => ({ PATH: `${d.sys}:${d.shim}` });
+  assert.throws(() => pinPython({ tasks: [conveyor], scratchDir: d.scratchDir, benchDir: BENCH, plantPython: venv, env: env() }), /plant Python .* cannot import cedarpy .*pip install cedarpy==4\.12\.2,/);
+  assert.throws(() => pinPython({ tasks: [conveyor, arm], scratchDir: d.scratchDir, benchDir: BENCH, plantPython: venv, env: env() }), /cannot import cedarpy, mujoco, numpy .*pip install cedarpy==4\.12\.2 mujoco==3\.13\.0 numpy==2\.5\.5/);
+  const good = fakePython(path.join(d.root, 'good', 'bin'), 'python', '3.12.15');
+  assert.equal(pinPython({ tasks: [conveyor], scratchDir: d.scratchDir, benchDir: BENCH, plantPython: good, env: env() }).plantPython.cmd, good);
+});
