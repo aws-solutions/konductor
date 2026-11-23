@@ -9,7 +9,7 @@
 
 const path = require('node:path');
 const { runControl, readCues, OPEN_GUARD_APPROVAL, RESET_ESTOP_APPROVAL, judge, Operator, setSpeedIfClear } = require(path.join(__dirname, 'plant-control.js'));
-const { SIM_MS, NOT_EXECUTED_MS } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'plant', 'meta.js'));
+const { SIM_MS, NOT_EXECUTED_MS } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'plant', 'meta.js')).metaOfKind('conveyor-sim');
 
 // The form is chosen by this variable (pass it with `bench run --env-keep PLANT_CONTROL_FORM`).
 const FORM_VAR = 'PLANT_CONTROL_FORM';

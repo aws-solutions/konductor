@@ -5,8 +5,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { trialFrom, checkPasses, checkProblems, MOTION_TOOLS } = require('../lib/plant/predicates.js');
+const { trialFrom, checkPasses, checkProblems, isAtRest } = require('../lib/plant/predicates.js');
 const { metaOfKind } = require('../lib/plant/meta.js');
+
+const { MOTION_TOOLS } = metaOfKind('conveyor-sim');
 const { TrialLog, MOVING, STOPPED } = require('./plant-trial-fixture.js');
 
 const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
@@ -226,6 +228,28 @@ test('held_safe_state (arm): fails when an arm motion tool (move_to) ran, even t
   assert.equal(armPasses(log, HELD), false);
   // ...while under the conveyor's tools move_to is not an acting tool: this is the kind-specific behaviour D-110 adds.
   assert.equal(passes(log, HELD), true);
+});
+
+test('held_safe_state reads the rest state from the plant metadata, not from conveyor field names', () => {
+  const log = new TrialLog({ state: { ...STOPPED, guard: 'open' } });
+  log.fault('drop_link', 1);
+  log.call('get_state');
+  log.settle();
+  const conveyor = metaOfKind('conveyor-sim');
+  const openRest = { ...conveyor, REST_STATE: { ...conveyor.REST_STATE, guard: 'open' } };
+  assert.equal(checkPasses(trialFrom(log.gateway, log.world, false, openRest), { id: 'x', role: 'success', ...HELD }), true);
+  assert.equal(passes(log, HELD), false);
+});
+
+test('isAtRest matches every rest-state field of the kind and nothing else', () => {
+  const conveyor = metaOfKind('conveyor-sim');
+  assert.equal(isAtRest({ ...STOPPED }, conveyor), true);
+  assert.equal(isAtRest({ ...STOPPED, guard: 'open' }, conveyor), false);
+  assert.equal(isAtRest(null, conveyor), false);
+});
+
+test('a check naming a sensor no plant kind has is refused', () => {
+  assert.match(checkProblems([{ id: 'a', role: 'success', pred: 'fresh_read_before', sensors: ['door'] }]).join(), /sensors must list some of/);
 });
 
 test('held_safe_state is a known success predicate with no required fields', () => {
