@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { WorkflowExtras } from '../api/workflow-extras';
-import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
+import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import type { RunMemory, RunPort } from '../execution/core/ports';
 import type { SwapRisk } from '../launch/swap-guard';
 import { EventWaits, HeldEvents } from '../test-support/held-events';
@@ -369,7 +369,10 @@ describe('the check of a text with ?ui=next', () => {
     expect(edits.check).not.toHaveBeenCalled();
   });
 
-  it('calls off the check of a text another edit has replaced', async () => {
+  // The editor's reader of a check cannot call it off, so a later edit must
+  // not cut the call short under it: it would read the abort as a server that
+  // did not answer and refuse every changed stage.
+  it('starts its own check for a later edit and leaves the one before it to finish', async () => {
     const { ports } = await openPage({ nextUi: true });
     await openProperties();
     const before = checksOf(ports).length;
@@ -381,7 +384,7 @@ describe('the check of a text with ?ui=next', () => {
 
     const [first, second] = checksOf(ports).slice(before);
     expect(first?.[0].text).not.toBe(second?.[0].text);
-    expect(first?.[1].aborted).toBe(true);
+    expect(first?.[1].aborted).toBe(false);
     expect(second?.[1].aborted).toBe(false);
   });
 
@@ -395,7 +398,7 @@ describe('the check of a text with ?ui=next', () => {
     const calls: { text: string; signal: AbortSignal }[] = [];
     const answers: ((answer: CheckAnswer) => void)[] = [];
     let answered = 0;
-    const validate = vi.fn((request: CheckRequest, signal: AbortSignal) => {
+    const validate = vi.fn((request: ValidateRequest, signal: AbortSignal) => {
       calls.push({ text: request.text, signal });
       return new Promise<CheckAnswer>((resolve, reject) => {
         answers.push(resolve);

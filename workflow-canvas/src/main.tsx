@@ -13,11 +13,10 @@ import { sessionStorageMemory } from './launch/session-memory';
 import { createSwapRisk, guardOffers } from './launch/swap-guard';
 import { createNextPorts } from './next-ui/next-http';
 import { wantsNextUi } from './next-ui/next-ui';
-import { forgetIfStill } from './next-ui/session-forget';
 import { tapSessions } from './next-ui/session-tap';
 import { installTheme } from './theme/install';
 import { useWorkflowSource } from './workflow/use-workflow-source';
-import type { LoadedWorkflow } from './workflow/load-workflow';
+import { forgetIfStill, type LoadedWorkflow } from './workflow/load-workflow';
 import { createWorkflowSource } from './workflow/workflow-source';
 
 const root = document.getElementById('root');
@@ -37,9 +36,13 @@ const nextPortsFor = (workflow: LoadedWorkflow) => {
   const token = tap.tokenOf(workflow.document);
   // A 401 of this token drops the kept session only while it is still that
   // token's: a call of a workflow that has been replaced can answer after the
-  // new one was kept.
+  // new one was kept. That is the loader's own rule for a 401, so these calls
+  // follow it through the loader's `forgetIfStill` and the two cannot drift.
   return createNextPorts(token, {
-    onSessionLost: forgetIfStill(sessions, token),
+    onSessionLost: () => {
+      if (token === undefined) return;
+      forgetIfStill(sessions, { token, harness: workflow.harness });
+    },
   });
 };
 
