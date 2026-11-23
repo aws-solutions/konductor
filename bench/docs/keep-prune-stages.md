@@ -106,6 +106,9 @@ starts, so a killed call is never under-counted. The baseline and the record als
 
 What the quick pilot can show: that the pipeline, the controls and the prices work on real models. It cannot grade the
 file. Its drop arm is a bare model with no konductor context, so the rubric reading shows a large gap by construction.
+`cap unit-stage --role-line` narrows that: both arms of each unit task start with "You orchestrate a team of
+specialist agents.", so the gap measures the file, not knowing the role (control prompts are unchanged). The v2 rerun
+uses it.
 With 16 tasks, a gap under about 0.75 points on the 1 to 5 scale cannot be seen. Grading a file needs the deep check
 against konductor without the file (`cap variant --drop`). `bench/runner/test/cap-paid.test.js` runs both scripts and both steps end to end on a fake
 kiro-cli (`fake-kp-kiro.js`).
