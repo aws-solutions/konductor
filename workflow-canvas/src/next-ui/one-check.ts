@@ -83,12 +83,13 @@ function editorError(error: unknown): unknown {
  * same pause after the same edit, so without this they send two of the same
  * request and the text is parsed twice.
  *
- * So the call is made once for a text and handed to whoever asks for it. One
- * is in flight at a time: a text that is not the one in flight takes its
- * place, and the call it replaces is aborted, as the edit that asks for it
- * has made the answer of the one before it stale anyway. `name` is the
- * workflow the text is for, sent with every check, so the two readers ask the
- * very same question.
+ * So the call is made once for a text and handed to whoever asks for it: at
+ * most one call per text, and an ask for a text already in flight joins it.
+ * A call is never cut short because another text was asked about, because the
+ * two readers ask at different moments and the one still waiting would read
+ * the abort as a server that did not answer. It ends only when the last
+ * reader waiting for it gives up. `name` is the workflow the text is for,
+ * sent with every check, so the two readers ask the very same question.
  */
 export function oneCheck(validate: ValidatePort, name?: string): OneCheck {
   interface Call {
@@ -97,8 +98,21 @@ export function oneCheck(validate: ValidatePort, name?: string): OneCheck {
     readonly abort: AbortController;
     /** How many readers are still waiting for this answer. */
     waiting: number;
+    /** True once the answer has come, well or badly. */
+    done: boolean;
   }
-  let held: Call | undefined;
+  // The calls still in flight, by their text, so a second reader of a text
+  // joins the call rather than making another.
+  const inFlight = new Map<string, Call>();
+  // The newest call that has answered, kept so a reader that asks just after
+  // it settled reads that answer instead of asking the same question again.
+  let last:
+    | { readonly text: string; readonly answer: Promise<CheckAnswer> }
+    | undefined;
+
+  const forget = (call: Call) => {
+    if (inFlight.get(call.text) === call) inFlight.delete(call.text);
+  };
 
   // One reader of a call. The call lives while a reader still waits for it,
   // so a reader that gives up never takes the answer of another away, and it
@@ -115,8 +129,8 @@ export function oneCheck(validate: ValidatePort, name?: string): OneCheck {
       /** This reader has given up: the call ends if it was the last. */
       gaveUp: () => {
         if (!off()) return;
-        if (call.waiting > 0 || held !== call) return;
-        held = undefined;
+        if (call.waiting > 0 || call.done) return;
+        forget(call);
         call.abort.abort();
       },
       /** The answer came, so this reader waits for nothing. */
@@ -124,22 +138,42 @@ export function oneCheck(validate: ValidatePort, name?: string): OneCheck {
     };
   };
 
+  const requestOf = (text: string) =>
+    name === undefined ? { text } : { name, text };
+
   const ask = (text: string): { call: Call; answer: Promise<CheckAnswer> } => {
-    if (held?.text === text) {
-      held.waiting += 1;
-      return { call: held, answer: held.answer };
+    const live = inFlight.get(text);
+    if (live) {
+      live.waiting += 1;
+      return { call: live, answer: live.answer };
     }
-    held?.abort.abort();
     const abort = new AbortController();
-    const request = name === undefined ? { text } : { name, text };
-    const answer = validate(request, abort.signal);
-    const call: Call = { text, answer, abort, waiting: 1 };
-    held = call;
-    // A call that failed is not held: the next ask for that text makes it
-    // again rather than reading the failure twice.
-    answer.catch(() => {
-      if (held === call) held = undefined;
-    });
+    const settled = last?.text === text ? last.answer : undefined;
+    const answer = settled ?? validate(requestOf(text), abort.signal);
+    const call: Call = { text, answer, abort, waiting: 1, done: false };
+    if (settled) {
+      call.done = true;
+      return { call, answer };
+    }
+    inFlight.set(text, call);
+    const ended = () => {
+      call.done = true;
+      forget(call);
+    };
+    // An answer that came, well or badly, is no longer in flight. A good one
+    // is kept so the same text is not asked about twice; a failed one is not,
+    // so the next ask for that text tries the server again rather than
+    // reading the same failure.
+    void answer.then(
+      () => {
+        ended();
+        last = { text, answer };
+      },
+      () => {
+        ended();
+        if (last?.text === text) last = undefined;
+      },
+    );
     return { call, answer };
   };
 

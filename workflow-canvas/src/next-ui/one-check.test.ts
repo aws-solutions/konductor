@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/api';
-import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
+import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { SessionLost } from '../designer/core';
 import { oneCheck } from './one-check';
 
@@ -46,7 +46,7 @@ function held() {
   const calls: { text: string; name?: string; signal: AbortSignal }[] = [];
   const answers: ((answer: CheckAnswer) => void)[] = [];
   const fails: ((error: unknown) => void)[] = [];
-  const validate = vi.fn((request: CheckRequest, signal: AbortSignal) => {
+  const validate = vi.fn((request: ValidateRequest, signal: AbortSignal) => {
     calls.push({
       text: request.text,
       ...(request.name === undefined ? {} : { name: request.name }),
@@ -128,7 +128,7 @@ describe('oneCheck', () => {
     expect((await judged).view).toBeNull();
   });
 
-  it('takes the place of a call for another text, and aborts it', async () => {
+  it('starts its own call for newer text and leaves the one before it to finish', async () => {
     const server = held();
     const shared = oneCheck(server.validate);
 
@@ -136,10 +136,10 @@ describe('oneCheck', () => {
     void shared.validate({ text: 'two' }, signalOf().signal);
 
     expect(server.calls).toHaveLength(2);
-    expect(server.calls[0]?.signal.aborted).toBe(true);
+    expect(server.calls[0]?.signal.aborted).toBe(false);
     expect(server.calls[1]?.signal.aborted).toBe(false);
-    server.fails[0]?.(new DOMException('Aborted', 'AbortError'));
-    await expect(first).rejects.toThrow('Aborted');
+    server.answers[0]?.(answerOf());
+    expect((await first).diagnostics).toHaveLength(1);
   });
 
   it('aborts the call when the reader that waits for it gives up', async () => {
@@ -215,15 +215,59 @@ describe('oneCheck', () => {
     expect((await judged).diagnostics).toHaveLength(1);
   });
 
-  it('still aborts a call that newer text replaces, whoever waits for it', async () => {
+  // The race the first check of a loaded text and the first edit set up: the
+  // view asks for the loaded text, the editor's check of the edited text
+  // starts before that answer comes, and the first reader must still get its
+  // own answer rather than the abort of a call it never called off.
+  it('answers the reader of the first check when an edit starts its own', async () => {
     const server = held();
     const shared = oneCheck(server.validate);
+    const opened = signalOf();
+    const first = shared.validate({ text: 'one' }, opened.signal);
+    reading(first);
+
+    const edited = shared.check('two');
+
+    expect(server.calls).toHaveLength(2);
+    expect(server.calls[0]?.signal.aborted).toBe(false);
+    expect(opened.signal.aborted).toBe(false);
+    server.answers[1]?.(answerOf());
+    expect((await edited).diagnostics).toHaveLength(1);
+    server.answers[0]?.(answerOf());
+    await expect(first).resolves.toBeTruthy();
+  });
+
+  it('answers both readers when an undo and a redo walk back over a text', async () => {
+    const server = held();
+    const shared = oneCheck(server.validate);
+    const opened = signalOf();
+    // The view still waits for the text as loaded.
+    const first = shared.validate({ text: 'one' }, opened.signal);
+    reading(first);
+    // Undo goes to another text, and redo comes back to the first.
+    const undone = shared.check('two');
+    const redone = shared.check('one');
+
+    // The text as loaded is already in flight, so redo joins that call.
+    expect(server.calls).toHaveLength(2);
+    expect(server.calls.every((one) => !one.signal.aborted)).toBe(true);
+    server.answers[0]?.(answerOf());
+    server.answers[1]?.(answerOf());
+
+    await expect(first).resolves.toBeTruthy();
+    expect((await undone).diagnostics).toHaveLength(1);
+    expect((await redone).diagnostics).toHaveLength(1);
+  });
+
+  it('makes one call per text, whichever reader asks first', async () => {
+    const server = held();
+    const shared = oneCheck(server.validate);
+
+    void shared.check('one');
+    void shared.validate({ text: 'one' }, signalOf().signal);
     void shared.check('one');
 
-    void shared.validate({ text: 'two' }, signalOf().signal);
-
-    expect(server.calls[0]?.signal.aborted).toBe(true);
-    expect(server.calls[1]?.signal.aborted).toBe(false);
+    expect(server.calls).toHaveLength(1);
   });
 
   it('makes the call again for a text whose call failed', async () => {
