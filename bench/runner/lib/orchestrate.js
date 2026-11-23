@@ -259,13 +259,13 @@ function preflightTable(arms, prepared, errors) {
 // One rerun of a run the model service refused (a throttle), after a minute (DEBT D-138; pilot-wave.sh reruns any left).
 const DEFAULT_THROTTLE_RETRY = Object.freeze({ max: 1, waitMs: 60000 });
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, resume = null, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS, throttleRetry = DEFAULT_THROTTLE_RETRY, pairOrder = 'konductor-first', fillBudget = null }) {
-  const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
-  // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
-  const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
-  let guardReason = null;
-  // Consecutive login failures (in completion order) mean the login is gone; every later run would fail the same way.
-  // A run whose agent binary could not be launched counts toward the same limit.
+/**
+ * The login and launch stop of one batch. Consecutive login failures (in completion order) mean the login is gone, so
+ * every later run would fail the same way; a run whose agent binary could not be launched counts toward the same
+ * `maxAuthFailures`. `loginStillValid()` re-checks the login with `loginCheck` at most every `loginCheckEveryMs`, one
+ * check at a time; runs already in flight finish. Returns { authStop, trip, loginStillValid }.
+ */
+function authGuard({ maxAuthFailures, loginCheck, loginCheckEveryMs, log }) {
   const authStop = { limit: maxAuthFailures, consecutive: 0, tripped: false, reason: null, kind: null, skipped: 0 };
   const trip = (reason, kind = 'auth') => {
     if (authStop.tripped) return;
@@ -274,7 +274,6 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     authStop.kind = kind;
     log(`${kind === 'launch' ? 'LAUNCH FAILURE' : 'LOGIN FAILURE'}: ${reason}`);
   };
-  // Long chunks re-check the login between runs. One check at a time; runs already in flight finish.
   let lastLoginCheck = Date.now();
   let probing = null;
   const loginStillValid = async () => {
@@ -290,12 +289,11 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     await probing;
     return !authStop.tripped;
   };
-  const shouldSkip = (item) => {
-    if (authStop.tripped) { guardReason = authStop.reason; return true; }
-    guardReason = study.shouldStop() ? study.stopReason() : null;
-    return guardReason !== null || ledger.shouldSkip(item);
-  };
-  let active = 0;
+  return { authStop, trip, loginStillValid };
+}
+
+/** The cells this command runs: the seeded plan, less the cells `resume` keeps; logs what an existing result means. */
+function batchPlan({ tasks, arms, replicates, seed, replicateOffset, pairOrder, resume, outDir, log }) {
   let plan = planRuns(tasks, arms, replicates, seed, replicateOffset, pairOrder);
   if (resume) {
     const { todo, kept } = resumePlan(plan, outDir, resume);
@@ -305,6 +303,58 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   const clobbered = existingResults(plan, outDir);
   if (clobbered.length && resume) log(`resume: ${clobbered.length} of them have a result.json that will be replaced (never ran${resume.errors ? ', or errored' : ''})`);
   else if (clobbered.length) log(`WARNING: ${clobbered.length} of ${plan.length} planned cell(s) already have a result.json in ${outDir} and will be OVERWRITTEN. Use a new --out, or --replicate-offset N to add replicates after the existing ones.`);
+  return plan;
+}
+
+/**
+ * --fill-skipped: before the batch is done, every cell the budget skipped runs once more under the larger fill budget
+ * (this command's spend, like --budget-credits). `rerun(items)` runs them; their results replace the skipped ones in
+ * `results` and `state.results`. Returns { budget, tried, filled, left }, or null when no cell was budget_skipped.
+ */
+async function fillSkipped({ plan, results, state, ledger, study, fillBudget, log, rerun }) {
+  const again = plan.map((item, i) => [item, i]).filter(([, i]) => results[i]?.status === 'budget_skipped');
+  if (!again.length) return null;
+  ledger.raise(fillBudget);
+  study.raise?.(fillBudget);
+  log(`fill: ${again.length} budget_skipped cell(s) run again under the fill budget ${fillBudget} (charged so far ${ledger.charged.toFixed(3)})`);
+  const refilled = await rerun(again.map(([item]) => item));
+  again.forEach(([, i], j) => {
+    const k = state.results.indexOf(results[i]);
+    if (k >= 0) state.results.splice(k, 1);
+    results[i] = refilled[j];
+  });
+  const left = refilled.filter((r) => r?.status === 'budget_skipped').length;
+  const fill = { budget: fillBudget, tried: again.length, filled: again.length - left, left };
+  log(`fill: ${fill.filled} of ${fill.tried} filled, ${left} still budget_skipped`);
+  return fill;
+}
+
+/** Closes the installs-gate window of the batch, writes GATE_FILE and logs its verdict. Returns the gate, or null. */
+function finishGate({ batchWindow, results, gateStrict, batchFrom, outDir, log }) {
+  const rawGate = batchWindow ? batchWindow.end() : null;
+  const judged = rawGate ? judgeBatch({ gate: rawGate, results, strict: gateStrict, window: { from: batchFrom, to: new Date().toISOString() } }) : null;
+  const installsGate = judged ? judged.gate : null;
+  if (installsGate) {
+    fs.writeFileSync(path.join(outDir, GATE_FILE), `${JSON.stringify({ checkedAt: new Date().toISOString(), ...installsGate }, null, 2)}\n`);
+    if (judged.warning) log(`${judged.warning} See ${GATE_FILE}.`);
+    if (!installsGate.ok) log(gateStrict ? `ISOLATION FAILURE: ${describeChange(installsGate)}. The runs of this batch are not trustworthy; see ${GATE_FILE}.` : `${judged.alarm} See ${GATE_FILE}.`);
+  }
+  return installsGate;
+}
+
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, resume = null, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS, throttleRetry = DEFAULT_THROTTLE_RETRY, pairOrder = 'konductor-first', fillBudget = null }) {
+  const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
+  // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
+  const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
+  let guardReason = null;
+  const { authStop, trip, loginStillValid } = authGuard({ maxAuthFailures, loginCheck, loginCheckEveryMs, log });
+  const shouldSkip = (item) => {
+    if (authStop.tripped) { guardReason = authStop.reason; return true; }
+    guardReason = study.shouldStop() ? study.stopReason() : null;
+    return guardReason !== null || ledger.shouldSkip(item);
+  };
+  let active = 0;
+  const plan = batchPlan({ tasks, arms, replicates, seed, replicateOffset, pairOrder, resume, outDir, log });
   const batchWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   const batchFrom = new Date().toISOString();
 
@@ -390,34 +440,11 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   };
 
   const results = await runPool(plan, parallel, worker, shouldSkip, onSkip);
-  // --fill-skipped: before the batch is done, every cell the budget skipped runs once more under the larger fill budget
-  // (this command's spend, like --budget-credits). A login or launch stop is never filled: the same failure would follow.
-  let fill = null;
-  if (fillBudget != null && !authStop.tripped) {
-    const again = plan.map((item, i) => [item, i]).filter(([, i]) => results[i]?.status === 'budget_skipped');
-    if (again.length) {
-      ledger.raise(fillBudget);
-      study.raise?.(fillBudget);
-      log(`fill: ${again.length} budget_skipped cell(s) run again under the fill budget ${fillBudget} (charged so far ${ledger.charged.toFixed(3)})`);
-      const refilled = await runPool(again.map(([item]) => item), parallel, (item) => worker(item, true), shouldSkip, onSkip);
-      again.forEach(([, i], j) => {
-        const k = state.results.indexOf(results[i]);
-        if (k >= 0) state.results.splice(k, 1);
-        results[i] = refilled[j];
-      });
-      const left = refilled.filter((r) => r?.status === 'budget_skipped').length;
-      fill = { budget: fillBudget, tried: again.length, filled: again.length - left, left };
-      log(`fill: ${fill.filled} of ${fill.tried} filled, ${left} still budget_skipped`);
-    }
-  }
-  const rawGate = batchWindow ? batchWindow.end() : null;
-  const judged = rawGate ? judgeBatch({ gate: rawGate, results, strict: gateStrict, window: { from: batchFrom, to: new Date().toISOString() } }) : null;
-  const installsGate = judged ? judged.gate : null;
-  if (installsGate) {
-    fs.writeFileSync(path.join(outDir, GATE_FILE), `${JSON.stringify({ checkedAt: new Date().toISOString(), ...installsGate }, null, 2)}\n`);
-    if (judged.warning) log(`${judged.warning} See ${GATE_FILE}.`);
-    if (!installsGate.ok) log(gateStrict ? `ISOLATION FAILURE: ${describeChange(installsGate)}. The runs of this batch are not trustworthy; see ${GATE_FILE}.` : `${judged.alarm} See ${GATE_FILE}.`);
-  }
+  // --fill-skipped: a login or launch stop is never filled, because the same failure would follow.
+  const fill = fillBudget != null && !authStop.tripped
+    ? await fillSkipped({ plan, results, state, ledger, study, fillBudget, log, rerun: (items) => runPool(items, parallel, (item) => worker(item, true), shouldSkip, onSkip) })
+    : null;
+  const installsGate = finishGate({ batchWindow, results, gateStrict, batchFrom, outDir, log });
   return { installsGate, authStop, fill, results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
 }
 
