@@ -32,6 +32,16 @@ test('a release that pins wheels refuses a plant Python with other or missing wh
   } finally { r.cleanup(); }
 });
 
+test('a wheel pinned as * (plant-arm-r1) only has to be installed', () => {
+  const r = rig({ manifest: { wheels: { mujoco: '3.13.0', numpy: '*', cedarpy: '*' } } });
+  try {
+    const any = fakePython(path.join(r.root, 'any'), { mujoco: '3.13.0', numpy: '2.5.5', cedarpy: '4.12.2' });
+    assert.equal(suiteOf(r, { opts: { 'plant-python': any } }).python, any);
+    const none = fakePython(path.join(r.root, 'none'), { mujoco: '3.13.0', numpy: null, cedarpy: '4.12.2' });
+    assert.throws(() => suiteOf(r, { opts: { 'plant-python': none } }), /numpy missing \(the release pins \*\); pip install mujoco==3\.13\.0 numpy cedarpy/);
+  } finally { r.cleanup(); }
+});
+
 test('a release with no wheels is not checked', () => {
   const r = rig();
   try {

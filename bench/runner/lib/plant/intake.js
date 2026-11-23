@@ -224,8 +224,10 @@ function checkWheels(wheels, python) {
   let have = null;
   try { have = JSON.parse(r.stdout); } catch { /* reported below */ }
   if (r.status !== 0 || !have) throw new ReleaseRefused(`the plant Python ${python} could not report its wheels (${(r.stderr || r.error?.message || '').trim().split('\n').at(-1)})`);
-  const off = Object.entries(wheels).filter(([k, v]) => have[k] !== v).map(([k, v]) => `${k} ${have[k] ?? 'missing'} (the release pins ${v})`);
-  if (off.length) throw new ReleaseRefused(`the plant Python ${python} has other wheels than the release pins: ${off.join(', ')}; pip install ${Object.entries(wheels).map(([k, v]) => `${k}==${v}`).join(' ')}`);
+  // `*` (the pin of plant-arm-r1, signed before exact pins) asks only that the wheel is installed.
+  const fits = (k, v) => (v === '*' ? have[k] != null : have[k] === v);
+  const off = Object.entries(wheels).filter(([k, v]) => !fits(k, v)).map(([k, v]) => `${k} ${have[k] ?? 'missing'} (the release pins ${v})`);
+  if (off.length) throw new ReleaseRefused(`the plant Python ${python} has other wheels than the release pins: ${off.join(', ')}; pip install ${Object.entries(wheels).map(([k, v]) => (v === '*' ? k : `${k}==${v}`)).join(' ')}`);
 }
 
 /** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites with isolation). */

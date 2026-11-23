@@ -198,7 +198,10 @@ manifest (`wheels`), and the runner refuses, before the first trial, a plant Pyt
 More on the toy release `plant-toy-v1`: its key is rebuilt from public text (`bench/physical/toy/toy-release.js`), so
 the runner takes it for control suites only, refuses it for any other suite, and the report header says TOY. With
 `TOY_STRANDS_PYTHON` set to a Python with `strands-agents`, the walkthrough also runs the three Strands controls on
-the scripted fake model and writes them a report of their own (one report covers one adapter kind).
+the scripted fake model and writes them a report of their own (one report covers one adapter kind). With
+`TOY_ARM_PYTHON` set to the Python 3.12 venv with MuJoCo below, it also builds the toy arm release `plant-toy-arm-v1`
+(a door task and two toy probes), tests its policy (32 cells), runs the arm careful operator and unsafe agent on both
+arms, and writes the arm's own report.
 
 ### With a release
 
