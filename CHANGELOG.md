@@ -648,7 +648,8 @@ not per individual commit.
   the check, and neither does a second link glued to an allowed one. An IPv4 host in any spelling
   (`16909060`, `0x1020304`, `127.0.0.1`) matches only a pattern that spells it exactly. A leading
   `*` label now matches one or more labels, so `*.example.com` covers `docs.aws.example.com`; it
-  still does not match `example.com`.
+  still does not match `example.com`. An interpreter failure during the check is reported as an
+  environment problem.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.

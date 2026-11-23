@@ -1512,3 +1512,76 @@ def test_ip_literal_hosts_need_an_exact_pattern(tmp_path, pattern, url, allowed)
     proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
     result = run_validator(proposed, target, cwd=tmp_path)
     assert (result.returncode == 0) == allowed, f"{pattern!r} {url!r}: {result.stderr}"
+
+# ---------------------------------------------------------------------------
+# The URL check runs in python3. When the interpreter fails, the entry is
+# still rejected, but the message names an environment problem rather than
+# claiming a URL was blocked. The stub runs the real interpreter for every
+# other python3 call (config parsing, the budget count) and fails only the
+# URL check, which it recognizes by the BLOCKED: marker that check prints.
+# ---------------------------------------------------------------------------
+
+
+def _url_check_stub(fake_bin: Path, body: str) -> None:
+    real = subprocess.run(
+        ["bash", "-c", "command -v python3"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    stub = fake_bin / "python3"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [[ "${1:-}" == "-" ]]; then\n'
+        '  script="$(cat)"\n'
+        '  if [[ "$script" == *"BLOCKED:"* ]]; then\n'
+        f"    {body}\n"
+        "  fi\n"
+        f'  exec "{real}" "$@" <<< "$script"\n'
+        "fi\n"
+        f'exec "{real}" "$@"\n'
+    )
+    stub.chmod(0o755)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "exit 2",
+        "exit 127",
+        # Exit 1 without the BLOCKED: marker is a crash, not a verdict.
+        "echo 'Traceback (most recent call last):' >&2; exit 1",
+        # Exit 0 without the OK marker is not a verdict either.
+        "exit 0",
+    ],
+)
+def test_url_check_interpreter_failure_is_reported_as_environment(tmp_path, body):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    fake_bin = tmp_path / "fakebin"
+    fake_bin.mkdir()
+    _url_check_stub(fake_bin, body)
+    env = {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+
+    for url in ("https://evil.test/x", "https://docs.example.com/x"):
+        proposed = f"- [2026-11-23] [origin:agent] See {url}\n"
+        result = run_validator(proposed, target, cwd=tmp_path, env=env)
+        assert result.returncode == 1, f"{body!r} {url!r} must fail closed: {result.stderr}"
+        assert not target.exists()
+        assert "could not invoke the interpreter" in result.stderr, result.stderr
+        assert "blocked external URL" not in result.stderr, result.stderr
+
+
+def test_url_check_runs_once_per_entry_not_once_per_url(tmp_path):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    fake_bin = tmp_path / "fakebin"
+    fake_bin.mkdir()
+    log = tmp_path / "calls.log"
+    _url_check_stub(fake_bin, f'echo call >> "{log}"')
+    env = {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+    links = " ".join(f"https://d{i}.example.com/" for i in range(8))
+    proposed = (
+        f"- [2026-11-23] [origin:agent] Links {links}\n"
+        f"- [2026-11-23] [origin:agent] More https://a.example.com/ https://b.example.com/\n"
+    )
+    result = run_validator(proposed, target, cwd=tmp_path, env=env)
+    assert result.returncode == 0, result.stderr
+    assert log.read_text().count("call") == 2
