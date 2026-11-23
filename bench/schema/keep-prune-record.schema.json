@@ -746,6 +746,29 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "checks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "ok",
+                        "detail"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "detail": {
+                          "type": "string"
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -1202,6 +1225,29 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "checks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "ok",
+                        "detail"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "detail": {
+                          "type": "string"
+                        }
+                      }
                     }
                   }
                 }
