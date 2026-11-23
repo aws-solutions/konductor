@@ -5,8 +5,8 @@
 # run it only with the owner's approved cap, after the baseline is written and signed off.
 #
 #   bash bench/cap/pilot/run-pilot.sh --dry-run             # free: the calls, the worst case, the ledger, any blocker
-#   bash bench/cap/pilot/run-pilot.sh --cap 8760            # paid: 584 calls, 8,760 credits counted at 15 per call
-#                                                           # (about 334 real); stops at the cap, the same command resumes
+#   bash bench/cap/pilot/run-pilot.sh --cap 8760            # paid: 552 calls, at most 8,280 counted at 15 per call
+#                                                           # (about 305 real); stops at the cap, the same command resumes
 #
 # Every call is a one-turn kiro-cli call with no tools, counted at the larger of 15 and its real credits; the ledger
 # is read before each one and a call that could pass the cap is refused. The run stops before its first call when the
@@ -18,7 +18,7 @@
 set -euo pipefail
 
 main() {
-  local here repo dry cap work run model bin authdb lock baselines
+  local here repo dry cap work run model bin authdb lock baselines stale=""
   here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   baselines=${KP_BASELINES:-}
   repo=$(cd "$here/../../.." && pwd)
@@ -56,6 +56,11 @@ main() {
   mkdir -p "$(dirname "$lock")"
   exec 9>"$lock"
   flock -x 9
+  # Under the lock no call of ours is running, so any scratch HOME left here is from a killed run (SIGKILL skips the
+  # cleanup) and still holds a copy of the sign-in database: remove it before the first call.
+  while IFS= read -r stale; do
+    chmod -R u+rwX "$stale" && find "$stale" -depth -delete && echo "removed a stale scratch HOME (sign-in copy) from a killed run: $stale"
+  done < <(find "$work/scratch" -mindepth 1 -maxdepth 1 -type d -name 'home-*' 2>/dev/null)
   "${cmd[@]}"
 }
 

@@ -93,7 +93,17 @@ saved, so the same command resumes after a stop or a larger cap. The run stops b
 has no fresh, signed-off baseline or the panel lacks three families. The baseline can live outside the checkout
 (`KP_BASELINE_OUT` for step 1, `KP_BASELINES` for step 3, which becomes `cap unit-stage --baselines DIR`). Both
 scripts take `--dry-run`, which prints the calls, the worst case, the controls it loaded and anything that would stop
-the run, and makes no call. `bench/runner/test/cap-paid.test.js` runs both scripts and both steps end to end on a fake
+the run, and makes no call.
+
+Four safeguards came from the 2026-11-23 review. A judge reply that cannot be read is asked once more, and both calls
+are counted. When replies are still unreadable and a reading counts under 12 of 16, the record says so with a
+`FLAG:` line. A failed control stops the run before the unit's calls. The ledger counts each call at 15 before it
+starts, so a killed call is never under-counted. The baseline and the record also name the bench commit that made them.
+
+What the quick pilot can show: that the pipeline, the controls and the prices work on real models. It cannot grade the
+file. Its drop arm is a bare model with no konductor context, so the rubric reading shows a large gap by construction.
+With 16 tasks, a gap under about 0.75 points on the 1 to 5 scale cannot be seen. Grading a file needs the deep check
+against konductor without the file (`cap variant --drop`). `bench/runner/test/cap-paid.test.js` runs both scripts and both steps end to end on a fake
 kiro-cli (`fake-kp-kiro.js`).
 
 ## What is missing
@@ -109,14 +119,15 @@ kiro-cli (`fake-kp-kiro.js`).
 ## Cost (dry-run estimates, no run made)
 
 Per unit, both depths: 1,264 model calls (176 answers, 32 checklists, 1,056 judge calls). Judge calls dominate:
-three judges score every answer twice. The controls add 1,080 calls per stage.
+three judges score every answer twice. The controls add 1,016 calls per stage (the dose ladder's pairs carry their
+own rubric, so they need no checklist call).
 
 | Stage | Units | Calls | Credits, typical | Credits, answers as agent runs | Credits, worst case | USD, Bedrock |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2 agent files | 8 | 11,192 | about 6,300 | about 11,900 | 167,880 | about $101 |
-| 3 SOPs | 19 | 25,096 | about 14,200 | about 27,000 | 376,440 | about $228 |
-| 4 context | 4 | 6,136 | about 3,500 | about 6,400 | 92,040 | about $54 |
-| Pilot: 1 unit, quick only | 1 | 584 | about 334 | about 513 | 8,760 | about $4.40 |
+| 2 agent files | 8 | 11,128 | about 6,300 | about 11,900 | 166,920 | about $101 |
+| 3 SOPs | 19 | 25,032 | about 14,100 | about 27,000 | 375,480 | about $228 |
+| 4 context | 4 | 6,072 | about 3,400 | about 6,400 | 91,080 | about $54 |
+| Pilot: 1 unit, quick only | 1 | 552 | about 305 | about 484 | 8,280 | about $4.20 |
 
 The prices were checked on 2026-11-22 against the LITE run (205 agent runs, 720 judge calls) and the forced-skills run
 (48 agent runs). One price is measured: a judge call costs about $0.005 on Bedrock (it was $0.007 here before). One
@@ -137,7 +148,7 @@ run). Still open:
 3. The deep-depth paid provider and the live delegation run, which are not built.
 
 The cost table above counts both depths. At quick depth a unit is 240 calls (3,600 counted credits), and the controls
-add 344 once per stage run, when the stage's units share one run id.
+add 312 once per stage run, when the stage's units share one run id.
 
 ## Appendix A: the rules kept from stage 1
 
@@ -153,8 +164,8 @@ add 344 once per stage run, when the stage's units share one run id.
 
 - Quick: 2 answers per task (with, without), 1 checklist per task, and 2 readings × 3 judges per answer.
 - Deep: 3 arms (with, without, A/A) × 3 replicates per task, 1 checklist per task, and 2 readings × 3 judges per answer.
-- Controls, once per depth: the convention control (8 tasks) as a unit, and the dose ladder (32 pairs: 1 checklist and
-  2 answers × 3 judges each).
+- Controls, once per depth: the convention control (8 tasks) as a unit, and the dose ladder (32 pairs: 2 authored
+  answers × 3 judges each; a pair carries its rubric, so it needs no checklist call).
 Prices per call (`COSTS` in `bench/cap/unitstage.js`), checked 2026-11-22:
 
 | Price | Value | Measured? | Source |

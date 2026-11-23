@@ -14,7 +14,7 @@
 
 const path = require('node:path');
 const { sha256 } = require('../runner/lib/util.js');
-const { paidCall, paidJson } = require('./paidcall.js');
+const { paidCall, paidJson, ReplyUnreadable } = require('./paidcall.js');
 
 const VERSION = 'kiro-cli-one-turn/1';
 const LABELS = new Set(['MET', 'PARTIAL', 'MISSING']);
@@ -60,18 +60,35 @@ function createKiroProvider({ paid, callsDir, writerModel, frame }) {
     }).value;
   }
 
-  // An unreadable judgment gives null labels: scoreOf reads it as invalid, so the task does not count (PANEL_RULES 3).
+  // Judge replies that could not be read: `reasked` got their one re-ask, `lost` were still unreadable after it.
+  const stats = { reasked: 0, lost: 0 };
+
+  /** The labels of a judge reply `j`, upper-cased (`Met` reads as MET), or a throw when they are not one per item. */
+  const labelsOf = (j, items) => {
+    const labels = Array.isArray(j.labels) ? j.labels.map((l) => String(l).trim().toUpperCase()) : null;
+    if (!labels || labels.length !== items || !labels.every((l) => LABELS.has(l))) throw new Error(`wanted ${items} labels of MET, PARTIAL or MISSING`);
+    return labels;
+  };
+
+  // An unreadable reply is moved aside and asked once more (both calls are counted). If the re-ask cannot be read
+  // either, the labels are null: scoreOf reads them as invalid and the task does not count (PANEL_RULES 3), and
+  // `stats.lost` says how many, so a reading under 12 of 16 can name the cause.
   function judge({ seat, checklist, answer: text }) {
-    const r = paidCall(call('judge', seat, judgePrompt(checklist, text)));
+    const o = call('judge', seat, judgePrompt(checklist, text));
+    const ask = () => paidJson(o, (j) => labelsOf(j, checklist.length)).value;
     let labels = null;
-    try {
-      const j = JSON.parse(/\{[\s\S]*\}/.exec(r.text)?.[0] ?? 'null');
-      if (Array.isArray(j?.labels) && j.labels.every((l) => LABELS.has(l))) labels = j.labels;
-    } catch { /* stays null */ }
+    try { labels = ask(); } catch (e) {
+      if (!(e instanceof ReplyUnreadable)) throw e;
+      stats.reasked += 1;
+      try { labels = ask(); } catch (e2) {
+        if (!(e2 instanceof ReplyUnreadable)) throw e2;
+        stats.lost += 1;
+      }
+    }
     return { labels, version: `${VERSION} ${seat}` };
   }
 
-  return { name: 'kiro', version: VERSION, answer, writeChecklist, judge };
+  return { name: 'kiro', version: VERSION, answer, writeChecklist, judge, stats };
 }
 
 module.exports = { VERSION, createKiroProvider, withUnit, checklistPrompt, judgePrompt };

@@ -21,6 +21,8 @@ const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
 const { unitManifest, UNIT_BASELINES_DIR, PAID_FRAME } = require('./units.js');
 const { WORST_PER_CALL, ledgerSpent, assertOutsideHome, paidJson } = require('./paidcall.js');
 const { readJsonFile } = require('./checkedjson.js');
+const { commitOf } = require('./unitstage.js');
+const { BENCH_DIR } = require('../runner/lib/tasks.js');
 
 const WRITER = 'glm-5';
 const REVIEWER = 'deepseek-3.2';
@@ -136,7 +138,7 @@ function authorUnit({ kind, name, repo, briefsFile, out, paid, dryRun = false })
   const baseline = {
     format_version: 1, kind, name, unit_sha256: unit.sha256,
     source: {
-      commit: null, briefs: path.basename(briefsFile), writtenBy: WRITER, reviewedBy: REVIEWER, rule: 'one fix by the writer, then drop and record; never fixed by hand',
+      commit: commitOf(BENCH_DIR), briefs: path.basename(briefsFile), writtenBy: WRITER, reviewedBy: REVIEWER, rule: 'one fix by the writer, then drop and record; never fixed by hand',
       fixed: results.flatMap((r) => r.fixed), dropped, ledgerCredits: paid.ledger ? ledgerSpent(paid.ledger) : null, signedOffBy: null,
     },
     batches: results.map((r) => ({ batch: r.batch, tasks: r.tasks })),

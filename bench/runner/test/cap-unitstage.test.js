@@ -109,16 +109,17 @@ test('the dry-run estimate counts every call of a stage and prices it typical an
   // Per unit, 16 tasks: quick 32 answers, 16 checklists, 192 judge calls; deep (3 replicates, 3 arms) 144, 16, 864.
   assert.deepEqual(e.perUnit, { answers: 176, checklists: 32, judgeCalls: 1056, calls: 1264 });
   // Controls once per depth: the convention control (8 tasks) at both depths and the dose ladder (32 pairs) at both.
-  assert.deepEqual(e.controls, { answers: 88, checklists: 80, judgeCalls: 912, calls: 1080 });
-  assert.equal(e.calls, 2 * 1264 + 1080);
+  // A ladder pair carries its rubric, so it makes no checklist call.
+  assert.deepEqual(e.controls, { answers: 88, checklists: 16, judgeCalls: 912, calls: 1016 });
+  assert.equal(e.calls, 2 * 1264 + 1016);
   assert.equal(e.credits.worst, e.calls * COSTS.credits.worstPerCall);
   assert.ok(e.credits.typical < e.credits.asAgentRuns && e.credits.asAgentRuns < e.credits.worst && e.usd.typical > 0);
   // The measured judge price (LITE median $0.005 per call) prices the judge calls in USD.
   assert.equal(COSTS.usd.judge, 0.005);
-  // A pilot: one unit, quick only. 240 calls for the unit; controls 120 (convention) and 224 (ladder).
+  // A pilot: one unit, quick only. 240 calls for the unit; controls 120 (convention) and 192 (ladder judges).
   const pilot = estimateStage({ kind: 'sop', units, depths: ['quick'], maxUnits: 1 });
   assert.equal(pilot.unitsRun, 1);
-  assert.equal(pilot.calls, 240 + 120 + 224);
+  assert.equal(pilot.calls, 240 + 120 + 192);
 });
 
 test('this checkout: the free estimate prints per stage, and a real (non-stub) run is never started', () => {

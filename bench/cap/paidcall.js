@@ -64,6 +64,11 @@ function paidCall({ model, prompt, out, ledger, cap, workDir, bin = 'kiro-cli', 
     throw new PaidCallRefused(why);
   }
   fs.mkdirSync(workDir, { recursive: true });
+  // The reservation is written before the call, so a kill during it (Ctrl-C, SIGKILL, a reboot) still leaves the call
+  // counted at 15; the settle line after it adds the real credits above 15. The ledger never under-counts.
+  fs.mkdirSync(path.dirname(ledger), { recursive: true });
+  const at = new Date().toISOString();
+  fs.appendFileSync(ledger, `${JSON.stringify({ label, model, counted: WORST_PER_CALL, reserved: true, at })}\n`);
   const home = fs.mkdtempSync(path.join(workDir, 'home-'));
   const cwd = path.join(home, 'cwd');
   const tmpdir = path.join(home, 'tmp');
@@ -84,8 +89,7 @@ function paidCall({ model, prompt, out, ledger, cap, workDir, bin = 'kiro-cli', 
   const agg = aggregateStream(parseStream(r.stdout ?? '').events);
   const finished = agg.runFinishedStatus === 'success' && agg.meteringEntries > 0;
   const counted = countedOf(agg.credits, finished);
-  fs.mkdirSync(path.dirname(ledger), { recursive: true });
-  fs.appendFileSync(ledger, `${JSON.stringify({ label, model, counted, real: agg.meteringEntries ? agg.credits : null, rc: r.status, finished, at: new Date().toISOString() })}\n`);
+  fs.appendFileSync(ledger, `${JSON.stringify({ label, model, counted: counted - WORST_PER_CALL, settles: at, callCounted: counted, real: agg.meteringEntries ? agg.credits : null, rc: r.status, finished, at: new Date().toISOString() })}\n`);
   if (!finished || !agg.finalText) throw new Error(`${label}: ${model} gave no finished reply (exit ${r.status}); counted ${counted} credits, see ${out}.err`);
   const reply = { model, text: agg.finalText, real: agg.credits, counted };
   fs.writeFileSync(done, `${JSON.stringify(reply, null, 2)}\n`);
@@ -99,6 +103,9 @@ function jsonOf(text) {
   return JSON.parse(m[0]);
 }
 
+/** A reply that ran (and was counted) but could not be read; its saved file was moved aside, so a re-ask makes a new call. */
+class ReplyUnreadable extends Error {}
+
 /**
  * paidCall, then `parse(json)` of the reply. When the reply cannot be read, its saved file is moved aside
  * (`<out>.bad-<n>.json`), so a rerun asks again (and counts again), and the error is thrown.
@@ -111,8 +118,8 @@ function paidJson(o, parse) {
     let n = 1;
     while (fs.existsSync(`${o.out}.bad-${n}.json`)) n += 1;
     fs.renameSync(`${o.out}.json`, `${o.out}.bad-${n}.json`);
-    throw new Error(`${path.basename(o.out)}: the reply of ${o.model} could not be read (${e.message}); kept as ${path.basename(o.out)}.bad-${n}.json, a rerun asks again`);
+    throw new ReplyUnreadable(`${path.basename(o.out)}: the reply of ${o.model} could not be read (${e.message}); kept as ${path.basename(o.out)}.bad-${n}.json, a rerun asks again`);
   }
 }
 
-module.exports = { WORST_PER_CALL, PaidCallRefused, ledgerSpent, assertOutsideHome, countedOf, paidCall, jsonOf, paidJson };
+module.exports = { WORST_PER_CALL, PaidCallRefused, ReplyUnreadable, ledgerSpent, assertOutsideHome, countedOf, paidCall, jsonOf, paidJson };

@@ -18,7 +18,7 @@
 set -euo pipefail
 
 main() {
-  local here repo dry cap work bin authdb out lock
+  local here repo dry cap work bin authdb out lock stale=""
   here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   repo=$(cd "$here/../../.." && pwd)
   dry=0
@@ -52,6 +52,11 @@ main() {
   mkdir -p "$(dirname "$lock")"
   exec 9>"$lock"
   flock -x 9
+  # Under the lock no call of ours is running, so any scratch HOME left here is from a killed run (SIGKILL skips the
+  # cleanup) and still holds a copy of the sign-in database: remove it before the first call.
+  while IFS= read -r stale; do
+    chmod -R u+rwX "$stale" && find "$stale" -depth -delete && echo "removed a stale scratch HOME (sign-in copy) from a killed run: $stale"
+  done < <(find "$work/author" -mindepth 1 -maxdepth 1 -type d -name 'home-*' 2>/dev/null)
   "${cmd[@]}"
 }
 
