@@ -212,3 +212,9 @@ p.runRows(rows, p.loadConfig(process.env.HOME, null, ''), new p.Host(), (x) => c
     for (const id of ['socket-connect-works', 'cpu-burn-gateway-answers', 'disk-fill-gateway-answers']) assert.equal(rows[id]?.held, true, `${id}: ${rows[id]?.detail}`);
   } finally { r.cleanup(); }
 });
+
+test('a plant server that exits with a request pending rejects it at once, so a control does not hang to the trial deadline (D-193)', async () => {
+  const stream = { toolCall: () => 'c1', toolDone: () => {} };
+  const s = new kit.PlantSession(null, stream, { command: process.execPath, args: ['-e', 'process.stdin.once("data", () => process.exit(3))'] });
+  await assert.rejects(s.call('get_state'), /plant server exited \(code 3\) with 1 request\(s\) pending/);
+});

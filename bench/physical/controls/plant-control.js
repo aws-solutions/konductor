@@ -185,10 +185,6 @@ function replyOf(msg) {
   return { executed: !msg.result?.isError, lost: false, payload: msg.result?.structuredContent ?? null, text };
 }
 
-/**
- * One MCP session with the plant server of the agent file under `home`, started the way Kiro CLI starts it. Every call is
- * written to `stream` and kept in `sent` (`{tool, args, executed, lost}`), so a control's side file lists exactly what it sent.
- */
 /** The plant server entry of the agent file under `home`. */
 const serverOf = (home) => JSON.parse(fs.readFileSync(path.join(home, '.kiro', 'agents', `${SERVER}.json`), 'utf8')).mcpServers[SERVER];
 
@@ -215,6 +211,10 @@ function probeDiscover(home) {
   });
 }
 
+/**
+ * One MCP session with the plant server of the agent file under `home`, started the way Kiro CLI starts it. Every call is
+ * written to `stream` and kept in `sent` (`{tool, args, executed, lost}`), so a control's side file lists exactly what it sent.
+ */
 class PlantSession {
   /** `server` is the plant server entry (`{command, args}`); by default the one in the Kiro agent file under `home`. */
   constructor(home, stream, server = serverOf(home)) {
@@ -232,17 +232,26 @@ class PlantSession {
         buf = buf.slice(at + 1);
       }
     });
+    // A server that dies (a gateway crash) fails every pending request now, not at the trial deadline (D-193).
+    const failAll = (why) => {
+      const pending = [...this.waiting.values()];
+      this.waiting.clear();
+      for (const { reject } of pending) reject(new Error(`plant server ${why} with ${pending.length} request(s) pending`));
+    };
+    this.child.on('exit', (code, signal) => failAll(`exited (${signal ? `signal ${signal}` : `code ${code}`})`));
+    this.child.on('error', (e) => failAll(`failed to start (${e.message})`));
+    this.child.stdin.on('error', () => {}); // EPIPE after the server died; the exit handler reports it
   }
 
   answer(msg) {
-    const resolve = this.waiting.get(msg.id);
+    const pending = this.waiting.get(msg.id);
     this.waiting.delete(msg.id);
-    resolve?.(msg);
+    pending?.resolve(msg);
   }
 
   request(method, params) {
     const id = this.nextId++;
-    const reply = new Promise((resolve) => this.waiting.set(id, resolve));
+    const reply = new Promise((resolve, reject) => this.waiting.set(id, { resolve, reject }));
     this.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
     return reply;
   }

@@ -24,11 +24,14 @@ function stubCs() {
   return d;
 }
 
-/** A cedarpy Python 3.12 and the counted-set folder, or null when the host has neither (then the full case skips). */
+/**
+ * A cedarpy Python 3.12 (BENCH_ARM_PYTHON) and the private counted-set folder (PLANT_CS), or null when either is not
+ * given or not there (then the full case skips). No host path is assumed (D-182).
+ */
 function liveEnv() {
-  const venv = `/local/home/${process.env.USER}/.kiro/crew/workspace-member-mate/worktrees/konductor-arm/.venv/bin/python`;
-  const cs = `/local/home/${process.env.USER}/.kiro/crew/workspace-member-mate/plant-counted-set`;
-  if (!fs.existsSync(venv) || !fs.existsSync(path.join(cs, 'release', 'tasks'))) return null;
+  const venv = process.env.BENCH_ARM_PYTHON;
+  const cs = process.env.PLANT_CS;
+  if (!venv || !cs || !fs.existsSync(venv) || !fs.existsSync(path.join(cs, 'release', 'tasks'))) return null;
   if (spawnSync(venv, ['-c', 'import cedarpy'], { stdio: 'ignore' }).status !== 0) return null;
   return { venv, cs };
 }
@@ -52,7 +55,13 @@ test('usage errors exit 64 and --list prints waves 0 to 3', () => {
 test('a missing PLANT_CS stops before any work', () => {
   const r = run(['0', '--prepare-only'], { PLANT_CS: '/no/such/counted-set' });
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /STOP: set PLANT_CS/);
+  assert.match(r.stderr, /STOP: set PLANT_CS .*\/no\/such\/counted-set has none/);
+});
+
+test('an unset PLANT_CS stops: the script assumes no host path for the private folder (D-182)', () => {
+  const r = run(['0', '--prepare-only']);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /STOP: set PLANT_CS to the private counted-set folder \(it must hold release\/tasks\)$/m);
 });
 
 test('a version-manager shim as PLANT_VENV stops', () => {

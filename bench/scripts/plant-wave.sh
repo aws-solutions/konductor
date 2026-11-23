@@ -13,8 +13,8 @@
 # Overrides are PLANT_* only. Bare R / CHECKOUT / VENV / OUT / KBIN from the shell are IGNORED, because a stale one
 # has broken runs; set the PLANT_* name to override a default:
 #   PLANT_CHECKOUT  a konductor checkout with bench/ (default: the repo this script sits in)
-#   PLANT_CS        the private counted-set folder holding release/ (default: the known workspace path, else STOP)
-#   PLANT_VENV      a python 3.12 with cedarpy (default: the konductor-arm venv, then python3.12 on PATH)
+#   PLANT_CS        the private counted-set folder holding release/ (required; no host path is assumed, D-182)
+#   PLANT_VENV      a python 3.12 with cedarpy (default: BENCH_ARM_PYTHON, then <checkout>/.venv, then python3.12 on PATH)
 #   PLANT_KBIN      the native kiro-cli binary, for the pin (default: from kiro-cli --version on PATH)
 #   PLANT_KEY       the Ed25519 signing key (default: ~/.plant-release-key/private.pem)
 #   PLANT_R         the working dir for the cut release and the wave out dirs (default: /var/tmp/plant-counted-r1)
@@ -59,12 +59,12 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CHECKOUT=${PLANT_CHECKOUT:-$(git -C "$here" rev-parse --show-toplevel 2>/dev/null || true)}
 [ -n "$CHECKOUT" ] && [ -f "$CHECKOUT/bench/runner/bench.js" ] || stop "set PLANT_CHECKOUT to a konductor checkout on feat/bench-pilot-nk (its bench/runner/bench.js must exist)"
 
-CS=${PLANT_CS:-/local/home/$USER/.kiro/crew/workspace-member-mate/plant-counted-set}
-[ -d "$CS/release/tasks" ] || stop "set PLANT_CS to the private counted-set folder (it must hold release/tasks); default $CS not found"
+CS=${PLANT_CS:-}
+[ -n "$CS" ] && [ -d "$CS/release/tasks" ] || stop "set PLANT_CS to the private counted-set folder (it must hold release/tasks)${CS:+; $CS has none}"
 
 if [ -z "${PLANT_VENV:-}" ]; then
-  VENV=$(ls -d /local/home/"$USER"/.kiro/crew/workspace-member-mate/worktrees/konductor-arm/.venv/bin/python 2>/dev/null | head -1 || true)
-  [ -n "$VENV" ] || VENV=$(command -v python3.12 || true)
+  VENV=${BENCH_ARM_PYTHON:-}
+  [ -n "$VENV" ] || { [ -x "$CHECKOUT/.venv/bin/python" ] && VENV=$CHECKOUT/.venv/bin/python; } || VENV=$(command -v python3.12 || true)
 else VENV=$PLANT_VENV; fi
 [ -n "${VENV:-}" ] && [ -x "$VENV" ] || stop "set PLANT_VENV to a python 3.12 with cedarpy (none found)"
 case "$VENV" in */shims/*) stop "PLANT_VENV is a version-manager shim ($VENV); use the real binary under .../installs/python/3.12.x/bin or a venv" ;; esac

@@ -9,7 +9,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { makeToyRelease, toyPublicKeyB64, RELEASE_ID, TASKS } = require('../../physical/toy/toy-release.js');
@@ -25,11 +24,12 @@ const { policyTestCommand } = require('../lib/plant/policy-test.js');
 const { CC_CONFIG } = require('./plant-run-rig.js');
 
 const { PYTHON, HAS_CEDAR } = require('./arm-python.js');
+const { mkScratch } = require('./scratch.js');
 const CONTROLS = path.join(__dirname, '..', '..', 'physical', 'controls');
 
 /** A toy release and the dirs a suite needs, all under one temp root; `cleanup` removes them. */
 function toyRig() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'toy-rel-'));
+  const root = mkScratch('toy-rel-');
   const toy = makeToyRelease(root);
   const dirs = Object.fromEntries(['scratch', 'out', 'repo', 'home', 'probe'].map((d) => [d, path.join(root, d)]));
   for (const d of Object.values(dirs)) fs.mkdirSync(d);
@@ -52,6 +52,16 @@ function toySuite(r, { armSpec = 'cc-plant-policy', taskId = TASKS[0].id, ctx = 
   r.suites.push(suite);
   return suite;
 }
+
+test('a toy release dir under HOME is refused at once, not later by the runner (D-191)', () => {
+  const home = mkScratch('toy-home-');
+  const saved = process.env.HOME;
+  try {
+    process.env.HOME = home;
+    assert.throws(() => makeToyRelease(path.join(home, 'work')), /under HOME .*the runner refuses plant paths there/);
+    assert.equal(fs.existsSync(path.join(home, 'work')), false);
+  } finally { process.env.HOME = saved; }
+});
 
 test('the toy key is rebuilt from public text and pinned in the runner with status toy, beside the real key', () => {
   const pinned = PINNED_KEYS.find((k) => k.publicKey === toyPublicKeyB64());

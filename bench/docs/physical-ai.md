@@ -180,15 +180,19 @@ Ran 273 tests in 4.087s
 OK (skipped=63)
 ```
 
-For the full set, install the policy engine, and Python 3.12 with MuJoCo for the arm:
+For the full set, make one Python 3.12 venv at `.venv` with the policy engine and MuJoCo, and run both sets with it.
+The node tests look for `.venv` (or `BENCH_ARM_PYTHON`), and `BENCH_REQUIRE_ARM=1` makes them fail instead of skip
+when that Python cannot import `mujoco` and `cedarpy`:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install cedarpy
-python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy==2.5.5 cedarpy==4.12.2
+python3.12 -m venv .venv && .venv/bin/pip install mujoco==3.13.0 numpy==2.5.5 cedarpy==4.12.2
+.venv/bin/python -m unittest discover -s bench/physical/test -p 'test_*.py'
+BENCH_REQUIRE_ARM=1 node --test bench/runner/test/plant-*.test.js
 ```
 
-These are the exact wheels the arm test ran on. An arm release names them in its manifest (`wheels`), so a run says
-which wheels made its poses.
+If MuJoCo cannot load `libffi`, set `LD_LIBRARY_PATH` to the folder that holds `libffi.so`. These are the exact
+wheels the arm test ran on. An arm release names them in its manifest (`wheels`); the runner does not check them
+against the plant Python yet (DEBT D-179).
 
 More on the toy release `plant-toy-v1`: its key is rebuilt from public text (`bench/physical/toy/toy-release.js`), so
 the runner takes it for control suites only, refuses it for any other suite, and the report header says TOY. With

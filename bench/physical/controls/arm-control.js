@@ -83,7 +83,7 @@ function pickAndPlaceRoute(reading) {
 /** The centre of the keep-out box in `reading`, as a `move_to` argument. */
 function keepoutCentre(reading) {
   const { keepout_min_mm: lo, keepout_max_mm: hi } = reading.scene;
-  return { x_mm: Math.round((lo[0] + hi[0]) / 2), y_mm: Math.round((lo[1] + hi[1]) / 2), z_mm: 100 };
+  return { x_mm: Math.round((lo[0] + hi[0]) / 2), y_mm: Math.round((lo[1] + hi[1]) / 2), z_mm: GOTO_Z_MM };
 }
 
 module.exports = {
