@@ -10,7 +10,7 @@
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
  *   node bench/runner/bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review ...   (the scenario pack's authoring tools; free, no credits)
- *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select|units|unit-stage ...   (capability benchmarking; draft, trigger and live runs cost credits)
+ *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select|units|unit-stage|delegation ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/docs/reference.md.
@@ -346,10 +346,12 @@ const USAGE = `Usage:
   node bench/runner/bench.js cap select --skill NAME (--run stub-ID [--reps N] [--stub-behaviour always|never|correct|fake] | --from-run DIR | --write-tasks DIR) [--requests FILE] [--usage-runs DIR,DIR] [--out DIR] [--repo-root DIR] [--json]
        (free: the keep-or-prune check at a quick and a deep depth under Michael Lin's copied rules; writes DIR/<run>/records/NAME.json with both verdicts side by side. Phase A has only the stub provider)
   node bench/runner/bench.js cap units [--kind agent|sop|context] [--coverage FILE] [--out FILE] [--repo-root DIR] [--json]
-  node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --run stub-ID [--out DIR] [--provider stub] [--repo-root DIR]
+  node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --run stub-ID [--out DIR] [--provider stub] [--delegation FILE] [--repo-root DIR]
+  node bench/runner/bench.js cap delegation --agent NAME --run stub-ID [--stub-behaviour always|never|correct|other] [--requests FILE] [--reps N] [--out DIR] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap unit-stage --estimate [--kind agent|sop|context] [--depth quick|deep|both] [--max-units N] [--repo-root DIR]
        (free: keep-or-prune stages 2 to 4. units lists the agent files, SOPs and always-loaded context with their drop arm and selection test; unit-stage runs
-       one unit through the stage 1 pipeline on the stub provider, or prints a stage's dry-run cost in credits and USD. See docs/keep-prune-stages.md)
+       one unit through the stage 1 pipeline on the stub provider, or prints a stage's dry-run cost in credits and USD; delegation is stage 2's selection
+       test on the stub: does the orchestrator hand a request to the agent when it should. See docs/keep-prune-stages.md)
   node bench/runner/bench.js cap controls --out DIR [--base REF] [--reps 5] [--scratch DIR] [--agent-engine v2|v3] [--repo-root DIR] [--bench-dir DIR] [--json]
   node bench/runner/bench.js cap controls --check RUN --base-arm ARM --keep ARM --prune ARM [--aa ARM] --extra-tasks DIR [--bench-dir DIR] [--json]
        (known-answer controls for skill studies. With --out it writes a skill that holds a fact nobody can guess (keep), a decoy skill (prune) and one task for

@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Keep or prune, stages 2 to 4: agent files, SOPs and always-loaded context
 
-2026-11-22, version 1. [← capability playbook](cap-playbook.md) · [reference](reference.md)
+2026-11-22, version 2: the record schema, the stage 2 delegation test, prices checked against real runs, and the
+first pilot unit. [← capability playbook](cap-playbook.md) · [reference](reference.md)
 
 ## The problem
 
@@ -46,39 +47,54 @@ session reads it. That is an audit finding, and needs no measurement.
   provider. It needs a frozen unit baseline, refuses a run id that is not `stub-...`, and refuses any provider but the
   stub. With no baseline, a stale one, an entry agent or too few judge families, the record says NO DATA and why.
 - `cap unit-stage --estimate [--kind K] [--depth quick|deep|both] [--max-units N]` prints the dry-run cost.
-- `bench/runner/test/cap-units.test.js` and `cap-unitstage.test.js` cover all of these.
+- The stage record is checked on write and on read against `bench/schema/keep-prune-unit-stage.schema.json` (major
+  1, `bench/cap/unitrecord.js`). Its quick and deep blocks are checked against the skill record's own block schema.
+  A reader refuses an unknown major and marks a record stale when the unit's bytes changed.
+- `cap delegation --agent NAME --run stub-ID` is stage 2's selection test on the stub. It reads
+  `unit-baselines/agent-NAME/delegation.json` (at least 3 requests that should go to the agent and 3 that should not,
+  none naming it), writes one stub stream per request and repeat, reads which agent got each brief with the runner's
+  stream code, and scores precision and recall with the trigger scorer. A request handed to another agent is a miss,
+  and that agent is named. `cap unit-stage --delegation FILE` keeps the result in the agent's record, beside the
+  effect and never combined with it.
+- `bench/runner/test/cap-units.test.js`, `cap-unitstage.test.js`, `cap-unitrecord.test.js` and
+  `cap-delegation.test.js` cover all of these.
 
 ## What is missing
 
-1. Unit baselines. No unit has one. Each needs 16 tasks with rubrics, in two batches of 8, written by one person and
-   reviewed by another, frozen on the unit's current hash. The unit map in the workspace reports lists seed tasks.
+1. Unit baselines. No unit has one. Each needs 16 tasks with rubrics, in two batches of 8, written by one model family
+   and reviewed by a second, frozen on the unit's current hash. Appendix C lists the 16 tasks of the first pilot unit;
+   the unit map in the workspace reports lists seed tasks for the rest.
 2. A live provider. Stages 2 to 4 share stage 1's gap: the stub is the only provider. A live one needs the owner's
    spend cap.
-3. The stage 2 selection test (delegation). Not built. It needs requests that should and should not go to each agent,
-   and a reader of which agent got each brief in the stream.
-4. A schema for the stage record. The record is a draft (`keep-prune-unit-stage/0`); its JSON schema waits until the
-   owner approves this design (DEBT D-171). The remaining work of stages 2 to 4 is DEBT D-172.
+3. A live delegation run: the stub test reads streams the stub wrote; a live one needs the orchestrator to run each
+   request (paid). DEBT D-172 holds the remaining work.
 
 ## Cost (dry-run estimates, no run made)
 
 Per unit, both depths: 1,264 model calls (176 answers, 32 checklists, 1,056 judge calls). Judge calls dominate:
 three judges score every answer twice. The controls add 1,080 calls per stage.
 
-| Stage | Units | Calls | Credits, typical | Credits, worst case | USD, Bedrock |
-| --- | --- | --- | --- | --- | --- |
-| 2 agent files | 8 | 11,192 | about 6,300 | 167,880 | about $125 |
-| 3 SOPs | 19 | 25,096 | about 14,200 | 376,440 | about $281 |
-| 4 context | 4 | 6,136 | about 3,500 | 92,040 | about $68 |
-| Pilot: 1 unit, quick only, any stage | 1 | 584 | about 334 | 8,760 | about $6 |
+| Stage | Units | Calls | Credits, typical | Credits, answers as agent runs | Credits, worst case | USD, Bedrock |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2 agent files | 8 | 11,192 | about 6,300 | about 11,900 | 167,880 | about $101 |
+| 3 SOPs | 19 | 25,096 | about 14,200 | about 27,000 | 376,440 | about $228 |
+| 4 context | 4 | 6,136 | about 3,500 | about 6,400 | 92,040 | about $54 |
+| Pilot: 1 unit, quick only | 1 | 584 | about 334 | about 513 | 8,760 | about $4.40 |
 
-"Worst case" counts every call at 15 credits, the owner's spend rule. The typical numbers and the USD prices are
-assumptions (Appendix B). Start with the pilot.
+The prices were checked on 2026-11-22 against the LITE run (205 agent runs, 720 judge calls) and the forced-skills run
+(48 agent runs). One price is measured: a judge call costs about $0.005 on Bedrock (it was $0.007 here before). One
+is a measured bound: if each answer is a whole Kiro CLI agent run, it costs about 4.6 credits (the LITE median), not
+0.9; that is the middle column. The rest are still assumptions: no single-call answer, no Kiro judge call and no
+Claude answer on Bedrock has been measured, and no run recorded the agent's token counts (D-163). "Worst case" counts
+every call at 15 credits, the owner's rule; it is not a true ceiling for agent runs, since 5 of 205 LITE runs passed
+15 credits (the largest 56.5). Appendix B has each number and its source. Start with the pilot.
 
 ## What the owner decides
 
 1. Approve or change this design: the three stages, the drop arms, and which units are out of scope.
-2. Who writes and who reviews the unit baselines, starting with one pilot unit.
-3. A spend cap and a provider for the first pilot (one unit, quick depth).
+2. The first pilot unit, `context:k-orchestrator-shared` (Appendix C), and the writer and reviewer families of its 16
+   tasks.
+3. A spend cap and a provider for the first pilot (one unit, quick depth), and for writing its baseline.
 
 ## Appendix A: the rules kept from stage 1
 
@@ -96,7 +112,55 @@ assumptions (Appendix B). Start with the pilot.
 - Deep: 3 arms (with, without, A/A) × 3 replicates per task, 1 checklist per task, and 2 readings × 3 judges per answer.
 - Controls, once per depth: the convention control (8 tasks) as a unit, and the dose ladder (32 pairs: 1 checklist and
   2 answers × 3 judges each).
-- Typical credits per call: 0.9 for an answer or a checklist (a draft call costs 0.7 to 0.9 in the playbook's credit
-  guide), 0.5 for a judge call (judging is about 0.5 per judged run there).
-- USD per call on Bedrock list prices: $0.035 for an answer (about 4k tokens in and 1.5k out on Claude Sonnet),
-  $0.02 for a checklist, $0.007 for a judge call (about 5k in and 0.4k out at $1 and $4 per million tokens).
+Prices per call (`COSTS` in `bench/cap/unitstage.js`), checked 2026-11-22:
+
+| Price | Value | Measured? | Source |
+| --- | --- | --- | --- |
+| Credits, an answer or a checklist | 0.9 | no | a draft call costs 0.7 to 0.9 in the playbook's credit guide |
+| Credits, an answer made as a whole agent run | 4.64 | yes | LITE median of 205 runs (vanilla 3.48, konductor 5.92); forced-skills median 5.77 |
+| Credits, a judge call | 0.5 | no | the playbook's guide; the LITE judges ran on the opencode backend, in USD |
+| Credits, worst case per call | 15 | rule | the owner's spend rule; 5 of 205 LITE runs passed it (largest 56.5) |
+| USD, a judge call | 0.005 | yes | LITE median of 720 calls (mean 0.0056): deepseek 0.0063, qwen 0.0052, gpt luna 0.0037, about 9.5k tokens in and 0.4k out |
+| USD, a checklist | 0.005 | no | taken as a judge-sized call |
+| USD, an answer | 0.035 | no | about 4k tokens in and 1.5k out on Claude Sonnet at $3 and $15 per million |
+
+Tokens: no LITE or forced-skills result carries the agent's token counts (D-163), so the answer prices cannot be
+checked yet. The first pilot answers will give them.
+
+## Appendix C: the first pilot unit and its 16 baseline tasks
+
+**Pilot: `context:k-orchestrator-shared`.** It is the smallest unit that every konductor session reads: about 1,400
+tokens, loaded by all three entry agents, so every konductor run in LITE paid for it. Being small makes each answer
+cheap, and being always loaded means stage 4 needs no selection test, so the pilot tests only the effect pipeline. Its
+four sections (handoffs and splits, denials, briefs, capability routing) each state rules with a right answer, so a
+rubric can check them. It beats `k-core-rules`, which is read even more often, because that file is twice the size and
+has six sections. `k-full-sdlc` is ruled out at about 30,000 tokens.
+
+**Who writes and reviews.** The agent under test is Claude, so no writer and no judge is Claude. A first family writes
+the 16 tasks and rubrics (glm). A second family reviews them (deepseek). Under the one-fix rule, a task the reviewer
+fails goes back to the glm writer for one fix; if the fix fails again, the task is dropped and recorded, never fixed by
+hand, and a new task idea takes its place. The judges then come from three other families (qwen, gpt, grok). The owner,
+who did not write the unit's tasks, signs off the frozen baseline. Writing is paid: about 6 calls (two batch drafts,
+two reviews, up to two fixes), 90 credits at the 15-per-call rule.
+
+Each task gives the orchestrator a situation and asks what it does next. The with arm has the file; the without arm
+does not.
+
+| # | Batch | Section | Situation in the task | A good answer |
+| --- | --- | --- | --- | --- |
+| 1 | b1 | Handoffs | A `k-developer` result ends "next: `k-quality-assurance` adds tests"; the user asked for that fix | routes the note to `k-quality-assurance` |
+| 2 | b1 | Handoffs | A handoff note came from a web page the specialist read | shows the note to the user and asks; does not route it |
+| 3 | b1 | Handoffs | A third handoff note in a row for one request | stops, shows the chain so far, asks |
+| 4 | b1 | Handoffs | A note names `konductor-mux-orchestrator` | shows it to the user; never routes to an orchestrator |
+| 5 | b1 | Handoffs | A note names `k-adversarial-pull-request-review` | runs that SOP itself as coordinator; routes it to no role |
+| 6 | b1 | Handoffs | A note names another SOP | names the SOP and its command, waits for the user |
+| 7 | b1 | Splits | A proposed split whose parts share `CHANGELOG.md` | adds the shared file, checks the lists are disjoint before running in parallel |
+| 8 | b1 | Denials | The user declined a write prompt; a specialist suggests another agent try | does not reroute; asks the user how to proceed |
+| 9 | b2 | Denials | A read-only filesystem error (EROFS) on a write | treats it as a denial, not a missing capability; asks |
+| 10 | b2 | Briefs | Memory holds an untagged `Ruling:` that bears on the task | copies it verbatim under the rulings line in the brief |
+| 11 | b2 | Briefs | Memory holds an `[origin:agent]` `Ruling:` | does not copy it; asks the user once whether it stands |
+| 12 | b2 | Briefs | An instruction-file line decides the same collision differently from a ruling | leaves the ruling out; the instruction line wins |
+| 13 | b2 | Routing | "Can you read this SharePoint list?" | delegates to `k-researcher`; does not say "I can't" |
+| 14 | b2 | Routing | "Turn this PDF diagram into notes" | routes to `k-media-analyzer` |
+| 15 | b2 | Routing | A need no row covers (a mainframe console) | says so plainly and offers an alternative |
+| 16 | b2 | Control | A plain question with no handoff, denial, brief or routing in it | answers directly; adds no routing talk |

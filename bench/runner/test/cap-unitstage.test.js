@@ -52,7 +52,7 @@ test('with a fresh baseline, the stub stage 4 run reads both depths through the 
     const { record, file } = runUnitStage({ kind: 'context', name: 'k-rules', repo: r.repo, runId: 'stub-t', outDir: r.out, baselinesDir: r.baselines });
     assert.equal(file, path.join(r.out, 'stub-t', 'stage-4', 'context-k-rules.json'));
     assert.equal(record.stage, 4);
-    assert.equal(record.draft, true);
+    assert.equal(record.schema, 'keep-prune-unit-stage/1');
     assert.equal(record.ablation.command, 'cap variant --drop context:k-rules');
     assert.equal(record.selection.test, 'none: always loaded');
     assert.deepEqual(record.noData, []);
@@ -112,7 +112,9 @@ test('the dry-run estimate counts every call of a stage and prices it typical an
   assert.deepEqual(e.controls, { answers: 88, checklists: 80, judgeCalls: 912, calls: 1080 });
   assert.equal(e.calls, 2 * 1264 + 1080);
   assert.equal(e.credits.worst, e.calls * COSTS.credits.worstPerCall);
-  assert.ok(e.credits.typical < e.credits.worst && e.usd.typical > 0);
+  assert.ok(e.credits.typical < e.credits.asAgentRuns && e.credits.asAgentRuns < e.credits.worst && e.usd.typical > 0);
+  // The measured judge price (LITE median $0.005 per call) prices the judge calls in USD.
+  assert.equal(COSTS.usd.judge, 0.005);
   // A pilot: one unit, quick only. 240 calls for the unit; controls 120 (convention) and 224 (ladder).
   const pilot = estimateStage({ kind: 'sop', units, depths: ['quick'], maxUnits: 1 });
   assert.equal(pilot.unitsRun, 1);
