@@ -37,7 +37,7 @@ A study fills the disk. `node bench/runner/bench.js gc` lists what the bench mad
 1. Fetch the real-repo cache once: `node bench/real/fetch.js --cache DIR` (the only networked step). Point `REAL_CACHE` at it.
 2. Choose the arms. With no `ORCH_DIR` the arms are `vanilla,main`. To test a branch, check it out in a separate worktree and set `ORCH_DIR` to it. The arm under test is listed first, so the A/A repeat is of that arm.
 3. Optionally edit a copy of `real-pilot-tasks.txt` and point `TASKS_FILE` at it. Each line is `suite|task|timeoutSec|kind|estSecPerTaskDir`.
-4. Run the smoke test (a few cents): `SMOKE=1 bash run-real-pilot.sh`. It runs one real task, an optional two-turn autonomy probe (set `PROBE_BENCH`), and one autonomy task, and writes the autonomy marker file that decides whether the autonomy tasks run.
+4. Set the credit cap of each task dir's run: `export BUDGET_CREDITS=N` (required; the preflight fails without it, and the chain's P3 rerun reads it too). Then run the smoke test (a few cents): `SMOKE=1 bash run-real-pilot.sh`. It runs one real task, an optional two-turn autonomy probe (set `PROBE_BENCH`), and one autonomy task, and writes the autonomy marker file that decides whether the autonomy tasks run.
 5. Start the capability study: `bash run-real-pilot.sh`.
 6. Start the chain: set `CREDS`, then `bash run-after-capability.sh`. The chain waits in P1 until the study is done, so it can be started first.
 
@@ -45,6 +45,7 @@ A study fills the disk. `node bench/runner/bench.js gc` lists what the bench mad
 export ORCH_DIR=/path/to/worktree-of-the-branch-under-test
 export REAL_CACHE=/path/to/real-repo-cache
 export CARGO_TARGET=/path/to/cargo-target
+export BUDGET_CREDITS=N    # the credit cap of each task dir's bench.js run; required
 bash bench/scripts/run-real-pilot.sh --dry-run    # preflight and the exact commands
 bash bench/scripts/run-real-pilot.sh              # daemonizes
 CREDS=/path/to/creds bash bench/scripts/run-after-capability.sh --dry-run
@@ -78,9 +79,9 @@ Set `PATCHES` to a comma list of patch files. P2 checks that they apply to a cle
 ```bash
 bash run-real-pilot.sh --status          # capability study: tasks done, runs, credits, ETA
 bash run-real-pilot.sh --stop
-bash run-real-pilot.sh --foreground
-bash run-real-pilot.sh --dry-run
-bash run-real-pilot.sh --preflight       # preflight plus the free prepare-only of the arm set
+BUDGET_CREDITS=N bash run-real-pilot.sh --foreground   # BUDGET_CREDITS: the cap per task dir, required
+BUDGET_CREDITS=N bash run-real-pilot.sh --dry-run
+BUDGET_CREDITS=N bash run-real-pilot.sh --preflight    # preflight plus the free prepare-only of the arm set
 bash run-skill-bench.sh --status         # skill bench: controls result, waves done, runs, credits
 bash run-skill-bench.sh --dry-run        # plan and exact commands, runs nothing
 ```
