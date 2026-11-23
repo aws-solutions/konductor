@@ -125,6 +125,8 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `cc-skill-loads.js` | Which skills each `run-cc-compare.sh` run loaded and whether in full (whole, partial, preload, failed, missing per must-load unit). Free. |
 | `run-cc-compare-judge.sh` | Judge pass of `run-cc-compare.sh`, non-Claude panel, then `report --baseline cc-vanilla`. Paid (USD, cap 2); `--plan` is free. |
 | `run-cc-compare.sh` | The forced experiment's 8 tasks on Claude Code: cc-vanilla against cc-konductor (f5d18459), 2 replicates, frozen bench 69149846, 32 runs. Paid (USD, cap 30); the default is a dry run, `--prepare` is free. |
+| `model-swap-summary.js` | Skill-load table of `run-model-swap.sh` per model and arm (task skill loaded, loaded whole, preview only, `find_skills`, "no skill fits", model mismatch), read with `cap nudge-check`'s reader. Free. |
+| `run-model-swap.sh` | Is low skill use a Sonnet 5.5 trait? The plain konductor arm on Opus 5.5 (8 tasks x 3, cap 400), optional list-hook arm on Opus (4 x 3, cap 220) and Fable 5.1 (4 x 2, cap 400), against the reused Sonnet LITE and nudge cells. Paid per stage (`--go --stage S`); the default `--plan` and `--summary` are free. |
 | `run-forced-aa-r2.sh` | Resume of `run-forced-aa.sh` with the budget fix. Paid. |
 | `run-forced-aa.sh` | The forced-skills experiment's two new arms on the frozen LITE bench. Paid. |
 | `run-forced-judge.sh` | Judge pass of the forced-skills run. Paid (USD). |
@@ -135,6 +137,7 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, and of `cc-skill-loads.js` on a made-up stream. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
+| `test-run-model-swap-stub.sh` | Test of `run-model-swap.sh` (plan, paid path, resume, hook miss, counted-credit guard) and of `model-swap-summary.js` with a stub bench. Free. |
 | `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench. Free. |
 
 ## Refactor regression net (`bench/ops/refactor-regression/`)
