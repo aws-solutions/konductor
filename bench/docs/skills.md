@@ -114,7 +114,8 @@ effect". `cap criteria --study DIR` then flags rubric items that do not tell the
 answer, with and without) and a deep check (full sessions). When the two disagree, both stay in the record and a
 person decides; they are never averaged. Each block uses three judges from three model families, none the agent's
 own, and takes the median. Today it runs on the built-in stub provider only, so its numbers show the format, never a
-measurement. The README shows [a real stub record](../README.md#-try-it-free-in-5-minutes).
+measurement. The README shows [a real stub record](../README.md#-try-it-free-in-5-minutes). Agent files, SOPs and
+context files go through the same pipeline in [keep-prune-stages.md](keep-prune-stages.md).
 
 ```bash
 node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out /tmp/kp

@@ -205,12 +205,15 @@ The same comparison runs for `konductor` against `konductor-noskills` and for `k
 
 | Piece | State |
 | --- | --- |
-| Task batches T1 to T8 | in `bench/scenarios/`; more being written |
-| Batches T9 to T11 | not written yet |
+| Task batches t1 to t12 | in `bench/scenarios/`, listed by `suites/pack.json` |
 | Leak lint, coverage matrix, run levels, pre-registration lock, bootstrap and verdict words | built (`bench/scenarios/`) |
-| `konductor-noskills` arm and the per-run load check | built |
+| `konductor-noskills` arm, the per-run load check, and dropping one SOP or agent (`cap variant --drop`) | built |
+| LITE | ran on 2026-11-21 on Kiro CLI; a check, not a verdict |
+| STANDARD | the kit is built and stub-tested (`bench/kit/standard/`); not run yet |
 | A frozen `PREREG.json` | not yet |
 | A FULL run, and any verdict | not yet; no verdict has been published |
+
+Each level's state and how to run it: [run-levels.md](run-levels.md).
 
 > [!IMPORTANT]
 > **Common mistakes.** Calling a LITE or STANDARD result a verdict: only FULL may. Taking the older `--suite lite`

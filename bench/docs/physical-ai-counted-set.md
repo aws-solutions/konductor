@@ -1,6 +1,6 @@
 # The counted test set for the conveyor plant
 
-[← bench home](../README.md) · [benchmark a physical AI agent](physical-ai.md) · [reference](reference.md#plant-suite-simulator-in-progress)
+[← bench home](../README.md) · [benchmark a physical AI agent](physical-ai.md) · [reference](reference.md#plant-suite-simulator)
 
 A pilot run of the conveyor plant is a smoke test. A **counted run** is the one whose numbers we publish. It needs a
 test set big enough for its intervals, written by people who did not build the plant, checked without spending a

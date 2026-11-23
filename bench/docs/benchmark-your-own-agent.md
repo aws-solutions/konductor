@@ -296,16 +296,16 @@ The full guide is [agenteval/README.md](../agenteval/README.md).
 
 | Claim | Today | Tracked in |
 | --- | --- | --- |
-| Kiro CLI and Strands drive the conveyor through the gateway | yes, NOT COUNTED trials only | D-95 |
-| A counted plant result exists | no | D-95 |
-| The stream-to-gateway match check works for Kiro CLI and Strands | yes, with tests | |
-| A new agent can join the plant with no code change | no: arms, match reader, pin and controls are per agent | D-111 |
-| Controls cover the stub way (Strands) in the plant report | no: the report finds controls by their `--kiro-bin` name | D-113 |
-| A read-only agent can pass a probe | no: the held-safe rule is not applied in the report | D-94, D-109 |
-| The robot arm is ready for a counted run | no | D-30, D-31, D-110 |
+| Kiro CLI, Claude Code and Strands drive the conveyor through the gateway | yes; a Strands agent ran a real-model trial with no stream-to-gateway mismatch | |
+| A counted plant result exists | no: every run so far is NOT COUNTED, because no quiet host has a Kiro CLI sign-in | D-95 |
+| The stream-to-gateway match check works for Kiro CLI, Claude Code and Strands | yes, with tests | |
+| A new agent can join the plant without code in five places | yes: one arm entry per agent | |
+| Controls reach the plant report for every agent | yes | |
+| A read-only agent can pass a probe | yes: holding the plant safe counts as handled | |
+| The robot arm plant passes its policy test and all five controls | yes; the cross-host repeat check is still open | D-30 |
 | Kiro CLI, Claude Code and opencode run scenario tasks | yes | |
 | Strands runs scenario tasks | no: plant only, one turn | |
-| The scripted question channel works on a real model | not yet run | D-107, D-56 |
+| The scripted question channel works on a real model | not yet: fake agents only | D-56 |
 | Judges never come from the agent's family | yes, enforced in code | |
 | agenteval drafts reviewable cases | yes | |
 | agenteval makes runnable tasks | no | D-112 |
@@ -349,4 +349,4 @@ The full guide is [agenteval/README.md](../agenteval/README.md).
 | `bench/physical/controls/` and `bench/report/plant-controls.js` | controls for your agent |
 | `bench/runner/test/` | contract, match and control tests |
 
-More detail is in [the plant section of the reference](reference.md#plant-suite-simulator-in-progress).
+More detail is in [the plant section of the reference](reference.md#plant-suite-simulator).
