@@ -21,8 +21,8 @@ set -euo pipefail
 
 RUN_ID=kp-pilot-2
 OLD_RUN=kp-pilot-1
-CONTROLS_CAP=1800
-UNIT_CAP=3375
+CONTROLS_CAP=${CONTROLS_CAP:-1800}   # override only with the owner's approval
+UNIT_CAP=${UNIT_CAP:-3375}   # a resume after a killed call needs 15 more per killed call
 FIX_MARK="rerun: convention control fix"
 
 # copy_cache: kp-pilot-1's saved calls and ladder judgments into kp-pilot-2, never overwriting a file.
