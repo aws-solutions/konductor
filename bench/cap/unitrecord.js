@@ -66,8 +66,73 @@ function readUnitRecord(file, { repo = null } = {}) {
   return record;
 }
 
-/** The record as a short markdown page: both depths side by side, never averaged. */
-function renderUnitRecord(r) {
+const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+
+/**
+ * The gap of each task in a depth block, from its score rows: per reading, the mean panel median of the with arm minus
+ * that of the without arm (keepprune.js taskGap), or null when an answer of either arm has no median or was not judged.
+ * Returns [{ task, A, B }] in the order the tasks first appear.
+ */
+function taskGaps(block) {
+  const byTask = new Map();
+  for (const s of block?.scores ?? []) {
+    if (!byTask.has(s.task)) byTask.set(s.task, []);
+    byTask.get(s.task).push(s);
+  }
+  const gap = (rows, reading) => {
+    const arm = (a) => rows.filter((s) => s.reading === reading && s.arm === a).map((s) => s.median);
+    const [w, wo] = [arm('with'), arm('without')];
+    return w.length && wo.length && [...w, ...wo].every((m) => m !== null) ? mean(w) - mean(wo) : null;
+  };
+  return [...byTask].map(([task, rows]) => ({ task, A: gap(rows, 'A'), B: gap(rows, 'B') }));
+}
+
+const GRADES = new Set(['KEEP', 'WEAK', 'BAD']);
+
+/**
+ * The reviewers' grades of a baseline's tasks, from `file` (a review.json beside baseline.json), or null when there is
+ * none: { reviewers, rule, grades: { taskId: 'KEEP' | 'WEAK' | 'BAD' } }. `taskIds` are the baseline's own task ids;
+ * a grade for any other id, or any other grade, is refused. Grades only label the rendered record: they never change
+ * a reading, and the record JSON does not hold them.
+ */
+function readTaskGrades(file, taskIds) {
+  if (!fs.existsSync(file)) return null;
+  const j = readJsonFile(file);
+  const ids = new Set(taskIds);
+  const p = [];
+  if (j.format_version !== 1) p.push(`format_version ${JSON.stringify(j.format_version)} is not 1`);
+  if (!Array.isArray(j.reviewers) || !j.reviewers.length) p.push('reviewers must name at least one reviewer');
+  for (const [id, g] of Object.entries(j.grades ?? {})) {
+    if (!ids.has(id)) p.push(`${id} is not a task of the baseline`);
+    else if (!GRADES.has(g)) p.push(`${id}: grade ${JSON.stringify(g)} is not KEEP, WEAK or BAD`);
+  }
+  if (p.length) throw new Error(`${file}: ${p.join('; ')}`);
+  return { reviewers: [...j.reviewers], rule: j.rule ?? null, grades: { ...j.grades } };
+}
+
+/** The per-task table of a record: each task's gaps at both depths, with its review grade (`-` when ungraded). */
+function taskTable(r, review) {
+  const gaps = Object.fromEntries(['quick', 'deep'].map((d) => [d, new Map(taskGaps(r[d]).map((g) => [g.task, g]))]));
+  const tasks = [...new Set([...gaps.quick.keys(), ...gaps.deep.keys()])];
+  if (!tasks.length) return [];
+  const cell = (d, t, reading) => {
+    if (!r[d]) return 'not run';
+    const v = gaps[d].get(t)?.[reading];
+    return typeof v === 'number' ? v.toFixed(2) : 'n/a';
+  };
+  const who = review ? `Task grades by ${review.reviewers.join(' and ')}${review.rule ? ` (${review.rule})` : ''}: read a BAD task's gap as noise, a WEAK one with care.` : 'No review grades for these tasks.';
+  return [
+    'Per task (gap = with minus without, panel median):', '', who, '',
+    '| task | grade | quick gap A | quick gap B | deep gap A | deep gap B |', '|---|---|---|---|---|---|',
+    ...tasks.map((t) => `| ${t} | ${review?.grades[t] ?? '-'} | ${cell('quick', t, 'A')} | ${cell('quick', t, 'B')} | ${cell('deep', t, 'A')} | ${cell('deep', t, 'B')} |`), '',
+  ];
+}
+
+/**
+ * The record as a short markdown page: both depths side by side, never averaged, then each task's gaps. `review`
+ * (readTaskGrades) puts each task's review grade beside its gaps.
+ */
+function renderUnitRecord(r, review = null) {
   const row = (name, pick) => `| ${name} | ${['quick', 'deep'].map((d) => (r[d] ? pick(r[d]) : 'not run')).join(' | ')} |`;
   const d = r.delegation;
   return [
@@ -82,7 +147,8 @@ function renderUnitRecord(r) {
     row('controls', (b) => `${b.controls.status} (${b.controls.ran.join(', ') || 'none'})`),
     row('judges', (b) => b.judges.map((j) => `${j.model} (${j.family})`).join(', ') || 'none'), '',
     `Unit: ${r.unit.sha256.slice(0, 12)} over ${r.unit.files.join(', ')}. Stale: ${r.stale.value ? `YES: ${r.stale.why}` : 'no'}. Sign-off: ${r.signoff.by ?? 'none yet'}.`, '',
+    ...taskTable(r, review),
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
 }
 
-module.exports = { UNIT_SCHEMA_ID, MAJOR, unitRecordProblems, writeUnitRecord, readUnitRecord, renderUnitRecord };
+module.exports = { UNIT_SCHEMA_ID, MAJOR, unitRecordProblems, writeUnitRecord, readUnitRecord, renderUnitRecord, taskGaps, readTaskGrades };

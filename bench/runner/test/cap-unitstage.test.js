@@ -160,3 +160,23 @@ test('this checkout: the free estimate prints per stage, and a real (non-stub) r
   assert.match(text, /stage 3 \(SOPs\): \d+ unit\(s\) to run/);
   assert.match(text, /worst case [\d,]+ credits/);
 });
+
+test('a review.json beside the baseline puts its task grades in the rendered record, and --render redraws a finished record with them', () => {
+  const r = rig();
+  try {
+    const { file } = runUnitStage({ kind: 'context', name: 'k-rules', repo: r.repo, runId: 'stub-g', outDir: r.out, baselinesDir: r.baselines });
+    const md = file.replace(/\.json$/, '.md');
+    assert.match(fs.readFileSync(md, 'utf8'), /\| b1-0 \| - \|/, 'no review yet: no grade');
+    // A review written after the run (the pilot case): --render redraws the .md from the record, which is not changed.
+    const before = fs.readFileSync(file, 'utf8');
+    write(path.join(r.baselines, 'context-k-rules', 'review.json'), JSON.stringify({ format_version: 1, reviewers: ['x', 'y'], rule: 'the lower of the two', grades: { 'b1-0': 'BAD', 'b2-7': 'WEAK' } }));
+    const { rerenderUnitRecord } = require('../../cap/unitstage.js');
+    const out = rerenderUnitRecord({ file, baselinesDir: r.baselines });
+    assert.equal(out, fs.readFileSync(md, 'utf8'));
+    assert.match(out, /\| b1-0 \| BAD \|/);
+    assert.match(out, /\| b2-7 \| WEAK \|/);
+    assert.equal(fs.readFileSync(file, 'utf8'), before, 'the JSON record is not touched');
+    const { markdown } = runUnitStage({ kind: 'context', name: 'k-rules', repo: r.repo, runId: 'stub-g2', outDir: r.out, baselinesDir: r.baselines });
+    assert.match(markdown, /\| b1-0 \| BAD \|/, 'a new run reads the review too');
+  } finally { r.cleanup(); }
+});
