@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CheckView, CheckViewStage } from '../designer-view/yaml-draft';
 import {
+  CHECK_AGAIN,
   SAVABLE_KEYS,
   checkStageOf,
   droppedKeysOf,
@@ -392,13 +393,16 @@ describe('saveRefusal', () => {
     expect(refusal).toContain('drafting');
   });
 
-  it('refuses a save of a changed stage when the first check failed', () => {
-    expect(
-      saveRefusal(
-        [{ draft: draft('drafting'), source: loaded(0), changed: true }],
-        undefined,
-      ),
-    ).toContain('not known');
+  it('refuses a save of a changed stage when the first check failed, and says how to get out', () => {
+    const refusal = saveRefusal(
+      [{ draft: draft('drafting'), source: loaded(0), changed: true }],
+      undefined,
+    );
+
+    expect(refusal).toContain('not known');
+    expect(refusal).toContain(CHECK_AGAIN);
+    expect(CHECK_AGAIN).toContain('Check the file again');
+    expect(CHECK_AGAIN).toContain('reload');
   });
 
   it('refuses a save of a stage renamed after another was added', () => {

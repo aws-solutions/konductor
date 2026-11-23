@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef } from 'react';
-import type { DraftStage } from '../designer/core/draft';
+import type { Draft, DraftStage } from '../designer/core/draft';
 import type { StageSource } from './view-stage';
 
 const ADDED: StageSource = { kind: 'added' };
@@ -18,6 +18,15 @@ type Places = ReadonlyMap<string, number>;
 
 function placesOf(stages: readonly DraftStage[]): Places {
   return new Map(stages.map((stage, index) => [stage.id, index]));
+}
+
+// A draft the editor built afresh from a file, rather than one edited from
+// the draft the places were read from. The editor hands out stage ids in one
+// rising sequence for the life of a draft, so an edited draft never has a
+// lower `nextId` than the draft it came from, while a draft built from a file
+// starts again at one past that file's stage count.
+function isRebuilt(nextId: number, takenAt: number): boolean {
+  return nextId < takenAt;
 }
 
 /**
@@ -40,19 +49,26 @@ function placesOf(stages: readonly DraftStage[]): Places {
  * draft, which is another stage of the file it was saved into.
  *
  * `text` is the file the places belong to. Another one, as another workflow
- * or a reload gives, is read again from the draft the editor built for it.
+ * or a save gives, is read again from the draft the editor built for it.
  * `text` is what `useInitialCheck` reads, so the places and the keys of the
  * stages are always of the same file.
+ *
+ * The same text can also arrive with a draft built afresh, when the file is
+ * loaded again while this hook stays mounted. Its ids start over, so the
+ * places of the draft before it would name the wrong stages and read a stage
+ * the file does have as added, which the save guard lets through. The draft's
+ * `nextId` tells the two apart, so a rebuilt draft always retakes the places
+ * from position.
  */
 export function useStageSources({
   text,
-  stages,
+  draft,
   submitted,
 }: {
   /** The text of the file as it was loaded. */
   readonly text: string;
-  /** The stages of the draft now. */
-  readonly stages: readonly DraftStage[];
+  /** The draft now, with the stages in order and the next id it will hand out. */
+  readonly draft: Draft;
   /**
    * The text a save has in flight, which is about to become the file, or
    * `undefined` when no save is going on.
@@ -70,28 +86,43 @@ export function useStageSources({
   // load brings has a draft of its own, with its own ids, and the places of
   // the draft that was sent would say nothing about it even when the text it
   // holds is the same.
-  const sent = useRef<{ text: string; places: Places }>(undefined);
-  const drafted = useRef(stages);
+  const sent = useRef<{ text: string; places: Places; nextId: number }>(
+    undefined,
+  );
+  const drafted = useRef(draft);
   useEffect(() => {
-    drafted.current = stages;
+    drafted.current = draft;
   });
   useEffect(() => {
+    const made = drafted.current;
     sent.current =
       submitted === undefined
         ? undefined
-        : { text: submitted, places: placesOf(drafted.current) };
+        : {
+            text: submitted,
+            places: placesOf(made.stages),
+            nextId: made.nextId,
+          };
   }, [submitted]);
 
   // Taken in the render, not in an effect: the places must be there in the
   // first render of a file, before anything reads a stage. Reading the same
   // file again gives the same places, so a render React throws away leaves
   // nothing behind.
-  const taken = useRef<{ text: string; places: Places }>(undefined);
-  if (taken.current?.text !== text) {
+  const taken = useRef<{ text: string; places: Places; nextId: number }>(
+    undefined,
+  );
+  if (
+    taken.current === undefined ||
+    taken.current.text !== text ||
+    isRebuilt(draft.nextId, taken.current.nextId)
+  ) {
     const held = sent.current;
-    taken.current = {
+    const fromSave = held?.text === text ? held : undefined;
+    taken.current = fromSave ?? {
       text,
-      places: held?.text === text ? held.places : placesOf(stages),
+      places: placesOf(draft.stages),
+      nextId: draft.nextId,
     };
   }
   const { places } = taken.current;
