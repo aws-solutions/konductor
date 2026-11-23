@@ -94,6 +94,22 @@ test('each flag fires on the run that earns it and on no other', () => {
   assert.match(rows['t8-b#2'].flags.noisy, /differs between replicates/);
 });
 
+test('each run carries the within-task sd of its task and arm; over 20 marks the task noisy; the table has an sd column (FW-35, D-229)', () => {
+  const { pack, w1, w2 } = setup();
+  const rows = byTask(pilotRows([w1, w2], { packDir: pack }));
+  // t8-b: 17.86 and 46.43, sample sd 20.2.
+  const want = Math.abs(((0.125 + 0.2) / 0.7) * 100 - (0.125 / 0.7) * 100) / Math.SQRT2;
+  assert.ok(Math.abs(rows['t8-b#1'].sd - want) < 1e-9);
+  assert.equal(rows['t8-b#2'].sd, rows['t8-b#1'].sd);
+  assert.match(rows['t8-b#1'].flags.noisy, /within-task sd 20\.2 over 20/);
+  assert.equal(rows['t9-easy#1'].sd, null, 'one run has no sd');
+  assert.doesNotMatch(rows['t8-a#1'].flags.noisy, /within-task sd/);
+  const text = renderTable(Object.values(rows));
+  assert.match(text, /^\| task \| arm \| rep \| handEdited \| singleFamily \| score \| sd \|/m);
+  assert.match(text, /^\| t8-b \| vanilla \| 1 \| no \| - \| 18 \| 20\.2 \|/m);
+  assert.match(text, /^\| t9-easy \| vanilla \| 1 \| claude \| - \| 100 \| n\/a \|/m);
+});
+
 test('the score is the code-scored part: hidden tests 0.5 and substance checks 0.2, renormalised', () => {
   const { pack, w1 } = setup();
   const rows = byTask(pilotRows([w1], { packDir: pack }));
