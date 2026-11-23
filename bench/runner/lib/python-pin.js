@@ -77,6 +77,23 @@ function linkPython(scratchDir, executable, version) {
   return dir;
 }
 
+/** The modules each plant kind's gateway imports, and the exact wheels the arm test ran on (DEBT D-30). */
+const GATEWAY_MODULES = Object.freeze({ 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'] });
+const GATEWAY_WHEELS = Object.freeze({ cedarpy: '4.12.2', mujoco: '3.13.0', numpy: '2.5.5' });
+
+/**
+ * Throws the refusal unless interpreter `python`, run with `env` (the gateway's PATH, a scratch HOME and the dynamic-linker
+ * path), imports every module the gateways of `plantTasks` need. Without it each trial would start a gateway that dies on
+ * import and count as a launch failure (DEBT D-180).
+ */
+function checkGatewayModules(python, plantTasks, env) {
+  const mods = [...new Set(plantTasks.flatMap((t) => GATEWAY_MODULES[t.environment.kind] ?? ['cedarpy']))];
+  const r = spawnSync(python, ['-I', '-c', `import ${mods.join(', ')}`], { encoding: 'utf8', env, timeout: 60000 });
+  if (r.status === 0) return;
+  const why = (r.stderr || r.error?.message || `exit ${r.status}`).trim().split('\n').at(-1);
+  throw new Error(`refused: the plant Python ${python} cannot import ${mods.join(', ')} (${why}). Install them into it: pip install ${mods.map((m) => `${m}==${GATEWAY_WHEELS[m]}`).join(' ')}, then pass --plant-python <that venv>/bin/python`);
+}
+
 /**
  * Pins Python for a run whose tasks need it, or returns null when none does. Puts the pinned dir first on
  * process.env.PATH (the agent, check and gateway environments inherit PATH) and checks python3 under a scratch HOME.
@@ -95,12 +112,14 @@ function pinPython({ tasks, scratchDir, benchDir, flag = null, plantPython = nul
   try {
     const inside = probe('python3', { PATH: env.PATH, HOME: home });
     if (!inside || !toolchain.versionMatches(want, inside.version)) throw new Error(`refused: python3 in the sandbox is ${inside?.version ?? 'missing'}, not ${want}, after pinning ${r.executable}`);
-    const plant = needing.some((t) => t.environment) && plantPython ? probe(plantPython, { PATH: env.PATH, HOME: home }) : null;
+    const plantTasks = needing.filter((t) => t.environment);
+    const plant = plantTasks.length && plantPython ? probe(plantPython, { PATH: env.PATH, HOME: home }) : null;
     if (plant && !toolchain.versionMatches(want, plant.version)) throw new Error(`refused: --plant-python ${plantPython} is Python ${plant.version}, not ${want}`);
+    if (plantTasks.length) checkGatewayModules(plantPython ?? 'python3', plantTasks, { PATH: env.PATH, HOME: home, ...(env.LD_LIBRARY_PATH ? { LD_LIBRARY_PATH: env.LD_LIBRARY_PATH } : {}) });
     return { want, executable: r.executable, version: r.version, source: r.source, binDir, sandboxVersion: inside.version, plantPython: plant ? { ...plant, cmd: plantPython } : null };
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
 }
 
-module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, DEFAULT_WANT };
+module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, checkGatewayModules, DEFAULT_WANT };
