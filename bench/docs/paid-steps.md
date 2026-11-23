@@ -24,6 +24,7 @@ reservation, but its reply is lost, so the resume makes it again. That call is c
 cap raised by 15 for each killed call, with the owner's approval: for example
 `UNIT_CAP=3390 bash scripts/run-pilot-rerun.sh --unit` (`CONTROLS_CAP` for the controls part). The dry run's gate 4
 shows whether it fits.
+| Keep-or-prune pilot baseline v2: the 5 BAD tasks written again | `run-pilot-v2-rewrite.sh` | at most 4 calls, about 1 real credit | 120 counted (at most 60 used) |
 | STANDARD gate rechecks | `standard-recheck/run.sh` | 7 calls, about 10 real credits | 105 counted |
 | STANDARD stages A and B | `run-standard-v1.sh` (once per stage) | about 707 real credits a stage | 800 real credits a stage |
 | STANDARD judges | `run-standard-judge.sh` | about USD 5 | USD 15 |
