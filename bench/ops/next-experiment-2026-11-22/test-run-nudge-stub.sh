@@ -5,6 +5,9 @@
 #   case 2: the stub writes runs with no hook text -> the script stops after the first task, no .done for it
 #   case 3: a rerun of case 1's folder skips every task (resume)
 #   case 4: a budget-skipped cell is "not run": no stop, that task gets no .done, and a rerun resumes only it
+#   case 5: runner exit 5 with an agent self-kill is a run result: no stop, all 8 tasks done
+#   case 6: runner exit 5 with a plain error stops
+#   case 7: a task folder with all 6 results and no .done is closed with no bench call (the owner's restart state)
 set -eu
 HERE0=$(cd "$(dirname "$0")" && pwd)
 # The copied script cannot find its checkout from its own path, so name it: this test's checkout.
@@ -37,7 +40,18 @@ for (const arm of arms) for (const rep of [1, 2, 3]) {
   fs.writeFileSync(path.join(d, 'stream.jsonl'), '');
   const header = arm.includes('filler') ? 'Notes for this request (no action needed):' : 'Your skills (load one with get_skill; each one\'s trigger line is under "## Your skills" in your instructions):';
   fs.writeFileSync(path.join(d, 'session', 'sess_1', 'messages.jsonl'), JSON.stringify({ payload: { type: 'user', content: (hint ?? header + '\n  x') } }) + '\n');
+  // STUB_ERR=<task>:selfkill|plain: the list arm's replicate 1 errors, as an agent self-kill (an interrupted pkill and a
+  // SIGTERM exit) or a plain error; the stub then exits 5, the runner's infra stop.
+  const [errTask, errKind] = String(process.env.STUB_ERR || '').split(':');
+  if (errTask === task && arm.includes('list') && rep === 1) {
+    fs.writeFileSync(res, JSON.stringify({ armId: arm, taskId: task, replicate: rep, status: 'error', stopReason: 'cancelled', credits: 4 }));
+    if (errKind === 'selfkill') {
+      fs.writeFileSync(path.join(d, 'stderr.txt'), 'kas exit code=143 reason=SIGTERM during signal shutdown\n');
+      fs.writeFileSync(path.join(d, 'stream.jsonl'), JSON.stringify({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'tool_call_update', status: 'failed', rawInput: { command: 'pkill -f "node -"' }, content: [{ type: 'content', content: { type: 'text', text: 'This tool was interrupted before it reported a result.' } }] } } }) + '\n');
+    }
+  }
 }
+if (String(process.env.STUB_ERR || '').split(':')[0] === task) process.exit(5);
 JS
 fail() { echo "FAIL: $*"; exit 1; }
 copy() { mkdir -p "$1"; cp "$HERE0/run-nudge.sh" "$1/"; }
@@ -74,4 +88,27 @@ FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB="node $
 grep -q 'resuming' "$T/e.log" || fail "case 4 rerun: no resume line"
 [ -e "$T/d/runs-nudge/t5-qa-sync-strategy.done" ] || fail "case 4 rerun: the resumed task is not done"
 echo "case 4 ok: a budget skip is not a hook miss, and a rerun resumes only that task"
+
+# case 5: exit 5 with an agent self-kill goes on: all 8 tasks done, the self-kill kept as a run result.
+copy "$T/f"
+FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB_ERR=t5-qa-sync-strategy:selfkill STUB="node $STUBJS" HERE="$T/f" sh "$T/f/run-nudge.sh" --go > "$T/f.log" 2>&1 || { cat "$T/f.log"; fail "case 5 stopped on an agent self-kill"; }
+[ "$(ls "$T/f/runs-nudge" | grep -c '\.done$')" = 8 ] || fail "case 5: not 8 .done files"
+grep -q 'agent self-kill' "$T/f/runs-nudge/t5-qa-sync-strategy.check.md" || fail "case 5: check does not show the self-kill"
+grep -q 'every error is an agent self-kill' "$T/f.log" || fail "case 5: no going-on line"
+echo "case 5 ok: an agent self-kill is a run result, the study goes on"
+
+# case 6: exit 5 with a plain error still stops, with no .done for that task.
+copy "$T/g"
+if FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB_ERR=t8-dec-deploy-strategy:plain STUB="node $STUBJS" HERE="$T/g" sh "$T/g/run-nudge.sh" --go > "$T/g.log" 2>&1; then fail "case 6 should stop"; fi
+grep -q 'not an agent self-kill' "$T/g.log" || { cat "$T/g.log"; fail "case 6: wrong stop"; }
+[ ! -e "$T/g/runs-nudge/t8-dec-deploy-strategy.done" ] || fail "case 6: errored task marked done"
+echo "case 6 ok: a plain error with exit 5 stops"
+
+# case 7: the owner's restart state: a task folder with all 6 results (one a self-kill) and no .done gets no bench call.
+rm "$T/f/runs-nudge/t5-qa-sync-strategy.done"
+FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB="node $STUBJS" HERE="$T/f" sh "$T/f/run-nudge.sh" --go > "$T/h.log" 2>&1 || { cat "$T/h.log"; fail "case 7 exited non-zero"; }
+grep -q 'all 6 cells have a result, no bench call' "$T/h.log" || fail "case 7: bench was called"
+[ "$(wc -l < "$T/f/runs-nudge/calls.log")" = 8 ] || fail "case 7: a bench call was made"
+[ -e "$T/f/runs-nudge/t5-qa-sync-strategy.done" ] || fail "case 7: task not marked done"
+echo "case 7 ok: a full task folder is closed with no bench call"
 echo "all stub cases passed (scratch $T)"

@@ -7,6 +7,8 @@
 # credits. Design B (the top-3 matcher) is not run: about half top-3 recall on held-out tasks.
 # Tasks with runs-nudge/<task>.done are skipped, and a task folder without .done is run again with --resume (only
 # its cells with no result or a budget skip), so a rerun resumes. A task with a cell still not run gets no .done.
+# An errored run whose agent killed its own kiro-cli (cap nudge-check: "agent self-kill") is a run result: the runner's
+# exit 5 for it does not stop the study. Any other error with exit 5 still stops.
 #
 #   sh run-nudge.sh          dry run: arm and host checks, then each task's budget assuming every task spends its worst case
 #   sh run-nudge.sh --go     PAID run (approved: cap 450 credits). Waits for run-forced-aa*.sh to finish first.
@@ -140,12 +142,20 @@ wait_host() {
 
 # Runs (or with no --go, prints) one task. Args: task batch limit budget. Dry-run spend is the running worst case.
 run_task() {
-  task=$1; batch=$2; limit=$3; budget=$4; s=0; after=0; fs=''
+  task=$1; batch=$2; limit=$3; budget=$4; s=0; after=0; fs=''; rc=0; nocall=0
   [ -e "$OUT/$task.done" ] && { echo "$task: done, skipped"; return 0; }
   # A task folder without .done was cut short (budget skip, crash): --resume runs only its cells with no result.json or
   # a budget_skipped one, and keeps the rest, errors included.
   resume=''
   [ -e "$OUT/$task" ] && { resume=--resume; echo "$task: folder without .done, resuming its unfinished cells"; }
+  # Every one of the 6 cells already has a started result (a stop after the last run, as an exit 5): nothing to resume,
+  # so no bench call; the check below still decides .done.
+  if [ -n "$resume" ] && [ "$GO" = --go ]; then
+    node "$CHECK_BENCH/bench/runner/bench.js" cap nudge-check --run "$OUT/$task" > "$OUT/$task.check.md" || true
+    if [ "$(grep -c '^| konductor-' "$OUT/$task.check.md")" = 6 ] && ! grep -q '| not run (' "$OUT/$task.check.md"; then
+      echo "$task: all 6 cells have a result, no bench call"; rc=5; nocall=1
+    fi
+  fi
   if [ "$GO" = --go ]; then wait_host; s=$(spent_all); else s=$DRY_SPENT; fi
   budget=$(budget_for "$s" "$limit" "$budget")
   if [ "$budget" = STOP ]; then
@@ -165,13 +175,22 @@ run_task() {
   if [ "$GO" = --go ]; then
     mkdir -p "$OUT"
     # </dev/null: the task list is on this loop's stdin, and the command must not read it.
-    if [ -n "$STUB" ]; then $STUB "$@" </dev/null || stop "$task stub exited $?"
-    else nice -n 10 "$@" </dev/null || stop "$task exited $?"; fi
+    if [ "$nocall" = 1 ]; then :
+    elif [ -n "$STUB" ]; then $STUB "$@" </dev/null || rc=$?
+    else nice -n 10 "$@" </dev/null || rc=$?; fi
+    # Exit 5 is the runner's infra stop (every run of the command errored). It passes only when the check below shows
+    # every error is an agent self-kill: the agent's own act, kept as a run result. Any other exit stops here.
+    [ "$rc" = 0 ] || [ "$rc" = 5 ] || stop "$task exited $rc"
+    [ "$rc" = 0 ] || [ -d "$OUT/$task" ] || stop "$task exited $rc"
     # The treatment check: every hook-arm run must show its hook text (exit 1 otherwise). No .done until it passes.
     # A cell that never started is "not run", not a hook miss; it leaves the task without .done, so a rerun resumes it.
     if [ -d "$OUT/$task" ]; then
       node "$CHECK_BENCH/bench/runner/bench.js" cap nudge-check --run "$OUT/$task" > "$OUT/$task.check.md" \
         || stop "$task: a hook arm ran without its hook text (see $OUT/$task.check.md); fix before the next task"
+      if [ "$rc" = 5 ]; then
+        grep -q '| error |' "$OUT/$task.check.md" && stop "$task exited 5 with an error that is not an agent self-kill (see $OUT/$task.check.md)"
+        echo "[$(date -u +%H:%M)] $task: runner exit 5, but every error is an agent self-kill (a run result); going on"
+      fi
       if grep -q '| not run (' "$OUT/$task.check.md"; then
         echo "[$(date -u +%H:%M)] $task: $(grep -c '| not run (' "$OUT/$task.check.md") cell(s) not run; no .done, a rerun resumes them"
         return 0

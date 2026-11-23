@@ -219,6 +219,29 @@ test('nudge-check: hook seen from the session record, the hook source alone does
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('nudge-check: an error whose last shell call killed the run (interrupted pkill, SIGTERM) is an agent self-kill', () => {
+  const { checkRuns, selfKill } = require('../../cap/nudgecli.js');
+  const root = scratch();
+  try {
+    const update = (command, status, text) => JSON.stringify({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'tool_call_update', toolCallId: 'c1', status, rawInput: { command }, content: [{ type: 'content', content: { type: 'text', text } }] } } });
+    const cut = 'This tool was interrupted before it reported a result, so it may or may not have taken effect.';
+    const cell = (rep, status, stream, stderr) => {
+      const d = path.join(root, 'run', 'konductor-list', 't1', String(rep));
+      write(path.join(d, 'result.json'), JSON.stringify({ armId: 'konductor-list', taskId: 't1', replicate: rep, status, stopReason: 'cancelled', credits: 4 }));
+      write(path.join(d, 'stream.jsonl'), `${stream}\n`);
+      write(path.join(d, 'stderr.txt'), stderr);
+      return d;
+    };
+    const sigterm = 'kas exit code=143 reason=SIGTERM during signal shutdown\n';
+    assert.equal(selfKill(cell(1, 'error', update('pkill -f "node -" ; timeout 5 node -', 'failed', cut), sigterm)), true);
+    assert.equal(selfKill(cell(2, 'error', update('npm test', 'failed', cut), sigterm)), false, 'an interrupted call that kills nothing is not a self-kill');
+    assert.equal(selfKill(cell(3, 'error', update('pkill -f "node -"', 'failed', cut), 'timeout\n')), false, 'no SIGTERM exit: not a self-kill');
+    assert.equal(selfKill(cell(4, 'success', update('pkill -f "node -"', 'completed', 'ok'), '')), false, 'a run that finished is not a self-kill');
+    const rows = checkRuns([path.join(root, 'run')]);
+    assert.deepEqual(rows.map((r) => [r.replicate, r.selfKill]), [[1, true], [2, false], [3, false], [4, false]]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('nudge-check: a cell that never started (budget_skipped, or no stream and no session) is not run, never hook missing', () => {
   const { checkRuns } = require('../../cap/nudgecli.js');
   const root = scratch();

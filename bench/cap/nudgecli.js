@@ -69,6 +69,24 @@ function resultDirs(root) {
 }
 
 const NO_SKILL_RE = /no skill fits/i;
+const KILL_RE = /\b(pkill|killall|kill)\b/;
+const INTERRUPTED = 'interrupted before it reported a result';
+
+/**
+ * Whether an errored run killed itself: its last interrupted shell call holds a kill command (as `pkill -f "node -"`,
+ * which also matches kiro-cli's own node), and kiro-cli exited on SIGTERM. That is the agent's own act, a run result,
+ * not an infrastructure failure. `dir` is one run's folder.
+ */
+function selfKill(dir) {
+  const r = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'));
+  if (r.status !== 'error' || !/SIGTERM/.test(readLines(path.join(dir, 'stderr.txt')))) return false;
+  let last = null;
+  for (const line of readLines(path.join(dir, 'stream.jsonl')).split('\n')) {
+    if (!line.includes(INTERRUPTED)) continue;
+    try { last = JSON.parse(line).data?.update ?? last; } catch { /* a cut line */ }
+  }
+  return Boolean(last && KILL_RE.test(String(last.rawInput?.command ?? '')));
+}
 
 /** One row per finished run under `runs`: the hook check and the skill outcome, full loads apart from preview-only ones. */
 function checkRuns(runs) {
@@ -84,7 +102,7 @@ function checkRuns(runs) {
       // Only the hook arms carry a header to look for; any other arm reports null.
       const header = /filler/.test(r.armId) ? nudge.FILLER_HEADER : /list/.test(r.armId) ? nudge.LIST_HEADER : /nudge/.test(r.armId) ? nudge.NUDGE_HEADER : null;
       rows.push({
-        armId: r.armId, taskId: r.taskId, replicate: r.replicate, status: r.status, ran, credits: r.credits ?? null, toolCalls: r.toolCalls ?? null,
+        armId: r.armId, taskId: r.taskId, replicate: r.replicate, status: r.status, ran, selfKill: ran && selfKill(dir), credits: r.credits ?? null, toolCalls: r.toolCalls ?? null,
         hookSeen: header && ran ? hookSeen(dir, header) : null,
         skillsLoaded: x.skillsLoaded.map((s) => s.name), skillsLoadedFull: x.skillsLoadedFull.map((s) => s.name), skillLoadsPreview: x.skillLoadsPreview,
         findSkillsCalls: x.findSkillsCalls, saidNoSkillFits: NO_SKILL_RE.test(String(r.finalText ?? '')),
@@ -101,9 +119,9 @@ function cmdNudgeCheck(opts) {
   if (opts.json) { console.log(JSON.stringify(rows, null, 2)); return; }
   console.log('| arm | task | rep | status | hook seen | loaded | loaded in full | preview only | find_skills | said no skill fits | credits |');
   console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
-  for (const r of rows) console.log(`| ${r.armId} | ${r.taskId} | ${r.replicate} | ${r.ran ? r.status : `not run (${r.status})`} | ${r.hookSeen ?? '-'} | ${r.skillsLoaded.join(' ') || '-'} | ${r.skillsLoadedFull.join(' ') || '-'} | ${r.skillLoadsPreview} | ${r.findSkillsCalls} | ${r.saidNoSkillFits} | ${r.credits ?? '-'} |`);
+  for (const r of rows) console.log(`| ${r.armId} | ${r.taskId} | ${r.replicate} | ${r.selfKill ? 'agent self-kill' : r.ran ? r.status : `not run (${r.status})`} | ${r.hookSeen ?? '-'} | ${r.skillsLoaded.join(' ') || '-'} | ${r.skillsLoadedFull.join(' ') || '-'} | ${r.skillLoadsPreview} | ${r.findSkillsCalls} | ${r.saidNoSkillFits} | ${r.credits ?? '-'} |`);
   // Exit 1 when a hook arm ran without its hook text in the record: the arm did not get its treatment.
   if (rows.some((r) => r.hookSeen === false)) process.exitCode = 1;
 }
 
-module.exports = { cmdNudgePreview, cmdNudgeCheck, previewTasks, checkRuns, hookSeen };
+module.exports = { cmdNudgePreview, cmdNudgeCheck, previewTasks, checkRuns, hookSeen, selfKill };
