@@ -26,7 +26,7 @@ BL="$T/baselines/context-k-orchestrator-shared/baseline.json"
 run() {  # run <script> [args]: one wrapper with every path pointed at the scratch dir and the fake kiro-cli
   env KP_PIN_FILE="$T/pinned-commit" KP_WT_NAME="$WT_NAME" KP_KIRO_BIN="$FAKE" KP_AUTH_DB="$T/auth.sqlite3" \
     KP_PILOT_WORK="$T/work" KP_BASELINES="$T/baselines" KP_LOG_ROOT="$T/logs" KP_PILOT_LOCK="$T/kp.lock" KP_HEAVY_LOCK="$T/heavy.lock" \
-    FAKE_KP_LOG="$T/calls" "$@" > "$T/out" 2>&1
+    FAKE_KP_LOG="$T/calls" BENCH_PAID_ENV_KEEP=FAKE_KP_LOG,FAKE_KP_FAIL,FAKE_KP_NOFIX "$@" > "$T/out" 2>&1   # paid calls get an allowlisted env (FW-4)
 }
 calls() { local n; n=$(grep -vc whoami "$T/calls" 2>/dev/null); echo "${n:-0}"; }
 

@@ -14,6 +14,20 @@ const CAP_RUNTIME_IDS = Object.freeze(CAP_RUNTIMES.map((d) => d.id));
 const ACTING_RUNTIME = CAP_RUNTIMES.find((d) => d.capabilities.actingAgents).id;
 /** Per cap runtime: the tool a skill, SOP, agent or context unit is expected to be used through. */
 const EXPECTED_TOOL = Object.freeze(Object.fromEntries(CAP_RUNTIMES.map((d) => [d.id, d.capabilities.tools])));
+/** The runtime `cap skill-study`, selection and the nudge arm drive: the one descriptor with `supports.skillStudy`. */
+const STUDY_RUNTIME = (() => {
+  const study = DESCRIPTORS.filter((d) => d.supports.skillStudy);
+  if (study.length !== 1) throw new Error(`exactly one runtime supports skillStudy, found ${study.length}`);
+  return study[0].id;
+})();
+/** The cap runtime whose proxy reads `surface` (`'agent-filter'` or `'skill-index'`). */
+const runtimeOfSurface = (surface) => CAP_RUNTIMES.find((d) => d.capabilities.surface === surface).id;
+/**
+ * The runtime whose skills reach a run through the installed agent's filter and specs (kiro-cli), and the one that
+ * lists every skill in one index (opencode). audit.js, prune.js and usage.js compute reach one way for each.
+ */
+const FILTER_RUNTIME = runtimeOfSurface('agent-filter');
+const INDEX_RUNTIME = runtimeOfSurface('skill-index');
 /** The cap descriptor of runtime `id`, or null when cap does not accept it. */
 const capRuntime = (id) => CAP_RUNTIMES.find((d) => d.id === id) ?? null;
 /** The run flag that caps a live run's spend on runtime `id`. */
@@ -33,4 +47,4 @@ function capHarness(value, { both = false } = {}) {
   return harness;
 }
 
-module.exports = { CAP_RUNTIMES, CAP_RUNTIME_IDS, ACTING_RUNTIME, EXPECTED_TOOL, capRuntime, budgetFlagOf, capHarness };
+module.exports = { CAP_RUNTIMES, CAP_RUNTIME_IDS, ACTING_RUNTIME, STUDY_RUNTIME, FILTER_RUNTIME, INDEX_RUNTIME, EXPECTED_TOOL, capRuntime, runtimeOfSurface, budgetFlagOf, capHarness, orList };

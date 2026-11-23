@@ -21,7 +21,17 @@ git -C <workspace>/worktrees/ops fetch origin feat/bench-pilot-nk
 git -C <workspace>/worktrees/ops checkout --detach FETCH_HEAD
 ```
 
-A new script gets its launcher from `bench/ops/make-launchers.sh <workspace>`. `bench/runner/test/ops-launchers.test.js`
+After the checkout moves, rewrite the launchers so a script that is new on the branch gets one (the old file is
+backed up first, because `--replace` overwrites a plain copy):
+
+```bash
+bash <workspace>/worktrees/ops/bench/ops/make-launchers.sh <workspace> --replace
+```
+
+`bench/ops/make-launchers.sh <workspace> --check` writes nothing and exits 1 when a workspace owner script is a plain
+file instead of a launcher (an edited copy that drifts, or a script never versioned), or a launcher's script is gone.
+`bench/scripts/test.sh` runs it whenever `KONDUCTOR_WS` is set, as it is under the workspace's
+`run-full-suite-twice-v2.sh`, so the counted suite reads such a file as a failure. `bench/runner/test/ops-launchers.test.js`
 runs every launcher against a stub copy of this folder and checks that this page lists every file.
 
 `keep-creds-fresh.sh` stays in the workspace only: it names an AWS account and role. The workspace `scripts/README.md`

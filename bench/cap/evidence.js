@@ -6,11 +6,14 @@
 
 const fs = require('node:fs');
 const { ID_RE } = require('./registry.js');
+const { CAP_RUNTIME_IDS } = require('./runtimes.js');
+const { DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
 
 const KINDS = ['lift', 'trigger', 'ablation'];
 const VERDICTS = ['helps', 'hurts', 'none', 'unmeasurable'];
-const HARNESSES = ['kiro-cli', 'opencode'];
-const ALIAS = { kiro: 'kiro-cli' };
+const HARNESSES = CAP_RUNTIME_IDS;
+// Older evidence files name the default runtime `kiro`.
+const ALIAS = { kiro: DEFAULT_RUNTIME };
 const KEYS = ['capId', 'harness', 'kind', 'task', 'n', 'delta', 'aaSpread', 'verdict', 'runId', 'note', 'behaviorChange', 'withValue', 'withoutValue'];
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);

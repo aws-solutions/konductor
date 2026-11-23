@@ -32,6 +32,7 @@ function fakeRepo(t, { nodeBody, pyBody }) {
 function run(root, extraEnv = {}) {
   const env = { ...process.env, R: root, ...extraEnv };
   delete env.BENCH_REQUIRE_ARM;
+  if (!('KONDUCTOR_WS' in extraEnv)) delete env.KONDUCTOR_WS;
   if (!('BENCH_ARM_PYTHON' in extraEnv)) delete env.BENCH_ARM_PYTHON;
   return spawnSync('bash', [SCRIPT, '--tap'], { env, encoding: 'utf8', timeout: 60000 });
 }
@@ -81,4 +82,24 @@ test('a Python failure is a not-ok TAP line and fails the run', (t) => {
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /^not ok 1 - py: test_fake\.Fake\.test_bad$/m);
   assert.match(r.stderr, /AssertionError/);
+});
+
+test('with KONDUCTOR_WS set, a plain workspace copy of a bench/ops script fails the run (D-236)', (t) => {
+  const { root } = fakeRepo(t, { nodeBody: NODE_OK, pyBody: PY_OK });
+  fs.mkdirSync(path.join(root, 'bench/ops/workspace'), { recursive: true });
+  fs.copyFileSync(path.join(BENCH, 'ops', 'make-launchers.sh'), path.join(root, 'bench/ops/make-launchers.sh'));
+  fs.writeFileSync(path.join(root, 'bench/ops/workspace/run-x.sh'), 'echo versioned\n');
+  const ws = path.join(root, 'ws');
+  fs.mkdirSync(path.join(ws, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(ws, 'reports', 'next-experiment-2026-11-22'), { recursive: true });
+  fs.writeFileSync(path.join(ws, 'scripts', 'run-x.sh'), 'echo an edited copy\n');
+  const bad = run(root, { KONDUCTOR_WS: ws });
+  assert.equal(bad.status, 1, bad.stdout + bad.stderr);
+  assert.match(bad.stdout, /^not ok 1 - ops: every workspace owner script is a launcher into bench\/ops$/m);
+  assert.match(bad.stdout, /^# plain copy of bench\/ops\/workspace\/run-x\.sh/m);
+  const launch = spawnSync('bash', [path.join(root, 'bench/ops/make-launchers.sh'), ws, '--replace'], { encoding: 'utf8' });
+  assert.equal(launch.status, 0, launch.stdout);
+  const good = run(root, { KONDUCTOR_WS: ws });
+  assert.equal(good.status, 0, good.stdout + good.stderr);
+  assert.match(good.stdout, /^ok 1 - ops: /m);
 });
