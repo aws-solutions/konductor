@@ -17,6 +17,7 @@ const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
 const sb = require('../runner/lib/sandbox.js');
 const { buildChildEnv } = require('../runner/lib/env.js');
 const { withFileLock } = require('../runner/lib/file-lock.js');
+const { readJsonl } = require('../core/spend.js');
 
 /** The owner's rule: the credits each paid call is counted at, at least. */
 const WORST_PER_CALL = 15;
@@ -24,10 +25,13 @@ const TIMEOUT_MS = 25 * 60 * 1000;
 
 class PaidCallRefused extends Error {}
 
-/** Credits counted so far in the ledger (one JSON line per call, field `counted`); 0 when the file does not exist. */
+/**
+ * Credits counted so far in the ledger (one JSON line per call, field `counted`); 0 when the file does not exist. A
+ * line that is not JSON (a write cut by a kill) counts as one more call at 15, so a torn line never under-counts.
+ */
 function ledgerSpent(file) {
-  if (!fs.existsSync(file)) return 0;
-  return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).reduce((s, l) => s + Number(JSON.parse(l).counted), 0);
+  const { entries, bad } = readJsonl(file);
+  return entries.reduce((s, e) => s + Number(e.counted), 0) + bad * WORST_PER_CALL;
 }
 
 /** Throws unless `dir` is absolute and outside the home folder (work dirs hold sign-in copies and scratch homes). */
