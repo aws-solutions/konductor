@@ -27,7 +27,7 @@ const { loadPack } = require('../judge/pack/index.js');
 const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
 const { exportReferenceSheet } = require('../judge/calibrate-reference.js');
-const { loadRun, loadRuns } = require('../report/load.js');
+const { loadRun, loadRuns } = require('./lib/load-run.js');
 const { generateRunReport, generateContrast, useScoringQuoteRule } = require('../report/generate.js');
 const { generateVerdict, KINDS } = require('../report/verdictgen.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
@@ -541,7 +541,7 @@ function cmdCompare(opts) {
     if (!['both', 'any'].includes(rule)) throw new Error('--rule takes both or any');
     const r = compareRuns({
       baseDir: need(opts, 'base'), headDir: need(opts, 'head'), benchDir: benchDirOf(opts),
-      minRel: numOpt(opts, 'min-rel', 0.15), rule, force: Boolean(opts.force),
+      minRel: numOpt(opts, 'min-rel', 0.15), rule, force: Boolean(opts.force), allowMixedPass: Boolean(opts['allow-mixed-pass']),
     });
     (r.exitCode === 2 ? console.error : console.log)(formatCompare(r));
     process.exitCode = r.exitCode;

@@ -1,0 +1,24 @@
+{
+  "$comment": "Stage 2 unit kind: agent files. See skill.json for the format; cap/unitkinds.js documents each field.",
+  "kind": "agent",
+  "stage": 2,
+  "label": "agent files",
+  "article": "an agent",
+  "path": "agents/{name}.agent-spec.json",
+  "listedIn": "subagents",
+  "description": "agent-spec",
+  "text": "agent-spec",
+  "reachedBy": "delegates to it",
+  "dropArm": "stub",
+  "entryAgents": ["konductor", "konductor-cmux-orchestrator", "konductor-mux-orchestrator"],
+  "claimNoun": "agent prompt",
+  "selection": {
+    "test": "delegation",
+    "note": "the orchestrator must delegate to the agent: read from the stream which agent got each brief, on requests that should and should not go to it"
+  },
+  "paidFrame": {
+    "answer": "You are the agent defined below. Act as it.",
+    "noun": "agent definition (the prompt of a specialist agent that a coding-agent orchestrator delegates to)",
+    "tasks": "Each task is a brief the orchestrator hands to this agent, and asks for its answer or its next step."
+  }
+}

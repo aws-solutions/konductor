@@ -19,7 +19,7 @@ from .kinds import KINDS
 from .log import LOG_VERSION, GatewayLog, WorldLog
 from .peer import peer_pidns, pidns_ancestors
 from .plant import PlantSession
-from .policy import ARMS, CedarPolicy, FixedRule, PolicyInvalid, SensorLimits
+from .policy import ARMS, CedarPolicy, PolicyInvalid, SensorLimits
 from .server import Gateway, bind_listener, frame_bytes
 
 CONTROL_VERSION = "plant-control/1"
@@ -62,13 +62,13 @@ def load_rule(hello, kind):
     """`(rule, SensorLimits)` for the run: the Cedar policy when hello lists `plant.cedar`, else the fixed rule.
 
     A Cedar policy needs its schema and sensor limits listed too; each file is hash-checked before use, and the
-    limits must hold what `kind` needs. Only the conveyor runs without a Cedar policy.
+    limits must hold what `kind` needs. Only a kind with a `fixed_rule` runs without a Cedar policy.
     """
     policy_path = listed_by_name(hello, POLICY_FILE)
     if policy_path is None:
-        if kind.name != "conveyor":
+        if kind.fixed_rule is None:
             raise PolicyInvalid(f"the {kind.name} plant needs {POLICY_FILE} in hello.files")
-        return FixedRule(), SensorLimits({})
+        return kind.fixed_rule(), SensorLimits({})
     schema_path, limits_path = listed_by_name(hello, SCHEMA_FILE), listed_by_name(hello, LIMITS_FILE)
     if schema_path is None or limits_path is None:
         raise PolicyInvalid(f"{POLICY_FILE} needs {SCHEMA_FILE} and {LIMITS_FILE} in hello.files")

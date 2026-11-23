@@ -100,7 +100,7 @@ else
   rm -rf "$REL"
   cp -r "$CS/release" "$REL"
   kver=$("$NB" --version 2>/dev/null | head -1); ksha=$(sha256sum "$NB" | cut -d' ' -f1)
-  node -e 'const fs=require("fs"),a=process.argv.slice(1);const dir=a[0],out=a[1],ver=a[2],sha=a[3];const seeds={};for(const f of fs.readdirSync(dir)){if(!f.endsWith(".json"))continue;seeds[f.slice(0,-5)]=100000+Math.floor(Math.random()*900000);}fs.writeFileSync(out,JSON.stringify({seeds,versions:{kiroCli:{version:ver,sha256:sha,engine:"v3"}}},null,1)+"\n");' "$REL/tasks" "$FIELDS" "$kver" "$ksha"
+  node "$here/lib/sh.js" seeds "$REL/tasks" "$FIELDS" "$kver" "$ksha"
   if [ -r "$KEY" ]; then
     signout=$(node "$TOOL" sign --release "$REL" --key "$KEY" --release-id plant-counted-r1 --fields "$FIELDS" 2>&1) || stop "sign failed:
 $signout"

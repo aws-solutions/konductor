@@ -2,7 +2,7 @@
 'use strict';
 
 // Reads the tool and rule metadata shared with the Python simulators (physical/schemas/plant-meta*.json), one file per plant kind.
-// The top-level names (TOOLS, SIM_MS, ...) are the conveyor's; `metaOfKind` gives any kind's. Never changes a file.
+// `metaOfKind` gives one kind's facts; the ALL_* names are unions over every kind. Never changes a file.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -23,7 +23,8 @@ function readMeta(file = META_PATH) {
 
 /**
  * The facts of one plant kind from the metadata file at `file`: `TOOLS` (in order), `SIM_MS` per tool, `NOT_EXECUTED_MS`,
- * `MOTION_TOOLS`, `ATTEMPT_RULES`, `PROCEDURE_RULES`, `VERDICT_MEASURE` per rule and `APPROVAL_TOOL`, the tool an approval covers.
+ * `MOTION_TOOLS`, `ATTEMPT_RULES`, `PROCEDURE_RULES`, `VERDICT_MEASURE` per rule, `APPROVAL_TOOL` (the tool an approval
+ * covers), `REST_STATE` (the true-state fields a line held at a safe rest shows) and `SENSORS` (the sensor names).
  */
 function loadKind(file) {
   const meta = readMeta(file);
@@ -37,19 +38,21 @@ function loadKind(file) {
     PROCEDURE_RULES: rulesWhere(false),
     VERDICT_MEASURE: Object.fromEntries(Object.entries(meta.rules).map(([r, f]) => [r, f.verdictMeasure])),
     APPROVAL_TOOL: meta.approvalTool,
+    REST_STATE: Object.freeze({ ...meta.restState }),
+    SENSORS: Object.freeze([...meta.sensors]),
   };
 }
 
-const CONVEYOR = loadKind(META_PATH);
-const KIND_META = { 'conveyor-sim': CONVEYOR, 'arm-sim': loadKind(ARM_META_PATH) };
+const KIND_META = { 'conveyor-sim': loadKind(META_PATH), 'arm-sim': loadKind(ARM_META_PATH) };
+const union = (key) => [...new Set(Object.values(KIND_META).flatMap((m) => [...m[key]]))];
 /** Every tool name of every plant kind: what a stream's tool call is checked against before it is called a plant call. */
-const ALL_TOOLS = [...new Set(Object.values(KIND_META).flatMap((m) => m.TOOLS))];
+const ALL_TOOLS = union('TOOLS');
+/** Every kind's motion tools. No kind lists one of them as a non-motion tool (plant-meta.test.js checks it). */
+const ALL_MOTION_TOOLS = new Set(union('MOTION_TOOLS'));
+/** Every kind's sensor names: what a check's `sensors` list may name. */
+const ALL_SENSORS = union('SENSORS');
 
 /** The metadata of environment kind `kind` (`conveyor-sim` or `arm-sim`), or undefined for an unknown kind. */
 const metaOfKind = (kind) => KIND_META[kind];
 
-module.exports = {
-  readMeta, PlantMetaError, metaOfKind, KIND_META, ALL_TOOLS,
-  TOOLS: CONVEYOR.TOOLS, SIM_MS: CONVEYOR.SIM_MS, NOT_EXECUTED_MS: CONVEYOR.NOT_EXECUTED_MS, MOTION_TOOLS: CONVEYOR.MOTION_TOOLS,
-  ATTEMPT_RULES: CONVEYOR.ATTEMPT_RULES, PROCEDURE_RULES: CONVEYOR.PROCEDURE_RULES, VERDICT_MEASURE: CONVEYOR.VERDICT_MEASURE,
-};
+module.exports = { readMeta, PlantMetaError, metaOfKind, KIND_META, ALL_TOOLS, ALL_MOTION_TOOLS, ALL_SENSORS };

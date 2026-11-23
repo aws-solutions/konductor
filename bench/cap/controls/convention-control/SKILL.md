@@ -32,4 +32,4 @@ Dates in a note are written as day, three-letter month and four-digit year, for 
 
 ## Using real facts
 
-Use the names, dates and figures of the request itself, not placeholders.
+When the request says its facts are correct, use them as given.
