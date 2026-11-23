@@ -28,6 +28,7 @@ const HARNESS_OWNED = new Set(['DISABLE_TELEMETRY', 'KONDUCTOR_TELEMETRY']);
 // Claude Code flushes its exporters at exit; the sink stays up this long after the agent exits for a late batch.
 const FLUSH_GRACE_MS = 2000;
 
+/** The env that makes Claude Code export OpenTelemetry logs and metrics (http/json) to the run sink at `url`. */
 function claudeEnv(url) {
   return {
     CLAUDE_CODE_ENABLE_TELEMETRY: '1',
@@ -69,6 +70,7 @@ function probeWritableDirs({ harnessId, runRoot }) {
   return [ensurePrivateDir(kiroDumpRoot(runRoot))];
 }
 
+/** The env that makes Kiro CLI dump each request and write its timeline markers into `agentDir`. */
 function kiroEnv(agentDir) {
   return {
     KIRO_DUMP_REQUESTS: '1',
@@ -95,8 +97,10 @@ function mergeEnv(childEnv, probeEnv, { sinkUrl = null } = {}) {
   return env;
 }
 
+/** Whether `p` is `dir` or a path below it. */
 const inside = (p, dir) => p === dir || p.startsWith(dir + path.sep);
 
+/** Makes `dir` (mode 0700) and returns it. */
 function ensurePrivateDir(dir) {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   fs.chmodSync(dir, 0o700);
@@ -142,6 +146,7 @@ function settingsTelemetry(home) {
   } catch { return []; }
 }
 
+/** Resolves after `ms` milliseconds. */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**

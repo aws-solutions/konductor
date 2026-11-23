@@ -11,6 +11,7 @@ const zlib = require('node:zlib');
 
 const MAX_BODY = 64 * 1024 * 1024;
 
+/** The bytes of an OTLP request body, gunzipped when `encoding` is gzip. */
 function decodeBody(buf, encoding) {
   if (encoding === 'gzip') return zlib.gunzipSync(buf);
   if (encoding === 'deflate') return zlib.inflateSync(buf);

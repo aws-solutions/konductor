@@ -28,10 +28,12 @@ function parseSs(text) {
   return out;
 }
 
+/** The environment entries of process `pid` from /proc, or null when it cannot be read. */
 function readEnviron(pid) {
   try { return fs.readFileSync(`/proc/${pid}/environ`, 'latin1').split('\0'); } catch { return null; }
 }
 
+/** The working directory of process `pid` from /proc, or null when it cannot be read. */
 function readCwd(pid) {
   try { return fs.readlinkSync(`/proc/${pid}/cwd`); } catch { return null; }
 }
@@ -44,6 +46,7 @@ function belongsToRun(pid, { home, runRoot, environOf = readEnviron, cwdOf = rea
   return Boolean(cwd && runRoot && (cwd === runRoot || cwd.startsWith(`${runRoot}/`)));
 }
 
+/** Starts sampling `ss` for connections to the collector `ports` every `intervalMs`; `stop()` returns what it saw, by run and other. */
 function startWatch({ home, runRoot, ports = DEFAULT_PORTS, intervalMs = 250, platform = process.platform, ss = () => spawnSync('ss', ['-Htnp'], { encoding: 'utf8' }), deps = {} }) {
   const record = { available: platform === 'linux', ports, samples: 0, sampleErrors: 0, otherConnections: 0, runConnections: [] };
   if (!record.available) return { stop: () => ({ ...record, note: `the collector watch samples ss and /proc, which ${platform} does not have` }) };
