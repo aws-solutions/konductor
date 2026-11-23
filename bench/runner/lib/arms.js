@@ -182,25 +182,25 @@ function resolveArm(spec, repo) {
   if (d) refusePrefixedPlant(spec, d);
   if (d?.id === 'strands') {
     const parsed = parseStrandsArm(spec.slice(d.armPrefix.length));
-    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'plant', runtime: 'strands', agent: null, vanilla: true, plant: { arm: parsed.plantArm, hooks: parsed.hooks }, warnings: [] };
+    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'plant', runtime: 'strands', agent: null, vanilla: true, plant: { arm: parsed.plantArm, hooks: parsed.hooks }, warnings: [] };
   }
   if (d) {
     const base = resolveArm(spec.slice(d.armPrefix.length), repo);
     const named = { ...base, id: `${d.armPrefix}${base.id}`, label: `${d.armPrefix}${base.label}`, runtime: d.id };
-    // A plant arm under cc- keeps the plant harness and has no agent: Claude Code gets the shim by --mcp-config.
+    // A plant arm under cc- keeps the plant arm kind and has no agent: Claude Code gets the shim by --mcp-config.
     if (base.plant) return { ...named, agent: null };
-    return { ...named, harness: base.vanilla ? 'none' : 'claude' };
+    return { ...named, armKind: base.vanilla ? 'none' : 'claude' };
   }
   const parsed = parseArmSpec(spec);
   if (parsed.kind === 'vanilla') {
-    return { id: parsed.name, label: parsed.name, ...(parsed.repeatOf ? { repeatOf: parsed.repeatOf } : {}), ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
+    return { id: parsed.name, label: parsed.name, ...(parsed.repeatOf ? { repeatOf: parsed.repeatOf } : {}), ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
   }
   // A plant arm installs nothing of konductor, so it takes the vanilla install path; `plant` marks the gateway run.
   if (parsed.kind === 'plant') {
-    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'plant', runtime: 'kiro-cli', agent: PLANT_AGENT, vanilla: true, plant: { arm: parsed.plantArm }, warnings: [] };
+    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'plant', runtime: 'kiro-cli', agent: PLANT_AGENT, vanilla: true, plant: { arm: parsed.plantArm }, warnings: [] };
   }
   const base = parsed.kind === 'main' ? resolveMain(repo) : parsed.kind === 'dir' ? { ...dirArm(parsed, repo), source: 'dir' } : gitArm(parsed, repo);
-  return { ...withProvenance(base, repo), harness: 'kiro-cli-v2', runtime: 'kiro-cli', agent: 'konductor', vanilla: false };
+  return { ...withProvenance(base, repo), armKind: 'kiro-cli-v2', runtime: 'kiro-cli', agent: 'konductor', vanilla: false };
 }
 
 // Resolves a list of specs and refuses duplicate arm ids (the id names a directory in the run output).
