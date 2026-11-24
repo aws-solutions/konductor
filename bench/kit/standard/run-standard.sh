@@ -276,7 +276,7 @@ main() {
   say "${STOPPED:-all units finished}"
   for rep in $(seq 1 "$STAGES"); do say "stage $rep: $(ledger "$ROOT/runs/r$rep" | cut -d' ' -f1) real credits of $STAGE_CAP"; done
   say "tables: $ROOT/tables${REPORTS:+, copied to $REPORTS} (code-gap.md: three arms per task; all-runs.md; r<rep>-<batch>.md)"
-  say "next (judges, USD 15 cap): S=$ROOT R=$R bash $KIT/judge-standard.sh --plan"
+  say "next (Claude Code arms, same tasks): S=$ROOT R=$R bash $KIT/claude-standard.sh --plan, then --prepare-only, then paid; judges after both: bash $KIT/judge-standard.sh --plan"
   [ -z "$STOPPED" ]
 }
 main "$@"
