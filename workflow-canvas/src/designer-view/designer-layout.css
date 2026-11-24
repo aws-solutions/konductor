@@ -1,0 +1,90 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The three columns of the Designer, for the light and the dark mode. A test
+ * (designer-layout-contrast.test.ts) checks that these colours are the
+ * theme's and reach WCAG AA in both modes. The tabs and the fold button are
+ * Cloudscape components, so their colours, focus ring and forced-colors
+ * behaviour come from the Cloudscape theme and none of it is set here.
+ */
+.wf-layout {
+  --wf-layout-bg: #ffffff;
+  --wf-layout-border: #e0dad0;
+  --wf-layout-text: #16131f;
+  --wf-layout-text-muted: #56516a;
+
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) minmax(
+      280px,
+      380px
+    );
+  gap: 12px;
+  align-items: stretch;
+  min-height: 0;
+  color: var(--wf-layout-text);
+}
+
+:root[data-theme='dark'] .wf-layout {
+  --wf-layout-bg: #171331;
+  --wf-layout-border: #2a2450;
+  --wf-layout-text: #f5f3ee;
+  --wf-layout-text-muted: #9c93b8;
+}
+
+.wf-layout[data-folded='true'] {
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) auto;
+}
+
+.wf-layout-left,
+.wf-layout-drawing,
+.wf-layout-side {
+  min-width: 0;
+  min-height: 0;
+}
+
+.wf-layout-side {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  border-left: 1px solid var(--wf-layout-border);
+  background: var(--wf-layout-bg);
+}
+
+.wf-layout-side-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.wf-layout-side-body[hidden] {
+  display: none;
+}
+
+.wf-layout-fold {
+  align-self: flex-end;
+}
+
+.wf-layout-note {
+  margin: 0;
+  color: var(--wf-layout-text-muted);
+}
+
+/* A narrow window has room for one column, as the Designer has below 900
+   pixels. The columns keep the order of the page, so the visual order is the
+   keyboard order: the components, the drawing, then the side panel, whose
+   fold button still works. This block is last, so no base rule after it
+   undoes it. */
+@media (max-width: 900px) {
+  .wf-layout,
+  .wf-layout[data-folded='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wf-layout-side {
+    border-top: 1px solid var(--wf-layout-border);
+    border-left: 0;
+  }
+}
