@@ -364,3 +364,13 @@ test('the report lists the tool names the prompt mentions and whether each is in
     { name: 'read_file', mentions: 1, inToolList: true },
   ]);
 });
+
+test('the probe kind comes from the harness descriptor: OTLP for Claude Code, the request dump for kiro-cli, none otherwise', () => {
+  assert.equal(introspect.probeOf('claude-code'), introspect.OTLP);
+  assert.equal(introspect.probeOf('kiro-cli'), introspect.DUMP);
+  for (const id of ['opencode', 'strands', null, 'no-such-harness']) assert.equal(introspect.probeOf(id), null);
+  assert.deepEqual(introspect.probeWritableDirs({ harnessId: 'opencode', runRoot: '/x' }), []);
+  const rc = introspect.runConfigRecord('opencode');
+  assert.equal(rc.claudeCode, undefined);
+  assert.equal(rc.kiroCli, undefined);
+});

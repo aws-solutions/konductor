@@ -18,6 +18,13 @@ const path = require('node:path');
 const { startSink } = require('./otlp-sink.js');
 const { startWatch } = require('./collector-watch.js');
 const { copyPlainFile } = require('../safe-copy.js');
+const { DESCRIPTORS } = require('../harness/descriptors.js');
+
+// The probe kinds a harness descriptor names in `introspect.probe` (bench/plugins/*/meta.js).
+const OTLP = 'otlp';
+const DUMP = 'request-dump';
+/** The probe kind of harness `id`: OTLP, DUMP, or null for a harness with no probe (or no harness). */
+const probeOf = (id) => DESCRIPTORS.find((d) => d.id === id)?.introspect?.probe ?? null;
 
 const DIR = 'introspect';
 // Variables a parent shell may carry that would send telemetry somewhere, or turn it on. The agent environment is an
@@ -66,7 +73,7 @@ function kiroDumpRoot(runRoot) {
 
 /** Extra directories the agent process must be able to write for this harness's probe, created mode 0700. */
 function probeWritableDirs({ harnessId, runRoot }) {
-  if (harnessId !== 'kiro-cli') return [];
+  if (probeOf(harnessId) !== DUMP) return [];
   return [ensurePrivateDir(kiroDumpRoot(runRoot))];
 }
 
@@ -164,11 +171,12 @@ async function startProbe({ harnessId, outDir, runRoot, home, dumpRoot = null, b
   let probeEnv = {};
   let sink = null;
   let agentDir = null;
-  if (harnessId === 'claude-code') {
+  const kind = probeOf(harnessId);
+  if (kind === OTLP) {
     sink = await (deps.startSink ?? startSink)({ file: path.join(dir, 'otlp.jsonl') });
     probeEnv = claudeEnv(sink.url);
     record.sink = { url: sink.url, bind: '127.0.0.1', protocol: 'http/json', file: `${DIR}/otlp.jsonl` };
-  } else if (harnessId === 'kiro-cli') {
+  } else if (kind === DUMP) {
     agentDir = ensurePrivateDir(dumpRoot ?? kiroDumpRoot(runRoot));
     probeEnv = kiroEnv(agentDir);
     record.kiroDumpRoot = { outsideRunRoot: !inside(agentDir, runRoot), name: path.basename(agentDir) };
@@ -191,7 +199,7 @@ async function startProbe({ harnessId, outDir, runRoot, home, dumpRoot = null, b
         record.sink.received = await sink.stop();
       }
       record.collectorWatch = watch.stop();
-      if (harnessId === 'claude-code') {
+      if (kind === OTLP) {
         record.copied.claudeProjects = copyTreePlain(home, path.join('.claude', 'projects'), path.join(dir, 'claude-projects'));
         record.settingsTelemetryNames = settingsTelemetry(home);
       }
@@ -214,11 +222,11 @@ function runConfigRecord(runtime) {
   return {
     enabled: true,
     output: '<run>/introspect (mode 0700): probe.json, timeline.md and the raw probe files',
-    claudeCode: runtime === 'claude-code' ? { exporter: 'OTLP http/json to a loopback receiver the runner starts per run (127.0.0.1, OS-picked port)', variables: Object.keys(claudeEnv('http://127.0.0.1:0')).sort() } : undefined,
-    kiroCli: runtime === 'kiro-cli' ? { variables: Object.keys(kiroEnv('/x')).sort(), dumps: '<run root>-introspect, a sibling of the run root outside the agent workspace and HOME, copied to <run>/introspect/kiro' } : undefined,
+    claudeCode: probeOf(runtime) === OTLP ? { exporter: 'OTLP http/json to a loopback receiver the runner starts per run (127.0.0.1, OS-picked port)', variables: Object.keys(claudeEnv('http://127.0.0.1:0')).sort() } : undefined,
+    kiroCli: probeOf(runtime) === DUMP ? { variables: Object.keys(kiroEnv('/x')).sort(), dumps: '<run root>-introspect, a sibling of the run root outside the agent workspace and HOME, copied to <run>/introspect/kiro' } : undefined,
     collectorWatch: 'ss samples every 250 ms of sockets to 127.0.0.1:20774, :4317 and :4318 from processes of the run',
     comparable: false,
   };
 }
 
-module.exports = { startProbe, mergeEnv, claudeEnv, kiroEnv, kiroDumpRoot, probeWritableDirs, copyTreePlain, runConfigRecord, settingsTelemetry, TELEMETRY_NAME, DIR };
+module.exports = { OTLP, DUMP, probeOf, startProbe, mergeEnv, claudeEnv, kiroEnv, kiroDumpRoot, probeWritableDirs, copyTreePlain, runConfigRecord, settingsTelemetry, TELEMETRY_NAME, DIR };

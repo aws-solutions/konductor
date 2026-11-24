@@ -40,4 +40,6 @@ module.exports = Object.freeze({
   trace: Object.freeze({ sessionFiles: false, timeNote: null, skillsListing: null }),
   report: Object.freeze({ factorialKey: null, usdNote: null, killNote: null, costWords: null }),
   capabilities: null,
+  // No --introspect probe: the run gets only the stream-based timeline (runner/lib/introspect).
+  introspect: null,
 });

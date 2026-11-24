@@ -35,4 +35,6 @@ module.exports = Object.freeze({
       agent: 'hand the whole task below to the agent named "{name}" with the task tool',
     }),
   }),
+  // No --introspect probe: the run gets only the stream-based timeline (runner/lib/introspect).
+  introspect: null,
 });

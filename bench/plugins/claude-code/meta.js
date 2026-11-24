@@ -41,4 +41,6 @@ module.exports = Object.freeze({
     costWords: 'USD at list price, as Claude Code reports it',
   }),
   capabilities: null,
+  // What --introspect records (runner/lib/introspect): OpenTelemetry to a loopback OTLP sink, and the session transcripts.
+  introspect: Object.freeze({ probe: 'otlp' }),
 });

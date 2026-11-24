@@ -16,6 +16,7 @@ const { clip, tok } = require('./report-text.js');
 const { readOtlp, requestBodies, claudeRequests, attrMap, streamRequests, claudeHooks, claudeHookInjections, claudeTimed } = require('./claude-reader.js');
 const { toolNamesInPrompt, hookTextsIn, analyzeClaudeRequest, listedSkills, sectionsOf, textOf } = require('./prompt-blocks.js');
 const { analyzeKiroRequest, readKiroDumps, readKiroLog, kiroMarkers, kiroRequests, kiroState, kiroHooks, kiroTimed } = require('./kiro-reader.js');
+const { OTLP, DUMP, probeOf } = require('./index.js');
 const { callScopes, skillActivity, detectorLoads, classifyChildSkills, subagentTranscripts, childRecords } = require('./scopes.js');
 
 /** One hook text row as a line: its kind, where it sits, its size and its head. */
@@ -36,6 +37,7 @@ function buildReport(runDir) {
   let events = [];
   try { events = parseStream(fs.readFileSync(path.join(runDir, 'stream.jsonl'), 'utf8')).events; } catch { /* none */ }
   const harness = result?.harness ?? probe?.harness ?? null;
+  const kind = probeOf(harness);
   const entries = trace?.entries ?? [];
   let requests = [];
   let first = null;
@@ -47,7 +49,7 @@ function buildReport(runDir) {
   let hookInjections = [];
   let claudeOtel = null;
   let dumps = [];
-  if (harness === 'claude-code') {
+  if (kind === OTLP) {
     const otel = readOtlp(path.join(dir, 'otlp.jsonl'));
     const bodies = requestBodies(otel.logs);
     raw = { otelLogs: otel.logs.length, spans: otel.spans.length, metricBatches: otel.metricBatches, requestBodies: bodies.length, events: Object.fromEntries(Object.entries(otel.logs.reduce((m, l) => { m[l.name] = (m[l.name] || 0) + 1; return m; }, {})).sort()) };
@@ -59,7 +61,7 @@ function buildReport(runDir) {
     hookInjections = claudeHookInjections(bodies, hookOutputs);
     claudeOtel = otel;
     timed = claudeTimed(otel);
-  } else if (harness === 'kiro-cli') {
+  } else if (kind === DUMP) {
     dumps = readKiroDumps(dir);
     const log = readKiroLog(dir);
     const markers = kiroMarkers(log);
@@ -72,7 +74,7 @@ function buildReport(runDir) {
     timed = kiroTimed(log, dumps);
   }
   const t0 = [...requests.map((r) => r.timeMs), ...timed.map((t) => t.timeMs)].filter((x) => x != null).sort((a, b) => a - b)[0] ?? null;
-  const transcripts = harness === 'claude-code' ? subagentTranscripts(dir) : [];
+  const transcripts = kind === OTLP ? subagentTranscripts(dir) : [];
   const { children, scopeOf } = childRecords({ entries, events, harness, runDir, transcripts, otel: claudeOtel, dumps, result });
   const skillsSeen = skillActivity(entries, { scopeOf, children, rootAgent: result?.agent ?? null, detected: detectorLoads(events, harness) });
   classifyChildSkills(children, skillsSeen.loads);
@@ -102,7 +104,7 @@ function buildReport(runDir) {
 function probeMatrix(r) {
   const reqTimed = r.requests.filter((q) => q.latencyMs != null).length;
   const reqTokens = r.requests.filter((q) => q.input != null).length;
-  const bodies = r.run.harness === 'claude-code' ? r.raw?.requestBodies ?? 0 : r.raw?.sessionDumps ?? 0;
+  const bodies = probeOf(r.run.harness) === OTLP ? r.raw?.requestBodies ?? 0 : r.raw?.sessionDumps ?? 0;
   return [
     ['P1 exact model input', r.first ? 'yes' : 'no', r.first ? `${bodies} full request bodies (${r.firstSource.split(' ')[0]})` : 'no request body captured'],
     ['P2 per-request timing/tokens', r.requests.length ? (reqTokens ? 'yes' : 'timing only') : 'no', `${r.requests.length} requests, ${reqTimed} with latency, ${reqTokens} with tokens (${[...new Set(r.requests.map((q) => q.source))].join(', ') || 'none'})`],
@@ -173,7 +175,7 @@ function renderReport(r) {
     r.requests.forEach((q, i) => L.push(`| ${i + 1} | ${fmtMs(q.offsetMs)} | ${q.agent ?? 'root'} | ${q.latencyMs != null ? `${q.latencyMs} ms` : 'n/a'} | ${q.ttftMs != null ? `${q.ttftMs} ms` : 'n/a'} | ${fmtN(q.input)} | ${fmtN(q.output)} | ${fmtN(q.cacheRead)} | ${fmtN(q.cacheWrite)} | ${q.costUsd != null ? `$${q.costUsd.toFixed(4)}` : 'n/a'} | ${q.source}${q.requestChars ? `, ${q.requestChars} chars, history ${q.history}` : ''} |`));
     const sum = (k) => r.requests.reduce((acc, q) => acc + (q[k] ?? 0), 0);
     L.push(`| total | | | ${sum('latencyMs')} ms | | ${r.requests.some((q) => q.input != null) ? `${sum('input')} | ${sum('output')} | ${sum('cacheRead')} | ${sum('cacheWrite')}` : 'n/a | n/a | n/a | n/a'} | ${r.requests.some((q) => q.costUsd != null) ? `$${sum('costUsd').toFixed(4)}` : 'n/a'} | |`);
-    if (r.run.harness === 'kiro-cli') L.push('', 'kiro-cli reports no tokens per request; credits are per turn in the stream (see the step timeline), and the engine log has a context-size estimate per tool result.');
+    if (probeOf(r.run.harness) === DUMP) L.push('', 'kiro-cli reports no tokens per request; credits are per turn in the stream (see the step timeline), and the engine log has a context-size estimate per tool result.');
   }
   if (r.sideRequests.length) {
     L.push('');
@@ -208,7 +210,7 @@ function renderReport(r) {
   L.push('');
   if (!r.subagents.length) L.push('No delegation.');
   for (const d of r.subagents) {
-    L.push(`- child #${d.index ?? '?'}: step #${d.n} ${d.parent} -> ${d.target} (${d.status ?? 'n/a'}), brief ${d.briefChars} chars, transcript: ${d.transcript ? `${d.transcript} (${d.transcriptLines} lines, linked by ${d.linkedBy})` : 'not matched'}${d.key && r.run.harness === 'kiro-cli' ? `, subtask ${d.key}` : ''}${d.agentId ? `, agent id ${d.agentId}` : ''}`);
+    L.push(`- child #${d.index ?? '?'}: step #${d.n} ${d.parent} -> ${d.target} (${d.status ?? 'n/a'}), brief ${d.briefChars} chars, transcript: ${d.transcript ? `${d.transcript} (${d.transcriptLines} lines, linked by ${d.linkedBy})` : 'not matched'}${d.key && probeOf(r.run.harness) === DUMP ? `, subtask ${d.key}` : ''}${d.agentId ? `, agent id ${d.agentId}` : ''}`);
     if (d.preloads) {
       const exp = d.preloads.expected;
       const seen = d.preloads.seen;
@@ -223,11 +225,11 @@ function renderReport(r) {
     if (d.firstRequest) {
       const q = d.firstRequest;
       L.push(`  - first request (${q.source})${q.requests ? ` of ${q.requests} dumped` : ''}: ${q.tokens != null ? `${q.tokens} tokens (input ${q.input}, cache read ${q.cacheRead}, cache write ${q.cacheWrite})` : 'tokens n/a'}${q.chars != null ? `, ${q.chars} chars (about ${tok(q.chars)} tokens)` : ''}${q.skillBodies ? `, ${q.skillBodies.length} skill bodies in it` : ''}${q.skillsListed != null ? `, ${q.skillsListed} skills listed` : ''}`);
-    } else if (r.run.harness === 'claude-code' || r.run.harness === 'kiro-cli') L.push('  - first request: not found in the probe files');
+    } else if (probeOf(r.run.harness)) L.push('  - first request: not found in the probe files');
     if (d.skillUse) {
       const u = d.skillUse;
       const list = (xs) => (xs.length ? `${xs.length} (${xs.join(', ')})` : '0');
-      L.push(`  - skills: preloaded only ${list(u.preloadedOnly)}; loaded on demand only ${list(u.onDemandOnly)}; both ${list(u.both)}${u.preloadSource ? ` [preloads from ${u.preloadSource}]` : r.run.harness === 'kiro-cli' ? ' [no preload record for kiro-cli]' : ''}`);
+      L.push(`  - skills: preloaded only ${list(u.preloadedOnly)}; loaded on demand only ${list(u.onDemandOnly)}; both ${list(u.both)}${u.preloadSource ? ` [preloads from ${u.preloadSource}]` : probeOf(r.run.harness) === DUMP ? ' [no preload record for kiro-cli]' : ''}`);
     }
   }
   if (r.transcripts.length) L.push(`- transcripts saved: ${r.transcripts.map((t) => `${t.file} (${t.lines} lines${t.sidechain ? ', sub-agent' : ''})`).join('; ')}`);

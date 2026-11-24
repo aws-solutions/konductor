@@ -13,6 +13,8 @@ const { readLines, oneLine, clip, numOrNull } = require('./report-text.js');
 const { requestBodies } = require('./claude-reader.js');
 const { textOf, analyzeClaudeRequest } = require('./prompt-blocks.js');
 const { walkFiles, kiroState, analyzeKiroRequest } = require('./kiro-reader.js');
+// The harness's probe kind (its descriptor's introspect.probe) also names its stream: OTLP is Claude Code's, DUMP kiro-cli's.
+const { OTLP, DUMP, probeOf } = require('./index.js');
 
 // ---- assembly ----
 
@@ -21,8 +23,9 @@ const { walkFiles, kiroState, analyzeKiroRequest } = require('./kiro-reader.js')
 function eventsByCall(events, harness) {
   const by = new Map();
   const add = (id, ev) => { if (!by.has(id)) by.set(id, []); by.get(id).push(ev); };
+  const kind = probeOf(harness);
   for (const ev of events) {
-    if (harness === 'claude-code') {
+    if (kind === OTLP) {
       if (ev.type !== 'assistant' && ev.type !== 'user') continue;
       const content = Array.isArray(ev.message?.content) ? ev.message.content : [];
       for (const b of content) {
@@ -39,7 +42,7 @@ function eventsByCall(events, harness) {
  * a scope. Running the detector on one call at a time keeps the report's totals equal to result.json skillsLoaded.
  */
 function detectorLoads(events, harness) {
-  if (harness !== 'claude-code' && harness !== 'kiro-cli') return null;
+  if (!probeOf(harness)) return null;
   const out = [];
   for (const [id, evs] of eventsByCall(events, harness)) {
     let x;
@@ -141,8 +144,9 @@ function subagentTranscripts(dir) {
 function callScopes(events, harness) {
   const scopeOfCall = new Map();
   const childOfCall = new Map();
+  const kind = probeOf(harness);
   for (const ev of events) {
-    if (harness === 'claude-code') {
+    if (kind === OTLP) {
       if (ev.type !== 'assistant') continue;
       for (const b of ev.message?.content || []) {
         if (b.type !== 'tool_use' || !b.id || scopeOfCall.has(b.id)) continue;
@@ -203,13 +207,14 @@ function kiroChildFirst(dumps, subtask) {
  */
 function childRecords({ entries, events, harness, runDir, transcripts, otel, dumps, result }) {
   const { scopeOfCall, childOfCall } = callScopes(events, harness);
-  const subExec = harness === 'kiro-cli' ? kiroSubExecutions(runDir) : new Map();
+  const kind = probeOf(harness);
+  const subExec = kind === DUMP ? kiroSubExecutions(runDir) : new Map();
   const children = entries.filter((e) => e.kind === 'delegate').map((d, i) => {
     const brief = oneLine(d.input?.prompt ?? d.input?.task ?? d.input?.description ?? '');
     const key = childOfCall.get(d.id) ?? null;
     let transcript = null;
     let tx = null;
-    if (harness === 'kiro-cli') {
+    if (kind === DUMP) {
       tx = key ? subExec.get(key) ?? null : null;
       transcript = tx?.file ?? null;
     } else {
@@ -219,14 +224,14 @@ function childRecords({ entries, events, harness, runDir, transcripts, otel, dum
     }
     const child = {
       index: i + 1, n: d.n, id: d.id ?? null, key, parent: d.agent, target: d.target, status: d.status, briefChars: brief.length,
-      transcript, transcriptLines: tx?.lines ?? null, agentId: tx?.agentId ?? null, linkedBy: !transcript ? null : harness === 'kiro-cli' ? 'subtask id' : tx.toolUseId ? 'tool use id' : 'brief prefix',
+      transcript, transcriptLines: tx?.lines ?? null, agentId: tx?.agentId ?? null, linkedBy: !transcript ? null : kind === DUMP ? 'subtask id' : tx.toolUseId ? 'tool use id' : 'brief prefix',
       preloads: null, firstRequest: null,
     };
-    if (harness === 'claude-code') {
+    if (kind === OTLP) {
       const expected = Array.isArray(result?.skillsPreloaded) ? result.skillsPreloaded.filter((s) => (s.agents || []).includes(d.target)).map((s) => ({ name: s.name, bytes: s.bytes ?? null })) : null;
       child.preloads = { expected, seen: tx ? tx.preloads : null };
       child.firstRequest = otel ? claudeChildFirst(otel, child.agentId) : null;
-    } else if (harness === 'kiro-cli' && key) {
+    } else if (kind === DUMP && key) {
       child.firstRequest = kiroChildFirst(dumps, key);
     }
     return child;

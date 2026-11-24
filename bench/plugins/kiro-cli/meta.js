@@ -37,4 +37,6 @@ module.exports = Object.freeze({
       agent: 'hand the whole task below to the agent named "{name}" with the subagent tool',
     }),
   }),
+  // What --introspect records (runner/lib/introspect): the v3 engine's request and configuration dumps and timeline markers.
+  introspect: Object.freeze({ probe: 'request-dump' }),
 });

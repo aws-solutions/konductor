@@ -17,7 +17,7 @@ const { validateResult } = require('../lib/result.js');
 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'result.schema.json'), 'utf8'));
 const SUPPORTS = ['trace', 'stopOn', 'effort', 'runCreditLimit', 'multiTurn', 'freshSessions', 'capCommands', 'skillStudy', 'agentEngine', 'prepareOnly', 'armConfig'];
-const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'noPrompt', 'plant', 'multiTurnNote', 'trace', 'report', 'capabilities'];
+const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'noPrompt', 'plant', 'multiTurnNote', 'trace', 'report', 'capabilities', 'introspect'];
 const STREAM_FORMATS = ['kiro-acp', 'opencode-json', 'claude-stream-json', 'strands-jsonl'];
 const CONTRACT = fs.readFileSync(path.join(__dirname, '..', 'lib', 'harness', 'CONTRACT.md'), 'utf8');
 
