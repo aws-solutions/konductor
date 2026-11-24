@@ -90,6 +90,10 @@ grep -q '^cap variant' "$T/calls" && ! grep -q '^cap variant.*--verify' "$T/call
 : > "$T/calls"; run B --foreground; rc=$?
 [ "$rc" = 0 ] && [ "$(runs)" = 0 ] && grep -q 'resuming the frozen plan' "$T/log" && grep -q 'r2 t9: done, skipped' "$T/log" && ok "rerun resumes the plan and skips done batches" || bad "rerun: rc $rc, runs $(runs)"
 
+# C2. STAGES=3: a third replicate with its own cap (the full design of the run plan)
+: > "$T/calls"; STAGES=3 run C2 --foreground; rc=$?
+[ "$rc" = 0 ] && [ "$(runs)" = 6 ] && nth_run 5 | grep -q -- '--replicate-offset 2 --budget-credits 775' && ok "STAGES=3 runs a third stage with its own cap" || bad "STAGES=3: rc $rc, runs $(runs); $(nth_run 5)"
+
 # D. stage cap: 770 credits in the first batch leaves 5 < run limit 15, so t9 and stage 2 never start
 : > "$T/calls"; STUB_SPEND=770 run D --foreground; rc=$?
 [ "$rc" = 1 ] && [ "$(runs)" = 1 ] && grep -q 'stage cap reached before r1 t9: 770 real credits' "$T/log" && ok "stage cap stops before a batch it cannot cover" || bad "cap: rc $rc, runs $(runs); $(grep -E 'STOP|cap' "$T/log")"

@@ -7,6 +7,7 @@
 set -u
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/reports sets it)}"
 WS=$KONDUCTOR_WS
+HERE0=$(cd "$(dirname "$0")" && pwd)
 RUNS=${CC_RUNS:-/var/tmp/cc-compare/runs}
 FROZEN=$WS/reports/lite-run-2026-11-21/judge/bench/bench
 PACKS=$WS/reports/lite-run-2026-11-21/judge/packs
@@ -52,6 +53,6 @@ for line in $TASKS; do
   d="$OUT/runs/after/cc/$task"
   node "$FIXED/runner/bench.js" recheck --run "$d" --bench-dir "$FIXED" --extra-tasks "$OUT/packs-after/$batch" > "$d/recheck.log" 2>&1 || { echo "after recheck failed: $task" >&2; tail -3 "$d/recheck.log" >&2; }
 done
-node "$WS/reports/task-key-fixes-2026-11-24-scripts/rescore-table.js" "$OUT" "$FROZEN" > "$OUT/scores.tsv"
+node "$HERE0/rescore-table.js" "$OUT" "$FROZEN" > "$OUT/scores.tsv"
 cp "$OUT/scores.tsv" "$DEST"
 echo "wrote $OUT/scores.tsv and $DEST"

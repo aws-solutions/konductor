@@ -9,6 +9,8 @@
 #   case 5: a ROOT under HOME is refused before any bench call
 #   case 6: cc-skill-loads.js tells whole, partial, preload, failed and missing apart, with the frozen stream reader
 #   case 7: cc-team-mode.patch (D-241) gives the pinned tree and team mode for cc-konductor only
+#   case 8 (D-246): --go refuses to resume a task folder another bench commit ran, before any bench call
+#   case 9 (D-246): budget-skipped results are not finished runs: no .done
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 HERE0=$(cd "$(dirname "$0")" && pwd)
@@ -17,14 +19,15 @@ trap 'rm -r -- "$T"' EXIT
 STUBJS=$T/stub.js
 cat > "$STUBJS" <<'JS'
 // Stub for `node bench.js run ...`: logs its args; writes run-config.json and STUB_RUNS result.json files of
-// STUB_SPEND USD each (2 arms x replicates), skipping runs that already have one (as --resume does).
+// STUB_SPEND USD each (2 arms x replicates), skipping runs that already have one (as --resume does); the last STUB_SKIP
+// of them are budget_skipped. run-config.json names STUB_BENCH_COMMIT (run-cc-compare.sh's own commit under STUB).
 const fs = require('fs'), path = require('path');
 const a = process.argv.slice(2);
 const val = (f) => a[a.indexOf(f) + 1];
 const out = val('--out');
 fs.mkdirSync(out, { recursive: true });
 fs.appendFileSync(path.join(path.dirname(out), 'calls.log'), a.join(' ') + '\n');
-fs.writeFileSync(path.join(out, 'run-config.json'), '{}\n');
+fs.writeFileSync(path.join(out, 'run-config.json'), JSON.stringify({ benchCommit: process.env.STUB_BENCH_COMMIT || 'stub-bench' }) + '\n');
 let want = Number(process.env.STUB_RUNS || 4);
 for (const arm of ['cc-vanilla', 'cc-konductor']) for (const rep of [1, 2]) {
   const d = path.join(out, arm, val('--tasks'), String(rep));
@@ -32,7 +35,8 @@ for (const arm of ['cc-vanilla', 'cc-konductor']) for (const rep of [1, 2]) {
   if (want-- <= 0) continue;
   fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, 'stream.jsonl'), '');
-  fs.writeFileSync(path.join(d, 'result.json'), JSON.stringify({ costUsd: Number(process.env.STUB_SPEND || 0.5) }) + '\n');
+  const skip = want < Number(process.env.STUB_SKIP || 0);
+  fs.writeFileSync(path.join(d, 'result.json'), JSON.stringify(skip ? { status: 'budget_skipped', costUsd: 0 } : { costUsd: Number(process.env.STUB_SPEND || 0.5) }) + '\n');
 }
 JS
 fail() { echo "FAIL: $*"; exit 1; }
@@ -132,4 +136,17 @@ for (const vanilla of [false, true]) {
   if (s.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS !== "1" || s.permissions.allow.length !== 23 || !s.hooks) throw new Error("cc-konductor settings: " + JSON.stringify(s));
 }' "$T/F" "$T" || fail "case 7: the patched frozen harness"
 echo "case 7 ok: the team-mode patch gives TEAM_TREE and writes team mode for cc-konductor only"
+# case 8
+mkdir -p "$T/h/runs/t8-dec-deploy-strategy"
+echo '{"benchCommit":"69149846ad65f1016ec386e88ec9043bdec57203"}' > "$T/h/runs/t8-dec-deploy-strategy/run-config.json"
+if go "$T/h" > "$T/h.log" 2>&1; then fail "case 8 should stop"; fi
+grep -q 'was run by bench 69149846, not stub-ben' "$T/h.log" || { cat "$T/h.log"; fail "case 8: wrong stop"; }
+[ ! -e "$T/h/runs/calls.log" ] || fail "case 8: a bench call"
+echo "case 8 ok: a task folder of another bench commit is not resumed"
+
+# case 9
+if go "$T/i" STUB_SKIP=2 > "$T/i.log" 2>&1; then fail "case 9 should stop"; fi
+grep -q '2 of 4 runs finished' "$T/i.log" || { cat "$T/i.log"; fail "case 9: wrong stop"; }
+[ ! -e "$T/i/runs/t8-dec-deploy-strategy.done" ] || fail "case 9: .done written with budget skips"
+echo "case 9 ok: budget-skipped results do not count as runs"
 echo "all stub cases passed"

@@ -8,13 +8,14 @@
 #   sonnet  cc-konductor on us.anthropic.claude-sonnet-5-5, 16 runs, USD 1 a run, cap USD 16
 #   opus    cc-konductor on us.anthropic.claude-opus-5-5,   16 runs, USD 2 a run, cap USD 32 (all 16 fit at their cap)
 #
-# The Sonnet stage is only needed when run-cc-compare.sh has not run: its cc-konductor runs are the same arm on the same
-# model and settings, so they are reused, and --go --stage sonnet is refused once any of its tasks is done.
+# The Sonnet stage is only needed when run-cc-team.sh has not run: its cc-konductor-team runs are the same arm, model and
+# team-mode bench as the Opus stage, so they are reused, and --go --stage sonnet is refused once any of its tasks is
+# done. run-cc-compare.sh's own study ran before team mode (D-241), so its cc-konductor runs are not reused (D-252).
 #
 #   bash run-cc-model-swap.sh --plan                 free: reuse, then each stage's dry run (budgets, worst case) and USD
 #   bash run-cc-model-swap.sh --prepare --stage S    free: run-cc-compare.sh --prepare for the stage (build, no agent)
 #   CC_AWS_PROFILE=<profile> bash run-cc-model-swap.sh --go --stage S    PAID (USD): rerun to resume
-#   bash run-cc-model-swap.sh --summary              free: cc-skill-loads.js per source (run-cc-compare, sonnet, opus)
+#   bash run-cc-model-swap.sh --summary              free: cc-skill-loads.js per source (run-cc-team, sonnet, opus)
 #
 # Expected USD a run: SONNET_USD (run-cc-compare.sh's figure, the STANDARD Claude Code step), times OPUS_FACTOR on Opus
 # (Opus over Sonnet konductor credits a run on these 8 tasks in run-model-swap.sh's natural stage: 12.64 / 6.77).
@@ -22,13 +23,13 @@
 # flags a run whose stream shows another model, so a wrong id fails on the first run.
 #
 # Test hooks: STUB as in run-cc-compare.sh; CCM_ROOT is the stage roots' parent (default /var/tmp/cc-model-swap);
-# CC_COMPARE_ROOT is run-cc-compare.sh's ROOT (default /var/tmp/cc-compare).
+# CC_TEAM_ROOT is run-cc-team.sh's ROOT (default /var/tmp/cc-team).
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/reports sets it)}"
 WS=$KONDUCTOR_WS
 HERE0=$(cd "$(dirname "$0")" && pwd)
 CCM_ROOT=${CCM_ROOT:-/var/tmp/cc-model-swap}
-CC_COMPARE_ROOT=${CC_COMPARE_ROOT:-/var/tmp/cc-compare}
+CC_TEAM_ROOT=${CC_TEAM_ROOT:-/var/tmp/cc-team}
 KONDUCTOR_SHA=f5d184596378ae72ae531d80647548512c14cacf
 R=$WS/worktrees/cc-team-69149846   # run-cc-compare.sh's frozen worktree: 69149846 plus cc-team-mode.patch (D-241)
 MANIFEST=$WS/reports/next-experiment-2026-11-22/prefixes/manifest.json
@@ -66,7 +67,7 @@ compare() {
     bash "$HERE0/run-cc-compare.sh" "$@"
 }
 
-reused() { ls "$CC_COMPARE_ROOT/runs" 2>/dev/null | grep -c '[.]done$' || true; }
+reused() { ls "$CC_TEAM_ROOT/runs" 2>/dev/null | grep -c '[.]done$' || true; }
 
 # cc-skill-loads.js over one runs dir, or "no runs yet". Skill sizes come from the arm's installed tree in that cache.
 loads() {
@@ -80,7 +81,7 @@ loads() {
 
 case "$MODE" in
   --plan)
-    echo "run-cc-compare.sh cc-konductor runs to reuse: $(reused) of 8 tasks ($CC_COMPARE_ROOT/runs); with 8, skip the sonnet stage"
+    echo "run-cc-team.sh cc-konductor-team runs to reuse: $(reused) of 8 tasks ($CC_TEAM_ROOT/runs); with 8, skip the sonnet stage"
     for st in sonnet opus; do
       stage_conf "$st"
       echo
@@ -90,11 +91,11 @@ case "$MODE" in
   --prepare) compare "$STAGE" --prepare ;;
   --go)
     if [ "$STAGE" = sonnet ] && [ "$(reused)" -gt 0 ]; then
-      stop "run-cc-compare.sh has $(reused) task(s) done under $CC_COMPARE_ROOT/runs: reuse its cc-konductor runs (finish that study) instead of a Sonnet stage"
+      stop "run-cc-team.sh has $(reused) task(s) done under $CC_TEAM_ROOT/runs: reuse its cc-konductor-team runs (finish that arm) instead of a Sonnet stage"
     fi
     compare "$STAGE" --go ;;
   --summary)
-    loads "run-cc-compare.sh (Sonnet, reused)" "$CC_COMPARE_ROOT/runs" "$CC_COMPARE_ROOT/cache"
+    loads "run-cc-team.sh (Sonnet, team mode, reused)" "$CC_TEAM_ROOT/runs" "$CC_TEAM_ROOT/cache"
     loads "stage sonnet" "$CCM_ROOT/sonnet/runs" "$CCM_ROOT/sonnet/cache"
     loads "stage opus" "$CCM_ROOT/opus/runs" "$CCM_ROOT/opus/cache" ;;
 esac

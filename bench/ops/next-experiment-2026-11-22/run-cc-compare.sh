@@ -25,7 +25,9 @@
 #
 # Test hooks: STUB=<cmd> replaces the bench command (the rest of the --go path runs as is) and skips the frozen
 # worktree, user-namespace, claude and python checks; HERE, ROOT, R, HEAVY_LOCK, LOAD_MAX, WAIT_PAT override the paths
-# and the host checks.
+# and the host checks. Under STUB, STUB_BENCH_COMMIT (default stub-bench) stands for R's commit.
+# Resume (D-246): --go resumes a task folder only when its run-config.json names R's own commit, so one task never mixes
+# two harnesses (the Claude Code study ran at 15385f6d, before team mode); a task is done only when every cell ran.
 # Study overrides (run-cc-model-swap.sh sets them): CC_MODEL, CC_ARMS, CC_CAP_USD and CC_RUN_CAP_USD replace the model,
 # arms, cap and per-run cap; the task budget and the runs a task needs follow the arm count.
 set -eu
@@ -122,8 +124,19 @@ spent_all() {
     walk(root); console.log(s.toFixed(2))' "$OUT" "$RUN_CAP_USD"
 }
 
-# Finished runs (result.json) of one task.
-runs_done() { find "$OUT/$1" -name result.json -not -path '*/workspace/*' 2>/dev/null | wc -l; }
+# Finished runs of one task: result.json files that are not budget skips (D-246).
+runs_done() {
+  find "$OUT/$1" -name result.json -not -path '*/workspace/*' 2>/dev/null \
+    | node -e 'let n=0; for (const f of require("fs").readFileSync(0,"utf8").split("\n").filter(Boolean)) {
+        let r={}; try { r=JSON.parse(require("fs").readFileSync(f,"utf8")) } catch {} if (r.status !== "budget_skipped") n++ } console.log(n)'
+}
+
+# The bench commit an existing task folder was run by must be this script's own (D-246).
+check_commit() {
+  local got
+  got=$(node -e 'console.log(require(process.argv[1]).benchCommit ?? "-")' "$OUT/$1/run-config.json")
+  [ "$got" = "$BENCH_COMMIT" ] || stop "$OUT/$1 was run by bench ${got:0:8}, not ${BENCH_COMMIT:0:8}: a resume would mix two harnesses in one task"
+}
 
 # The bench argument list of one task (without --budget-usd, --out and --resume).
 bench_args() {
@@ -143,6 +156,7 @@ run_task() {
   if [ "$MODE" = --go ]; then
     if [ -e "$OUT/$task" ]; then
       [ -f "$OUT/$task/run-config.json" ] || stop "$OUT/$task exists with no run-config.json: check it by hand"
+      check_commit "$task"
       resume=(--resume)
     fi
     wait_host "$WAIT_PAT"; s=$(spent_all)
@@ -176,6 +190,7 @@ main() {
   if [ "$MODE" = --go ]; then
     [ -n "${CC_AWS_PROFILE:-}" ] || stop "a paid run needs CC_AWS_PROFILE, the AWS profile whose keys claude may use"
     [ -n "$STUB" ] || unshare -Urm true 2>/dev/null || stop "user namespaces are blocked in this shell (--isolate unshare needs them): run from your own terminal"
+    if [ -n "$STUB" ]; then BENCH_COMMIT=${STUB_BENCH_COMMIT:-stub-bench}; else BENCH_COMMIT=$(git -C "$R" rev-parse HEAD); fi
   fi
   if [ "$MODE" = --prepare ]; then
     wait_host "$WAIT_PAT"
