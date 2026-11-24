@@ -40,6 +40,8 @@ busy() {
 }
 
 rm -f "$out.refused"
+# A copy of this script in $T13_AUTH has no checkout above it: BENCH_REPO must then name one.
+[ -f "$BENCH_REPO/bench/runner/lib/sandbox.js" ] || refuse "BENCH_REPO=$BENCH_REPO is not a bench checkout; set BENCH_REPO when run.sh is a copy outside the checkout"
 case "$model" in *claude*|*anthropic*) refuse "model $model is a Claude family; the writer path is non-Claude" ;; esac
 left=$(awk -v s="$(spent)" -v c="$CAP" -v m="$COUNT_MIN" 'BEGIN { print (s + m > c) ? "no" : "yes" }')
 [ "$left" = yes ] || refuse "spent $(spent) counted of the $CAP cap leaves no room for one more counted call"

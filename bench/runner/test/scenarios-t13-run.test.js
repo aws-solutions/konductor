@@ -87,6 +87,22 @@ echo '${JSON.stringify({ type: 'runFinished', data: { status: 'success', finalTe
   }
 });
 
+test('a copy of run.sh outside the checkout refuses until BENCH_REPO names one', () => {
+  const s = setup();
+  try {
+    const copy = path.join(s.auth, 'run.sh');
+    fs.copyFileSync(RUN, copy);
+    const r = spawnSync('bash', [copy, 'gpt-5.6-luna', path.join(s.auth, 'work', 'x'), path.join(s.auth, 'work', 'x.author.prompt.txt'), path.join(s.auth, 'work', 'x.author')], {
+      encoding: 'utf8', env: { PATH: process.env.PATH, HOME: s.home, TMPDIR: s.root, T13_AUTH: s.auth, KIRO: s.kiro, HOST_CHECK: '0' },
+    });
+    assert.strictEqual(r.status, 0);
+    assert.match(fs.readFileSync(path.join(s.auth, 'work', 'x.author.refused'), 'utf8'), /set BENCH_REPO/);
+    assert.ok(!fs.existsSync(path.join(s.auth, 'work', 'x.author.out')));
+  } finally {
+    fs.rmSync(s.root, { recursive: true, force: true });
+  }
+});
+
 test('a Claude model is refused: the writer path is non-Claude', () => {
   const s = setup();
   try {
