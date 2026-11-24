@@ -33,6 +33,7 @@ use workflow_core::ports::{
 };
 use workflow_core::run::{Run, RunStatus, StageState, StageStatus};
 use workflow_core::runner::{execute, prepare, start};
+use workflow_core::time::parse_timestamp;
 use workflow_core::trust::{decide, sha256_hex, Verdict};
 
 const CODE: &str = "test-launch-code";
@@ -830,7 +831,7 @@ fn the_session_says_which_server_it_is_what_it_serves_and_its_limits() {
 }
 
 /// What the server answers on each operation of the contract that it serves, with the method and path.
-const SERVED: [(&str, &str, &str); 7] = [
+const SERVED: [(&str, &str, &str); 8] = [
     ("createSession", "POST", "/api/session"),
     ("getWorkflow", "GET", "/api/workflow"),
     ("saveWorkflow", "PUT", "/api/workflow"),
@@ -838,6 +839,7 @@ const SERVED: [(&str, &str, &str); 7] = [
     ("startRun", "POST", "/api/run"),
     ("getRun", "GET", "/api/runs/20261024-0412-a7b3c"),
     ("listAgents", "GET", "/api/agents"),
+    ("listRuns", "GET", "/api/runs"),
 ];
 
 #[test]
@@ -983,9 +985,11 @@ fn assert_list_is_guarded(f: &Fixture, path: &str) {
 }
 
 #[test]
-fn listagents_takes_the_token_and_a_get_like_every_other_call() {
+fn the_lists_take_the_token_and_a_get_like_every_other_call() {
     let _serial = one_at_a_time();
-    assert_list_is_guarded(&signed_in(), "/api/agents");
+    let f = signed_in();
+    assert_list_is_guarded(&f, "/api/agents");
+    assert_list_is_guarded(&f, "/api/runs");
 }
 
 #[test]
@@ -1647,6 +1651,381 @@ fn dead_run(project: &Path) -> String {
     };
     store.write_state(&run_id, &run.to_text()).unwrap();
     run_id
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// listRuns
+
+/// Writes the state of a run of `workflow` that started at `started` (a UTC time), with the id `id`, whose owner is
+/// gone, so a run that says `running` reads as halted.
+fn write_run(
+    project: &Path,
+    id: &str,
+    workflow: &str,
+    goal: &str,
+    started: &str,
+    status: RunStatus,
+) {
+    let mut store = FileRunStore::open(project).unwrap();
+    fs::create_dir(store.runs_dir().join(id)).unwrap();
+    let finished = status != RunStatus::Running;
+    let run = Run {
+        run_id: id.to_string(),
+        workflow: workflow.to_string(),
+        harness: "fake".to_string(),
+        goal: goal.to_string(),
+        status,
+        started_at: parse_timestamp(started).unwrap(),
+        finished_at: finished.then(|| parse_timestamp(started).unwrap()),
+        exit_code: finished.then_some(0),
+        stages: vec![StageState {
+            name: "write".to_string(),
+            status: if finished {
+                StageStatus::Passed
+            } else {
+                StageStatus::Running
+            },
+            reported_outputs: Vec::new(),
+        }],
+        checks: BTreeMap::new(),
+        owner: Owner {
+            pid: 4_000_000,
+            started: "2026-01-01T00:00:00Z".to_string(),
+        },
+        session_group: None,
+    };
+    store.write_state(id, &run.to_text()).unwrap();
+}
+
+fn rows_of(reply: &Reply) -> Vec<Json> {
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    reply
+        .json()
+        .get("runs")
+        .and_then(Json::as_array)
+        .expect("runs")
+        .to_vec()
+}
+
+fn field(row: &Json, key: &str) -> String {
+    row.get(key).and_then(Json::as_str).unwrap().to_string()
+}
+
+#[test]
+fn listruns_is_empty_before_the_first_run_and_leaves_no_folder_behind() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    assert!(rows_of(&call(&f, "GET", "/api/runs", None)).is_empty());
+    assert!(!f.project.path().join(".konductor/runs").exists());
+}
+
+#[test]
+fn listruns_gives_the_runs_of_the_root_newest_first_each_with_its_goal() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "Add a greeting",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0430-bbbbb",
+        "hello",
+        "Add a changelog line",
+        "2026-10-24T04:30:11Z",
+        RunStatus::Halted,
+    );
+    write_run(
+        project,
+        "20261024-0501-ccccc",
+        "other",
+        "Not mine",
+        "2026-10-24T05:01:00Z",
+        RunStatus::Passed,
+    );
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    let got: Vec<(String, String, String, String)> = rows
+        .iter()
+        .map(|r| {
+            (
+                field(r, "run_id"),
+                field(r, "started_at"),
+                field(r, "status"),
+                field(r, "goal"),
+            )
+        })
+        .collect();
+    let want = [
+        (
+            "20261024-0430-bbbbb",
+            "2026-10-24T04:30:11Z",
+            "halted",
+            "Add a changelog line",
+        ),
+        (
+            "20261024-0412-aaaaa",
+            "2026-10-24T04:12:05Z",
+            "passed",
+            "Add a greeting",
+        ),
+    ]
+    .map(|(a, b, c, d)| (a.to_string(), b.to_string(), c.to_string(), d.to_string()));
+    assert_eq!(got, want, "a run of another workflow is not listed");
+    assert!(rows
+        .iter()
+        .all(|r| r.get("goal_truncated") == Some(&Json::Bool(false))));
+    // The listed run can be read, and the one that is not listed can be read too.
+    assert_eq!(
+        call(&f, "GET", "/api/runs/20261024-0430-bbbbb", None).status,
+        200
+    );
+    assert_eq!(
+        call(&f, "GET", "/api/runs/20261024-0501-ccccc", None).status,
+        200
+    );
+}
+
+#[test]
+fn listruns_returns_at_most_limit_runs_and_refuses_a_limit_that_is_not_valid() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "One",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0430-bbbbb",
+        "hello",
+        "Two",
+        "2026-10-24T04:30:11Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0431-ccccc",
+        "hello",
+        "Three",
+        "2026-10-24T04:31:00Z",
+        RunStatus::Passed,
+    );
+    let goals = |query: &str| -> Vec<String> {
+        rows_of(&call(&f, "GET", &format!("/api/runs{query}"), None))
+            .iter()
+            .map(|r| field(r, "goal"))
+            .collect()
+    };
+    assert_eq!(goals("?limit=1"), ["Three"]);
+    assert_eq!(goals("?limit=2"), ["Three", "Two"]);
+    assert_eq!(goals("?limit=200").len(), 3);
+    assert_eq!(goals("").len(), 3);
+    for query in [
+        "?limit=0",
+        "?limit=201",
+        "?limit=all",
+        "?limit=",
+        "?limit=-1",
+        "?limit=%2B1",
+        "?limit=01",
+        "?limit=1.0",
+        "?limit=99999999999999999999",
+        "?limit=1&limit=1",
+    ] {
+        let reply = call(&f, "GET", &format!("/api/runs{query}"), None);
+        assert_eq!(
+            (reply.status, reply.code().as_str()),
+            (400, "bad_request"),
+            "{query}"
+        );
+    }
+}
+
+#[test]
+fn listruns_orders_the_runs_of_one_second_by_when_they_started() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    // Made in this order, which is the order they started in. Their ids say nothing about it.
+    let made = [
+        "20261024-0412-bbbbb",
+        "20261024-0412-aaaaa",
+        "20261024-0412-ccccc",
+    ];
+    for id in made {
+        write_run(
+            project,
+            id,
+            "hello",
+            id,
+            "2026-10-24T04:12:05Z",
+            RunStatus::Passed,
+        );
+        // The file system stamps a folder with a clock that ticks every few milliseconds.
+        std::thread::sleep(Duration::from_millis(30));
+    }
+    write_run(
+        project,
+        "20261024-0412-ddddd",
+        "hello",
+        "later",
+        "2026-10-24T04:12:06Z",
+        RunStatus::Passed,
+    );
+    let ids = |query: &str| -> Vec<String> {
+        rows_of(&call(&f, "GET", &format!("/api/runs{query}"), None))
+            .iter()
+            .map(|r| field(r, "run_id"))
+            .collect()
+    };
+    // A file system that keeps no creation time leaves the order of the ids.
+    let has_creation_time = fs::metadata(project.join(".konductor/runs/20261024-0412-bbbbb"))
+        .and_then(|meta| meta.created())
+        .is_ok();
+    let want_one_second = if has_creation_time {
+        made.iter().rev().copied().collect::<Vec<_>>()
+    } else {
+        vec![
+            "20261024-0412-ccccc",
+            "20261024-0412-bbbbb",
+            "20261024-0412-aaaaa",
+        ]
+    };
+    let mut want = vec!["20261024-0412-ddddd"];
+    want.extend(want_one_second.iter().copied());
+    assert_eq!(ids(""), want);
+    // With a limit, a second that is cut in the middle still keeps the newest of its runs.
+    assert_eq!(ids("?limit=2"), want[..2]);
+}
+
+#[test]
+fn listruns_cuts_a_goal_over_the_limit_at_a_character_and_keeps_one_at_the_limit_whole() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    let at_limit = "😀".repeat(2048);
+    let over = "é".repeat(2049);
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        &at_limit,
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0413-bbbbb",
+        "hello",
+        &over,
+        "2026-10-24T04:13:05Z",
+        RunStatus::Passed,
+    );
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(field(&rows[0], "goal"), "é".repeat(2048));
+    assert_eq!(rows[0].get("goal_truncated"), Some(&Json::Bool(true)));
+    assert_eq!(field(&rows[1], "goal"), at_limit);
+    assert_eq!(rows[1].get("goal_truncated"), Some(&Json::Bool(false)));
+}
+
+#[test]
+fn listruns_lists_a_run_from_before_goals_were_kept_with_an_empty_goal() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "gone",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    let state = project.join(".konductor/runs/20261024-0412-aaaaa/state.json");
+    let text = fs::read_to_string(&state)
+        .unwrap()
+        .replace("  \"goal\": \"gone\",\n", "");
+    assert!(!text.contains("goal"));
+    fs::write(&state, text).unwrap();
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(field(&rows[0], "goal"), "");
+    assert_eq!(rows[0].get("goal_truncated"), Some(&Json::Bool(false)));
+}
+
+#[test]
+fn listruns_skips_a_run_folder_that_has_no_readable_state() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "Fine",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    fs::create_dir(project.join(".konductor/runs/20261024-0413-bbbbb")).unwrap();
+    fs::create_dir(project.join(".konductor/runs/20261024-0414-ccccc")).unwrap();
+    fs::write(
+        project.join(".konductor/runs/20261024-0414-ccccc/state.json"),
+        "not json",
+    )
+    .unwrap();
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(rows.len(), 1);
+    assert_eq!(field(&rows[0], "run_id"), "20261024-0412-aaaaa");
+}
+
+#[test]
+fn listruns_reads_a_run_whose_owner_is_gone_as_halted_like_getrun() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let run_id = dead_run(f.project.path());
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(rows.len(), 1);
+    assert_eq!(field(&rows[0], "run_id"), run_id);
+    assert_eq!(field(&rows[0], "status"), "halted");
+    assert_eq!(field(&rows[0], "goal"), "Say hello");
+}
+
+#[test]
+fn listruns_shows_the_run_that_is_active_as_running_and_a_run_started_by_the_api_with_its_goal() {
+    let _serial = one_at_a_time();
+    let dir = TempDir::new("canvas-list-live");
+    let fifo = dir.path().join("hold");
+    assert!(Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .unwrap()
+        .success());
+    let f = signed_in_with(Some(fifo.clone()));
+    trust(&f);
+    let started = call(
+        &f,
+        "POST",
+        "/api/run",
+        Some("{\"params\":{\"goal\":\"Say it twice\"}}"),
+    );
+    assert_eq!(started.status, 202, "{}", started.body);
+    let run_id = field(&started.json(), "run_id");
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(rows.len(), 1);
+    assert_eq!(field(&rows[0], "run_id"), run_id);
+    assert_eq!(field(&rows[0], "status"), "running");
+    assert_eq!(field(&rows[0], "goal"), "Say it twice");
+    // Let the run end, so the server can stop.
+    fs::write(&fifo, "go").unwrap();
+    wait_for_status(&f, &run_id, "passed");
 }
 
 #[test]

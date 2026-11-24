@@ -57,7 +57,7 @@ pub(super) fn accept_loop(shared: Arc<Shared>, listener: TcpListener) {
 
 /// The `operationId` of each operation of the contract that this server serves. The session lists them as its
 /// capabilities, so an operation that is not served is not here. A test calls each of them on its path.
-pub(super) const OPERATIONS: [&str; 7] = [
+pub(super) const OPERATIONS: [&str; 8] = [
     "createSession",
     "getWorkflow",
     "saveWorkflow",
@@ -65,6 +65,7 @@ pub(super) const OPERATIONS: [&str; 7] = [
     "startRun",
     "getRun",
     "listAgents",
+    "listRuns",
 ];
 
 /// What the router decided a path is.
@@ -74,6 +75,7 @@ enum Route {
     Validate,
     Agents,
     Run,
+    Runs,
     RunStatus(String),
     Page,
 }
@@ -85,6 +87,7 @@ fn route_of(path: &str) -> Option<Route> {
         "/api/validate" => Some(Route::Validate),
         "/api/agents" => Some(Route::Agents),
         "/api/run" => Some(Route::Run),
+        "/api/runs" => Some(Route::Runs),
         p if p == "/api" || p.starts_with("/api/") => match p.strip_prefix("/api/runs/") {
             Some(id) if !id.is_empty() && !id.contains('/') => {
                 Some(Route::RunStatus(id.to_string()))
@@ -99,7 +102,7 @@ fn allowed_methods(route: &Route) -> &'static [&'static str] {
     match route {
         Route::Workflow => &["GET", "PUT"],
         Route::Session | Route::Validate | Route::Run => &["POST"],
-        Route::Agents | Route::RunStatus(_) | Route::Page => &["GET"],
+        Route::Agents | Route::Runs | Route::RunStatus(_) | Route::Page => &["GET"],
     }
 }
 
@@ -226,6 +229,7 @@ fn answer(
         Route::Validate => api::check_workflow(shared, &body),
         Route::Agents => api::list_agents(),
         Route::Run => api::start_run(shared, &body),
+        Route::Runs => api::list_runs(shared, &values_in(query, "limit")),
         Route::RunStatus(id) => api::get_run(shared, id),
         Route::Page => unreachable!("a page is answered above"),
     };
@@ -253,15 +257,20 @@ fn page(shared: &Shared, path: &str) -> Response {
     }
 }
 
-/// The values of the `name` parameter in a query string, decoded. Another parameter is ignored.
-pub(super) fn names_in(query: &str) -> Vec<String> {
+/// The values of the parameter `wanted` in a query string, decoded. Another parameter is ignored.
+fn values_in(query: &str, wanted: &str) -> Vec<String> {
     query
         .split('&')
         .filter_map(|pair| {
             let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
-            (decode(key) == "name").then(|| decode(value))
+            (decode(key) == wanted).then(|| decode(value))
         })
         .collect()
+}
+
+/// The values of the `name` parameter in a query string, decoded.
+pub(super) fn names_in(query: &str) -> Vec<String> {
+    values_in(query, "name")
 }
 
 fn decode(text: &str) -> String {
@@ -307,6 +316,8 @@ mod tests {
             route_of("/api/runs/20261024-0412-a7b3c"),
             Some(Route::RunStatus(_))
         ));
+        assert!(matches!(route_of("/api/runs"), Some(Route::Runs)));
+        assert!(matches!(route_of("/api/agents"), Some(Route::Agents)));
         assert!(route_of("/api/runs/").is_none());
         assert!(route_of("/api/runs/a/b").is_none());
         assert!(route_of("/api/other").is_none());

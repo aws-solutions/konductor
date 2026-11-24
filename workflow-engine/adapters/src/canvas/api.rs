@@ -13,7 +13,7 @@ use workflow_core::ports::{Claim, Clock, LockRecord, PortError, RunLock, RunStor
 use workflow_core::rules::{code_points, decode_file, is_name};
 use workflow_core::run::{Run, RunStatus};
 use workflow_core::runner::recover;
-use workflow_core::time::is_run_id;
+use workflow_core::time::{format_timestamp, is_run_id};
 use workflow_core::trust::sha256_hex;
 use workflow_core::view::{check_response, checked_view, diagnostics_json, stage_fields};
 use workflow_core::{check_text, Checked};
@@ -447,24 +447,15 @@ fn read_run(store: &FileRunStore, run_id: &str) -> Result<Option<Run>, PortError
         .and_then(|text| Run::from_text(&text)))
 }
 
-/// `getRun`, a reader under the dead-owner rule. A run that says `running` is looked at under the workspace lock:
-/// a lock that is held means its owner lives, and the state is read as it is. A lock that is free means the owner is
-/// gone. The reader then holds the lock, reads the state again and ends the run only if it still says `running`.
-pub fn get_run(shared: &Shared, run_id: &str) -> Result<Reply, ApiError> {
-    let missing = || ApiError::new("not_found").message("There is no run with this id.");
-    if !is_run_id(run_id) {
-        return Err(missing());
+/// A run as a reader sees it, under the dead-owner rule. A run that says `running` is looked at under the workspace
+/// lock: a lock that is held means its owner lives, and the state is read as it is. A lock that is free means the owner
+/// is gone. The reader then holds the lock, reads the state again and ends the run only if it still says `running`.
+/// `None` when the run is gone after that.
+fn settled(shared: &Shared, store: &mut FileRunStore, run: Run) -> Result<Option<Run>, ApiError> {
+    if run.status != RunStatus::Running {
+        return Ok(Some(run));
     }
     let root = &shared.config.project_root;
-    let Some(mut store) = FileRunStore::existing(root).map_err(io_error)? else {
-        return Err(missing());
-    };
-    let run = read_run(&store, run_id)
-        .map_err(io_error)?
-        .ok_or_else(missing)?;
-    if run.status != RunStatus::Running {
-        return ok(wrap(&run));
-    }
     // A start takes the lock for a moment too, and a reader must not make it think another run is active.
     let _quiet = shared
         .starts
@@ -473,21 +464,145 @@ pub fn get_run(shared: &Shared, run_id: &str) -> Result<Reply, ApiError> {
     let mut lock = FileRunLock::new(root);
     let record = LockRecord {
         owner: current_owner(),
-        run_id: run_id.to_string(),
+        run_id: run.run_id.clone(),
     };
     match lock.try_claim(&record).map_err(io_error)? {
-        Claim::Held(_) => ok(wrap(&run)),
+        Claim::Held(_) => Ok(Some(run)),
         Claim::Acquired => {
             let now = SystemClock.now_ms();
-            let result = recover(&mut store, "", now, &mut SystemLauncher::new());
+            let result = recover(store, "", now, &mut SystemLauncher::new());
             lock.release();
             result.map_err(io_error)?;
-            let after = read_run(&store, run_id)
-                .map_err(io_error)?
-                .ok_or_else(missing)?;
-            ok(wrap(&after))
+            read_run(store, &run.run_id).map_err(io_error)
         }
     }
+}
+
+/// `getRun`.
+pub fn get_run(shared: &Shared, run_id: &str) -> Result<Reply, ApiError> {
+    let missing = || ApiError::new("not_found").message("There is no run with this id.");
+    if !is_run_id(run_id) {
+        return Err(missing());
+    }
+    let Some(mut store) = FileRunStore::existing(&shared.config.project_root).map_err(io_error)?
+    else {
+        return Err(missing());
+    };
+    let run = read_run(&store, run_id)
+        .map_err(io_error)?
+        .ok_or_else(missing)?;
+    let run = settled(shared, &mut store, run)?.ok_or_else(missing)?;
+    ok(wrap(&run))
+}
+
+/// How many runs `listRuns` gives when `limit` is left out, and the most it gives.
+const DEFAULT_RUNS: usize = 50;
+const MAX_RUNS: usize = 200;
+
+/// The `limit` of `listRuns`: a whole number from 1 to 200, given once. `values` are the values of the parameter.
+fn read_limit(values: &[String]) -> Result<usize, ApiError> {
+    let bad = || ApiError::new("bad_request").message("`limit` is not valid.");
+    let [value] = values else {
+        return if values.is_empty() {
+            Ok(DEFAULT_RUNS)
+        } else {
+            Err(bad())
+        };
+    };
+    // Digits only, with no sign, no leading zero and no more than the length that a limit can have.
+    let whole = !value.is_empty()
+        && value.len() <= 16
+        && value.bytes().all(|b| b.is_ascii_digit())
+        && (value == "0" || !value.starts_with('0'));
+    match value.parse::<usize>() {
+        Ok(limit) if whole && (1..=MAX_RUNS).contains(&limit) => Ok(limit),
+        _ => Err(bad()),
+    }
+}
+
+/// A row of the history: the run's id, when it started, its status and its goal, cut to the limit of a goal at a
+/// character boundary.
+fn summary_json(run: &Run) -> Json {
+    let truncated = code_points(&run.goal) > MAX_GOAL_CHARS;
+    let goal: String = run.goal.chars().take(MAX_GOAL_CHARS).collect();
+    let mut row = Json::object();
+    row.insert("run_id", Json::str(&run.run_id));
+    row.insert("started_at", Json::str(&format_timestamp(run.started_at)));
+    row.insert("status", Json::str(run.status.as_str()));
+    row.insert("goal", Json::Str(goal));
+    row.insert("goal_truncated", Json::Bool(truncated));
+    row
+}
+
+/// The part of a run id that comes from the minute it started: `YYYYMMDD-HHMM`.
+fn minute_of(run_id: &str) -> &str {
+    &run_id[..13]
+}
+
+/// `listRuns`: the runs of the root workflow that `getRun` can read, newest first, at most `limit` of them. `limits` are
+/// the values of the `limit` parameter. A run that says `running` is read under the dead-owner rule, as `getRun` does.
+pub fn list_runs(shared: &Shared, limits: &[String]) -> Result<Reply, ApiError> {
+    let limit = read_limit(limits)?;
+    let root = &shared.config.root;
+    let mut rows = Vec::new();
+    let mut store = FileRunStore::existing(&shared.config.project_root).map_err(io_error)?;
+    let runs_dir = store.as_ref().map(|store| store.runs_dir().to_path_buf());
+    if let Some(store) = store.as_mut() {
+        let mut ids = store.list().map_err(io_error)?;
+        // A run id starts with the minute the run started, so a run in an earlier minute than the ones that fill the
+        // list cannot belong in it. A minute is read whole, because the runs in it are ordered by the second.
+        ids.sort_unstable_by(|a, b| b.cmp(a));
+        let mut full_at: Option<String> = None;
+        for id in &ids {
+            if full_at
+                .as_deref()
+                .is_some_and(|minute| minute_of(id) < minute)
+            {
+                break;
+            }
+            // A run folder that cannot be read is not a run that `getRun` can read, so it is not listed.
+            let Some(run) = store
+                .read_state(id)
+                .ok()
+                .flatten()
+                .and_then(|text| Run::from_text(&text))
+            else {
+                continue;
+            };
+            if run.workflow != *root {
+                continue;
+            }
+            let Some(run) = settled(shared, store, run)? else {
+                continue;
+            };
+            rows.push(run);
+            if full_at.is_none() && rows.len() >= limit {
+                full_at = Some(minute_of(id).to_string());
+            }
+        }
+    }
+    // The state keeps the second a run started in and no finer time. Runs of one second are ordered by when their
+    // folders were made, which is when they started, and by their ids where the file system does not say.
+    let made = |run: &Run| {
+        runs_dir
+            .as_ref()
+            .and_then(|dir| std::fs::symlink_metadata(dir.join(&run.run_id)).ok())
+            .and_then(|meta| meta.created().ok())
+    };
+    let mut rows: Vec<_> = rows.into_iter().map(|run| (made(&run), run)).collect();
+    rows.sort_by(|(made_a, a), (made_b, b)| {
+        b.started_at
+            .cmp(&a.started_at)
+            .then_with(|| made_b.cmp(made_a))
+            .then_with(|| b.run_id.cmp(&a.run_id))
+    });
+    rows.truncate(limit);
+    let mut body = Json::object();
+    body.insert(
+        "runs",
+        Json::Array(rows.iter().map(|(_, run)| summary_json(run)).collect()),
+    );
+    ok(body)
 }
 
 fn wrap(run: &Run) -> Json {

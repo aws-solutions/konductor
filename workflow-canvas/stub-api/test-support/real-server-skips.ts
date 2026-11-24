@@ -23,8 +23,11 @@ const IDS =
 const HARNESS =
   'expects the stub to serve the harness kiro-cli, and the real server serves the one it was started with';
 
-const NOT_YET = (operation: string) =>
-  `the real server does not serve ${operation} yet`;
+const STUB_TIMES =
+  'expects the start times of the stub clock, and the real server stamps its own';
+
+const EVENTS =
+  'the real server does not serve getRunEvents until the events step adds the event sink and events.jsonl';
 
 const LIBRARY =
   'the real server does not serve the workflow library yet (follow-up 28)';
@@ -78,12 +81,12 @@ const SKIPS: Skip[] = [
     why: 'compares the prose of the message, which names the key by its path in the real server',
   },
   {
-    test: /^GET \/api\/runs\/\{id}\/events(?! > is not_found)/,
-    why: NOT_YET('getRunEvents'),
+    test: /^GET \/api\/runs > lists the runs it played, newest first, each with its goal$/,
+    why: STUB_TIMES,
   },
   {
-    test: /^GET \/api\/runs(?!\/)/,
-    why: NOT_YET('listRuns'),
+    test: /^GET \/api\/runs\/\{id}\/events(?! > is not_found)/,
+    why: EVENTS,
   },
   {
     test: /^POST \/api\/run > is a bad request with a param that is not a string$/,
