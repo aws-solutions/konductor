@@ -135,6 +135,26 @@ test('capture the Designer tab when the file changed on disk', async ({
   await saveFullPageScreenshot(designer.page, 'designer-conflict');
 });
 
+test('capture the Designer tab with a change it cannot write in place', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(
+    request,
+    SAMPLE_TEXT.replace(
+      /  - name: review\n    agent: k-quality-assurance\n(    prompt_file: .*\n)?/,
+      '  - {name: review, agent: k-quality-assurance}\n',
+    ),
+  );
+  await canvas.page.reload();
+  await designer.stage('review').click();
+  await designer.rename('check');
+  await expect(designer.page.getByTestId('not-in-place')).toBeVisible();
+
+  await saveFullPageScreenshot(designer.page, 'designer-not-in-place');
+});
+
 test('capture the Designer tab with unsaved edits in the dark mode', async ({
   canvas,
   designer,

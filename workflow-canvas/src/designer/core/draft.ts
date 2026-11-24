@@ -38,6 +38,11 @@ export function stagesOf(draft: Draft): StageView[] {
   return draft.stages.map(({ name, agent }) => ({ name, agent }));
 }
 
+/** The ids of the stages of a draft, in order. */
+export function idsOf(draft: Draft): string[] {
+  return draft.stages.map((stage) => stage.id);
+}
+
 /** Whether two lists have the same stages, in the same order. */
 export function sameStages(
   a: readonly StageView[],
