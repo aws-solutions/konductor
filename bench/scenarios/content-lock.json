@@ -614,11 +614,6 @@
       "sha256": "802262b7537cc0af3260fb8c897fa0ac09aea424b04de120f3aa31c6b45eb989",
       "legacyRecheckVersion": 2
     },
-    "t6-idea-feature-bets": {
-      "version": 4,
-      "sha256": "0f5c087fcff48ba6e02a48e4d866b80007abed02dc936121b71a03fdfe2db82e",
-      "legacyRecheckVersion": 4
-    },
     "t6-idea-onboarding-dropoff": {
       "version": 4,
       "sha256": "0e0ca26be5f9ada3b7e866a4c5b1c9eb9a8a8b7b13427afa20fc849232150b2a",
