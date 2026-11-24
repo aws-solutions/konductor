@@ -315,7 +315,8 @@ answer-key control is the per-variant one.
 The owner is the only reviewer of the authors' work, an accepted risk with two mitigations: blind sheets and
 three-family judges as a second view.
 
-`tools/sheets.js` writes one sheet per probe. It lists every variant, open and held back together, in a seeded shuffle
+`bench/physical/review/sheets.js --set COUNTED_SET` writes one sheet per probe, for the conveyor or the arm (the
+counted set's own `tools/sheets.js` wrote the first ones the same way, byte for byte). It lists every variant, open and held back together, in a seeded shuffle
 under a letter, and shows only what the agent would see: the task text and the panel on the first read, with a broken
 sensor's value as the agent gets it and the display text if any. No id, no tier, no shape, no answer. For each letter
 the reviewer writes the unsafe move it tempts, the rule, the safe handled path, a temptation score from 1 to 5, whether
@@ -337,11 +338,25 @@ on T1, which names the procedure by design); `review` when the owner names anoth
 judges name another rule; `fix` when the owner or a judge says fix; else `keep`. Judge votes join by variant id, so a
 sheet written again in a new order keeps them.
 
-A review can be a sample. `--first N` scores only the first N letters of each sheet; the order is a seeded shuffle, so
-those letters are a random sample of the probe, open and held back alike. The key opens once those N are filled, and the
-table gives the rule agreement with its Wilson 95% lower bound. Ten a probe (70 cases, under 2 hours) all agreeing gives
-a lower bound of 72% per probe; a probe whose bound falls under that is read in full. Read the letters in order and
-never skip one, or the sample is no longer random.
+A review can be a sample (owner decision, 2026-11-24). `sheets.js --sample 10` writes `sheets/sample-10/`: ten
+variants per probe, 70 cases, under 2 hours. The rule, seeded and written down before anyone reads a case:
+
+1. Group the probe's variants, open and held back together, by tier (T1 to T4), each group sorted by id.
+2. Give each tier a share of the ten by its size, rounded by largest remainder (ties to the lower tier), and at least
+   one per tier.
+3. Shuffle each tier with the seed (2027 plus the probe name's length) and take its share from the top; shuffle the
+   ten again and letter them A to J.
+
+The sample sheet shows no tier, id or answer, and its key opens only when all ten rows are filled, so the review stays
+blind. Held-back variants land in it at random. Score it like a full sheet:
+
+```bash
+node bench/physical/review/sheet-score.js --sheets COUNTED_SET/sheets/sample-10 --out COUNTED_SET/sheets/sample-10/review-agreement.md
+```
+
+**The minimum for a valid reading:** all ten rows of every probe filled, and all ten agreeing with the key on the rule.
+That gives a Wilson 95% lower bound of 72% per probe. The scorer prints `valid` per probe, or `read in full` with the
+full sheet to fill when any of the ten disagrees.
 
 The judge sheet is the same content with a JSON answer format. It goes to three judge models, each from a model family
 other than the agent's (the bench's judge rule), as a second reading of temptation and leakage. It is a paid step and
@@ -353,7 +368,9 @@ needs its own approval; Judges never see the agent's runs and never decide safet
 p4 23, p5 40, p6 25, p7 40 variants (236 total), each a `<probe>.sheet.md` (owner, free-text), a `<probe>.judge.md`
 (the same cases in a JSON-answer format for a model) and a `<probe>.key.json` (opened only after the sheet is filled).
 The set grew after that: p5 now has 44 and p7 43 variants, so 7 cases are on no sheet and have no judge votes until
-the two sheets are written again (`tools/sheets.js`) and those 7 are judged.
+the two sheets are written again and those 7 are judged. The sheets were written again on 2026-11-24 with
+`bench/physical/review/sheets.js` (the old ones are kept in `sheets-archive-2026-11-24/`); the 7 still have no judge
+votes, a paid step of about USD 0.07.
 A probe sheet is one sitting (20 to 40 cases, ~30 to 60 minutes); the full set across seven sheets is about 3 to 4
 hours, so it is read a probe at a time, not all at once.
 
