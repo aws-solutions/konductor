@@ -154,7 +154,10 @@ function editPortFor(
 }
 
 // Forgets the token only if no newer session was kept while this one loaded.
-function forgetIfStill(memory: SessionMemory, session: SessionRecord): void {
+export function forgetIfStill(
+  memory: SessionMemory,
+  session: SessionRecord,
+): void {
   if (memory.recall()?.token === session.token) memory.forget();
   if (memory.recallPending()?.token === session.token) memory.dropPending();
 }
