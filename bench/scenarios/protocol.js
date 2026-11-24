@@ -38,6 +38,12 @@ const PROTOCOL = {
   ranking: 'tasks, phases and roles best to worst by paired difference, with intervals; ranks inside overlapping intervals are not ordered',
   stopRules: { batchSpendOverEstimateFactor: 2, harnessFaultRate: 0.05 },
   model: 'one model; every claim says so',
+  // D-122: the owner's yes to locking these batches although fewer than 1 in 3 of their tasks come from a second author family.
+  singleFamilyBatches: {
+    decided: 'owner yes, 2026-11-24 (bench/DEBT.md D-122)',
+    batches: ['t1', 't4', 't5', 't7', 't8', 't10', 't11', 't12'],
+    rule: 'these batches lock with fewer than 1 in 3 second-family tasks; the report keeps their single-family and hand-edited tasks shown apart',
+  },
 };
 
 module.exports = { BOOTSTRAP, MARGIN, PROTOCOL };

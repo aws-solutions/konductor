@@ -5,7 +5,7 @@
  "phase": "requirements",
  "role": "pm",
  "out": "docs/requirements.md",
- "repo": "a document folder for a regional water utility replacing paper forms for field inspectors with a tablet app: the paper inspection form (as markdown), a list of asset types, inspector interview notes, a coverage map description, a records policy, IT standards page, last quarter's inspection log CSV. About 25 files.",
+ "repo": "a document folder for a regional water utility replacing paper forms for field inspectors with a tablet app: the paper inspection form (as markdown), a list of asset types, inspector interview notes, a coverage map description, a records policy and an IT standards page. About 25 files.",
  "idea": "Requirements where operating conditions are known only to the field lead. Hidden facts could cover: how long devices are offline, shared devices, photo rules, sync conflicts, sign-off, safety stop rules, which inspections are in scope first, device type.",
  "source": {
   "url": "https://github.com/18F/methods",

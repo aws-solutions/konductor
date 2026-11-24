@@ -27,3 +27,15 @@ test('run-overnight.sh: the stub cases pass (step order, stop at a failing step,
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /all cases pass/);
 });
+
+test('debt-paid/run.sh and its five job wrappers: every stub case passes (plans, spend guard, cap, busy refusal, families)', { timeout: 300000 }, (t) => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'debt-paid-ws-'));
+  t.after(() => fs.rmSync(ws, { recursive: true, force: true }));
+  const env = { ...process.env, KONDUCTOR_WS: ws };
+  for (const k of ['ROOT', 'JOBS', 'PIN_REPO', 'PAID_PAT', 'JOB_LOCK', 'HEAVY_LOCK', 'KIRO']) delete env[k];
+  const r = spawnSync('bash', [path.join(__dirname, '..', '..', 'ops', 'workspace', 'debt-paid', 'test-run.sh')], { encoding: 'utf8', env, timeout: 280000 });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /ALL PASS/);
+});

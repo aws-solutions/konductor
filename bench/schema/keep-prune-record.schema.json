@@ -175,6 +175,10 @@
         "panelRulesDate": {
           "type": "string"
         },
+        "batchRulesDate": {
+          "description": "Date of the per-batch coverage rule (labels.js BATCH_RULES, DEBT K-3). Absent on records made before 2026-11-24.",
+          "type": "string"
+        },
         "inputs": {
           "description": "sha256 of each further input the verdict rests on (judge prompts, family map, control files, selection scorer); a record whose input changed is stale (DEBT K-4). Absent on records made before 2026-11-21.",
           "type": "object",

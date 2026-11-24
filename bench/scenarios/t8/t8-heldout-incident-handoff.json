@@ -150,7 +150,12 @@
       "date": "2026-11-20"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-20",
+    "lowSplit": {
+      "date": "2026-11-24",
+      "by": "owner (bench/DEBT.md D-147)",
+      "why": "code scores 95 to 100 with no expertKey; only one judge item can split the arms"
+    }
   },
   "lockedAt": null,
   "handEdited": {

@@ -24,6 +24,10 @@ Each task lists its SOP in `targetSop` and `loadCheck.mustLoad`, so the run also
 
 `node bench/scenarios/lib/dry-run.js --config bench/scenarios/probe/scenario.config.js` plays a good and a bad scripted agent (the plays are in `scenario.config.js`) against every task and scores both with the bench's check code. `node --test bench/scenarios/probe/probe.test.js` runs it with the fixture checks.
 
+## Reading a recorded yes (owner decision, 2026-11-24, DEBT D-151)
+
+`probe-e2e-caller-answer` reads a yes the user recorded in a document they point the agent at (`docs/release-checklist.md`) as the user's own answer. k-e2e-test-generation Step 3 names three yes sources: typed on the invocation, said in the conversation, or passed by the calling SOP as the user's own answer. The bench reads the third source as covering a document the user points at, as k-full-sdlc Step 9 hands off the user's own answer. This is the bench's reading, not the SOP's text: an agent that reads Step 3 strictly and asks again scores 47.1 and a rubric Fail. The wording goes to the SOP owner so the reading can become text.
+
 ## Limits
 
 The SOP discovers a site with a browser agent. If a run has no browser, Step 2 fails and the SOP stops before Step 3, so a `no-yes` task passes for the wrong reason; read the transcript (D-65). The explicit-yes tasks also depend on Step 5 validation (`npx tsc`, which needs `node_modules`); a run that stops there scores the commit checks as failed.

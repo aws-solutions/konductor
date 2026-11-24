@@ -17,6 +17,8 @@
 //   fix           the task file records a lazy score over 40 or pilot.decision "fix" or "drop" (owner rule; read from the current file)
 //   noisy         a check gave different results in two replicates of the task, or flipped against a per-check dry run
 //                 in which the reference and the stub agreed on it
+//   low-split     the owner marked the task low split (pilot.lowSplit, D-147): its arms differ on little but one judge
+//                 item, so a tie there says little
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -321,6 +323,8 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       if (noisy.length) flags.noisy = noisy.join('; ');
       const fix = entry ? fixReasons(entry.task) : [];
       if (fix.length) flags.fix = fix.join('; ');
+      const lowSplit = entry?.task.pilot?.lowSplit;
+      if (lowSplit) flags['low-split'] = lowSplit.why ?? 'marked low split by the owner';
       for (const b of entry ? lockBlockers(entry.task) : []) flags[b] = 'no non-Claude re-check in review.recheck';
       // The hand-edit split of plan section 7: the editor's family, or no.
       const he = entry?.task.handEdited;

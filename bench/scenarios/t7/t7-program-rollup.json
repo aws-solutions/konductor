@@ -1,7 +1,7 @@
 {
   "id": "t7-program-rollup",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -60,6 +60,36 @@
       "weight": 2
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "gap-to-target",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "Sizes the gap at the target: S-10 to S-12 give 42 + 45 + 42 = 129 points by 2027-10-15 against 254 open, so about 125 points must be cut or deferred to hold the date. Weak: \"the milestone is at risk\" with no size."
+      },
+      {
+        "id": "per-team-capacity",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
+        "text": "Notes that the 2027-11-26 forecast pools capacity across teams: ARC alone has 88 open points against 87 through S-15 (14 + 15 + 14 + 15 + 14 + 15), so ARC runs past that date unless work moves to another team or scope drops. Weak: treats the program total as if any team can take any point."
+      },
+      {
+        "id": "serial-handoffs",
+        "source": "Wikipedia, Critical path method, https://en.wikipedia.org/wiki/Critical_path_method (CC BY-SA 4.0, idea only)",
+        "text": "Says the chain ARC-117 (8) -> BEAM-224 (13) -> COVE-331 (8) -> COVE-342 (8) is 37 points that run one after another across three teams, so COVE-342 planned in S-11 cannot start until BEAM-224 unblocks. Weak: lists the chain without its order effect."
+      },
+      {
+        "id": "unblock-ask",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
+        "text": "Asks for a dated unblock: ARC-117 (Jon, In Progress) owes the handoff contract BEAM-224 (Mira, Blocked) waits on, and BEAM-224 was last updated 2027-07-21, over a month before the 2027-08-30 report. Weak: \"resolve the blocker\" with no owner or date."
+      }
+    ],
+    "weakAnswers": [
+      "All three teams report green, so the program is on track for 2027-10-15.",
+      "The program is red because of a blocked ticket; the date is at risk.",
+      "Capacity covers the work by 2027-11-26, so every team finishes by then.",
+      "The teams should work together to clear the blocker."
+    ]
+  },
   "targetSkills": [
     "status-reporting",
     "progress-tracking",

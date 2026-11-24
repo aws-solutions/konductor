@@ -1,0 +1,45 @@
+# The five paid debt jobs of reports/debt-paid-runs-2026-11-24.md (rows 2 to 6). Read by run.sh.
+#   cap JOB COUNTED            the job's hard cap in counted credits (the table's figure)
+#   JOB NAME KIND MODEL FROM ID...
+# KIND: map (one map call; the reply is the result), write (the writer changes the bundled tasks and writes
+# rewrite.json; an id written new:<id> is a new task from its batch brief, and the writer writes task-draft.json), or
+# recheck (four questions per task, recheck.json). FROM names the write call whose files a recheck reads, or -.
+# Calls run in file order; a recheck follows its writer, so one finished task never waits on another's writer.
+
+# D-132: the glm-5 map the CV-E held-out T8 tasks never got (third family; compare with the reviewed targets).
+cap D-132 30
+D-132 M1 map glm-5 - t8-heldout-rollback-decision
+D-132 M2 map glm-5 - t8-heldout-incident-handoff
+
+# D-167: re-map the 12 coverage-gap stage 1 tasks (T2, landed 2026-11-22) from the filled catalogue (D-162).
+cap D-167 180
+D-167 M01 map glm-5 - t2-dr-doc-ready-for-review
+D-167 M02 map glm-5 - t2-dr-five-angle-spec
+D-167 M03 map glm-5 - t2-dr-plan-start-monday
+D-167 M04 map glm-5 - t2-dr-search-options
+D-167 M05 map glm-5 - t2-gaps-rev3-history
+D-167 M06 map glm-5 - t2-pr-catalog-api-v2
+D-167 M07 map glm-5 - t2-pr-checkout-widget
+D-167 M08 map glm-5 - t2-pr-ledger-transfer
+D-167 M09 map glm-5 - t2-pr-order-contract
+D-167 M10 map glm-5 - t2-pr-precheck-uncommitted
+D-167 M11 map glm-5 - t2-sec-dr-partner-webhooks
+D-167 M12 map glm-5 - t2-sec-pr-session-refresh
+
+# D-123: the writer family (gpt) makes t5-qa-flaky-fix's shared state a real order bug; a non-Claude recheck.
+cap D-123 30
+D-123 W1 write gpt-5.6-luna - t5-qa-flaky-fix
+D-123 R1 recheck deepseek-3.2 W1 t5-qa-flaky-fix
+
+# D-159: a second-family writer (not deepseek, its author) rewrites t3-db-order-history and its key; gpt-5.6-luna,
+# whose three rechecks failed it, rechecks.
+cap D-159 75
+D-159 W1 write qwen3-coder-next - t3-db-order-history
+D-159 R1 recheck gpt-5.6-luna W1 t3-db-order-history
+
+# D-137: the two T1 refactor tasks of the coverage review, written again by a second family from their briefs.
+cap D-137 60
+D-137 W1 write deepseek-3.2 - new:t1-refactor-permission-boundary
+D-137 R1 recheck glm-5 W1 t1-refactor-permission-boundary
+D-137 W2 write deepseek-3.2 - new:t1-refactor-logging-migration
+D-137 R2 recheck glm-5 W2 t1-refactor-logging-migration

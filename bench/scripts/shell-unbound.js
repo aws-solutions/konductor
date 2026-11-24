@@ -8,8 +8,8 @@
 // 2026-11-21 PAID wave-0 run died this way on `log` and `pinbak`, nothing spent).
 // A read as ${NAME:-...}, ${NAME-...}, ${NAME:=...} or ${NAME+...} is safe and not reported.
 //   node bench/scripts/shell-unbound.js [FILE|DIR ...]   (default: bench/ and scripts/ of the repository)
-// Not checked yet: "${X[@]}" on an empty array under set -u, which fails only on bash before 4.4 (macOS ships 3.2);
-// 17 bench and owner-script sites use it, and the bench hosts run bash 5.2 (D-194).
+// Not checked, by owner decision (2026-11-24, D-194): "${X[@]}" on an empty array under set -u, which fails only on
+// bash before 4.4 (macOS ships 3.2). Linux bash 5 is the only supported script host, so the 17 sites that use it stay.
 // Exit 1 when it finds one. shortcut: a line-based reader, not a shell parser; a branch keyword inside a heredoc or a
 // one-line `[ x ] && { local y; }` group is not seen. Upgrade to shellcheck's SC2154 flow analysis once shellcheck is
 // installed on the bench host (it is not, 2026-11-21).

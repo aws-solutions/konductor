@@ -238,7 +238,15 @@ test('deep rule: NO DATA inside the A/A spread or with no A/A interval', () => {
   assert.match(kp.deepNoData(A, { t_interval_exact: [-0.2, 0.3], mean_gap: -0.15 }), /inside the A\/A spread.*deep rule 2/);
   assert.equal(kp.deepNoData({ mean_gap: 0.4 }, { t_interval_exact: [-0.2, 0.3], mean_gap: 0.05 }), null);
   assert.match(kp.DEEP_RULES, /written before any paid deep run/);
-  assert.equal(kp.DEEP_RULES_DATE, '2026-11-17');
+  assert.equal(kp.DEEP_RULES_DATE, '2026-11-24');
+});
+
+test('deep rule 3 (K-2, 2026-11-24): NO DATA when the A and A/A intervals overlap, even with A outside the spread', () => {
+  const aa = { t_interval_exact: [-0.4, 0.5], mean_gap: 0.05 };
+  assert.match(kp.deepNoData({ mean_gap: 0.6, t_interval_exact: [0.3, 0.9] }, aa), /overlaps the A\/A interval.*deep rule 3/);
+  assert.equal(kp.deepNoData({ mean_gap: 0.8, t_interval_exact: [0.55, 1.05] }, aa), null);
+  assert.equal(kp.deepNoData({ mean_gap: -0.9, t_interval_exact: [-1.2, -0.6] }, aa), null);
+  assert.match(kp.DEEP_RULES, /3\. The skill is `NO DATA` when A's interval and the A\/A interval overlap/);
 });
 
 test('quick and deep disagreeing are kept side by side, never averaged', () => {

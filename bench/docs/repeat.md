@@ -84,6 +84,13 @@ Builds used so far (local branches, never pushed, so the SHAs resolve only in th
 A result carries the build label and the SHA. Labels used: "pre-merge integration build (main + #302/#299/#303)" and
 "pre-merge integration build (main + #302/#299/#303 + Kiro skill-access fix)".
 
+**Rebuild rule (owner decision, 2026-11-24, D-48).** The two commits are not published. To repeat a study, rebuild its
+commit from the contents in the table: `origin/main` at `05360b8c`, merge the PR heads in the order listed (the v2 merge
+conflicts only in `CHANGELOG.md` and `docs/site/.user-guide.manifest`), and check every head is an ancestor (the loop
+above). The rebuilt SHA differs from the one in the table, because commit times and authors differ. Record the rebuilt
+SHA beside the study's SHA in the result, and compare trees with `git diff --stat <rebuilt> <table SHA>` in the clone
+that still has both.
+
 ## 3. Free checks
 
 None of these calls a model or spends anything. `check` and `freeze` need AWS and the Kiro login.

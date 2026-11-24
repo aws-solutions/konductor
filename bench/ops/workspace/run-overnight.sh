@@ -6,8 +6,8 @@
 # What it does, in order (every step is already approved, with its own cap):
 #   0. keeps the judge credentials fresh in the background (scripts/keep-creds-fresh.sh, local only) until the chain ends
 #   1. waits until the Claude Code study (run-cc-compare.sh) has ended; gives up after MAX_WAIT_MIN (480) minutes
-#   2. run-clean-fill.sh --go : Opus fill (cap 138 counted credits), Claude Code fill (USD 1.5 a cell),
-#      the hook-fill judge (USD 0.5 cap), the Opus-fill judge (USD 0.3 cap)
+#   2. run-clean-fill.sh --go : Opus fill (cap 138 counted credits), the hook-fill judge (USD 0.5 cap), the Opus-fill
+#      judge (USD 0.3 cap), the Claude Code judge (USD 2 cap)
 #   3. the Claude Code judge (run-cc-compare-judge.sh, USD 2 cap), after its own free --plan
 # It stops at the first step that fails, and says which one. Nothing else is started.
 # Needs KONDUCTOR_WS (the launcher in <workspace>/scripts sets it). Test overrides: OVERNIGHT_WAIT_PAT, OVERNIGHT_POLL_S,

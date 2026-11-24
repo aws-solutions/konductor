@@ -47,6 +47,14 @@ is the docs owner's page and points here.
 | `arm-pose-two-host.sh` | The two-host pose repeat check of DEBT D-30, one command per step. Free. |
 | `arm-signed-release-test-v2.sh` | The arm policy test and the five arm controls on a signed release, in one command. |
 | `arm-signed-release-test.sh` | Superseded by `arm-signed-release-test-v2.sh`. |
+| `debt-paid/jobs.txt` | The five paid debt jobs (D-132, D-167, D-123, D-159, D-137): each job's cap and its calls (name, kind, model, the writer a recheck reads, tasks). |
+| `debt-paid/prep.js` | Helpers of `debt-paid/run.sh`: each call's prompt and bundle (the map step's template, the recheck bundle, a new task's batch author prompt), its result and its real credits. Free. |
+| `debt-paid/prompts/D-123-W1.md` | The D-123 writer brief: an env-free shared limiter in `t5-qa-flaky-fix`. |
+| `debt-paid/prompts/D-137-W1.md` | What the dropped `t1-refactor-permission-boundary` drafts got wrong, added to its T1 author prompt. |
+| `debt-paid/prompts/D-137-W2.md` | What the dropped `t1-refactor-logging-migration` draft got wrong, added to its T1 author prompt. |
+| `debt-paid/prompts/D-159-W1.md` | The D-159 writer brief: `t3-db-order-history` without the composite hint, and a key inside the fixture limits. |
+| `debt-paid/run.sh` | The engine of the five paid debt jobs: one kiro-cli call at a time in an empty HOME on a pinned checkout; `--plan` (the default) is free; `--go` is paid, counts each call at the larger of 15 and its real credits against the job's hard cap, refuses while another paid job runs, resumes on a rerun. |
+| `debt-paid/test-run.sh` | Test of `debt-paid/run.sh` and the five `run-debt-*.sh` wrappers with a stub kiro-cli (plans, map and write results, resume, counted credits, the cap, busy and lock refusals, no result, families). Free. |
 | `kp-pilot-lib.sh` | Shared steps of the keep-or-prune pilot wrappers. Sourced, not run. |
 | `lite-fill.js` | Free helper for `run-lite-konductor-v2.sh`: reads results and moves `.done` markers. |
 | `lite-helper.js` | Free helper for the LITE run and judge scripts. Reads files only. |
@@ -60,7 +68,12 @@ is the docs owner's page and points here.
 | `run-arm-test-on-head.sh` | Runs `arm-signed-release-test-v2.sh` on the current origin head. |
 | `run-cc-plant-check-v2.sh` | The first real Claude Code plant check. Paid. |
 | `run-cc-plant-check.sh` | Superseded by `run-cc-plant-check-v2.sh`. |
-| `run-clean-fill.sh` | The clean-run plan of 2026-11-24 in one command: `--plan` (free: every step's plan), `--go` (Kiro Opus fill, Claude Code fill, then the nudge, Opus-fill and Claude Code judge passes, one at a time; refused while `run-cc-compare.sh` runs). Paid. |
+| `run-clean-fill.sh` | The clean-run plan of 2026-11-24 in one command: `--plan` (free: every step's plan), `--go` (Kiro Opus fill, then the nudge, Opus-fill and Claude Code judge passes, one at a time; refused while `run-cc-compare.sh` runs; the Claude Code fill step left on 2026-11-24, D-247: 0 cells to fill). Paid. |
+| `run-debt-d123-limiter.sh` | D-123: gpt-5.6-luna makes `t5-qa-flaky-fix`'s shared limiter a real order bug, then a deepseek-3.2 recheck. Paid (cap 30 counted); `--plan` is free. |
+| `run-debt-d132-map.sh` | D-132: glm-5 maps the two CV-E held-out T8 tasks. Paid (cap 30 counted); `--plan` is free. |
+| `run-debt-d137-refactor.sh` | D-137: deepseek-3.2 writes the two T1 refactor tasks again from their briefs, each with a glm-5 recheck. Paid (cap 60 counted); `--plan` is free. |
+| `run-debt-d159-rewrite.sh` | D-159: qwen3-coder-next rewrites `t3-db-order-history` and its key, then a gpt-5.6-luna recheck. Paid (cap 75 counted); `--plan` is free. |
+| `run-debt-d167-remap.sh` | D-167: glm-5 re-maps the 12 coverage-gap stage 1 tasks from the filled catalogue. Paid (cap 180 counted); `--plan` is free. |
 | `run-overnight.sh` | The overnight chain of 2026-11-24: the credential refresher, a wait (up to 8 h) for `run-cc-compare.sh` to end, `run-clean-fill.sh --go`, then the Claude Code judge (its free `--plan` first). Stops at the first failing step. Paid, through the approved caps of each step. |
 | `debt-open-rows.js` | Lists the rows of `bench/DEBT.md` that are not closed, with counts by status, owner and area. Free, read only. |
 | `run-full-suite-twice-v2.sh` | KR k485f5870: two full suite runs through `bench/scripts/test.sh --tap`, then the reading. Free. |
@@ -128,12 +141,10 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, both sets in one pass, then `bench compare --aa vanilla` prints the floor. Paid (USD, cap 2). |
 | `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b, one bench run each) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
 | `cc-team-mode.patch` | D-241: the Claude Code team-mode change (`plugins/claude-code/team-mode.js` and its call in `installInto`) for the frozen bench 69149846. `run-cc-compare.sh` applies it as one commit in its own worktree and checks the tree. Not run. |
-| `cc-fill.js` | Helpers of `run-cc-fill.sh`: each Claude Code cell's rule (run, keep, flag, ask), moving an infra-error cell aside, and the USD spent since the fill started. Free. |
 | `cc-skill-loads.js` | Which skills each `run-cc-compare.sh` run loaded and whether in full (whole, partial, preload, failed, missing per must-load unit). Free. |
 | `cc-team-reuse.js` | Helper of `run-cc-team.sh`: checks the saved Claude Code study is at the new arm's setup (bench commit, claude version, model, seed, effort, replicates, isolation, run cap, arms, all runs a success) and prints each task's saved cc-konductor USD, the expected USD and the judge estimate. Free. |
 | `run-cc-compare-judge.sh` | Judge pass of `run-cc-compare.sh`, non-Claude panel, then `report --baseline cc-vanilla`. Paid (USD, cap 2); `--plan` is free. |
 | `run-cc-compare.sh` | The forced experiment's 8 tasks on Claude Code: cc-vanilla against cc-konductor (f5d18459, with team mode: `cc-team-mode.patch`), 2 replicates, frozen bench 69149846, 32 runs. Paid (USD, cap 30); the default is a dry run, `--prepare` is free. `CC_MODEL`, `CC_ARMS`, `CC_CAP_USD` and `CC_RUN_CAP_USD` change the model, arms and caps for `run-cc-model-swap.sh`. |
-| `run-cc-fill.sh` | Fill of `run-cc-compare.sh`'s study after it ends: only cells with no result, a budget skip or an infra error, at the study's own pre-D-241 setup (plain frozen bench, same claude, model, arms); flags self-kills, timeouts and run-cap stops; stops on an error it cannot place. Paid (USD, cap = cells x 1.5, frozen at the first `--go`); `--plan` is free. |
 | `run-cc-model-swap.sh` | Claude Code twin of `run-model-swap.sh`: cc-konductor on Sonnet 5.5 (16 runs, cap USD 16; skipped when `run-cc-team.sh`'s team-mode runs exist; `run-cc-compare.sh`'s pre-team study is not reused) and Opus 5.5 (16 runs, cap USD 32), run through `run-cc-compare.sh`; skill loads by `cc-skill-loads.js`. Paid per stage (`--go --stage S`); `--plan`, `--prepare` and `--summary` are free. |
 | `run-cc-team.sh` | Second arm of the Claude Code study: cc-konductor-team (f5d18459 with team mode, `cc-team-mode.patch`) on the same 8 tasks, 2 replicates, through `run-cc-compare.sh` under `/var/tmp/cc-team`; the study's 32 runs are reused after `cc-team-reuse.js` checks them. Paid (USD, cap 16; judge cap 1); `--plan`, `--prepare`, `--judge-plan`, `--loads` and `--rescore` are free. |
 | `model-swap-summary.js` | Skill-load table of `run-model-swap.sh` per model and arm (task skill loaded, loaded whole, preview only, `find_skills`, "no skill fits", model mismatch), read with `cap nudge-check`'s reader. Free. |
@@ -153,7 +164,6 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `lib.sh` | The spend and host helpers the paid run scripts here source (`budget_for`, `worst_case`, `wait_host`, `ledger_spent`; D-242). Sourced, never run. |
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, of `cc-skill-loads.js` on a made-up stream, and of `cc-team-mode.patch` on the frozen bench. Free. |
-| `test-run-cc-fill-stub.sh` | Test of `run-cc-fill.sh` and `cc-fill.js` (plan, infra cell moved aside, ask stop, bench-commit guard, main-study guard, fill cap, a task never started) with a stub bench. Free. |
 | `test-run-cc-team-stub.sh` | Test of `run-cc-team.sh` and `cc-team-reuse.js` (plan and reuse, a reuse mismatch, the new arm only at USD 1 a run, resume, the busy guard, judge, re-score and loads calls) with a stub bench, judge and re-score. Free. |
 | `test-run-cc-model-swap-stub.sh` | Test of `run-cc-model-swap.sh` and the `CC_*` overrides of `run-cc-compare.sh` (plan, Opus stage, Sonnet reuse refusal, summary) with a stub bench. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |

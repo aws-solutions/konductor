@@ -143,7 +143,9 @@ test('judge-share: the judges carry at most 30% of a v3 task; a task without a t
   assert.equal(judgeShare(t([{ type: 'tests' }, { type: 'cmd' }])), 0.3);
   assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'cmd' }])), []);
   assert.deepEqual(rules(t([{ type: 'cmd' }])), ['judge-share'], 'no hidden share: 0.3 of 0.5');
-  assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'file_exists', kind: 'format' }])), ['judge-share'], 'a format check is not scored: 0.3 of 0.8');
+  // D-81, owner yes 2026-11-24: with a tests check the limit is 40%, so a tests check and a rubric (37.5%) pass.
+  assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'file_exists', kind: 'format' }])), [], 'a format check is not scored: 0.3 of 0.8, under 40% with a tests check');
+  assert.deepEqual(rules(t([{ type: 'cmd', kind: 'substance' }, { type: 'cmd' }])), ['judge-share'], 'no tests check: the 30% limit, 60% fails');
   assert.equal(judgeShare({ checks: [{ type: 'cmd' }] }), null, 'no rubric, no judges');
   assert.deepEqual(rules({ prompt: 'ok', rubric, checks: [{ type: 'cmd' }] }), [], 'an old task is exempt');
 });
