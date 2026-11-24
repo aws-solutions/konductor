@@ -14,6 +14,16 @@
 #   sh run-model-swap.sh [--plan] [--stage S]   free dry run: checks, reused cells, per-task budget, expected and worst case
 #   sh run-model-swap.sh --go --stage S         PAID run of one stage (approve its cap first). Resumable, setsid-safe.
 #   sh run-model-swap.sh --summary              free: skill-load table per model and arm -> runs-model-swap/summary.md
+#   sh run-model-swap.sh --fill [--plan]        free plan of the natural stage's fill (below)
+#   sh run-model-swap.sh --fill --go            PAID fill (approved 2026-11-24: cap 138 counted credits, the plan's figure)
+#
+# Fill: the 400 cap left t1-nfr-report-queries reps 2 and 3 budget skipped (its rep 1 overshot the 40-credit task
+# budget). --fill resumes only that task folder, runs only the cells nudge-fill.js names for set model-swap, and never a
+# cell with a result. A cell counts at most w = max(15, ceil(run limit x OVER)) plus one throttled attempt at 15; OVER
+# 1.5 is the largest overshoot seen (56.5 credits on a 38-credit limit, LITE t10). The task budget is cells x w, so the
+# frozen runner (it starts a run only while charged + largest run <= budget) starts every cell. The fill cap is the sum
+# of w + 15 over the set's cells; spend is read from the task ledger (each call at max(15, credits)) and the task is
+# refused unless counted spend + its cells x (w + 15) fits the cap.
 #
 # Spend is counted at 15 credits a run at least (a run with no credit figure counts its limit). A task starts only if
 # counted spend + 0.9 x budget + one run's limit stays under the stage cap (the frozen runner starts a run while a command
@@ -50,6 +60,10 @@ LOAD_MAX=${LOAD_MAX:-4}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 SKIP_ARM_CHECK=${SKIP_ARM_CHECK:-}
 FLOOR=15
+FILL=0
+FILL_JS=$(dirname "$0")/nudge-fill.js
+FILL_SET=model-swap
+OVER=1.5
 MODE=--plan
 STAGE=''
 CUR=''
@@ -59,11 +73,17 @@ stop() { echo "stop: $*" >&2; exit 1; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --plan|--go|--summary) MODE=$1 ;;
+    --fill) FILL=1 ;;
     --stage) [ $# -ge 2 ] || stop "--stage needs natural, list or fable"; STAGE=$2; shift ;;
-    *) stop "unknown argument $1 (use --plan, --go, --summary, --stage natural|list|fable)" ;;
+    *) stop "unknown argument $1 (use --plan, --go, --summary, --fill, --stage natural|list|fable)" ;;
   esac
   shift
 done
+if [ "$FILL" = 1 ]; then
+  [ -z "$STAGE" ] || [ "$STAGE" = natural ] || stop "--fill is the natural stage's fill; it takes no other stage"
+  [ "$MODE" != --summary ] || stop "--fill takes --plan or --go"
+  STAGE=natural
+fi
 [ "$MODE" != --go ] || [ -n "$STAGE" ] || stop "--go needs --stage natural, list or fable"
 
 # task batch sonnetRunLimit (the LITE batch's per-run cap on Sonnet 5.5)
@@ -121,6 +141,20 @@ counted_spent() {
 
 ceil_mul() { awk -v a="$1" -v b="$2" 'BEGIN { x = a * b; y = int(x); if (y < x) y++; print y }'; }
 
+# Fill: a cell's worst case for a run limit, max(FLOOR, ceil(limit x OVER)), throttled attempts not included.
+fill_w() { awk -v l="$1" -v o="$OVER" -v f="$FLOOR" 'BEGIN { x = l * o; y = int(x); if (y < x) y++; print (y > f ? y : f) }'; }
+in_fill() { node "$FILL_JS" cells "$FILL_SET" | grep -q "^$1 "; }
+# Fill cap: the sum of w + FLOOR (one throttled attempt) over the set's cells. Needs RATIO.
+fill_cap() {
+  c=0
+  for t in $(node "$FILL_JS" cells "$FILL_SET" | cut -d' ' -f1); do
+    l=$(printf '%s\n' "$ALL_TASKS" | awk -v t="$t" '$1 == t { print $3 }')
+    [ -n "$l" ] || stop "fill set task $t is not in this study"
+    c=$((c + $(fill_w "$(ceil_mul "$l" "$RATIO")") + FLOOR))
+  done
+  echo "$c"
+}
+
 check_setup() {
   if [ -e "$R" ]; then
     [ "$(git -C "$R" rev-parse HEAD)" = "$BENCH_SHA" ] || stop "$R is not at $BENCH_SHA"
@@ -172,38 +206,70 @@ after_task() {
   if grep -q '| not run (' "$OUT/$1.check.md"; then TASK_STATE=open; else TASK_STATE=done; fi
 }
 
+# Fill: sets resume, n (cells to run), s (counted fill spend), w, budget and after for task $1 at run limit $limit, or
+# returns 1 when the task is skipped (done, or cut in the plan). Stops on --go when the task does not fit FILL_CAP.
+fill_plan() {
+  [ -e "$OUT/$1.done" ] && { echo "$1: done, skipped"; return 1; }
+  [ -e "$OUT/$1" ] || stop "$OUT/$1 is missing: the fill only resumes a task folder"
+  resume=--resume
+  cells=$(node "$FILL_JS" missing "$OUT" "$1" "$FILL_SET") || stop "$1: a cell outside the fill set has no result"
+  n=$(printf '%s\n' "$cells" | grep -c . || true)
+  [ "$MODE" = --go ] && wait_host
+  s=$(node "$FILL_JS" spent "$OUT" "$limit" "$FILL_SET")
+  w=$(fill_w "$limit")
+  budget=$((n * w))
+  after=$(awk -v s="$s" -v n="$n" -v w="$w" -v f="$FLOOR" 'BEGIN { printf "%.2f", s + n * (w + f) }')
+  if awk -v a="$after" -v c="$FILL_CAP" 'BEGIN { exit !(a > c) }'; then
+    [ "$MODE" = --go ] && stop "counted $s of $FILL_CAP: $1 does not fit ($n cell(s), worst case $((w + FLOOR)) each); it stays without .done"
+    printf '| %s | %s | %s | %s | cut | %s | not reached |\n' "$1" "$n" "$limit" "$w" "$s"
+    return 1
+  fi
+  return 0
+}
+
 # One task: run it (--go) or print its plan row. Args: task batch sonnetLimit.
 run_task() {
-  task=$1; batch=$2; slim=$3; s=0; resume=''; budget=0; after=0; reused=''; src=''; base=0; exp=0; cnt=0
+  task=$1; batch=$2; slim=$3; s=0; resume=''; budget=0; after=0; reused=''; src=''; base=0; exp=0; cnt=0; n=0; w=0
   limit=$(ceil_mul "$slim" "$RATIO")
   own=$(ceil_mul "$((REPS * limit))" 0.6667)
-  if [ "$MODE" = --go ]; then
-    [ -e "$OUT/$task.done" ] && { echo "$task: done, skipped"; return 0; }
-    [ -e "$OUT/$task" ] && { resume=--resume; echo "$task: folder without .done, resuming its unfinished cells"; }
-    wait_host
-    s=$(counted_spent "$OUT")
+  if [ "$FILL" = 1 ]; then
+    fill_plan "$task" || return 0
   else
-    s=$DRY_COUNTED
+    if [ "$MODE" = --go ]; then
+      [ -e "$OUT/$task.done" ] && { echo "$task: done, skipped"; return 0; }
+      [ -e "$OUT/$task" ] && { resume=--resume; echo "$task: folder without .done, resuming its unfinished cells"; }
+      wait_host
+      s=$(counted_spent "$OUT")
+    else
+      s=$DRY_COUNTED
+    fi
+    budget=$(budget_for "$s" "$limit" "$own" "$STAGE_CAP")
+    if [ "$budget" = STOP ]; then
+      [ "$MODE" = --go ] && stop "counted $s of $STAGE_CAP: $task cannot fit one run of $limit"
+      printf '| %s | %s | - | - | - | %s | cut | %s | not reached |\n' "$task" "$REPS" "$limit" "$s"
+      return 0
+    fi
+    after=$(worst_case "$s" "$budget" "$limit")
   fi
-  budget=$(budget_for "$s" "$limit" "$own" "$STAGE_CAP")
-  if [ "$budget" = STOP ]; then
-    [ "$MODE" = --go ] && stop "counted $s of $STAGE_CAP: $task cannot fit one run of $limit"
-    printf '| %s | %s | - | - | - | %s | cut | %s | not reached |\n' "$task" "$REPS" "$limit" "$s"
-    return 0
-  fi
-  after=$(worst_case "$s" "$budget" "$limit")
   set -- node "$R/bench/runner/bench.js" run --suite pilot --tasks "$task" --arms "$ARM_SPEC" \
     --replicates "$REPS" --parallel 1 --extra-tasks "$R/bench/scenarios/$batch" --repo-root "$R" --hide "$R" \
     --isolate unshare --seed 20261121 --model "$MODEL" --effort high --agent-engine v3 --kiro-bin "$KBIN" \
     --python "$PY312" --cache "$CACHE" --budget-credits "$budget" --run-credit-limit "$limit" --out "$OUT/$task" $resume
   if [ "$MODE" = --go ]; then
-    echo "[$(date -u +%H:%M)] $task: counted $s of $STAGE_CAP (real $(real_spent)), budget $budget, limit $limit, worst case after $after"
-    if [ -n "$STUB" ]; then $STUB "$@" </dev/null || stop "$task stub exited $?"
+    if [ "$FILL" = 1 ]; then echo "[$(date -u +%H:%M)] $task: fill, $n cell(s), counted $s of $FILL_CAP, budget $budget, limit $limit, worst case after $after"
+    else echo "[$(date -u +%H:%M)] $task: counted $s of $STAGE_CAP (real $(real_spent)), budget $budget, limit $limit, worst case after $after"; fi
+    if [ "$FILL" = 1 ] && [ "$n" = 0 ]; then echo "$task: no fill cell left to run, no bench call"
+    elif [ -n "$STUB" ]; then $STUB "$@" </dev/null || stop "$task stub exited $?"
     else nice -n 10 "$@" </dev/null || stop "$task exited $?"; fi
     TASK_STATE=open
     after_task "$task"
     if [ "$TASK_STATE" = done ]; then touch "$OUT/$task.done"
     else echo "[$(date -u +%H:%M)] $task: a cell not run; no .done, a rerun resumes it"; fi
+    return 0
+  fi
+  if [ "$FILL" = 1 ]; then
+    printf '| %s | %s | %s | %s | %s | %s | %s |\n' "$task" "$n" "$limit" "$w" "$budget" "$s" "$after"
+    DRY_LAST="$*"
     return 0
   fi
   # Plan row: the Sonnet per-run mean of the reused cells, scaled by the credit rate.
@@ -281,6 +347,30 @@ EOF
 }
 
 wait_others
+if [ "$FILL" = 1 ]; then
+  stage_conf natural
+  RATIO=$(rate_ratio "$MODEL")
+  FILL_CAP=$(fill_cap)
+  DRY_LAST=''; limit=0
+  if [ "$MODE" = --go ]; then
+    mkdir -p "$OUT"
+    exec 9>"$ROOT/.lock"
+    flock -n 9 || stop "another run-model-swap.sh stage holds $ROOT/.lock"
+  else
+    echo; echo "## fill of stage natural: set $FILL_SET on $MODEL, fill cap $FILL_CAP counted credits (each call at the larger of $FLOOR and its credits)"
+    echo; echo '| task | cells | run limit | cell worst | budget | counted before | worst case after |'; echo '| --- | --- | --- | --- | --- | --- | --- |'
+  fi
+  # Not a pipe: the loop must run in this shell.
+  while read -r t b l; do if in_fill "$t"; then run_task "$t" "$b" "$l"; fi; done <<EOF
+$ALL_TASKS
+EOF
+  if [ "$MODE" = --go ]; then echo "[$(date -u +%H:%M)] fill done, counted $(node "$FILL_JS" spent "$OUT" "$limit" "$FILL_SET") of $FILL_CAP"
+  else
+    echo; echo "fill cap $FILL_CAP counted credits: each cell at most max($FLOOR, run limit x $OVER) plus one throttled attempt at $FLOOR"
+    echo "last command: $DRY_LAST"
+  fi
+  exit 0
+fi
 if [ "$MODE" = --plan ]; then
   n=0
   while read -r t b l; do n=$((n + $(lite_cells "$t" "$b" | wc -l))); done <<EOF

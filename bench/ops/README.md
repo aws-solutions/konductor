@@ -60,6 +60,7 @@ is the docs owner's page and points here.
 | `run-arm-test-on-head.sh` | Runs `arm-signed-release-test-v2.sh` on the current origin head. |
 | `run-cc-plant-check-v2.sh` | The first real Claude Code plant check. Paid. |
 | `run-cc-plant-check.sh` | Superseded by `run-cc-plant-check-v2.sh`. |
+| `run-clean-fill.sh` | The clean-run plan of 2026-11-24 in one command: `--plan` (free: every step's plan), `--go` (Kiro Opus fill, Claude Code fill, then the nudge, Opus-fill and Claude Code judge passes, one at a time; refused while `run-cc-compare.sh` runs). Paid. |
 | `run-full-suite-twice-v2.sh` | KR k485f5870: two full suite runs through `bench/scripts/test.sh --tap`, then the reading. Free. |
 | `run-full-suite-twice.sh` | Superseded by `run-full-suite-twice-v2.sh`. |
 | `run-fw30-rewrite.sh` | FW-30: the pilot tasks written again from `briefs-fw30.json`, deepseek-3.2 writes, glm-5 reviews. Paid (cap 120); `--dry-run` is free. |
@@ -124,14 +125,16 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, both sets in one pass, then `bench compare --aa vanilla` prints the floor. Paid (USD, cap 2). |
 | `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b, one bench run each) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
 | `cc-team-mode.patch` | D-241: the Claude Code team-mode change (`plugins/claude-code/team-mode.js` and its call in `installInto`) for the frozen bench 69149846. `run-cc-compare.sh` applies it as one commit in its own worktree and checks the tree. Not run. |
+| `cc-fill.js` | Helpers of `run-cc-fill.sh`: each Claude Code cell's rule (run, keep, flag, ask), moving an infra-error cell aside, and the USD spent since the fill started. Free. |
 | `cc-skill-loads.js` | Which skills each `run-cc-compare.sh` run loaded and whether in full (whole, partial, preload, failed, missing per must-load unit). Free. |
 | `run-cc-compare-judge.sh` | Judge pass of `run-cc-compare.sh`, non-Claude panel, then `report --baseline cc-vanilla`. Paid (USD, cap 2); `--plan` is free. |
 | `run-cc-compare.sh` | The forced experiment's 8 tasks on Claude Code: cc-vanilla against cc-konductor (f5d18459, with team mode: `cc-team-mode.patch`), 2 replicates, frozen bench 69149846, 32 runs. Paid (USD, cap 30); the default is a dry run, `--prepare` is free. `CC_MODEL`, `CC_ARMS`, `CC_CAP_USD` and `CC_RUN_CAP_USD` change the model, arms and caps for `run-cc-model-swap.sh`. |
+| `run-cc-fill.sh` | Fill of `run-cc-compare.sh`'s study after it ends: only cells with no result, a budget skip or an infra error, at the study's own pre-D-241 setup (plain frozen bench, same claude, model, arms); flags self-kills, timeouts and run-cap stops; stops on an error it cannot place. Paid (USD, cap = cells x 1.5, frozen at the first `--go`); `--plan` is free. |
 | `run-cc-model-swap.sh` | Claude Code twin of `run-model-swap.sh`: cc-konductor on Sonnet 5.5 (16 runs, cap USD 16; skipped when `run-cc-compare.sh`'s runs exist) and Opus 5.5 (16 runs, cap USD 32), run through `run-cc-compare.sh`; skill loads by `cc-skill-loads.js`. Paid per stage (`--go --stage S`); `--plan`, `--prepare` and `--summary` are free. |
 | `model-swap-summary.js` | Skill-load table of `run-model-swap.sh` per model and arm (task skill loaded, loaded whole, preview only, `find_skills`, "no skill fits", model mismatch), read with `cap nudge-check`'s reader. Free. |
-| `model-swap-judge.js` | Helpers of `run-model-swap-judge.sh`: cells that ran, the judge copy with the arm renamed `konductor-opus`, and the USD estimate from the LITE judge pass. Free. |
-| `run-model-swap-judge.sh` | Judge pass of `run-model-swap.sh`'s natural stage: only the 22 Opus runs, non-Claude panel; the Sonnet konductor and vanilla judgments of the LITE pass are reused. Then `report --baseline vanilla` and `--baseline konductor`. Paid (USD, cap 2); `--plan` is free. |
-| `run-model-swap.sh` | Is low skill use a Sonnet 5.5 trait? The plain konductor arm on Opus 5.5 (8 tasks x 3, cap 400), optional list-hook arm on Opus (4 x 3, cap 220) and Fable 5.1 (4 x 2, cap 400), against the reused Sonnet LITE and nudge cells. Paid per stage (`--go --stage S`); the default `--plan` and `--summary` are free. |
+| `model-swap-judge.js` | Helpers of `run-model-swap-judge.sh`: cells that ran, the judge copy with the arm renamed `konductor-opus` (only some replicates with KEEP, for the fill), and the USD estimate from the LITE judge pass. Free. |
+| `run-model-swap-judge.sh` | Judge pass of `run-model-swap.sh`'s natural stage: only the 22 Opus runs, non-Claude panel; the Sonnet konductor and vanilla judgments of the LITE pass are reused. Then `report --baseline vanilla` and `--baseline konductor`. Paid (USD, cap 2); `--plan` is free. `--fill` judges only the fill cells of `run-model-swap.sh --fill` (cap USD 0.3), then both reports over the first pass and the fill. |
+| `run-model-swap.sh` | Is low skill use a Sonnet 5.5 trait? The plain konductor arm on Opus 5.5 (8 tasks x 3, cap 400), optional list-hook arm on Opus (4 x 3, cap 220) and Fable 5.1 (4 x 2, cap 400), against the reused Sonnet LITE and nudge cells. Paid per stage (`--go --stage S`); the default `--plan` and `--summary` are free. `--fill --go` runs only t1-nfr-report-queries reps 2 and 3, the cells the 400 cap left (cap 138 counted credits); `--fill --plan` is free. |
 | `run-forced-aa-r2.sh` | Resume of `run-forced-aa.sh` with the budget fix. Paid. |
 | `run-forced-aa.sh` | The forced-skills experiment's two new arms on the frozen LITE bench. Paid. |
 | `run-forced-judge.sh` | Judge pass of the forced-skills run. Paid (USD). |
@@ -139,14 +142,15 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-forced-small.sh` | Focused follow-up of the forced run. Paid. |
 | `run-nudge-judge.sh` | Judge pass of the nudge-arm run. Paid (USD). `--fill` judges only the fill-stage tasks (cap USD 0.5). |
 | `run-nudge.sh` | The nudge-arm run. Paid. `--fill` runs only the 3 cells the 450 cap left budget skipped (cap 60 counted credits); `--fill --plan` is free. |
-| `nudge-fill.js` | The fill stage's cells and counted spend (each call at the larger of 15 and its credits) for `run-nudge.sh --fill`. Free. |
+| `nudge-fill.js` | Fill sets (cells, cells still to run, counted spend at the larger of 15 and each call's credits) for `run-nudge.sh --fill` (set nudge) and `run-model-swap.sh --fill` (set model-swap). Free. |
 | `lib.sh` | The spend and host helpers the paid run scripts here source (`budget_for`, `worst_case`, `wait_host`, `ledger_spent`; D-242). Sourced, never run. |
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, of `cc-skill-loads.js` on a made-up stream, and of `cc-team-mode.patch` on the frozen bench. Free. |
+| `test-run-cc-fill-stub.sh` | Test of `run-cc-fill.sh` and `cc-fill.js` (plan, infra cell moved aside, ask stop, bench-commit guard, main-study guard, fill cap, a task never started) with a stub bench. Free. |
 | `test-run-cc-model-swap-stub.sh` | Test of `run-cc-model-swap.sh` and the `CC_*` overrides of `run-cc-compare.sh` (plan, Opus stage, Sonnet reuse refusal, summary) with a stub bench. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
-| `test-run-model-swap-stub.sh` | Test of `run-model-swap.sh` (plan, paid path, resume, hook miss, counted-credit guard) and of `model-swap-summary.js` with a stub bench. Free. |
-| `test-run-model-swap-judge-stub.sh` | Test of `run-model-swap-judge.sh` and `model-swap-judge.js` (plan, paid path, arm rename, resume, USD gate, cap refusal) with a stub bench. Free. |
+| `test-run-model-swap-stub.sh` | Test of `run-model-swap.sh` (plan, paid path, resume, hook miss, counted-credit guard, the `--fill` plan, run, outside-set stop and cap) and of `model-swap-summary.js` with a stub bench. Free. |
+| `test-run-model-swap-judge-stub.sh` | Test of `run-model-swap-judge.sh` and `model-swap-judge.js` (plan, paid path, arm rename, resume, USD gate, cap refusal, `--fill` gate, copy of the fill cells only, fill cap) with a stub bench. Free. |
 | `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench, and of its `--fill` stage (plan, the 3 cells only, 60 cap, cells outside the stage, done tasks). Free. |
 | `test-run-nudge-judge-fill.sh` | Test of `run-nudge-judge.sh --fill`'s guards (no .done, cap over USD 0.5). Free. |
 

@@ -8,6 +8,10 @@
 #   case 3: a rerun skips every judged task (resume) and makes no judge call
 #   case 4: a judge pass that spends USD 0.9 a task stops before task 3 (spent 1.8 plus one task's worst case 0.3 > 2)
 #   case 5: CAP_USD above the approved USD 2 is refused before any bench call
+#   case 6: --fill before the fill ran (no natural/t1-nfr-report-queries.done) stops with no judge copy
+#   case 7: --fill --plan makes one --plan call; --fill judges a copy holding only reps 2 and 3 of t1 (the fill cells),
+#           then both reports cover the first-pass copies and the fill copy; a rerun makes no judge call
+#   case 8: CAP_USD_FILL above the approved USD 0.3 is refused
 set -eu
 HERE0=$(cd "$(dirname "$0")" && pwd)
 T=$(mktemp -d "${KIROCREW_SCRATCH:-/var/tmp}/msj-stub.XXXXXX")
@@ -118,4 +122,38 @@ if run "$T/c" CAP_USD=3 -- > "$T/c.log" 2>&1; then fail "case 5 should stop"; fi
 grep -q 'outside the approved USD 2' "$T/c.log" || { cat "$T/c.log"; fail "case 5: wrong stop"; }
 [ ! -e "$T/c/calls.log" ] || fail "case 5: a bench call before the refusal"
 echo "case 5 ok: cap above USD 2 refused"
+
+# case 6: the fill cells have not run yet (case 2's workspace: t1 reps 2 and 3 budget skipped, no .done)
+: > "$T/a/calls.log"
+if run "$T/a" -- --fill > "$T/a6.log" 2>&1; then fail "case 6 should stop"; fi
+grep -q 'run run-model-swap.sh --fill --go first' "$T/a6.log" || { cat "$T/a6.log"; fail "case 6: wrong stop"; }
+[ ! -e "$J/runs-fill" ] || fail "case 6: a fill copy was made"
+echo "case 6 ok: no fill judge before the fill ran"
+
+# case 7: the fill ran (reps 2 and 3 now have results, the task has its .done)
+N=$T/a/reports/next-experiment-2026-11-22/runs-model-swap/natural
+for r in 2 3; do echo "{\"armId\":\"konductor\",\"taskId\":\"t1-nfr-report-queries\",\"replicate\":$r,\"status\":\"success\",\"credits\":30}" > "$N/t1-nfr-report-queries/konductor/t1-nfr-report-queries/$r/result.json"; done
+touch "$N/t1-nfr-report-queries.done"
+run "$T/a" -- --fill --plan > "$T/a7p.log" 2>&1 || { cat "$T/a7p.log"; fail "case 7 plan exited non-zero"; }
+[ "$(grep -c '^judge .*--plan' "$T/a/calls.log")" = 1 ] || fail "case 7: not one --plan call"
+grep -q 'fill runs to judge: 2' "$T/a7p.log" || { cat "$T/a7p.log"; fail "case 7: fill run count"; }
+: > "$T/a/calls.log"
+run "$T/a" -- --fill > "$T/a7.log" 2>&1 || { cat "$T/a7.log"; fail "case 7 exited non-zero"; }
+FC=$J/runs-fill/t1-nfr-report-queries
+[ "$(grep -c '^judge ' "$T/a/calls.log")" = 1 ] || fail "case 7: not one judge call"
+grep -q -- "^judge --run $FC " "$T/a/calls.log" || fail "case 7: the judge call is not on the fill copy"
+[ "$(ls "$FC/konductor-opus/t1-nfr-report-queries" | tr '\n' ' ')" = '2 3 ' ] || fail "case 7: the fill copy is not reps 2 and 3"
+[ -e "$FC.done" ] || fail "case 7: no .done on the fill copy"
+[ "$(grep -c '^report ' "$T/a/calls.log")" = 2 ] || fail "case 7: not 2 report calls"
+grep '^report ' "$T/a/calls.log" | head -1 | grep -q "$FC" || fail "case 7: the fill copy is not in the report"
+grep '^report ' "$T/a/calls.log" | head -1 | grep -q "$J/runs/t8-dec-deploy-strategy" || fail "case 7: the first-pass copies are not in the report"
+: > "$T/a/calls.log"
+run "$T/a" -- --fill > "$T/a7r.log" 2>&1 || { cat "$T/a7r.log"; fail "case 7 rerun exited non-zero"; }
+[ "$(grep -c '^judge ' "$T/a/calls.log")" = 0 ] || fail "case 7: a judge call on rerun"
+echo "case 7 ok: only the 2 fill cells judged, reports cover all"
+
+# case 8
+if run "$T/a" CAP_USD_FILL=0.4 -- --fill > "$T/a8.log" 2>&1; then fail "case 8 should stop"; fi
+grep -q 'outside the approved USD 0.3' "$T/a8.log" || { cat "$T/a8.log"; fail "case 8: wrong stop"; }
+echo "case 8 ok: fill cap above USD 0.3 refused"
 echo "all cases ok"

@@ -5,12 +5,15 @@
 // Helpers of run-model-swap-judge.sh. Free: no model call.
 //
 //   node model-swap-judge.js ran SRC                  cells under SRC that ran (a result.json that is not budget_skipped)
-//   node model-swap-judge.js prep SRC DEST ARM        copy one task folder to DEST with arm konductor renamed to ARM
+//   node model-swap-judge.js prep SRC DEST ARM [KEEP]  copy one task folder to DEST with arm konductor renamed to ARM;
+//                                                     KEEP (reps, comma separated) keeps only those cells
 //   node model-swap-judge.js estimate LITE_RUNS TASK N  USD a run and the estimate for N runs of TASK
 //
 // prep: the bench names an arm by its folder, so the Opus copy gets its own arm id and can sit in one report beside
 // the reused Sonnet konductor and vanilla arms. result.json armId and run-config.json follow the folder. Cells that
-// never ran (budget_skipped) are left out of the copy, so the judge never sees them.
+// never ran (budget_skipped) are left out of the copy, so the judge never sees them; with KEEP so are the cells whose
+// replicate is not in it (the fill judge pass copies only the fill cells, so the first pass's judged cells are not
+// judged or counted twice).
 // estimate: the LITE first judge pass's USD per judged konductor run of the same task (the sum of its records' call
 // USD over its runs), times MARGIN for Opus answers that may be longer; FALLBACK when that pass has no record of it.
 
@@ -38,15 +41,19 @@ function ran(dir) {
   return results(dir).filter((f) => !neverRan(f)).length;
 }
 
-/** Copies SRC to DEST, renames arm FROM to ARM everywhere the bench reads it, and drops cells that never ran. */
-function prep(src, dest, arm) {
+/**
+ * Copies SRC to DEST, renames arm FROM to ARM everywhere the bench reads it, and drops cells that never ran.
+ * `keep`, when given, is the list of replicates to keep; every other cell is dropped too.
+ */
+function prep(src, dest, arm, keep = null) {
   if (fs.existsSync(dest)) throw new Error(`${dest} exists`);
   fs.cpSync(src, dest, { recursive: true, preserveTimestamps: true, verbatimSymlinks: true });
   const from = path.join(dest, FROM);
   if (!fs.existsSync(from)) throw new Error(`${src} has no ${FROM} arm`);
   fs.renameSync(from, path.join(dest, arm));
   for (const file of results(dest)) {
-    if (neverRan(file)) { fs.rmSync(path.dirname(file), { recursive: true }); continue; }
+    const rep = Number(path.basename(path.dirname(file)));
+    if (neverRan(file) || (keep && !keep.includes(rep))) { fs.rmSync(path.dirname(file), { recursive: true }); continue; }
     const r = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (r.armId === FROM) fs.writeFileSync(file, JSON.stringify({ ...r, armId: arm }));
   }
@@ -86,7 +93,7 @@ if (require.main === module) {
   const [cmd, ...a] = process.argv.slice(2);
   try {
     if (cmd === 'ran') console.log(ran(a[0]));
-    else if (cmd === 'prep') console.log(prep(a[0], a[1], a[2]));
+    else if (cmd === 'prep') console.log(prep(a[0], a[1], a[2], a[3] ? a[3].split(',').map(Number) : null));
     else if (cmd === 'estimate') {
       const e = estimate(a[0], a[1], Number(a[2]));
       console.log(`${e.perRun.toFixed(4)} ${e.estimate.toFixed(4)} ${e.fromLite ? 'lite' : 'fallback'}`);

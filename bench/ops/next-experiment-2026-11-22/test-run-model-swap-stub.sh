@@ -7,6 +7,10 @@
 #   case 4: --go --stage list runs the 4 skill-heavy tasks with the list arm; a run without hook text stops it
 #   case 5: the counted-credit guard (15 per run at least) stops a stage that would pass its cap
 #   case 6: --summary counts loaded whole, preview only, find_skills and "no skill fits" per model and arm
+#   case 7: --fill --plan shows only t1-nfr-report-queries with its 2 budget-skipped cells, budget and the fill cap
+#   case 8: --fill --go resumes only t1 with that budget and closes it; a rerun makes no bench call
+#   case 9: --fill stops when a cell outside the fill set has no result
+#   case 10: --fill stops before the bench call when counted fill spend plus the task's worst case passes the fill cap
 set -eu
 HERE0=$(cd "$(dirname "$0")" && pwd)
 CHECK_BENCH=$(cd "$HERE0/../../.." && pwd)
@@ -44,7 +48,7 @@ for (const arm of arms) for (let rep = 1; rep <= reps; rep++) {
 }
 JS
 fail() { echo "FAIL: $*"; exit 1; }
-copy() { mkdir -p "$1"; cp "$HERE0/run-model-swap.sh" "$HERE0/model-swap-summary.js" "$HERE0/lib.sh" "$1/"; }
+copy() { mkdir -p "$1"; cp "$HERE0/run-model-swap.sh" "$HERE0/model-swap-summary.js" "$HERE0/lib.sh" "$HERE0/nudge-fill.js" "$1/"; }
 
 # A fake reused baseline: the LITE run's konductor cells (runs/r<rep>/<batch>/konductor/<task>/<rep>) for the 8 tasks,
 # each 6 credits, one of them with a whole skill load and one with a preview-only load.
@@ -126,4 +130,59 @@ S=$T/d/runs-model-swap/summary.md
 grep -q '^| claude-sonnet-5.5 | natural (reused) | 8 | 24 | 2 | 1 | 1 | 0 | 0 | 0 |' "$S" || { cat "$S"; fail "case 6: sonnet row"; }
 grep -q '^| claude-opus-5.5 | natural | 8 | 24 | 24 | 24 | 0 | 0 | 0 | 0 |' "$S" || { cat "$S"; fail "case 6: opus row"; }
 echo "case 6 ok: summary rows"
+
+# A natural stage cut by its cap as the real one was: 7 tasks done, t1-nfr-report-queries rep 1 ran (36.9 credits),
+# reps 2 and 3 budget skipped. fill_dir DIR writes it.
+fill_dir() {
+  copy "$1"
+  F=$1/runs-model-swap/natural
+  for t in t8-dec-deploy-strategy t5-qa-checkout-strategy t5-qa-sync-strategy t6-req-field-inspections t2-dr-notify-fanout \
+    t2-arch-dr-split-checkout t7-program-brief; do mkdir -p "$F/$t"; touch "$F/$t.done"; done
+  C=$F/t1-nfr-report-queries/konductor/t1-nfr-report-queries
+  mkdir -p "$C/1" "$C/2" "$C/3"
+  echo '{"status":"success","credits":36.9,"flags":[]}' > "$C/1/result.json"
+  mkdir -p "$C/1/session/sess_1"; : > "$C/1/stream.jsonl"
+  echo '{"payload":{"type":"user","content":"plain prompt"}}' > "$C/1/session/sess_1/messages.jsonl"
+  echo '{"status":"budget_skipped","flags":[]}' > "$C/2/result.json"
+  echo '{"status":"budget_skipped","flags":[]}' > "$C/3/result.json"
+  echo '{"kind":"run","arm":"konductor","task":"t1-nfr-report-queries","replicate":1,"credits":36.9}' > "$F/t1-nfr-report-queries/credit-ledger.jsonl"
+}
+
+# case 7: fill plan. Run limit 36 (23 x 2/1.3); a cell at worst 54 (36 x 1.5, the largest overshoot seen) plus one
+# throttled attempt at 15: 69; budget 2 x 54 = 108; fill cap 2 x 69 = 138.
+fill_dir "$T/f"
+env $ENVS HERE="$T/f" sh "$T/f/run-model-swap.sh" --fill --plan > "$T/fp.log" 2>&1 || { cat "$T/fp.log"; fail "case 7 exited non-zero"; }
+[ "$(grep -c '^| t[0-9]' "$T/fp.log")" = 1 ] || { cat "$T/fp.log"; fail "case 7: not one task row"; }
+grep -q '^| t1-nfr-report-queries | 2 | 36 | 54 | 108 | 0.00 | 138.00 |' "$T/fp.log" || { cat "$T/fp.log"; fail "case 7: t1 row"; }
+grep -q 'fill cap 138 counted credits' "$T/fp.log" || { cat "$T/fp.log"; fail "case 7: fill cap"; }
+[ ! -e "$T/f/runs-model-swap/natural/calls.log" ] || fail "case 7: the plan made a bench call"
+echo "case 7 ok: fill plan shows t1, 2 cells, budget 108, cap 138"
+
+# case 8: fill go, then a rerun
+env $ENVS STUB="node $STUBJS" HERE="$T/f" sh "$T/f/run-model-swap.sh" --fill --go > "$T/fg.log" 2>&1 || { cat "$T/fg.log"; fail "case 8 exited non-zero"; }
+F=$T/f/runs-model-swap/natural
+[ "$(wc -l < "$F/calls.log")" = 1 ] || fail "case 8: not one bench call"
+grep -q -- '--tasks t1-nfr-report-queries .*--budget-credits 108 --run-credit-limit 36 .*--resume' "$F/calls.log" || { cat "$F/calls.log"; fail "case 8: wrong call"; }
+grep -q -- '--model claude-opus-5.5 ' "$F/calls.log" || fail "case 8: not opus"
+[ -e "$F/t1-nfr-report-queries.done" ] || { cat "$T/fg.log"; fail "case 8: t1 has no .done"; }
+grep -q '"credits":36.9' "$F/t1-nfr-report-queries/konductor/t1-nfr-report-queries/1/result.json" || fail "case 8: rep 1 was run again"
+env $ENVS STUB="node $STUBJS" HERE="$T/f" sh "$T/f/run-model-swap.sh" --fill --go > "$T/fg2.log" 2>&1 || { cat "$T/fg2.log"; fail "case 8 rerun exited non-zero"; }
+[ "$(wc -l < "$F/calls.log")" = 1 ] || fail "case 8: the rerun made a bench call"
+echo "case 8 ok: fill runs only t1's 2 cells with budget 108 and closes it"
+
+# case 9: rep 1 (outside the fill set) has no result
+fill_dir "$T/g"
+rm "$T/g/runs-model-swap/natural/t1-nfr-report-queries/konductor/t1-nfr-report-queries/1/result.json"
+if env $ENVS STUB="node $STUBJS" HERE="$T/g" sh "$T/g/run-model-swap.sh" --fill --go > "$T/f9.log" 2>&1; then fail "case 9 should stop"; fi
+grep -q 'a cell outside the fill set has no result' "$T/f9.log" || { cat "$T/f9.log"; fail "case 9: wrong stop"; }
+[ ! -e "$T/g/runs-model-swap/natural/calls.log" ] || fail "case 9: a bench call was made"
+echo "case 9 ok: a missing cell outside the set stops the fill"
+
+# case 10: a throttled attempt of rep 2 already counted 80: 80 + 2 x 69 > 138
+fill_dir "$T/h"
+echo '{"kind":"run","arm":"konductor","task":"t1-nfr-report-queries","replicate":2,"credits":80,"throttled":true}' >> "$T/h/runs-model-swap/natural/t1-nfr-report-queries/credit-ledger.jsonl"
+if env $ENVS STUB="node $STUBJS" HERE="$T/h" sh "$T/h/run-model-swap.sh" --fill --go > "$T/f10.log" 2>&1; then fail "case 10 should stop"; fi
+grep -q 'counted 80.00 of 138' "$T/f10.log" || { cat "$T/f10.log"; fail "case 10: wrong stop"; }
+[ ! -e "$T/h/runs-model-swap/natural/calls.log" ] || fail "case 10: a bench call was made"
+echo "case 10 ok: the fill cap stops before the bench call"
 echo "all stub cases passed (scratch $T)"
