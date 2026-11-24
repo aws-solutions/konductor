@@ -41,7 +41,7 @@ const LAUNCH_CANCELLED =
 
 // A body that is not JSON is `undefined`. Any other failure to read it, such
 // as a connection that dropped or a timeout, is thrown.
-async function bodyOf(response: Response): Promise<unknown> {
+export async function bodyOf(response: Response): Promise<unknown> {
   try {
     return await response.json();
   } catch (error) {
@@ -55,7 +55,7 @@ async function bodyOf(response: Response): Promise<unknown> {
 // Gives the call a signal that aborts after the timeout or when `outer`
 // aborts. The body is read inside the call, so a hung body is covered, and the
 // timer and the listener never outlive the call.
-async function withTimeout<T>(
+export async function withTimeout<T>(
   timeoutMs: number | undefined,
   outer: AbortSignal | undefined,
   call: (signal: AbortSignal) => Promise<T>,
