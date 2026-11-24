@@ -309,8 +309,11 @@ function trialInstall(prepared, ctx) {
 
 const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
+/** The run's model config from --model and --effort (run-cmd.js): opencode's default model, the effort as a variant. */
+const modelConfig = ({ opts, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: variantOf(opts.effort || defaultEffort) });
+
 module.exports = {
-  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
+  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson, readProfile,
 };

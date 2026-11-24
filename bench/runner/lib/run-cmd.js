@@ -52,7 +52,6 @@ const { planLevel } = require('../../scenarios/levels.js');
 const { creditNotes, creditNoteLines } = require('./credit-notes.js');
 const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js');
 
-const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
 // Censored opencode runs are charged this many USD when the arm has no completed run yet.
 const DEFAULT_CENSORED_FLOOR_USD = 0.5;
@@ -139,7 +138,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log, tasks = 
     if (py) log(`python: ${py.version} (${py.executable}, from ${py.source}); python3 in the sandbox is ${py.sandboxVersion}`);
     const ctx = {
       repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
-      config: isCc ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: cc.effortOf(opts.effort || DEFAULT_EFFORT) } : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
+      config: modelConfigOf({ runtime: runtimes[0], opts, agentEngine }), envKeep: list(opts['env-keep']),
     };
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     console.log(preflightTable(arms, prepared, errors));
@@ -389,11 +388,9 @@ function runPaths({ opts, repo, arms, isUsd, runtime, log }) {
   ensureOwnedDir(outDir, 'run-out');
   ensureOwnedDir(cacheDir, 'cache');
   if (opts['cargo-target'] || !process.env.CARGO_TARGET_DIR) for (const t of [cargoTarget, `${cargoTarget}-mcp`]) ensureOwnedDir(t, 'cargo-target');
-  // Claude Code loads every .claude/skills above a run's cwd as project skills. Runs, trial installs and listing probes
-  // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
-  if (runtime === 'claude-code') cc.checkScratchRoot(os.tmpdir());
-  // The konductor agents load .kiro/skills/ws-* skills (D-36): no such dir may sit above the scratch root.
-  if (runtime === 'kiro-cli') harnessFor({ runtime }).checkScratchRoot(os.tmpdir());
+  // A harness whose agent loads skill dirs found above its cwd checks the scratch root (Claude Code: .claude/skills;
+  // the konductor agents on Kiro CLI: .kiro/skills/ws-*, D-36). Runs, trial installs and probes all sit under os.tmpdir().
+  harnessFor({ runtime }).checkScratchRoot?.(os.tmpdir());
   return { outDir, resume, armDrift, cacheDir, cargoTarget, authDb, awsCredsFile, awsProfile };
 }
 
@@ -473,13 +470,7 @@ function writeSampleOf(profile, outDir, log) {
 
 /** The model, effort (and agent engine for Kiro CLI) a run of `runtime` uses, from --model and --effort (DEBT D-24). */
 function modelConfigOf({ runtime, opts, agentEngine }) {
-  if (runtime === 'strands') return { model: opts.model, effort: 'default' };
-  if (runtime === 'claude-code') {
-    const model = opts.model || cc.DEFAULT_MODEL;
-    return { model, canonicalModel: cc.canonicalModel(model), effort: cc.effortOf(opts.effort || DEFAULT_EFFORT) };
-  }
-  if (runtime === 'opencode') return { model: opts.model || oc.DEFAULT_MODEL, effort: oc.variantOf(opts.effort || DEFAULT_EFFORT) };
-  return { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine };
+  return harnessFor({ runtime }).modelConfig({ opts, agentEngine, defaultEffort: DEFAULT_EFFORT });
 }
 
 /**

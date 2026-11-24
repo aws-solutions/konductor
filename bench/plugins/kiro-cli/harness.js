@@ -339,7 +339,12 @@ function checkScratchRoot(dir) {
   }
 }
 
+// The model a run uses when --model is not given.
+const DEFAULT_MODEL = 'claude-sonnet-5.5';
+/** The run's model config from --model and --effort (run-cmd.js), with the --agent-engine value. */
+const modelConfig = ({ opts, agentEngine, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: opts.effort || defaultEffort, agentEngine });
+
 module.exports = {
-  id, meta, streams: require('./streams.js'), checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, streams: require('./streams.js'), modelConfig, DEFAULT_MODEL, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

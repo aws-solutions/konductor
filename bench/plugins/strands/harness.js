@@ -110,4 +110,7 @@ function finalize(outDir, ctx) {
   return scrubTreeDetailed(outDir, secretLiterals(process.env, ctx?.awsCreds ? ctx.awsCreds.values() : []), { shapes: true });
 }
 
-module.exports = { id, meta, streams: require('./streams.js'), resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
+/** The run's model config from --model and --effort (run-cmd.js): the model as given; the launcher takes no effort. */
+const modelConfig = ({ opts }) => ({ model: opts.model, effort: 'default' });
+
+module.exports = { id, meta, streams: require('./streams.js'), modelConfig, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
