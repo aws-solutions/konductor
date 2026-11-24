@@ -155,17 +155,35 @@ pub(crate) fn normalize_model(raw: &str) -> String {
 
 /// Reads a string field straight out of a JSONL line without parsing
 /// the whole line; transcript lines can carry megabytes of tool output.
-fn str_field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
-    let needle = format!("\"{key}\":\"");
-    let start = line.find(&needle)? + needle.len();
-    let rest = &line[start..];
-    let mut escaped = false;
-    for (i, c) in rest.char_indices() {
-        match c {
-            '\\' if !escaped => escaped = true,
-            '"' if !escaped => return Some(&rest[..i]),
-            _ => escaped = false,
+///
+/// Tolerates whitespace around `:`, since a serialization change must not
+/// silently drop fields, and decodes JSON escapes in the value. A `"key"`
+/// preceded by a backslash is inside another string, so it's skipped.
+fn str_field(line: &str, key: &str) -> Option<String> {
+    let needle = format!("\"{key}\"");
+    let mut from = 0;
+    while let Some(pos) = line[from..].find(&needle) {
+        let at = from + pos;
+        from = at + needle.len();
+        if at > 0 && line.as_bytes()[at - 1] == b'\\' {
+            continue;
         }
+        let Some(value) = line[from..].trim_start().strip_prefix(':') else {
+            continue;
+        };
+        let value = value.trim_start();
+        if !value.starts_with('"') {
+            continue;
+        }
+        let mut escaped = false;
+        for (i, c) in value.char_indices().skip(1) {
+            match c {
+                '\\' if !escaped => escaped = true,
+                '"' if !escaped => return serde_json::from_str(&value[..=i]).ok(),
+                _ => escaped = false,
+            }
+        }
+        return None;
     }
     None
 }
@@ -175,6 +193,14 @@ fn str_field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
 #[derive(Deserialize)]
 struct ClaudeLine {
     message: Option<ClaudeMessage>,
+}
+
+/// Only the top-level record type, so a non-assistant record whose fields
+/// happen to have other shapes is never parsed as one.
+#[derive(Deserialize)]
+struct ClaudeLineKind {
+    #[serde(rename = "type")]
+    kind: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -250,20 +276,31 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
         let Ok(line) = line else {
             return rec.unparsed();
         };
-        rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
+        rec.touch_ts(
+            str_field(&line, "timestamp")
+                .as_deref()
+                .and_then(parse_iso_secs),
+        );
         if rec.repo.is_none() {
-            rec.repo = str_field(&line, "cwd").map(str::to_string);
+            rec.repo = str_field(&line, "cwd");
         }
         if rec.harness_version.is_none() {
-            rec.harness_version = str_field(&line, "version").map(str::to_string);
+            rec.harness_version = str_field(&line, "version");
         }
         if rec.parent_session_id.is_none() {
             if let Some(agent) = str_field(&line, "agentSetting") {
-                rec.agent = Some(agent.to_string());
+                rec.agent = Some(agent);
             }
         }
-        if !line.contains("\"type\":\"assistant\"") || !line.contains("\"usage\"") {
+        // Cheap, formatting-independent prefilter; serde checks the shape.
+        if !line.contains("\"assistant\"") || !line.contains("\"usage\"") {
             continue;
+        }
+        match serde_json::from_str::<ClaudeLineKind>(&line) {
+            Ok(ClaudeLineKind { kind }) if kind.as_deref() != Some("assistant") => continue,
+            Ok(_) => {}
+            // Not even valid JSON, e.g. a truncated assistant line.
+            Err(_) => return rec.unparsed(),
         }
         match serde_json::from_str::<ClaudeLine>(&line) {
             Ok(ClaudeLine {
@@ -284,8 +321,8 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
             }) => return rec.unparsed(),
             // "usage" appeared elsewhere in the line, not as message usage.
             Ok(_) => {}
-            // Only usage-carrying lines get here, so one we can't read
-            // would silently undercount the session.
+            // An assistant line with usage we can't read would silently
+            // undercount the session.
             Err(_) => return rec.unparsed(),
         }
     }
@@ -517,7 +554,11 @@ pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
         let Ok(line) = line else {
             return rec.unparsed();
         };
-        rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
+        rec.touch_ts(
+            str_field(&line, "timestamp")
+                .as_deref()
+                .and_then(parse_iso_secs),
+        );
         let interesting = [
             "\"session_start\"",
             "\"usage_summary\"",
@@ -702,6 +743,57 @@ mod tests {
         bytes.extend_from_slice(b"\n\xff\xfe not utf-8\n");
         std::fs::write(&p, bytes).unwrap();
         assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn str_field_tolerates_whitespace_decodes_escapes_and_skips_nested_strings() {
+        assert_eq!(
+            str_field(r#"{"cwd" :  "/a/b"}"#, "cwd").as_deref(),
+            Some("/a/b")
+        );
+        assert_eq!(
+            str_field(r#"{"cwd":"/a \"q\" \\ café"}"#, "cwd").as_deref(),
+            Some("/a \"q\" \\ café")
+        );
+        // "cwd" inside another string value, then the real key.
+        assert_eq!(
+            str_field(r#"{"note":"x \"cwd\":\"/fake\"","cwd":"/real"}"#, "cwd").as_deref(),
+            Some("/real")
+        );
+        assert_eq!(str_field(r#"{"cwd":42,"x":1}"#, "cwd"), None);
+        assert_eq!(str_field(r#"{"cwd":"unterminated"#, "cwd"), None);
+    }
+
+    #[test]
+    fn claude_whitespace_formatted_json_is_still_counted() {
+        let d = tmp("claude-spaced");
+        let body = [
+            r#"{"type": "agent-setting", "agentSetting": "konductor", "cwd": "/repo/x", "timestamp": "2026-11-01T10:00:00Z"}"#,
+            r#"{"type": "assistant", "timestamp": "2026-11-01T10:00:05Z", "message": {"id": "m", "model": "claude-opus-5-5", "usage": {"input_tokens": 1, "output_tokens": 500}}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "proj/s.jsonl", &body);
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.status, Status::Ok);
+        assert_eq!(r.agent.as_deref(), Some("konductor"));
+        assert_eq!(r.repo.as_deref(), Some("/repo/x"));
+        assert_eq!(r.models[0].output_tokens, Some(500));
+        assert_eq!(r.last_ts.unwrap() - r.first_ts.unwrap(), 5);
+    }
+
+    #[test]
+    fn claude_non_assistant_line_with_usage_is_ignored() {
+        let d = tmp("claude-non-assistant");
+        let body = [
+            r#"{"type":"agent-setting","agentSetting":"konductor"}"#,
+            r#"{"type":"api-request","role":"assistant","message":{"id":"x","model":"m","usage":{"output_tokens":"not-a-number"}}}"#,
+            r#"{"type":"assistant","message":{"id":"a","model":"claude-opus-5-5","usage":{"output_tokens":3}}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "proj/s.jsonl", &body);
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.status, Status::Ok);
+        assert_eq!(r.models[0].output_tokens, Some(3));
     }
 
     #[test]

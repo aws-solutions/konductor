@@ -251,7 +251,7 @@ Exit codes: `0` on success, including when nothing is found; `1` when `HOME` is 
 | `konductor_agents_known` | How many distinct Konductor agents were found installed |
 | `harnesses[]` | One entry per harness with data: `harness`, `unit` (`tokens` or `credits`), `rows[]`, and `total` |
 | `unparsed_files` | Session files in the window that couldn't be parsed |
-| `unreadable_files` | Session files that couldn't be opened |
+| `unreadable_files` | Session files that couldn't be opened, or aren't regular files (a FIFO, device, or directory with a session file's name). These are skipped, never read |
 | `stale_files` | Changed files that couldn't be re-read; their last good data is used |
 | `unreadable_cache_lines` | Cache lines that couldn't be read. They are kept unchanged |
 

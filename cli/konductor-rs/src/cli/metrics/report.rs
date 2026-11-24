@@ -267,7 +267,7 @@ pub(super) fn render_text(records: &[&Record], ctx: &Context, color: ColorMode) 
     }
     let key_w = tables
         .iter()
-        .flat_map(|t| t.rows.iter().map(|r| r.key.chars().count()))
+        .flat_map(|t| t.rows.iter().map(|r| printable(&r.key).chars().count()))
         .max()
         .unwrap_or(5)
         .clamp(12, 48);
@@ -289,7 +289,7 @@ pub(super) fn render_text(records: &[&Record], ctx: &Context, color: ColorMode) 
                 let _ = writeln!(
                     out,
                     "  {:<key_w$} {:>6} {:>9} {:>8} {:>9} {:>9} {:>8}",
-                    truncate(&r.key, key_w),
+                    truncate(&printable(&r.key), key_w),
                     r.files,
                     r.requests,
                     human(r.input_tokens),
@@ -339,7 +339,7 @@ pub(super) fn render_text(records: &[&Record], ctx: &Context, color: ColorMode) 
                 let _ = writeln!(
                     out,
                     "  {:<key_w$} {:>8}{} {:>9} {:>9}",
-                    truncate(&r.key, key_w),
+                    truncate(&printable(&r.key), key_w),
                     r.files,
                     subs_col(&r.subagent_runs.unwrap_or(0).to_string()),
                     r.requests,
@@ -404,6 +404,21 @@ pub(super) fn render_text(records: &[&Record], ctx: &Context, color: ColorMode) 
         let _ = writeln!(out, "{}", dim(&n));
     }
     out
+}
+
+/// Keys come from session files (repo paths, model ids), so control
+/// characters are escaped rather than sent to the terminal, where they
+/// could set the title, clear the screen, or worse.
+fn printable(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            if c.is_control() {
+                c.escape_unicode().to_string()
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
 }
 
 fn truncate(s: &str, w: usize) -> String {
@@ -481,6 +496,30 @@ mod tests {
             credits: Some(credits),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn control_characters_in_keys_never_reach_the_terminal() {
+        let mut r = rec(
+            Harness::Claude,
+            "konductor",
+            vec![tokens("claude-\x1b[5mblink", 1)],
+        );
+        r.repo = Some("/repo/\x1b]0;TITLE\x07\x1b[2J\u{9b}x".into());
+        for by in [GroupBy::Model, GroupBy::Repo] {
+            let out = render_text(&[&r], &ctx(by), ColorMode::disabled());
+            assert!(!out.chars().any(|c| c.is_control() && c != '\n'), "{out:?}");
+            assert!(out.contains("\\u{1b}"), "escaped form shown: {out:?}");
+        }
+        let json = render_json(&[&r], &ctx(GroupBy::Repo));
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(
+            v["harnesses"][0]["rows"][0]["key"]
+                .as_str()
+                .unwrap()
+                .contains('\x1b'),
+            "JSON keeps the raw value, escaped by serde"
+        );
     }
 
     #[test]
