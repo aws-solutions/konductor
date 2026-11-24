@@ -1,0 +1,167 @@
+{
+  "outputFile": "analysis/nightly-report-slowdown.md",
+  "items": [
+    {
+      "id": "first-slow-night",
+      "type": "text",
+      "path": "firstSlowNight",
+      "all": [
+        "2026-04-0[34]"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "slow-stage",
+      "type": "text",
+      "path": "slowStage",
+      "all": [
+        "enrich"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "cause-names-parallelism-cut",
+      "type": "text",
+      "path": "cause.summary",
+      "all": [
+        "parallel|workers?|concurrency|thread",
+        "8\\s*(?:->|to|→)\\s*2|from 8|8 .{0,20}2|two workers|2 workers"
+      ],
+      "none": [
+        "(?:caused by|due to|because of|driven by).{0,60}(?:volume|data growth|input growth)"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "cause-history-evidence",
+      "type": "evidence",
+      "path": "cause.evidence",
+      "groups": [
+        {
+          "file": "config/history\\.md",
+          "all": [
+            "2026-04-03",
+            "enrich\\.parallelism",
+            "8",
+            "2"
+          ]
+        }
+      ],
+      "min": 1,
+      "weight": 2
+    },
+    {
+      "id": "growth-minutes",
+      "type": "number",
+      "path": "growthMinutesPerNight",
+      "value": 11,
+      "tol": 2,
+      "weight": 2
+    },
+    {
+      "id": "excluded-publish-outlier",
+      "type": "some",
+      "path": "excludedNights",
+      "match": {
+        "all": [
+          "2026-04-09",
+          "publish|retr"
+        ]
+      },
+      "weight": 3
+    },
+    {
+      "id": "excluded-list-is-focused",
+      "type": "maxLen",
+      "path": "excludedNights",
+      "min": 1,
+      "max": 2,
+      "weight": 1
+    },
+    {
+      "id": "all-fourteen-finishes",
+      "type": "maxLen",
+      "path": "finishTimes",
+      "min": 14,
+      "max": 14,
+      "weight": 4
+    },
+    {
+      "id": "deadline-from-colleague",
+      "type": "text",
+      "path": "deadlineUtc",
+      "all": [
+        "06:30|6:30|0630"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "predicted-miss-night",
+      "type": "text",
+      "path": "predictedMissNight",
+      "all": [
+        "2026-04-1[456]"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "recommend-revert-workers",
+      "type": "text",
+      "path": "recommendation",
+      "all": [
+        "8|eight",
+        "revert|back|restore|raise|increase|return",
+        "parallel|workers?|concurrency|thread"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "recommendation-respects-start-constraint",
+      "type": "text",
+      "path": "recommendation",
+      "all": [
+        "00:45|upstream|cannot start (any )?earlier|not start (any )?earlier|no earlier start"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "evidence-reaches-logs-and-config",
+      "type": "evidence",
+      "path": "cause.evidence",
+      "groups": [
+        {
+          "file": "logs/night-2026-04-03\\.log",
+          "all": [
+            "stage=enrich",
+            "workers=2"
+          ]
+        },
+        {
+          "file": "logs/night-2026-04-06\\.log",
+          "all": [
+            "stage=enrich-v2",
+            "workers=2"
+          ]
+        },
+        {
+          "file": "logs/night-2026-04-09\\.log",
+          "all": [
+            "stage=publish",
+            "publish_status=failed|retry="
+          ]
+        },
+        {
+          "file": "config/history\\.md",
+          "all": [
+            "2026-04-03",
+            "parallelism",
+            "8",
+            "2"
+          ]
+        }
+      ],
+      "min": 2,
+      "weight": 2
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 Batch T13 holds the three types of work the pack had no task for after T1 to T12: technical documentation, issue and crash triage, and log analysis. Two tasks each, six in all, written from the briefs in `briefs/` (the full briefs with key tables, rubric and gates are in the owner workspace, `reports/new-task-briefs-2026-11-24/`). The phases `documentation`, `triage` and `log-analysis` were added to the taxonomy for this batch (`coverage.js` ADDED_PHASES); the LITE and STANDARD level rules read the plan's 15 core phases only, so their locked picks do not move.
 
-Today the batch holds the briefs, the config and the prompt section only. No task has been written: the authoring step is paid and waits for the owner's cap (plan: `reports/new-task-briefs-2026-11-24.md`).
+The six tasks were written on 2026-11-24 (owner approval: cap 300 counted credits; 18 calls, 270 counted, about 50 real, `AUTHORING-LOG.md`): author gpt-5.6-luna, map glm-5, review qwen3-coder-next or glm-5. Every draft was then edited by the worker (`HAND-EDITS.md`: wording-brittle and position-bound key items, one incident report glued onto a docs task), so every task carries `handEdited` and waits for its non-Claude recheck before lock (DEBT D-254). All six pass the free gates (reference 100, stub 0 to 6.2, lazy 9.3 to 37, alt 100) and `scenarios lint`. The mapper found a konductor skill for one task only (`agents-md-authoring`); the other five have no `targetSkills`, so every T13 task has `effectSubset: false` and is reported in its own row as a cost control. The pilot run and the study are not approved yet.
 
 | Id | Phase | Role | What the agent does |
 | --- | --- | --- | --- |

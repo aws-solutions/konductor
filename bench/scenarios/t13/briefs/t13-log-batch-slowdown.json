@@ -11,15 +11,56 @@
   "size": "18 to 24",
   "loglines": 4200,
   "voice": "the SRE who owns the nightly reporting job, writing to a colleague",
-  "source": { "url": null, "licence": "none; generic batch-job capacity analysis, no external text", "licenceCheckedAt": "2026-11-24", "use": "idea" },
+  "source": {
+    "url": "https://sre.google/sre-book/data-processing-pipelines/",
+    "licence": "CC BY-NC-ND 4.0 (page footer); idea only (a periodic pipeline that drifts past its deadline), no text used",
+    "licenceCheckedAt": "2026-11-24",
+    "use": "idea"
+  },
   "outFile": "analysis/nightly-report-slowdown.md",
   "blockFields": "`firstSlowNight` (YYYY-MM-DD), `slowStage` (string), `cause` (object: `summary`, `evidence` list of `path:line`), `growthMinutesPerNight` (number), `finishTimes` (list of `{ \"night\", \"finishUtc\" }` with `finishUtc` as HH:MM, one per night in the logs), `deadlineUtc` (HH:MM), `predictedMissNight` (YYYY-MM-DD), `excludedNights` (list of `{ \"night\", \"why\" }`), `recommendation` (string).",
   "kindExtra": "Key shape for this task: `text` on `firstSlowNight` (`2026-04-0[34]`); `text` on `slowStage` (`enrich`); `text` on `cause.summary` with `all` `parallel|workers?|8 ?(->|to) ?2|concurrency` and `none` failing a summary that names volume or data growth as the cause without `not|rule[sd]? out|minor|secondary` nearby; `evidence` group on `cause.evidence`: the 04-03 line of `config/history.md`; `number` on `growthMinutesPerNight` (value 11, tol 2; the author may instead accept 12 with tol 2 by a second item, either passing); a hand-written `hidden/finish-times.test.js` (add a second `tests` check) that asserts at least 12 of 14 nights have `finishUtc` within 2 minutes of the planted finish time computed from the fixture; `some` on `excludedNights` matching night `2026-04-09` and `publish|retr`; `text` on `deadlineUtc` (`06:30|6:30|0630`); `text` on `predictedMissNight` (`2026-04-1[456]`); `text` on `recommendation` with `8|revert|back` near `parallel|workers?|concurrency` and a `none` failing `start earlier|move the start` unless `cannot|not possible|upstream` is nearby; `text` for the third asked fact (`00:45|upstream` near `start`); one `evidence` item: at least 4 valid citations into `logs/` or `config/`.",
   "scriptedUser": {
     "facts": [
-      { "id": "F1", "topics": ["deadline", "by when", "what time does finance", "sla", "due time", "cut-off time", "must finish by"], "answer": "Finance needs the reports by 06:30 UTC. That is the deadline." },
-      { "id": "F2", "topics": ["parallelism", "revert", "lookup service", "back to 8", "workers back", "undo the change", "can we raise"], "answer": "Yes. The lookup service was upgraded on 04-07, so enrich can go back to 8 workers; the reason for the cut is gone." },
-      { "id": "F3", "topics": ["start earlier", "start time", "run earlier", "move the start", "upstream data", "when does the data land", "kick off"], "answer": "No, it cannot start earlier. Upstream data lands at 00:45 and the job already starts at 01:00." }
+      {
+        "id": "F1",
+        "topics": [
+          "deadline",
+          "by when",
+          "what time does finance",
+          "sla",
+          "due time",
+          "cut-off time",
+          "must finish by"
+        ],
+        "answer": "Finance needs the reports by 06:30 UTC. That is the deadline."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "parallelism",
+          "revert",
+          "lookup service",
+          "back to 8",
+          "workers back",
+          "undo the change",
+          "can we raise"
+        ],
+        "answer": "Yes. The lookup service was upgraded on 04-07, so enrich can go back to 8 workers; the reason for the cut is gone."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "start earlier",
+          "start time",
+          "run earlier",
+          "move the start",
+          "upstream data",
+          "when does the data land",
+          "kick off"
+        ],
+        "answer": "No, it cannot start earlier. Upstream data lands at 00:45 and the job already starts at 01:00."
+      }
     ]
   },
   "brief": "Phase: log analysis. Role: SRE. Folder: `logs/night-2026-04-01.log` to `night-2026-04-14.log`, about 300 lines each from a nightly five-stage reporting job (extract, dedupe, enrich, aggregate, publish): a start line, per-stage `stage=<name> start=<ts> end=<ts> rows=<n>` lines, worker lines, a finish line with the total, UTC timestamps; `config/history.md` with dated changes: 04-03 `enrich.parallelism` 8 to 2 ('reduce load on the lookup service'), 04-08 a log level change, 04-10 a publish retry count change (both noise); `data/volumes.csv`, input rows per night growing about 3% a night, smooth; `docs/job.md`, the five stages and that the job starts at 01:00 UTC, without the deadline; `docs/stage-rename.md`, one line: on 04-06 the `enrich` stage was renamed `enrich-v2` in the logs, same work. Plant: nights 04-01 and 04-02 finish about 04:05 with every stage flat; from 04-03 the enrich stage (enrich-v2 from 04-06) grows about 11 minutes a night while the other stages grow about 1 minute a night in total from volume; finish times 04:05, 04:06, 04:18, 04:30, 04:41, 04:52, 05:04, then 04-09 an outlier at 07:40 because publish failed twice and retried while enrich stayed on trend, then 05:26, 05:38, 05:49, 06:01, 06:12, 06:24; on the trend the job first misses a 06:30 deadline on 04-15, the night after the last log. The request asks when the slowdown started, which part of the job is slow, the most likely reason, how fast it is getting worse, when it will be too late if nothing is done, the document at the given path ending with the JSON block. The request must not mention the config change, the rename, the outlier or the deadline. The lazy answer blames data volume and asks for a bigger machine; the copy answer pastes the finish lines; both must fail. The three scripted facts (the deadline, whether the parallelism cut can be reverted, whether the job may start earlier) are not in the folder; the reference asks for them, computes the miss night from the deadline and recommends the revert, not an earlier start.",

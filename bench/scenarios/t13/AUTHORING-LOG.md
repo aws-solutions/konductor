@@ -23,3 +23,4 @@ Public repo: no internal names, host paths or secrets. Credits are what each kir
 | t13-log-auth-credential-stuffing | review | qwen3-coder-next | 1.82 |  |
 | t13-log-batch-slowdown | author | gpt-5.6-luna | 4.76 |  |
 | t13-log-batch-slowdown | map | glm-5 | 0.22 |  |
+| t13-log-batch-slowdown | review | glm-5 | 9.17 |  |

@@ -1,0 +1,79 @@
+# Configuration history
+
+Changes are recorded here for audit context. Routine logging and delivery adjustments are included even when they do not affect stage execution.
+
+- 2026-03-01: `report-api.timeout_seconds` 18 to 20 (align with query budget).
+- 2026-03-02: `warehouse.snapshot_window` 14m to 15m (align with loader schedule).
+- 2026-03-03: `notifier.batch_size` 80 to 90 (reduce notification calls).
+- 2026-03-04: `logging.request_sample_rate` 0.25 to 0.24 (reduce routine volume).
+- 2026-03-05: `publish.endpoint_region` east-1 to east-2 (provider maintenance).
+- 2026-03-06: `report-api.cache_ttl` 80s to 90s (smooth dashboard reads).
+- 2026-03-07: `warehouse.read_timeout` 40 to 45 (accommodate maintenance window).
+- 2026-03-08: `logging.healthcheck_interval` 25s to 30s (reduce repeated checks).
+- 2026-03-09: `notifier.flush_interval` 4m to 5m (reduce wakeups).
+- 2026-03-10: `report-api.connection_idle` 50s to 60s (reduce churn).
+- 2026-03-11: `publish.connect_timeout` 10s to 12s (provider maintenance).
+- 2026-03-12: `warehouse.prefetch` disabled to enabled (smooth snapshot reads).
+- 2026-03-13: `logging.max_fields` 36 to 38 (retain diagnostic context).
+- 2026-03-14: `report-api.access_log` compact to structured (support parser updates).
+- 2026-03-15: `warehouse.partition_hint` automatic to automatic (no behavior change).
+- 2026-03-16: `notifier.retry_window` 10m to 12m (handle transient responses).
+- 2026-03-17: `logging.format_version` 1 to 2 (support newer collectors).
+- 2026-03-18: `report-api.max_query_rows` 900000 to 950000 (match reporting volume).
+- 2026-03-19: `publish.response_logging` status to headers (retain diagnostics).
+- 2026-03-20: `warehouse.read_replicas` 3 to 3 (no behavior change).
+- 2026-03-21: `logging.max_message_bytes` 4096 to 4608 (retain context).
+- 2026-03-22: `report-api.timeout_seconds` 20 to 25 (allow longer dashboard queries).
+- 2026-03-23: `warehouse.snapshot_window` 15m to 16m (align with the loader schedule).
+- 2026-03-24: `notifier.batch_size` 90 to 100 (reduce notification calls).
+- 2026-03-25: `logging.request_sample_rate` 0.24 to 0.22 (reduce routine volume).
+- 2026-03-26: `publish.endpoint_region` east-2 to east-3 (provider maintenance).
+- 2026-03-27: `report-api.cache_ttl` 90s to 100s (smooth dashboard reads).
+- 2026-03-28: `warehouse.read_timeout` 45 to 48 (accommodate maintenance window).
+- 2026-03-29: `logging.healthcheck_interval` 30s to 35s (reduce repeated checks).
+- 2026-03-30: `notifier.batch_size` 100 to 120 (reduce notification calls).
+- 2026-03-31: `warehouse.read_timeout` 48 to 50 (accommodate maintenance window).
+- 2026-04-01: `logging.healthcheck_interval` 35s to 45s (reduce repeated checks).
+- 2026-04-02: `report-api.cache_ttl` 100s to 120s (smooth dashboard reads).
+- 2026-02-01: `report-api.cache_ttl` 60s to 65s (smooth dashboard reads).
+- 2026-02-02: `warehouse.snapshot_window` 10m to 11m (align with the loader schedule).
+- 2026-02-03: `logging.request_sample_rate` 0.30 to 0.29 (reduce routine volume).
+- 2026-02-04: `notifier.batch_size` 60 to 65 (reduce notification calls).
+- 2026-02-05: `publish.connect_timeout` 8s to 9s (provider maintenance).
+- 2026-02-06: `report-api.timeout_seconds` 15 to 16 (align with query budget).
+- 2026-02-07: `warehouse.read_timeout` 30 to 32 (accommodate maintenance window).
+- 2026-02-08: `logging.healthcheck_interval` 20s to 22s (reduce repeated checks).
+- 2026-02-09: `notifier.flush_interval` 3m to 4m (reduce wakeups).
+- 2026-02-10: `report-api.access_log` compact to structured (support parser updates).
+- 2026-02-11: `warehouse.partition_hint` automatic to automatic (no behavior change).
+- 2026-02-12: `publish.endpoint_region` west-1 to west-2 (provider maintenance).
+- 2026-02-13: `logging.max_fields` 32 to 34 (retain diagnostic context).
+- 2026-02-14: `report-api.cache_ttl` 65s to 70s (smooth dashboard reads).
+- 2026-02-15: `warehouse.snapshot_window` 11m to 12m (align with the loader schedule).
+- 2026-02-16: `notifier.batch_size` 65 to 70 (reduce notification calls).
+- 2026-02-17: `logging.request_sample_rate` 0.29 to 0.28 (reduce routine volume).
+- 2026-02-18: `publish.response_logging` status to headers (retain diagnostics).
+- 2026-02-19: `report-api.timeout_seconds` 16 to 17 (align with query budget).
+- 2026-02-20: `warehouse.read_timeout` 32 to 34 (accommodate maintenance window).
+- 2026-02-21: `logging.format_version` 1 to 1 (no behavior change).
+- 2026-02-22: `notifier.retry_window` 8m to 9m (handle transient responses).
+- 2026-02-23: `report-api.connection_idle` 40s to 45s (reduce churn).
+- 2026-02-24: `warehouse.read_replicas` 2 to 2 (no behavior change).
+- 2026-02-25: `publish.connect_timeout` 9s to 10s (provider maintenance).
+- 2026-02-26: `logging.max_message_bytes` 3072 to 3584 (retain context).
+- 2026-02-27: `report-api.cache_ttl` 70s to 75s (smooth dashboard reads).
+- 2026-02-28: `warehouse.snapshot_window` 12m to 13m (align with the loader schedule).
+- 2026-02-29: `notifier.batch_size` 70 to 75 (reduce notification calls).
+- 2026-02-30: `logging.healthcheck_interval` 22s to 24s (reduce repeated checks).
+- 2026-04-03: `enrich.parallelism` 8 to 2 (reduce load on the lookup service).
+- 2026-04-04: `logging.max_fields` 40 to 44 (retain diagnostic context).
+- 2026-04-05: `publish.connect_timeout` 12s to 15s (provider maintenance).
+- 2026-04-06: `report-api.access_log` compact to structured (support parser updates).
+- 2026-04-07: `warehouse.prefetch` enabled to enabled (no behavior change).
+- 2026-04-08: `logging.level` info to debug (temporary investigation setting).
+- 2026-04-09: `notifier.flush_interval` 5m to 6m (reduce wakeups).
+- 2026-04-10: `publish.retry_count` 1 to 3 (handle transient delivery responses).
+- 2026-04-11: `report-api.connection_idle` 60s to 75s (reduce churn).
+- 2026-04-12: `logging.format_version` 2 to 2 (no behavior change).
+- 2026-04-13: `warehouse.partition_hint` automatic to automatic (no behavior change).
+- 2026-04-14: `publish.response_logging` headers to headers (no behavior change).

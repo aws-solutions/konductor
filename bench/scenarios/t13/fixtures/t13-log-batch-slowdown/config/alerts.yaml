@@ -1,0 +1,17 @@
+# Routine alert definitions for the reporting services
+alerts:
+  - name: report-api-error-rate
+    service: report-api
+    metric: http_5xx_ratio
+    threshold: 0.03
+    window: 10m
+  - name: lookup-health
+    service: lookup-api
+    metric: healthcheck_failures
+    threshold: 3
+    window: 5m
+  - name: publish-retry
+    service: nightly-report
+    metric: publish_retries
+    threshold: 2
+    window: 30m

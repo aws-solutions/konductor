@@ -1,0 +1,210 @@
+{
+  "id": "t13-log-batch-slowdown",
+  "class": "hard",
+  "version": 1,
+  "phase": "log-analysis",
+  "role": "sre",
+  "questions": "scripted",
+  "prompt": "The nightly reporting job has started taking longer and I need an SRE readout before this becomes an operational problem. Look through this folder (the nightly logs are under logs/). Work out when the slowdown began, which stage accounts for it, the most likely reason, the rate of deterioration in minutes per night, and when the current trend would make the run too late. Separate the normal trend from any isolated night and explain the practical next action. Write a senior-quality report to analysis/nightly-report-slowdown.md. End the report with one fenced ```json block containing one object with these fields: firstSlowNight (YYYY-MM-DD), slowStage (string), cause (object with summary and an evidence list), growthMinutesPerNight (number of minutes per night), finishTimes (one object per logged night with night and finishUtc as HH:MM), deadlineUtc (HH:MM), predictedMissNight (YYYY-MM-DD), excludedNights (night and why), and recommendation (string). Every log citation must use a folder-relative path and one-based line number in path:line form, such as logs/example.log:123.",
+  "fixture": "t13-log-batch-slowdown",
+  "hidden": "t13-log-batch-slowdown",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 28,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 finish-times.test.js",
+      "min": 1,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'),t=fs.readFileSync('analysis/nightly-report-slowdown.md','utf8'),f=String.fromCharCode(96).repeat(3),i=t.lastIndexOf(f+'json'),j=JSON.parse(t.slice(i+7).split(f)[0]);if(!j.firstSlowNight||!j.slowStage||!j.cause||!Array.isArray(j.cause.evidence)||typeof j.growthMinutesPerNight!=='number'||!Array.isArray(j.finishTimes)||j.finishTimes.length<12||!j.deadlineUtc||!j.predictedMissNight||!Array.isArray(j.excludedNights)||typeof j.recommendation!=='string')process.exit(1)\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "analysis/nightly-report-slowdown.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "logs/night-2026-04-03.log",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/volumes.csv",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "asked-for-facts",
+      "criterion": "The agent asked for what the folder does not say (the deadline, whether the parallelism cut can be reverted, whether the job may start earlier) instead of assuming. Fail: predicts a miss night with an invented deadline, or recommends an earlier start without asking. Partial: asked for some, or asked and then used another value. Pass: asked for each, computed the miss night from the given deadline, and the recommendation follows the answers. (code cannot check this because the asking is a conversation, not a file.)",
+      "weight": 2
+    },
+    {
+      "id": "honest-verification",
+      "criterion": "The report says how the trend was fitted. Fail: a growth rate with no method. Partial: a method, but not which nights or which stage line it used, or no word on the outlier. Pass: the nights and stage used, the outlier excluded and why, and the script or arithmetic shown. (code cannot check this because it cannot read what the agent ran.)",
+      "weight": 1
+    },
+    {
+      "id": "cause-over-correlation",
+      "criterion": "The cause is argued against the obvious story. Fail: blames data growth, or names the config change with no comparison to the flat stages. Partial: the right cause but the volume story is not ruled out with a number, or the outlier is not handled. Pass: the stage jump is set beside the flat stages and the per-night volume growth, the outlier is excluded with its reason, and the cause names the config line. (code cannot check this because the comparison is free text.)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-24",
+    "source": {
+      "url": "https://sre.google/sre-book/data-processing-pipelines/",
+      "licence": "CC BY-NC-ND 4.0 (page footer); idea only (a periodic pipeline that drifts past its deadline), no text used",
+      "licenceCheckedAt": "2026-11-24",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-24",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for 'the most likely reason' without naming parallelism, workers, or the config change; the three scripted facts (06:30 deadline, lookup service upgrade, 00:45 upstream data) are not stated or hinted; ASKS.json has natural questions reaching all facts."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt specifies exact file paths, output location, JSON schema with field names, citation format (path:line), and time format (HH:MM, ISO 8601); tolerances on numeric items are appropriate (±2 min on growth rate, date ranges for predictions)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture requires genuine analysis: config/history.md records the parallelism change but does not annotate it as the cause; logs show workers=2 but require correlation with the slowdown; the publish retry on 04-09 is logged but not called out as the outlier."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A volume-only blame would fail cause-names-parallelism-cut (requires 'parallel/workers/concurrency' and '8->2'); missing the 04-09 publish outlier would fail excluded-publish-outlier; lazy finish-time lists would fail all-fourteen-finishes (requires exactly 14 entries)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable: growth rate ~11 min/night from finish-time sequence (04:18, 04:30, 04:41, 04:52... = +12, +11, +11); first slow night 04-03 from workers=2 in logs; predicted miss 04-15 from 06:24 + 11 = 06:35 > 06:30 deadline."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 36.9,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-24"
+    },
+    "decision": "keep",
+    "date": "2026-11-24"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T13 worker session)",
+    "log": "HAND-EDITS.md"
+  },
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "deadline",
+          "by when",
+          "what time does finance",
+          "sla",
+          "due time",
+          "cut-off time",
+          "must finish by"
+        ],
+        "answer": "Finance needs the reports by 06:30 UTC. That is the deadline."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "parallelism",
+          "revert",
+          "lookup service",
+          "back to 8",
+          "workers back",
+          "undo the change",
+          "can we raise"
+        ],
+        "answer": "Yes. The lookup service was upgraded on 04-07, so enrich can go back to 8 workers; the reason for the cut is gone."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "start earlier",
+          "start time",
+          "run earlier",
+          "move the start",
+          "upstream data",
+          "when does the data land",
+          "kick off"
+        ],
+        "answer": "No, it cannot start earlier. Upstream data lands at 00:45 and the job already starts at 01:00."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  }
+}

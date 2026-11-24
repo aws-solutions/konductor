@@ -20,7 +20,8 @@ const { converse } = require('../../scenarios/t6/tools/fake-user.js');
 const cfg = loadConfig(path.join(T13, 'scenario.config.js'));
 const briefIds = fs.readdirSync(path.join(T13, 'briefs')).filter((n) => n.endsWith('.json')).map((n) => n.slice(0, -5)).sort();
 const brief = (id) => JSON.parse(fs.readFileSync(path.join(T13, 'briefs', `${id}.json`), 'utf8'));
-const fakeTask = (b, prompt = 'Please write the document.') => ({ id: b.id, prompt, questions: 'scripted', scriptedUser: { facts: b.scriptedUser.facts, defaultReply: cfg.DEFAULT_REPLY } });
+// A fake task under an id no batch directory holds, so solutions/ and answers/ of the real tasks do not enter these checks.
+const fakeTask = (b, prompt = 'Please write the document.') => ({ id: 't13-none-such', prompt, questions: 'scripted', scriptedUser: { facts: b.scriptedUser.facts, defaultReply: cfg.DEFAULT_REPLY } });
 
 test('six briefs, two per added phase, each a scripted doc task with three facts, a public source and the T8 fields', () => {
   assert.strictEqual(briefIds.length, 6);
@@ -97,8 +98,13 @@ test('conversation plays the reference asks from solutions/<id>/ASKS.json and no
   const task = fakeTask(b);
   assert.deepStrictEqual(cfg.conversation(task, 'stub'), { questions: [] });
   assert.strictEqual(cfg.conversation({ id: 'x', prompt: 'p' }, 'reference'), null);
-  // No solutions dir yet: the reference asks nothing, so no fact is matched.
+  // No solutions dir for the fake id: the reference asks nothing, so no fact is matched.
   assert.deepStrictEqual(cfg.conversation(task, 'reference'), { questions: [] });
+  // A real task's reference asks unlock all three facts.
+  const real = JSON.parse(fs.readFileSync(path.join(T13, `${briefIds[0]}.json`), 'utf8'));
+  const conv = cfg.conversation(real, 'reference');
+  assert.deepStrictEqual([...new Set(conv.questions.flatMap((q) => q.matched))].sort(), ['F1', 'F2', 'F3']);
+  assert.deepStrictEqual(cfg.taskErrors(real), []);
 });
 
 test('buildTask keeps T8 shape and adds the scripted user from the draft, or from the brief when the draft has none', () => {

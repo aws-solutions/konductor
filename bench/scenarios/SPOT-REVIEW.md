@@ -27,5 +27,6 @@ per batch a shuffle with its own seed (the base seed plus the batch number) of t
 | t10 | t10-arch-outbox | [t10-arch-outbox.json](t10/t10-arch-outbox.json) | [fixtures](t10/fixtures/t10-arch-outbox/) | [hidden](t10/hidden/t10-arch-outbox/) | [solution](t10/solutions/t10-arch-outbox/) |
 | t11 | t11-resume-csv-export | [t11-resume-csv-export.json](t11/t11-resume-csv-export.json) | [fixtures](t11/fixtures/t11-resume-csv-export/) | [hidden](t11/hidden/t11-resume-csv-export/) | [solution](t11/solutions/t11-resume-csv-export/) |
 | t12 | t12-spec-rate-limits | [t12-spec-rate-limits.json](t12/t12-spec-rate-limits.json) | [fixtures](t12/fixtures/t12-spec-rate-limits/) | [hidden](t12/hidden/t12-spec-rate-limits/) | [solution](t12/solutions/t12-spec-rate-limits/) |
+| t13 | t13-triage-issue-queue | [t13-triage-issue-queue.json](t13/t13-triage-issue-queue.json) | [fixtures](t13/fixtures/t13-triage-issue-queue/) | [hidden](t13/hidden/t13-triage-issue-queue/) | [solution](t13/solutions/t13-triage-issue-queue/) |
 
-21 task(s) in 12 batch(es), 0 batch(es) pending. For each one, record in the task's `review` block: read on (date), and whether it leaks the method, hides the answer in the fixture, or is ambiguous.
+22 task(s) in 13 batch(es), 0 batch(es) pending. The t13 row was drawn on 2026-11-24 (`--seed 20261119`, batch seed 20261132) when the batch's six tasks landed; the owner has not read it yet. For each one, record in the task's `review` block: read on (date), and whether it leaks the method, hides the answer in the fixture, or is ambiguous.

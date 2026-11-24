@@ -1110,6 +1110,30 @@
             "drop"
           ]
         },
+        "lowSplit": {
+          "description": "The owner marked the task low split (D-147): its code scores sit near the ceiling for every arm, so only the judges can tell the arms apart. Read by pilot-table.js.",
+          "type": "object",
+          "required": [
+            "date",
+            "by",
+            "why"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+            },
+            "by": {
+              "type": "string",
+              "minLength": 1
+            },
+            "why": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
         "blockers": {
           "description": "Why the task cannot be locked yet, one string each (for example 'recheck-failed: ...' or 'gate-failed: ...').",
           "type": "array",
