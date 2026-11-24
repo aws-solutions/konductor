@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError } from '../api/api';
-import type { CheckResult, StageView, WorkflowView } from '../api/types';
+import type {
+  CheckResult,
+  LineRange,
+  StageView,
+  WorkflowView,
+} from '../api/types';
 import type {
   CheckAnswer,
   CheckView,
@@ -26,10 +31,14 @@ function textOf(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+// The adapter has already checked each stage's `kind` and `range`, so they
+// are read as the contract types here.
 function stageViewsOf(view: CheckView): StageView[] {
   return view.stages.map((stage) => ({
     name: stage.name,
+    kind: textOf(stage.kind),
     agent: textOf(stage.agent),
+    range: stage.range as LineRange,
   }));
 }
 
