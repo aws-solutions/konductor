@@ -18,10 +18,7 @@ which an agent shell blocks, and they spend credits or dollars.
 | `2x2/listing-check.js` | Static estimate of the skill listing Claude Code would send for a konductor commit. Exit 1 when a konductor skill would be name-only. | free |
 | `2x2/rescore-by-limit.js` | Re-scores a finished run as if the time limit had been 600, 1200 or 1800 s. Read only. | free |
 | `2x2/timeline.py` | For every run over a limit, writes a timeline of why it ran long. Read only, standard library. | free |
-| `standard/run-standard.sh` | The STANDARD run: every DEV task that passes the lock and recheck gate, three arms (vanilla, konductor, konductor-noskills), two stages of one replicate each. `--prepare-only` builds and trial-installs all three arms. The first paid start freezes the plan and the kit in the study dir. | free prepare; paid stages, 800 real credits cap per stage |
-| `standard/judge-standard.sh` | The three-family judge pass over the finished STANDARD units, then the three-arm report. `--plan` makes no model call. | paid, USD 15 cap |
-| `standard/claude-standard.sh` | Claude Code on 15 STANDARD tasks, plain and with konductor, one run each. `--prepare-only` makes no model call. | paid, USD 1 per run, USD 30 cap |
-| `standard/helper.js`, `standard/test-*.sh` | The free helper (task gate, spend, stage check, tables) and the paid-path tests on stubs, run by `runner/test/kit-standard.test.js`. | free |
+| the STANDARD kit | Moved to [`scenarios/konductor/standard/`](../scenarios/konductor/standard/README.md) with the other konductor run-level code (2026-11-24). | see there |
 | `probes/pr312-skill-access/` | A 12-prompt probe: does Kiro with konductor load the skill each prompt needs, without being told its name. Its own README has the details. | paid (Kiro credits) |
 
 ## Needs

@@ -24,7 +24,7 @@ the largest one may say who wins.
 | Caps | the `--budget-credits N` you give | 800 real credits per stage (1,600 in all), USD 15 for judges, USD 30 for Claude Code (USD 1 a run) | not set yet |
 
 The definition is the owner's decision of 2026-11-19. The STANDARD numbers are the kit's defaults
-(`STAGE_CAP`, `CAP_USD` in `bench/kit/standard/`) and the owner's approval sheet of 2026-11-23. This is the one
+(`STAGE_CAP`, `CAP_USD` in `bench/scenarios/konductor/standard/`) and the owner's approval sheet of 2026-11-23. This is the one
 table of run levels; other pages link here. `run --level lite|standard|full` picks a suite's tasks by
 level; FULL also needs `--prereg FILE`, the frozen pre-registration lock.
 
@@ -36,7 +36,7 @@ level; FULL also needs `--prereg FILE`, the frozen pre-registration lock.
 | Level | State |
 | --- | --- |
 | LITE | ran on 2026-11-21 (konductor against vanilla on Kiro CLI); its results are a check, not a verdict |
-| STANDARD | the kit is built and tested on stubs (`bench/kit/standard/`); not run yet |
+| STANDARD | the kit is built and tested on stubs (`bench/scenarios/konductor/standard/`); not run yet |
 | FULL | not run. The pre-registration lock is not frozen, and the person's 40-output calibration is not done |
 
 No verdict has been published. Do not describe any other run as LITE, STANDARD or FULL.
@@ -49,7 +49,7 @@ Each script has a free first step that makes no model call.
 | Level | Command | Free first step |
 | --- | --- | --- |
 | LITE | `node bench/runner/bench.js run --suite pack --level lite --arms vanilla,main --budget-credits N --out OUT` | the same with `--prepare-only` |
-| STANDARD | `S=<study dir> R=<konductor worktree> KBIN=<kiro-cli 3.5.0> bash bench/kit/standard/run-standard.sh`, then `judge-standard.sh` and `claude-standard.sh` | `run-standard.sh --prepare-only`, `judge-standard.sh --plan` |
+| STANDARD | `S=<study dir> R=<konductor worktree> KBIN=<kiro-cli 3.5.0> bash bench/scenarios/konductor/standard/run-standard.sh`, then `judge-standard.sh` and `claude-standard.sh` | `run-standard.sh --prepare-only`, `judge-standard.sh --plan` |
 | FULL | not packaged yet | `scenarios prereg` freezes and checks the lock (see the [reference](reference.md)) |
 
 [`bench/kit/README.md`](../kit/README.md) lists every kit script, its needs and its caps. [Repeat it

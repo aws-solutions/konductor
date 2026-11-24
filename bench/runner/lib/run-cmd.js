@@ -46,7 +46,7 @@ const { makeRunnerLog } = require('./log.js');
 const { preloadSchemas } = require('./schema.js');
 const { snapshotTaskInputs } = require('./task-inputs.js');
 const { requirePrereg } = require('../../scenarios/prereg.js');
-const { planLevel } = require('../../scenarios/levels.js');
+const { planLevel } = require('../../scenarios/konductor/levels.js');
 const { creditNotes, creditNoteLines } = require('./credit-notes.js');
 const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js');
 

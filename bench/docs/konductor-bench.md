@@ -202,7 +202,7 @@ The same comparison runs for `konductor` against `konductor-noskills` and for `k
 | Leak lint, coverage matrix, run levels, pre-registration lock, bootstrap and verdict words | built (`bench/scenarios/`) |
 | `konductor-noskills` arm, the per-run load check, and dropping one SOP or agent (`cap variant --drop`) | built |
 | LITE | ran on 2026-11-21 on Kiro CLI; a check, not a verdict |
-| STANDARD | the kit is built and stub-tested (`bench/kit/standard/`); not run yet |
+| STANDARD | the kit is built and stub-tested (`bench/scenarios/konductor/standard/`); not run yet |
 | A frozen `PREREG.json` | not yet |
 | A FULL run, and any verdict | not yet; no verdict has been published |
 

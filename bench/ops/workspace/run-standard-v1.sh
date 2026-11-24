@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# STANDARD run, owner wrapper: bench/kit/standard/run-standard.sh with this host's paths (scripts/standard-kit-env.sh).
+# STANDARD run, owner wrapper: bench/scenarios/konductor/standard/run-standard.sh with this host's paths (scripts/standard-kit-env.sh).
 # Owner terminal only: paid. The kit's own header has the rules (caps, stages, resume, freeze).
 #
 #   bash run-standard-v1.sh --prepare-only   free: gate, plan preview, all three arms built and trial-installed

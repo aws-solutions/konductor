@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { packSuite, render, SUITE_FILE } = require('../../scenarios/pack-suite.js');
 const { loadTasks, loadSuite, suiteExtraDirs, SUITE_NAMES } = require('../lib/tasks.js');
-const { planLevel } = require('../../scenarios/levels.js');
+const { planLevel } = require('../../scenarios/konductor/levels.js');
 
 test('bench/suites/pack.json is the generated file (run node bench/scenarios/pack-suite.js after adding a task)', () => {
   assert.equal(fs.readFileSync(SUITE_FILE, 'utf8'), render(packSuite()));

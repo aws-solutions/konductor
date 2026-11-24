@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# STANDARD judge pass, owner wrapper: bench/kit/standard/judge-standard.sh with this host's paths. Owner terminal only.
+# STANDARD judge pass, owner wrapper: bench/scenarios/konductor/standard/judge-standard.sh with this host's paths. Owner terminal only.
 # Runs after run-standard.sh and run-standard-claude.sh; it judges both harnesses in one pass.
 #
 #   bash run-standard-judge.sh --plan                         free: calls and estimated USD; no model call

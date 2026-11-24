@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The STANDARD run kit (bench/kit/standard): syntax, no host paths or login names, no branch-only local read after its
+// The STANDARD run kit (bench/scenarios/konductor/standard): syntax, no host paths or login names, no branch-only local read after its
 // branch (scripts/shell-unbound.js), and each script's paid path on stubs (the kit's own test-*.sh: a stub bench,
 // helper, kiro-cli and claude; no model, no keys, no spend, every dir under /var/tmp).
 
@@ -12,7 +12,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 
-const KIT = path.join(__dirname, '..', '..', 'kit', 'standard');
+const KIT = path.join(__dirname, '..', '..', 'scenarios', 'konductor', 'standard');
 const UNBOUND = path.join(__dirname, '..', '..', 'scripts', 'shell-unbound.js');
 const FILES = fs.readdirSync(KIT).filter((f) => f.endsWith('.sh') || f.endsWith('.js'));
 const SCRIPTS = FILES.filter((f) => f.endsWith('.sh') && !f.startsWith('test-'));

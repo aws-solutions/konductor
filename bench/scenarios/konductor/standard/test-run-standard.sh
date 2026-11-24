@@ -5,7 +5,7 @@
 # stages, the per-stage cap, resume, the ledger check, the stage gate, the HOME guard, the heavy-lock wait, the frozen
 # noskills and list-hook hashes and the frozen kit copy. Run by bench/runner/test/kit-standard.test.js.
 #
-#   bash bench/kit/standard/test-run-standard.sh
+#   bash bench/scenarios/konductor/standard/test-run-standard.sh
 set -uo pipefail
 SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SCRIPT=$SELF/run-standard.sh

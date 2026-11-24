@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench } = require('./helpers.js');
-const { selectLevel, planLevel, levelRecord, levelHeader, LITE_PHASES } = require('../../scenarios/levels.js');
+const { selectLevel, planLevel, levelRecord, levelHeader, LITE_PHASES } = require('../../scenarios/konductor/levels.js');
 const { splitOf, hashOf } = require('../../scenarios/split.js');
 const { CORE_PHASES, ADDED_PHASES } = require('../../scenarios/coverage.js');
 

@@ -7,7 +7,7 @@
 # preview-plan refusal and the bench-pin check.
 #
 # Run by bench/runner/test/kit-standard.test.js.
-#   bash bench/kit/standard/test-claude-standard.sh
+#   bash bench/scenarios/konductor/standard/test-claude-standard.sh
 set -uo pipefail
 SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SCRIPT=$SELF/claude-standard.sh

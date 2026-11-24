@@ -24,7 +24,7 @@ const { otherRule } = require('../judge/views.js');
 const { MIN_JUDGES } = require('../judge/score.js');
 const C = require('./charts.js');
 const { buildPaired, pairedBlocks } = require('./paired.js');
-const { levelHeader } = require('../scenarios/levels.js');
+const { levelHeader } = require('../scenarios/konductor/levels.js');
 const { DESCRIPTORS } = require('../runner/lib/harness/descriptors.js');
 const { descriptorOf } = require('../runner/lib/harness/runtime.js');
 

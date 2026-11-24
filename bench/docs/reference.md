@@ -1348,7 +1348,7 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   `bench.js report` when a run holds vanilla, konductor (or `main`) and konductor-noskills: the three pairs, HELD-OUT Holm-corrected as one family,
   DEV apart (`report/three-arm.js`); `compare` and `compareRows` take any two score lists.
 - `run --level lite|standard|full [--level-since FILE]` picks the suite's tasks by run level (plan 7a) instead of `--tasks`; the two together are refused.
-  The list is a function of the task metadata and the SR-32 hashes (`bench/scenarios/levels.js`), so it is fixed for a pack version. **lite**: for each of the
+  The list is a function of the task metadata and the SR-32 hashes (`bench/scenarios/konductor/levels.js`), so it is fixed for a pack version. **lite**: for each of the
   14 phases (not the long multi-phase row) the DEV real task with the lowest SR-32 hash among tasks with a soft limit of 900 s or less; a role then missing is
   swapped in from its lowest-hash DEV task in a phase with two or more such tasks (a role with no task is listed as unfilled); plus the lowest-hash DEV negative
   control and DEV twin, 16 tasks when every phase and role is there. `--level-since FILE`, the `tasks` list of an earlier run-config `level` record, adds every

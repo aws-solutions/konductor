@@ -5,7 +5,7 @@
 # USD guard per unit, done markers, the three-arm report call), resume, the cap stop and the heavy-lock stop.
 #
 # Run by bench/runner/test/kit-standard.test.js.
-#   bash bench/kit/standard/test-judge-standard.sh
+#   bash bench/scenarios/konductor/standard/test-judge-standard.sh
 set -uo pipefail
 SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SCRIPT=$SELF/judge-standard.sh

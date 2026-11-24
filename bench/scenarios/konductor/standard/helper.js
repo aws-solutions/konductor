@@ -48,7 +48,7 @@ function armsOpt(rest, fallback) {
 
 function devTasks() {
   const { loadTasks } = need('bench/runner/lib/tasks.js');
-  const { selectLevel } = need('bench/scenarios/levels.js');
+  const { selectLevel } = need('bench/scenarios/konductor/levels.js');
   const bench = path.join(R, 'bench');
   const suite = JSON.parse(fs.readFileSync(path.join(bench, 'suites/pack.json'), 'utf8'));
   const all = loadTasks(bench, { extraDirs: suite.extraTasks.map((d) => path.join(bench, d)) });
@@ -182,7 +182,7 @@ function ccPlan(planFile) {
 }
 
 function ccTasks(planFile, n) {
-  const { liteSelection } = need('bench/scenarios/levels.js');
+  const { liteSelection } = need('bench/scenarios/konductor/levels.js');
   const { hashOf } = need('bench/scenarios/split.js');
   const p = JSON.parse(fs.readFileSync(planFile, 'utf8'));
   const runs = new Set(p.run.map((t) => t.id));
@@ -260,5 +260,5 @@ try {
   else if (cmd === 'judge-spent') console.log(judgeSpent(rest[0]));
   else if (cmd === 'code-only') console.log(codeOnly(rest[0]).join(' '));
   else if (cmd === 'cc-tasks') console.log(ccTasks(rest[0], Number(rest[1]) || 15).join(','));
-  else { console.error('usage: see the top of standard-helper.js'); process.exitCode = 64; }
+  else { console.error('usage: see the top of helper.js'); process.exitCode = 64; }
 } catch (e) { console.error(`standard-helper ${cmd}: ${e.message}`); process.exitCode = 1; }
