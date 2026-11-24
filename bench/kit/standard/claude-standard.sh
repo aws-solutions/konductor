@@ -6,22 +6,26 @@
 #
 #   S=<study dir> R=<worktree> bash claude-standard.sh --plan           free: arms, batches, runs, expected USD per
 #                                                                       stage, caps; reads the plan only, no bench call
-#   S=<study dir> R=<worktree> bash claude-standard.sh --prepare-only   free: all three arms prepared by bench (a
+#   S=<study dir> R=<worktree> bash claude-standard.sh --prepare-only   free: every arm prepared by bench (a
 #                                                                       konductor build and a trial install); no agent
 #   S=<study dir> R=<worktree> CC_AWS_PROFILE=<profile> bash claude-standard.sh   the paid stages; rerun to resume
 #
-# Arms (helper.js cc-plan): cc-vanilla (plain Claude Code), cc-konductor=<the plan's konductor sha> and
-# cc-konductor-noskills=dir:<the plan's noskills tree>, the same conditions as the Kiro arms under the cc- prefix.
+# Arms (helper.js cc-plan): cc-vanilla (plain Claude Code), cc-konductor=<the plan's konductor sha>,
+# cc-konductor-noskills=dir:<the plan's noskills tree> and cc-konductor-list=dir:<the plan's list tree>, the same
+# conditions as the Kiro arms under the cc- prefix. The list tree carries the Kiro skill-list hook's text as a Claude
+# Code rules file (.bench-claude-rules/skill-list.md, cap/nudge.js); the Claude Code plugin copies it into the run
+# HOME's ~/.claude/rules, which Claude Code loads at session start (https://code.claude.com/docs/en/memory). The plain
+# arm gets the empty rules file only.
 # The konductor arms follow konductor's own Claude Code guide (D-241): `konductor install --harness claude` into the
 # run HOME, `claude -p --agent konductor`, team mode on and the guide's permission list in the run settings
 # (bench/plugins/claude-code/team-mode.js). Under `claude -p` no teammate spawns, so team mode changes no run.
 # Stages as the Kiro kit: stage N is replicate N of every batch (CC_STAGES, default STAGES or 2), each capped at
-# CC_STAGE_CAP_USD (80) with RUN_CAP_USD (1.5) a run (claude's own --max-budget, bench --run-budget-usd). Before each
+# CC_STAGE_CAP_USD (110) with RUN_CAP_USD (1.5) a run (claude's own --max-budget, bench --run-budget-usd). Before each
 # batch, what the stage cap leaves minus one run's cap is the batch's --budget-usd, so bench's own USD guard checks it
 # before every run, and a batch that cannot fit one run stops the step cleanly. The next stage starts only on a clean
-# one (helper.js stage over the cc- arms: 10% or less broken per arm, all three arms ran). Units live under
+# one (helper.js stage over the cc- arms: 10% or less broken per arm, every arm ran). Units live under
 # $S/claude/runs/r<stage>/<batch>, the shape judge-standard.sh reads. Expected USD: helper.js cc-plan (the measured
-# USD 0.071 a plain Kiro credit, konductor 1.59x, noskills 1.3x), about USD 52 a stage for 43 tasks.
+# USD 0.071 a plain Kiro credit, konductor 1.59x, noskills 1.3x, list 1.7x), about USD 74 a stage for 42 tasks over four arms.
 # S must be outside HOME. Never beside a pilot, a forced-small run, another bench run or a held heavy lock.
 #
 # Needs: S, R (as run-standard.sh). Optional: CC_CLAUDE_BIN, CC_MODEL, CC_ARMS (replaces the three), CC_ISOLATE,
@@ -34,7 +38,7 @@ R=${R:-}
 SH=${HELPER:-$KIT/helper.js}
 MODEL=${CC_MODEL:-us.anthropic.claude-sonnet-5-5}
 STAGES=${CC_STAGES:-${STAGES:-2}}
-STAGE_CAP=${CC_STAGE_CAP_USD:-80}
+STAGE_CAP=${CC_STAGE_CAP_USD:-110}
 RUN_CAP_USD=${RUN_CAP_USD:-1.5}
 ISOLATE=${CC_ISOLATE:-unshare}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
@@ -115,7 +119,7 @@ main() {
   BATCHES=$(q 'Object.keys(p.batches).join(" ")')
   bench_sha=$(node -p 'require(process.argv[1]).benchSha' "$PLAN")
   say "Claude Code arms: $ARMS; model $MODEL; $STAGES stage(s) at USD $STAGE_CAP each, USD $RUN_CAP_USD a run"
-  say "tasks: $(q 'Object.values(p.batches).reduce((n,b)=>n+b.tasks.length,0)') in $(q 'Object.keys(p.batches).length') batches; $(q 'p.runsPerStage') runs a stage; expected USD $(q 'p.expectedUsdPerStage') a stage (USD $(q 'p.usdPerPlainCredit') a plain Kiro credit; konductor $(q 'p.ratio["cc-konductor"]')x, noskills $(q 'p.ratio["cc-konductor-noskills"]')x)"
+  say "tasks: $(q 'Object.values(p.batches).reduce((n,b)=>n+b.tasks.length,0)') in $(q 'Object.keys(p.batches).length') batches; $(q 'p.runsPerStage') runs a stage; expected USD $(q 'p.expectedUsdPerStage') a stage (USD $(q 'p.usdPerPlainCredit') a plain Kiro credit; arm ratios $(q 'Object.entries(p.ratio).map(([a,r])=>a.slice(3)+" "+r+"x").join(", ")'))"
   if [ "$plan_only" = 1 ]; then
     q 'Object.entries(p.batches).map(([b,x])=>"  "+b+": "+x.tasks.length+" task(s), expected USD "+x.expectedUsd).join("\n")'
     say "plan only: no bench call. Dry run: bash $0 --prepare-only; paid: CC_AWS_PROFILE=<profile> bash $0"
@@ -160,7 +164,7 @@ main() {
   fi
   say "${STOPPED:-all Claude Code units finished}"
   for rep in $(seq 1 "$STAGES"); do say "stage $rep: USD $(usd_stage "$rep") of $STAGE_CAP"; done
-  say "tables: $CC/tables (code-gap.md: three cc- arms per task; all-runs.md; r<rep>-<batch>.md)"
+  say "tables: $CC/tables (code-gap.md: the cc- arms per task; all-runs.md; r<rep>-<batch>.md)"
   say "next (judges over the Kiro and Claude Code units): S=$ROOT R=$R bash $KIT/judge-standard.sh --plan"
   [ -z "$STOPPED" ]
 }

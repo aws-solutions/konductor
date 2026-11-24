@@ -6,18 +6,20 @@
 #   S=<study dir> R=<worktree> KBIN=<kiro-cli> bash run-standard.sh                  paid run in the background; log $S/run.log
 #   S=<study dir> R=<worktree> KBIN=<kiro-cli> bash run-standard.sh --foreground     the same, in this terminal
 #   S=<study dir> R=<worktree> KBIN=<kiro-cli> bash run-standard.sh --prepare-only   free: task gate, plan preview, the
-#       konductor-noskills arm built and trial-installed, all three arms prepared by bench; no agent runs
+#       konductor-noskills and konductor-list arms built and trial-installed, all four arms prepared by bench; no agent runs
 #
 # Tasks: bench `--level standard` over suites/pack.json (every DEV task), then the LITE gate rules (ready, no lock
 # blocker, a passing non-Claude recheck at the current version); `helper.js plan` lists the rest as skipped.
-# Arms: vanilla, konductor=<sha>, konductor-noskills=dir:<cap variant --preset noskills of the same sha>.
-# Stage A is replicate 1 of every batch, stage B replicate 2, each capped at STAGE_CAP real credits (800). Before each
+# Arms: vanilla, konductor=<sha>, konductor-noskills=dir:<cap variant --preset noskills of the same sha> and
+# konductor-list=dir:<cap variant --hook list of the same sha>: konductor plus the prompt hook that lists every skill name
+# (the LITE hook study's list arm, bench/cap/nudge.js; planned cost 1.6 x plain, measured 1.43).
+# Stage A is replicate 1 of every batch, stage B replicate 2, each capped at STAGE_CAP real credits (1100). Before each
 # batch: the credit ledger must have no entry of unknown cost, and what the stage cap leaves minus MARGIN must cover the
 # batch's per-run limit (a one-shot run cannot be stopped mid-run, D-67), else the run stops cleanly. That rest is the
 # batch's --budget-credits, so bench's own guard checks it before every run. Stage B starts only on a clean stage A
-# (10% or less broken per arm, all three arms ran).
+# (10% or less broken per arm, all four arms ran).
 # S, the cache and the variant scratch must be outside HOME (default: under S). The first paid start freezes the plan
-# (bench sha, konductor sha, noskills arm and its hash, tasks) in $S/plan.json and this kit in $S/kit, and runs the
+# (bench sha, konductor sha, noskills and list arms with their tree hashes, tasks) in $S/plan.json and this kit in $S/kit, and runs the
 # frozen copy from then on. Rerun the same command to resume: finished batches are skipped, an unfinished one resumes
 # (bench --resume). Nothing is deleted; an unfinished batch dir with no run-config.json is moved to $S/incomplete/.
 #
@@ -46,11 +48,11 @@ HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 LITE_LOCK=${LITE_LOCK:-/var/tmp/konductor-lite.lock}
 OWN_LOCK=${OWN_LOCK:-/var/tmp/konductor-standard.lock}
 WAIT_MAX=${WAIT_MAX:-3600}; WAIT_STEP=${WAIT_STEP:-60}
-STAGE_CAP=${STAGE_CAP:-800}; MARGIN=25; STAGES=${STAGES:-2}
+STAGE_CAP=${STAGE_CAP:-1100}; MARGIN=25; STAGES=${STAGES:-2}
 SEED=20261121
 PLAN=$ROOT/plan.json
 STOPPED=""
-ARMS=""; NOSKILLS=""; BENCH_SHA=""; BATCHES=""
+ARMS=""; NOSKILLS=""; LIST=""; BENCH_SHA=""; BATCHES=""
 
 say() { echo "[$(date -u +%H:%M)] $*"; }
 stop() { say "STOP: $*"; exit 1; }
@@ -138,21 +140,30 @@ base_args() { # base_args BATCH
     --repo-root "$R" --hide "$R" --isolate unshare --seed "$SEED" \
     --model claude-sonnet-5.5 --effort high --agent-engine v3 --kiro-bin "$KBIN" --python "$PY312" --cache "$CACHE"
 }
-# noskills_arm SHA VERIFY: builds (or finds) the konductor-noskills variant; prints "<armSpec> <variantHash>".
-noskills_arm() {
-  local sha=$1 verify=$2 out rc=0
+# variant_arm SHA VERIFY FLAG VALUE: builds (or finds) one cap variant of konductor at SHA (FLAG VALUE: --preset noskills
+# or --hook list); prints "<armSpec> <variantHash>".
+variant_arm() {
+  local sha=$1 verify=$2 flag=$3 value=$4 out rc=0
   local -a V=()
   [ "$verify" = 1 ] && V=(--verify)
   mkdir -p "$SCRATCH"
-  out=$(nice -n 10 node "$R/bench/runner/bench.js" cap variant --scratch "$SCRATCH" --base "$sha" --preset noskills \
-    --agent-engine v3 --cache "$CACHE" --repo-root "$R" --json "${V[@]}" 2> "$SCRATCH/variant.log") || rc=$?
-  [ "$rc" = 0 ] || { say "cap variant failed (exit $rc), see $SCRATCH/variant.log"; return 1; }
+  out=$(nice -n 10 node "$R/bench/runner/bench.js" cap variant --scratch "$SCRATCH" --base "$sha" "$flag" "$value" \
+    --agent-engine v3 --cache "$CACHE" --repo-root "$R" --json "${V[@]}" 2> "$SCRATCH/variant-$value.log") || rc=$?
+  [ "$rc" = 0 ] || { say "cap variant $flag $value failed (exit $rc), see $SCRATCH/variant-$value.log"; return 1; }
   printf '%s' "$out" | node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8")); console.log(j.armSpec, j.meta.variantHash)'
+}
+# check_arm NAME SPEC HASH: the variant must be a dir: arm of that name outside HOME.
+check_arm() {
+  local name=$1 spec=${2:-} vhash=${3:-}
+  [ -n "$spec" ] && [ -n "$vhash" ] || stop "the $name arm did not build"
+  case "$spec" in "$name=dir:/"*) ;; *) stop "$name arm $spec is not a dir: arm" ;; esac
+  under_home "${spec#"$name"=dir:}" && stop "$name arm $spec is under HOME"
+  say "$name arm: $spec (variantHash ${vhash:0:12})"
 }
 [ "${STANDARD_LIB:-0}" = 1 ] && return 0 2>/dev/null
 
 main() {
-  local mode=${1:-} prep=0 rep b spec vhash rc=0 po d
+  local mode=${1:-} prep=0 rep b spec vhash lspec lhash rc=0 po d
   local -a dirs=()
   case "$mode" in ''|--foreground|--prepare-only) ;; *) echo "usage: S=DIR R=WORKTREE KBIN=FILE bash $0 [--foreground|--prepare-only]"; exit 64 ;; esac
   [ -n "$S" ] || stop "set S, the study dir (outside HOME, for example /var/tmp/konductor-standard-v1)"
@@ -210,28 +221,28 @@ main() {
     say "pin moved to ${BENCH_SHA:0:8}"
   fi
 
-  # ---------- the noskills arm (F13 when --prepare-only: built and trial-installed)
-  read -r spec vhash < <(noskills_arm "$KONDUCTOR_SHA" "$prep") || true
-  [ -n "${spec:-}" ] && [ -n "${vhash:-}" ] || stop "the konductor-noskills arm did not build"
-  case "$spec" in konductor-noskills=dir:/*) ;; *) stop "noskills arm $spec is not a dir: arm" ;; esac
-  under_home "${spec#konductor-noskills=dir:}" && stop "noskills arm $spec is under HOME"
-  say "noskills arm: $spec (variantHash ${vhash:0:12})"
+  # ---------- the noskills and list-hook arms (F13 when --prepare-only: built and trial-installed)
+  read -r spec vhash < <(variant_arm "$KONDUCTOR_SHA" "$prep" --preset noskills) || true
+  check_arm konductor-noskills "${spec:-}" "${vhash:-}"
+  read -r lspec lhash < <(variant_arm "$KONDUCTOR_SHA" "$prep" --hook list) || true
+  check_arm konductor-list "${lspec:-}" "${lhash:-}"
 
   # ---------- the plan
   if [ "$prep" = 1 ]; then PLAN=$ROOT/prepare/plan-preview.json; mkdir -p "$ROOT/prepare"; fi
   if [ "$prep" = 1 ] || [ ! -s "$PLAN" ]; then
     node "$HELPER" plan "$R" "$COST" > "$PLAN.gate" || stop "task gate failed"
     node -e '
-      const [g, b, k, s, h, out] = process.argv.slice(1);
+      const [g, b, k, s, h, ls, lh, out] = process.argv.slice(1);
       const gate = JSON.parse(require("fs").readFileSync(g, "utf8"));
-      const plan = { created: new Date().toISOString(), benchSha: b, konductorSha: k, noskillsArm: s, noskillsHash: h, ...gate };
+      const plan = { created: new Date().toISOString(), benchSha: b, konductorSha: k, noskillsArm: s, noskillsHash: h, listArm: ls, listArmHash: lh, ...gate };
       require("fs").writeFileSync(out, JSON.stringify(plan, null, 2) + "\n");
-    ' "$PLAN.gate" "$BENCH_SHA" "$KONDUCTOR_SHA" "$spec" "$vhash" "$PLAN" && rm -f -- "$PLAN.gate"
+    ' "$PLAN.gate" "$BENCH_SHA" "$KONDUCTOR_SHA" "$spec" "$vhash" "$lspec" "$lhash" "$PLAN" && rm -f -- "$PLAN.gate"
     say "plan written: $PLAN"
   fi
   [ "$(q 'p.noskillsHash')" = "$vhash" ] || stop "the noskills arm hash $vhash differs from the frozen plan's $(q 'p.noskillsHash')"
-  NOSKILLS=$(q 'p.noskillsArm')
-  ARMS="vanilla,konductor=$KONDUCTOR_SHA,$NOSKILLS"
+  [ "$(q 'p.listArmHash')" = "$lhash" ] || stop "the list arm hash $lhash differs from the frozen plan's $(q 'p.listArmHash')"
+  NOSKILLS=$(q 'p.noskillsArm'); LIST=$(q 'p.listArm')
+  ARMS="vanilla,konductor=$KONDUCTOR_SHA,$NOSKILLS,$LIST"
   BATCHES=$(q 'Object.keys(p.batches).join(" ")')
   say "bench ${BENCH_SHA:0:8}; arms $ARMS; model claude-sonnet-5.5, effort high, engine v3"
   say "STANDARD level: $(q 'p.levelIds.length') DEV tasks (list hash $(q 'p.listHash')); $(q 'p.run.length') run, $(q 'p.skipped.length') skipped:"
@@ -275,7 +286,7 @@ main() {
   if [ -n "$REPORTS" ]; then mkdir -p "$REPORTS" && cp -a -- "$ROOT/tables/." "$REPORTS/" && cp -- "$PLAN" "$REPORTS/plan.json"; fi
   say "${STOPPED:-all units finished}"
   for rep in $(seq 1 "$STAGES"); do say "stage $rep: $(ledger "$ROOT/runs/r$rep" | cut -d' ' -f1) real credits of $STAGE_CAP"; done
-  say "tables: $ROOT/tables${REPORTS:+, copied to $REPORTS} (code-gap.md: three arms per task; all-runs.md; r<rep>-<batch>.md)"
+  say "tables: $ROOT/tables${REPORTS:+, copied to $REPORTS} (code-gap.md: four arms per task; all-runs.md; r<rep>-<batch>.md)"
   say "next (Claude Code arms, same tasks): S=$ROOT R=$R bash $KIT/claude-standard.sh --plan, then --prepare-only, then paid; judges after both: bash $KIT/judge-standard.sh --plan"
   [ -z "$STOPPED" ]
 }

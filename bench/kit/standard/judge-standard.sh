@@ -13,8 +13,11 @@
 # ran; tasks with no judge items stay code-only and are left out of the copy. Task packs are exported at the bench
 # commit of the frozen plan. Units: $S/runs/r*/<batch> (Kiro, copied to judge/runs/r<n>-<batch>) and
 # $S/claude/runs/r*/<batch> (Claude Code, copied to judge/runs/cc-r<n>-<batch>), judged in one pass so both harnesses
-# share a judge day. Two reports: judge/report over the Kiro units (baseline vanilla) and judge/report-cc over the
-# Claude Code units (baseline cc-vanilla); each sees its three arms (report/three-arm.js, D-54). Rerun to resume:
+# share a judge day. Reports (free, no model call): judge/report over the Kiro units against vanilla (its three-arm
+# section gives konductor minus noskills and noskills minus vanilla, D-54), judge/report-vs-konductor (konductor-list
+# minus konductor) and judge/report-vs-noskills (konductor-list minus noskills) over the same units, and
+# judge/report-cc, judge/report-cc-vs-konductor and judge/report-cc-vs-noskills over the Claude Code units (the same
+# three baselines under the cc- prefix). Rerun to resume:
 # judged units are skipped, finished calls are cached. Never beside a pilot, a forced-small run or a held heavy lock:
 # it stops instead.
 #
@@ -97,14 +100,22 @@ main() {
     runs=$(printf '%s,' "${judged[@]}"); runs=${runs%,}
     node bench/runner/bench.js report --run "$runs" --baseline vanilla --extra-tasks "$extra" --out "$J/report" > "$J/report.log" 2>&1 \
       || say "report failed: see $J/report.log"
+    node bench/runner/bench.js report --run "$runs" --baseline konductor --extra-tasks "$extra" --out "$J/report-vs-konductor" > "$J/report-vs-konductor.log" 2>&1 \
+      || say "report against konductor failed: see $J/report-vs-konductor.log"
+    node bench/runner/bench.js report --run "$runs" --baseline konductor-noskills --extra-tasks "$extra" --out "$J/report-vs-noskills" > "$J/report-vs-noskills.log" 2>&1 \
+      || say "report against noskills failed: see $J/report-vs-noskills.log"
   fi
   if [ "${#judged_cc[@]}" -gt 0 ]; then
     runs=$(printf '%s,' "${judged_cc[@]}"); runs=${runs%,}
     node bench/runner/bench.js report --run "$runs" --baseline cc-vanilla --extra-tasks "$extra" --out "$J/report-cc" > "$J/report-cc.log" 2>&1 \
       || say "Claude Code report failed: see $J/report-cc.log"
+    node bench/runner/bench.js report --run "$runs" --baseline cc-konductor --extra-tasks "$extra" --out "$J/report-cc-vs-konductor" > "$J/report-cc-vs-konductor.log" 2>&1 \
+      || say "Claude Code report against cc-konductor failed: see $J/report-cc-vs-konductor.log"
+    node bench/runner/bench.js report --run "$runs" --baseline cc-konductor-noskills --extra-tasks "$extra" --out "$J/report-cc-vs-noskills" > "$J/report-cc-vs-noskills.log" 2>&1 \
+      || say "Claude Code report against cc-konductor-noskills failed: see $J/report-cc-vs-noskills.log"
   fi
   say "judge spend USD $(node "$LH" judge-spent "$B" "$J/runs") of $CAP_USD"
-  say "reports: $J/report (Kiro: konductor - vanilla, konductor - noskills, noskills - vanilla) and $J/report-cc (Claude Code, the cc- arms against cc-vanilla); DEV, not a verdict"
+  say "reports: $J/report (Kiro: every arm minus vanilla; konductor - noskills, noskills - vanilla), $J/report-vs-konductor (konductor-list - konductor), $J/report-vs-noskills (konductor-list - noskills) and $J/report-cc, $J/report-cc-vs-konductor, $J/report-cc-vs-noskills (Claude Code, the same three baselines under cc-); DEV, not a verdict"
   say "next: a calibration sheet for a person, node bench/runner/bench.js calibrate export --run $J/runs/<unit> --n 20 --extra-tasks $J/packs/<batch>"
 }
 main "$@"

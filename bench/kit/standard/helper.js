@@ -5,9 +5,9 @@
 //                                              gated ones per batch, the skipped ones and why, run limits
 //   node helper.js cc-plan R PLAN              the Claude Code arms over the frozen plan: arms, expected USD per batch
 //                                              and per stage (the measured USD per plain Kiro credit times the arm ratios)
-//   node helper.js stage R [--arms A,B,C] DIR...  stage check: every arm has runs, broken share 10% or less each
-//   node helper.js summary R [--arms A,B,C] OUT.md DIR...  code-score table per task: the three arms in order (plain,
-//                                              konductor, noskills) and the two gaps
+//   node helper.js stage R [--arms A,B,C[,D]] DIR...  stage check: every arm has runs, broken share 10% or less each
+//   node helper.js summary R [--arms A,B,C[,D]] OUT.md DIR...  code-score table per task: the arms in order (plain,
+//                                              konductor, noskills, and the list-hook arm when given) and their gaps
 //   node helper.js cc-tasks R PLAN N           N task ids for a Claude Code subset: the bench's LITE picks that STANDARD
 //                                              runs, then the rest of the plan by lowest SR-32 hash
 //   node helper.js spent R DIR                 {credits, unknown}: real agent credits under DIR (every credit-ledger.jsonl)
@@ -27,15 +27,17 @@ const need = (m) => require(path.join(R, m));
 
 // Per-run limit per batch: pilot-wave.sh's value times 1.5 for the konductor arm. It flags a run; it stops none (D-67), so the stage cap keeps a margin.
 const RUN_LIMIT = { t1: 23, t2: 23, t3: 23, t4: 30, t5: 23, t6: 68, t7: 15, t8: 23, t9: 15, t10: 38, t11: 23, t12: 30 };
-const RATIO = { vanilla: 1, konductor: 1.5, 'konductor-noskills': 1.25 }; // the plan's cost rule
+// The plan's cost rule per arm, plain = 1; konductor-list (the skill-list prompt hook) is planned at 1.6, measured 1.43.
+const RATIO = { vanilla: 1, konductor: 1.5, 'konductor-noskills': 1.25, 'konductor-list': 1.6 };
 const DEFAULT_COST = 4; // the pilot mean per plain run (3.97), for a batch with no piloted task at all
-const ARMS = ['vanilla', 'konductor', 'konductor-noskills'];
+const ARMS = ['vanilla', 'konductor', 'konductor-noskills', 'konductor-list'];
 // Claude Code arms (the same conditions under the cc- prefix) and their USD model: the skill-loading study's 8 LITE tasks
 // cost USD 0.360 a plain run against 5.08 plain Kiro credits (USD 0.071 a credit), and a konductor run 1.59 times a
-// plain one (0.573 against 0.360); noskills sits between at 1.3. A task's size is its pilot plain credits.
+// plain one (0.573 against 0.360); noskills sits between at 1.3; the list arm (konductor plus the skill-list rules file)
+// at 1.7, konductor times the 7% the Kiro hook added (7.28 against 6.77 credits). A task's size is its pilot plain credits.
 const CC_PREFIX = 'cc-';
 const CC_USD_PER_PLAIN_CREDIT = 0.071;
-const CC_RATIO = { 'cc-vanilla': 1, 'cc-konductor': 1.59, 'cc-konductor-noskills': 1.3 };
+const CC_RATIO = { 'cc-vanilla': 1, 'cc-konductor': 1.59, 'cc-konductor-noskills': 1.3, 'cc-konductor-list': 1.7 };
 const CLAUDE = /claude|anthropic/i;
 
 // `--arms A,B,C` at the front of `rest`, else `fallback`; returns { arms, rest }.
@@ -131,27 +133,29 @@ function stage(dirs, arms = ARMS) {
   return ok ? 0 : 1;
 }
 
-// `arms` in order: plain, konductor, noskills (the Kiro arms or their cc- twins).
+// `arms` in order: plain, konductor, noskills, and optionally the list-hook arm (the Kiro arms or their cc- twins).
 function summary(out, dirs, arms = ARMS) {
   const all = rows(dirs);
   const tasks = [...new Set(all.map((r) => r.task))].sort();
   const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
   const f = (x) => (x === null ? '-' : x.toFixed(1));
-  const [V, K, N] = arms;
-  const L = [`| task | ${V} | ${K} | ${N} | ${K} - ${N} | ${N} - ${V} | runs v/k/n | broken v/k/n |`, '| --- | --- | --- | --- | --- | --- | --- | --- |'];
-  const gaps = { kn: [], nv: [] }; const cr = Object.fromEntries(arms.map((a) => [a, 0]));
+  const gap = (a, b) => (a !== null && b !== null ? a - b : null);
+  const [V, K, N, H] = arms;
+  // Gap columns: head minus base, by arm index. The list arm adds list minus konductor and list minus noskills.
+  const pairs = [[1, 2], [2, 0], ...(H ? [[3, 1], [3, 2]] : [])];
+  const L = [`| task | ${arms.join(' | ')} | ${pairs.map(([h, b]) => `${arms[h]} - ${arms[b]}`).join(' | ')} | runs | broken |`, `| --- |${' --- |'.repeat(arms.length + pairs.length + 2)}`];
+  const gaps = pairs.map(() => []); const cr = Object.fromEntries(arms.map((a) => [a, 0]));
   for (const t of tasks) {
     const of = (a) => all.filter((r) => r.task === t && r.arm === a);
     const good = (a) => of(a).filter((r) => !isBroken(r) && Number.isFinite(r.score)).map((r) => r.score);
-    const [v, k, n] = arms.map((a) => mean(good(a)));
-    const kn = k !== null && n !== null ? k - n : null; const nv = n !== null && v !== null ? n - v : null;
-    if (kn !== null) gaps.kn.push(kn);
-    if (nv !== null) gaps.nv.push(nv);
+    const means = arms.map((a) => mean(good(a)));
+    const gs = pairs.map(([h, b]) => gap(means[h], means[b]));
+    gs.forEach((g, i) => { if (g !== null) gaps[i].push(g); });
     for (const a of arms) cr[a] += of(a).reduce((s, r) => s + (r.credits || 0), 0);
-    L.push(`| ${t} | ${f(v)} | ${f(k)} | ${f(n)} | ${f(kn)} | ${f(nv)} | ${arms.map((a) => good(a).length).join('/')} | ${arms.map((a) => of(a).filter(isBroken).length).join('/')} |`);
+    L.push(`| ${t} | ${means.map(f).join(' | ')} | ${gs.map(f).join(' | ')} | ${arms.map((a) => good(a).length).join('/')} | ${arms.map((a) => of(a).filter(isBroken).length).join('/')} |`);
   }
-  L.push('', `Mean code gap, ${K} minus ${N} over ${gaps.kn.length} task(s): ${f(mean(gaps.kn))}; ${N} minus ${V} over ${gaps.nv.length}: ${f(mean(gaps.nv))}.`);
-  L.push('Code part only, DEV, not a verdict. The judged part and the 95% ranges come from judge-standard.sh (bench report, three arms).');
+  L.push('', `Mean code gaps: ${pairs.map(([h, b], i) => `${arms[h]} minus ${arms[b]} over ${gaps[i].length} task(s): ${f(mean(gaps[i]))}`).join('; ')}.`);
+  L.push(`Runs and broken are per arm in the order ${arms.join('/')}. Code part only, DEV, not a verdict. The judged part and the 95% ranges come from judge-standard.sh (bench report).`);
   // Cost per arm: Kiro runs carry credits in their rows; Claude Code runs carry USD in result.json costUsd (usdSpent).
   const costOf = (a) => (a.startsWith(CC_PREFIX) ? dirs.reduce((s, d) => s + usdSpent(path.join(d, a)), 0) : cr[a]);
   L.push(`Cost (credits on Kiro CLI, USD on Claude Code): ${arms.map((a) => `${a} ${costOf(a).toFixed(2)}`).join(', ')}.`);
@@ -159,13 +163,14 @@ function summary(out, dirs, arms = ARMS) {
   return 0;
 }
 
-// The Claude Code arms over a frozen plan: the same conditions under the cc- prefix (the noskills tree is the plan's),
+// The Claude Code arms over a frozen plan: the same conditions under the cc- prefix (the noskills and list trees are the plan's),
 // and the expected USD per batch and per stage from each batch's plain pilot credits (expected / the Kiro ratio sum).
 function ccPlan(planFile) {
   const p = JSON.parse(fs.readFileSync(planFile, 'utf8'));
-  const arms = [`${CC_PREFIX}vanilla`, `${CC_PREFIX}konductor=${p.konductorSha}`, `${CC_PREFIX}${p.noskillsArm}`];
+  const arms = [`${CC_PREFIX}vanilla`, `${CC_PREFIX}konductor=${p.konductorSha}`, `${CC_PREFIX}${p.noskillsArm}`, ...(p.listArm ? [`${CC_PREFIX}${p.listArm}`] : [])];
+  const ratio = Object.fromEntries(Object.entries(CC_RATIO).filter(([a]) => a !== 'cc-konductor-list' || p.listArm));
   const kiroPer = Object.values(RATIO).reduce((a, b) => a + b, 0);
-  const ccPer = Object.values(CC_RATIO).reduce((a, b) => a + b, 0);
+  const ccPer = Object.values(ratio).reduce((a, b) => a + b, 0);
   const batches = {}; let perStage = 0;
   for (const [b, x] of Object.entries(p.batches)) {
     const plainCredits = x.expected / kiroPer;
@@ -173,7 +178,7 @@ function ccPlan(planFile) {
     batches[b] = { tasks: x.tasks, expectedUsd: usd };
     perStage += usd;
   }
-  return { arms, armIds: Object.keys(CC_RATIO), usdPerPlainCredit: CC_USD_PER_PLAIN_CREDIT, ratio: CC_RATIO, batches, expectedUsdPerStage: Math.round(perStage * 100) / 100, runsPerStage: p.run.length * arms.length };
+  return { arms, armIds: Object.keys(ratio), usdPerPlainCredit: CC_USD_PER_PLAIN_CREDIT, ratio, batches, expectedUsdPerStage: Math.round(perStage * 100) / 100, runsPerStage: p.run.length * arms.length };
 }
 
 function ccTasks(planFile, n) {

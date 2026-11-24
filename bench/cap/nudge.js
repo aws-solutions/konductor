@@ -38,6 +38,11 @@ const LIST_FOOTER = 'Check this list and load a matching skill before you start;
 // kiro-cli v3 caps hook stdout near 3,000 bytes (cli/konductor-rs/src/cli/orchestration_hook.rs), so the list stays
 // under it; names only, since the 70 trigger lines alone are about 11,500 characters.
 const LIST_MAX_BYTES = 3000;
+// The list arm's tree also carries the list as a Claude Code rules file, so a cc- arm of the same tree reads the text
+// the Kiro hook prints: the Claude Code plugin copies every .md under this folder into the run HOME's ~/.claude/rules,
+// which Claude Code loads at session start as user-level rules (https://code.claude.com/docs/en/memory).
+const CLAUDE_RULES_REL = '.bench-claude-rules';
+const CLAUDE_RULES_FILE = 'skill-list.md';
 const LIST_WIDTH = 110;
 // Neutral sentences: no skill, tool or loading word, so the filler adds a hook and text but no hint.
 const FILLER_SENTENCES = [
@@ -327,11 +332,18 @@ function opHook(tree, kind) {
   if (kiro.hooks?.[TRIGGER]?.length) throw new Error(`${ORCHESTRATOR} already has a ${TRIGGER} hook; this op adds the only one`);
   kiro.hooks = { ...(kiro.hooks ?? {}), [TRIGGER]: [{ command, timeout_ms: HOOK_TIMEOUT_MS }] };
   fs.writeFileSync(file, `${JSON.stringify(j, null, 2)}\n`);
+  let claudeRules = null;
+  if (kind === 'list') {
+    const text = listText(index);
+    fs.mkdirSync(path.join(tree, CLAUDE_RULES_REL), { recursive: true });
+    fs.writeFileSync(path.join(tree, CLAUDE_RULES_REL, CLAUDE_RULES_FILE), text);
+    claudeRules = { file: path.join(CLAUDE_RULES_REL, CLAUDE_RULES_FILE), bytes: Buffer.byteLength(text), sha256: sha256(text) };
+  }
   return {
     op: 'hook', id: `hook:${kind}`, agent: ORCHESTRATOR, trigger: TRIGGER, toolVersion: TOOL_VERSION, ...(kind === 'nudge' ? { matcher: FROZEN_MATCHER } : {}),
     commandSha256: sha256(command), commandBytes: Buffer.byteLength(command), indexSha256: sha256(JSON.stringify(index)), skills: index.length,
     header: { list: LIST_HEADER, nudge: NUDGE_HEADER, filler: FILLER_HEADER }[kind], ...(kind === 'filler' ? { fillerBytes } : {}),
-    ...(kind === 'list' ? { outputBytes: fillerBytes } : {}),
+    ...(kind === 'list' ? { outputBytes: fillerBytes, claudeRules } : {}),
     beforeSha256: before, afterSha256: sha256(fs.readFileSync(file)),
   };
 }
@@ -351,7 +363,7 @@ function preview(index, prompt, variant = FROZEN_MATCHER) {
 }
 
 module.exports = {
-  TOOL_VERSION, TRIGGER, NUDGE_HEADER, NUDGE_FOOTER, NUDGE_NONE, NUDGE_BROAD, FILLER_HEADER, LIST_HEADER, LIST_FOOTER, LIST_MAX_BYTES, listText, listSource, FILLER_SENTENCES, MATCHERS, FROZEN_MATCHER,
+  TOOL_VERSION, TRIGGER, NUDGE_HEADER, NUDGE_FOOTER, NUDGE_NONE, NUDGE_BROAD, FILLER_HEADER, LIST_HEADER, LIST_FOOTER, LIST_MAX_BYTES, CLAUDE_RULES_REL, CLAUDE_RULES_FILE, listText, listSource, FILLER_SENTENCES, MATCHERS, FROZEN_MATCHER,
   skillTrigger, unquote, buildIndex, tokens, rank, shown, shownFor, matcherData, promptOf, nudgeSource, fillerSource, fillerText,
   hookCommand, opHook, preview,
 };
