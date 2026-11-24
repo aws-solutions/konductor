@@ -9,3 +9,6 @@ Public repo: no internal names, host paths or secrets. Credits are what each kir
 | t13-doc-api-reference-drift | author | gpt-5.6-luna | 5.33 |  |
 | t13-doc-api-reference-drift | map | glm-5 | 0.22 |  |
 | t13-doc-api-reference-drift | review | qwen3-coder-next | 0.86 |  |
+| t13-doc-agents-onboarding | author | gpt-5.6-luna | 10.58 |  |
+| t13-doc-agents-onboarding | map | glm-5 | 0.22 |  |
+| t13-doc-agents-onboarding | review | glm-5 | 4.39 |  |

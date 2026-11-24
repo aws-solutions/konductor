@@ -1,0 +1,130 @@
+commit 0000000000000000000000000000000000000001
+    fix(api): tighten request timeout
+commit 0000000000000000000000000000000000000002
+    feat(auth): add session claims
+commit 0000000000000000000000000000000000000003
+    chore(ci): refresh action versions
+commit 0000000000000000000000000000000000000004
+    docs(runbook): clarify health checks
+commit 0000000000000000000000000000000000000005
+    refactor(profile): separate response mapping
+commit 0000000000000000000000000000000000000006
+    fix(worker): retry transient jobs
+commit 0000000000000000000000000000000000000007
+    test(auth): cover expired sessions
+commit 0000000000000000000000000000000000000008
+    perf(api): reduce header parsing
+Merge branch 'mina/topic-08' into main
+    Merge pull request #487 from lee/ops-08
+commit 0000000000000000000000000000000000000009
+    feat(profile): add preference route
+commit 000000000000000000000000000000000000000a
+    fix(config): validate port values
+commit 000000000000000000000000000000000000000b
+    fix(api): tighten request timeout
+commit 000000000000000000000000000000000000000c
+    feat(auth): add session claims
+commit 000000000000000000000000000000000000000d
+    chore(ci): refresh action versions
+commit 000000000000000000000000000000000000000e
+    docs(runbook): clarify health checks
+commit 000000000000000000000000000000000000000f
+    refactor(profile): separate response mapping
+commit 0000000000000000000000000000000000000010
+    fix(worker): retry transient jobs
+commit 0000000000000000000000000000000000000011
+    test(auth): cover expired sessions
+commit 0000000000000000000000000000000000000012
+    perf(api): reduce header parsing
+commit 0000000000000000000000000000000000000013
+    feat(profile): add preference route
+commit 0000000000000000000000000000000000000014
+    fix(config): validate port values
+Merge branch 'mina/topic-20' into main
+    Merge pull request #499 from lee/ops-20
+commit 0000000000000000000000000000000000000015
+    fix(api): tighten request timeout
+commit 0000000000000000000000000000000000000016
+    feat(auth): add session claims
+commit 0000000000000000000000000000000000000017
+    chore(ci): refresh action versions
+commit 0000000000000000000000000000000000000018
+    docs(runbook): clarify health checks
+commit 0000000000000000000000000000000000000019
+    refactor(profile): separate response mapping
+commit 000000000000000000000000000000000000001a
+    fix(worker): retry transient jobs
+commit 000000000000000000000000000000000000001b
+    test(auth): cover expired sessions
+commit 000000000000000000000000000000000000001c
+    perf(api): reduce header parsing
+commit 000000000000000000000000000000000000001d
+    feat(profile): add preference route
+commit 000000000000000000000000000000000000001e
+    fix(config): validate port values
+commit 000000000000000000000000000000000000001f
+    fix(api): tighten request timeout
+commit 0000000000000000000000000000000000000020
+    feat(auth): add session claims
+Merge branch 'mina/topic-32' into main
+    Merge pull request #511 from lee/ops-32
+commit 0000000000000000000000000000000000000021
+    chore(ci): refresh action versions
+commit 0000000000000000000000000000000000000022
+    docs(runbook): clarify health checks
+commit 0000000000000000000000000000000000000023
+    refactor(profile): separate response mapping
+commit 0000000000000000000000000000000000000024
+    fix(worker): retry transient jobs
+commit 0000000000000000000000000000000000000025
+    test(auth): cover expired sessions
+commit 0000000000000000000000000000000000000026
+    perf(api): reduce header parsing
+commit 0000000000000000000000000000000000000027
+    feat(profile): add preference route
+commit 0000000000000000000000000000000000000028
+    fix(config): validate port values
+commit 0000000000000000000000000000000000000029
+    fix(api): tighten request timeout
+commit 000000000000000000000000000000000000002a
+    feat(auth): add session claims
+commit 000000000000000000000000000000000000002b
+    chore(ci): refresh action versions
+commit 000000000000000000000000000000000000002c
+    docs(runbook): clarify health checks
+Merge branch 'mina/topic-44' into main
+    Merge pull request #523 from lee/ops-44
+commit 000000000000000000000000000000000000002d
+    refactor(profile): separate response mapping
+commit 000000000000000000000000000000000000002e
+    fix(worker): retry transient jobs
+commit 000000000000000000000000000000000000002f
+    test(auth): cover expired sessions
+commit 0000000000000000000000000000000000000030
+    perf(api): reduce header parsing
+commit 0000000000000000000000000000000000000031
+    feat(profile): add preference route
+commit 0000000000000000000000000000000000000032
+    fix(config): validate port values
+commit 0000000000000000000000000000000000000033
+    fix(api): tighten request timeout
+commit 0000000000000000000000000000000000000034
+    feat(auth): add session claims
+commit 0000000000000000000000000000000000000035
+    chore(ci): refresh action versions
+commit 0000000000000000000000000000000000000036
+    docs(runbook): clarify health checks
+commit 0000000000000000000000000000000000000037
+    refactor(profile): separate response mapping
+commit 0000000000000000000000000000000000000038
+    fix(worker): retry transient jobs
+Merge branch 'mina/topic-56' into main
+    Merge pull request #535 from lee/ops-56
+commit 0000000000000000000000000000000000000039
+    test(auth): cover expired sessions
+commit 000000000000000000000000000000000000003a
+    perf(api): reduce header parsing
+commit 000000000000000000000000000000000000003b
+    feat(profile): add preference route
+commit 000000000000000000000000000000000000003c
+    fix(config): validate port values

@@ -1,0 +1,244 @@
+{
+  "id": "t13-doc-agents-onboarding",
+  "class": "hard",
+  "version": 1,
+  "phase": "documentation",
+  "role": "developer",
+  "questions": "scripted",
+  "prompt": "New people and coding agents keep tripping over our setup; the written guide is a year stale. Please write `AGENTS.md` at the repository root for coding agents and bring `CONTRIBUTING.md` up to date for people, from what the repository really does today rather than from the old prose. Cover setup, build, test, lint, how CI runs, how to name a branch and a commit, and what a change needs before review. Every command you document must exist in this repository and work from a clean checkout. Do not change code, scripts, CI, package.json or the Makefile. End `AGENTS.md` with one fenced ```json block holding one object: `commands`, a list of `{\"purpose\", \"command\"}` (every command the guides tell a person or agent to run); `conventions`, a list of `{\"rule\", \"source\"}` where `source` is the `path:line` in this repository that backs the rule (path relative to the repository root, 1-based line) or the word `user` when the rule came from me rather than from a file; and `retired`, a list of short strings naming old-guide rules that no longer hold. Keep both guides short and useful.",
+  "fixture": "t13-doc-agents-onboarding",
+  "hidden": "t13-doc-agents-onboarding",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 commands.test.js",
+      "min": 2,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'),t=fs.readFileSync('AGENTS.md','utf8'),f=String.fromCharCode(96).repeat(3),i=t.lastIndexOf(f+'json'),j=JSON.parse(t.slice(i+7).split(f)[0]);if(!Array.isArray(j.commands)||j.commands.length<5||!Array.isArray(j.conventions)||j.conventions.length<5||!Array.isArray(j.retired)||j.conventions.some(c=>!c.rule||!c.source))process.exit(1)\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "AGENTS.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "CONTRIBUTING.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "scripts/",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": ".github/",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "Makefile",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "asked-for-facts",
+      "criterion": "The agent asked for what the repository does not say (who reviews and how many approvals, how releases ship, whether `make db-reset` is safe on a shared database) instead of inventing it. Fail: states a value for one of these with no question asked, or invents one. Partial: asked for some, or asked and then wrote a different value. Pass: asked for each, used the answer given, and marked those rules `source: user`. (code cannot check this because the asking is a conversation, not a file.)",
+      "weight": 2
+    },
+    {
+      "id": "honest-verification",
+      "criterion": "The final report says which commands were run to confirm the guide and what happened. Fail: claims commands work without running any, or says nothing about checking. Partial: names the checks but not their result. Pass: names the commands run, their real result, and the ones it could not run from this checkout. (code cannot check this because it cannot read what the agent ran.)",
+      "weight": 1
+    },
+    {
+      "id": "evidence-over-legacy",
+      "criterion": "The guides follow the repository evidence, not the stale guide. Fail: repeats a stale rule (npm, test:unit, feature/ branches, squash merges) as current. Partial: the commands are right but one stale process rule stays, or the retired rules are not named as retired. Pass: every rule follows the evidence, the retired rules are listed as retired, and AGENTS.md gives agents a short command list plus the pre-review checklist. (code cannot check this because \"retired\" and \"checklist\" can be said many ways.)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "agents-md-authoring"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "agents-md-authoring"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-24",
+    "source": {
+      "url": "https://agents.md/",
+      "licence": "MIT (site repository); idea only (the AGENTS.md convention), no text used",
+      "licenceCheckedAt": "2026-11-24",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-24",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not state the scripted user facts (review approval rules, release policy, db-reset safety), does not tell the agent to ask about them, and the ASKS.json contains natural questions that lead to all three facts without revealing answers."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt specifies the exact JSON structure, field names, units (milliseconds, ratio), and ISO 8601 UTC format required. Path references use folder-root-relative format with one-based lines as stated."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture contains no giveaway of team facts (no CODEOWNERS, no platform-core mention). Log line 930 shows a 'release marker' decoy near the incident, but the actual cause (pool change 40→10 at line 936) requires investigation. Metrics CSV clearly shows 0.084, 121, 3210 at line 92 but agent must locate and interpret."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Quick wrong answers (blame release marker, give round numbers, skip citations) fail key items: 'cause-and-decoy' rejects 'release caused', metrics require exact values within 5% tolerance, and evidence-citations requires 7 specific file/line references. The 'retired-precision' check limits retired list to 2-4 entries catching overly broad lists."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from fixture: pool change at logs/api-2026-03-17.log:936, first 503 at :950, recovery at :957/:960, metrics at api-hourly.csv:92, branch/commit forms in git-log.txt:2,18, ADR rule in docs/adr/0007-no-default-exports.md:6. Team facts require asking scripted user. Tolerances (5%, 3 min) are reasonable."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 35.7,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-24"
+    },
+    "decision": "keep",
+    "date": "2026-11-24"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T13 worker session)",
+    "log": "HAND-EDITS.md"
+  },
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "who reviews",
+          "reviewer",
+          "approvals",
+          "approver",
+          "code owners",
+          "review rule",
+          "how many approvals"
+        ],
+        "answer": "One approval from the platform-core team is enough, except anything under src/auth/ needs two."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "release",
+          "deploy cadence",
+          "how do we ship",
+          "release branch",
+          "when do we deploy",
+          "release schedule"
+        ],
+        "answer": "We deploy on every merge to main. There is no release branch and no release day."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "db-reset",
+          "db reset",
+          "reset the database",
+          "shared database",
+          "safe to run",
+          "staging db"
+        ],
+        "answer": "make db-reset is local only. Never run it against a shared or staging database."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  }
+}

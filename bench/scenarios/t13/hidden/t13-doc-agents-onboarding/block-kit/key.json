@@ -1,0 +1,138 @@
+{
+  "outputFile": "AGENTS.md",
+  "items": [
+    {
+      "id": "setup-pnpm-no-npm",
+      "type": "text",
+      "path": "commands",
+      "all": [
+        "pnpm"
+      ],
+      "none": [
+        "npm install"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "runtime-and-secret",
+      "type": "text",
+      "path": "conventions",
+      "all": [
+        "node|nvm|runtime",
+        "\\b20\\b",
+        "SERVICE_SIGNING_KEY"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "branch-form-backed",
+      "type": "some",
+      "path": "conventions",
+      "match": {
+        "all": [
+          "branch",
+          "<user>|<name>|<username>|user/|username/|name/|short-topic|<your",
+          "git-log\\.txt"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "commit-form-backed",
+      "type": "some",
+      "path": "conventions",
+      "match": {
+        "all": [
+          "conventional|type\\(scope\\)|type\\(|feat:|fix:|<type>"
+        ],
+        "none": [
+          "squash"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "adr-rule-backed",
+      "type": "some",
+      "path": "conventions",
+      "match": {
+        "all": [
+          "default export",
+          "docs/adr/0007"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "retired-precision",
+      "type": "maxLen",
+      "path": "retired",
+      "min": 2,
+      "max": 4,
+      "weight": 1
+    },
+    {
+      "id": "review-fact",
+      "type": "some",
+      "path": "conventions",
+      "match": {
+        "all": [
+          "platform-core",
+          "auth",
+          "two|2\\b",
+          "\\\"source\\\"\\s*:\\s*\\\"user\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "release-fact",
+      "type": "some",
+      "path": "conventions",
+      "match": {
+        "all": [
+          "merge",
+          "no release branch|without a release branch|release branch: none|every merge|on merge|each merge|continuous",
+          "\\\"source\\\"\\s*:\\s*\\\"user\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "db-reset-fact",
+      "type": "some",
+      "path": "conventions",
+      "match": {
+        "all": [
+          "db-reset|db reset",
+          "local",
+          "never|not|only|shared|staging",
+          "\\\"source\\\"\\s*:\\s*\\\"user\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "no-dead-command",
+      "type": "none",
+      "path": "commands",
+      "match": {
+        "all": [
+          "test:unit|legacy-migrate"
+        ],
+        "none": [
+          "retired|removed|no longer|do not|dead"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "conventions-count",
+      "type": "maxLen",
+      "path": "conventions",
+      "min": 6,
+      "max": 20,
+      "weight": 1
+    }
+  ]
+}
