@@ -219,6 +219,18 @@
 }
 
 /*
+ * The stop mark of a leaf stage sits on the bottom edge of the card, in the
+ * place of the run-order dot that a followed stage has.
+ */
+.wf-node-stop {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  line-height: 0;
+  transform: translate(-50%, 50%);
+}
+
+/*
  * The state of a node in a run. The word in the badge is what says the state;
  * the colour and the outline only back it up. A queued node has a dashed
  * outline, so the states differ without colour too.

@@ -22,6 +22,9 @@ export interface WorkflowSpec {
 /** How far a node has got in a run. */
 export type NodeState = 'queued' | 'running' | 'done' | 'failed';
 
+/** What the stop mark of a leaf stage shows once its part of the run is over. */
+export type StopMarkState = 'passed' | 'blocked' | 'not-reached';
+
 /** The live state of a node in a run, with the words that say it. */
 export interface NodeStatus {
   state: NodeState;
@@ -47,7 +50,16 @@ export type IntentGraphNode = Placed & {
 /** One unit of work, done by one agent on one harness. */
 export type StageGraphNode = Placed & {
   type: 'stage';
-  data: { name: string; agent: string; harness: string; status?: NodeStatus };
+  data: {
+    name: string;
+    agent: string;
+    harness: string;
+    status?: NodeStatus;
+    /** No stage follows this one, so the run ends here, at a stop mark. */
+    endsRun?: true;
+    /** What that stop mark shows; left out while the run may still reach it. */
+    stopState?: StopMarkState;
+  };
 };
 
 /** The finish of the workflow. */
