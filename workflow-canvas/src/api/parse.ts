@@ -3,12 +3,19 @@ import { ApiError } from './api';
 import type {
   CheckResult,
   DiagnosticView,
+  GoalParamView,
+  Harness,
+  LineRange,
   RunStageView,
   RunStatus,
+  RunSummary,
   RunView,
   SaveResult,
   Session,
   Severity,
+  StageField,
+  StageFields,
+  StageKind,
   StageRunStatus,
   StageView,
   WorkflowDocument,
@@ -50,9 +57,29 @@ function exitCodeOf(value: unknown): number | null {
     : fail();
 }
 
+// Any string that is not empty: a kind the contract does not name yet is kept
+// as it is, and the page draws it as a plain stage.
+function kindOf(value: unknown): StageKind {
+  return typeof value === 'string' && value !== '' ? value : fail();
+}
+
+// The contract requires both lines, as whole numbers of 1 or more.
+function parseRange(value: unknown): LineRange {
+  const range = objectOf(value);
+  return {
+    line: lineOf(range.line) ?? fail(),
+    end_line: lineOf(range.end_line) ?? fail(),
+  };
+}
+
 function parseStage(value: unknown): StageView {
   const stage = objectOf(value);
-  return { name: stringOf(stage.name), agent: stringOf(stage.agent) };
+  return {
+    name: stringOf(stage.name),
+    kind: kindOf(stage.kind),
+    agent: stringOf(stage.agent),
+    range: parseRange(stage.range),
+  };
 }
 
 // The contract forbids two stages with one name, and the graph names its
@@ -62,12 +89,37 @@ function uniqueByName(stages: StageView[]): StageView[] {
   return names.size === stages.length ? stages : fail();
 }
 
+// A string the file gives, or nothing: a value of another type is left out,
+// as the page has no use for it.
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function parseGoalParam(value: unknown): GoalParamView {
+  const param = objectOf(value);
+  const parsed: GoalParamView = {};
+  const description = optionalString(param.description);
+  const fallback = optionalString(param.default);
+  if (description !== undefined) parsed.description = description;
+  if (fallback !== undefined) parsed.default = fallback;
+  return parsed;
+}
+
+// The key is left out when the reply has none, as the contract leaves out a
+// key the file does not have.
+function parseParams(value: unknown): Pick<WorkflowView, 'params'> {
+  if (value === undefined) return {};
+  const goal = objectOf(value).goal;
+  return { params: goal === undefined ? {} : { goal: parseGoalParam(goal) } };
+}
+
 function parseView(value: unknown): WorkflowView | null {
   if (value === null) return null;
   const view = objectOf(value);
   return {
     name: stringOf(view.name),
     intent: { outcome: stringOf(objectOf(view.intent).outcome) },
+    ...parseParams(view.params),
     stages: uniqueByName(arrayOf(view.stages).map(parseStage)),
   };
 }
@@ -78,6 +130,47 @@ function lineOf(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1
     ? value
     : undefined;
+}
+
+// A whole number of at least `min`, or nothing when the key is left out.
+function optionalInteger(value: unknown, min: number): number | undefined {
+  if (value === undefined) return undefined;
+  return Number.isInteger(value) && (value as number) >= min
+    ? (value as number)
+    : fail();
+}
+
+function optionalStrings(value: unknown): string[] | undefined {
+  return value === undefined ? undefined : arrayOf(value).map(stringOf);
+}
+
+// The contract leaves out a rule that does not apply, so a rule is left out
+// here too, and one of the wrong type is a bad reply. `type` is any string,
+// as the contract lets a later version add types.
+function parseStageField(value: unknown): StageField {
+  const field = objectOf(value);
+  const parsed: StageField = {
+    key: stringOf(field.key),
+    type: stringOf(field.type),
+    required: booleanOf(field.required),
+  };
+  const minLength = optionalInteger(field.min_length, 0);
+  const maxLength = optionalInteger(field.max_length, 1);
+  const pattern =
+    field.pattern === undefined ? undefined : stringOf(field.pattern);
+  const reserved = optionalStrings(field.reserved);
+  const excludes = optionalStrings(field.excludes);
+  if (minLength !== undefined) parsed.min_length = minLength;
+  if (maxLength !== undefined) parsed.max_length = maxLength;
+  if (pattern !== undefined) parsed.pattern = pattern;
+  if (reserved !== undefined) parsed.reserved = reserved;
+  if (excludes !== undefined) parsed.excludes = excludes;
+  return parsed;
+}
+
+// Only the kind this page knows is read; a later version may add kinds.
+function parseStageFields(value: unknown): StageFields {
+  return { agent: arrayOf(objectOf(value).agent).map(parseStageField) };
 }
 
 const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
@@ -114,6 +207,28 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
   return allowed.find((candidate) => candidate === value) ?? fail();
 }
 
+/**
+ * Whether a value can be a harness: any string that is not empty. The page
+ * only shows the harness, so a value the contract does not name yet is shown
+ * as it is rather than refused.
+ */
+export function isHarness(value: unknown): value is Harness {
+  return typeof value === 'string' && value !== '';
+}
+
+function harnessOf(value: unknown): Harness {
+  return isHarness(value) ? value : fail();
+}
+
+// The reason of a blocked stage. A missing or empty one leaves the stage
+// blocked with no reason, as the contract has a client treat a reason it does
+// not know like any other blocked stage; a value that is not a string is a bad
+// reply.
+function reasonOf(value: unknown): string | undefined {
+  if (value === undefined || value === '') return undefined;
+  return typeof value === 'string' ? value : fail();
+}
+
 // The stages in `order`, each with its status from `stages`. The contract
 // lists each stage once, so a name that repeats is a bad reply.
 function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
@@ -123,11 +238,13 @@ function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
     const name = stringOf(entry);
     if (seen.has(name)) fail();
     seen.add(name);
-    const stage = Object.hasOwn(byName, name) ? byName[name] : fail();
-    return {
-      name,
-      status: oneOf(objectOf(stage).status, STAGE_STATUSES),
-    };
+    const stage = objectOf(Object.hasOwn(byName, name) ? byName[name] : fail());
+    const status = oneOf(stage.status, STAGE_STATUSES);
+    // The contract gives a blocked stage a reason, and no other stage one. A
+    // reason this page does not know is still a reason, shown as it is.
+    if (status !== 'blocked') return { name, status };
+    const reason = reasonOf(stage.reason);
+    return reason === undefined ? { name, status } : { name, status, reason };
   });
   // `order` holds the keys of `stages`: a stage that is not listed is a bad reply.
   return Object.keys(byName).length === listed.length ? listed : fail();
@@ -163,6 +280,22 @@ function isCoherent(
   }
 }
 
+function parseRunSummary(value: unknown): RunSummary {
+  const run = objectOf(value);
+  return {
+    run_id: runIdOf(run.run_id),
+    started_at: stringOf(run.started_at),
+    status: oneOf(run.status, RUN_STATUSES),
+    goal: stringOf(run.goal),
+    goal_truncated: booleanOf(run.goal_truncated),
+  };
+}
+
+/** Reads a `RunList`, newest first as the server sends it; unknown fields are ignored. */
+export function parseRunList(body: unknown): RunSummary[] {
+  return arrayOf(objectOf(body).runs).map(parseRunSummary);
+}
+
 /** Reads a `RunStarted`: the id of the run that was accepted. */
 export function parseRunStarted(body: unknown): string {
   return runIdOf(objectOf(body).run_id);
@@ -173,6 +306,7 @@ export function parseRunStatus(body: unknown): RunView {
   const run = objectOf(objectOf(body).run);
   const view: RunView = {
     runId: runIdOf(run.run_id),
+    harness: harnessOf(run.harness),
     status: oneOf(run.status, RUN_STATUSES),
     exitCode: exitCodeOf(run.exit_code),
     stages: parseRunStages(run.order, run.stages),
@@ -187,7 +321,7 @@ export function parseSession(body: unknown): Session {
   return {
     token: stringOf(session.token),
     root: stringOf(session.root),
-    harness: stringOf(session.harness),
+    harness: harnessOf(session.harness),
     apiVersion: typeof version === 'number' ? version : fail(),
   };
 }
@@ -204,6 +338,7 @@ export function parseWorkflowDocument(body: unknown): WorkflowDocument {
     readOnly: booleanOf(document.read_only),
     view: parseView(document.view),
     diagnostics: parseDiagnostics(document.diagnostics),
+    stageFields: parseStageFields(document.stage_fields),
   };
 }
 

@@ -4,17 +4,18 @@
  * the validator of the stub, so a layout that the writer mixes up fails.
  */
 import { describe, expect, it } from 'vitest';
-import type { StageView, WorkflowView } from '../src/api/types.ts';
+import type { StageKeys } from '../src/api/types.ts';
 import {
   inPlaceBlocker,
   withStages,
   type StageToWrite,
+  type ViewStages,
   type Written,
 } from '../src/designer/core/stage-text.ts';
 import { checkWorkflowText } from '../stub-api/core/validator.ts';
 
 /** Writes the item of a stage, its dashes at `dash`; `n` picks a variation. */
-type Item = (stage: StageView, dash: string, n: number) => string[];
+type Item = (stage: StageKeys, dash: string, n: number) => string[];
 
 const plain: Item = (s, d) => [
   `${d}- name: ${s.name}`,
@@ -65,7 +66,7 @@ const BLOCK_LAYOUTS: Array<[string, string, Item]> = [
   ['items of different forms, four spaces', '    ', mixed],
 ];
 
-const FLOW_LAYOUTS: Array<[string, (stages: StageView[]) => string[]]> = [
+const FLOW_LAYOUTS: Array<[string, (stages: StageKeys[]) => string[]]> = [
   [
     'a flow list on the line below stages',
     (s) => [
@@ -110,15 +111,15 @@ const HEAD = [
 ];
 const FOOT = ['# footer', ''];
 
-function stagesOf(count: number, agents: string[]): StageView[] {
+function stagesOf(count: number, agents: string[]): StageKeys[] {
   return Array.from({ length: count }, (_, i) => ({
     name: `s${i + 1}`,
     agent: agents[i % agents.length]!,
   }));
 }
 
-function viewOf(stages: StageView[]): WorkflowView {
-  return { name: 'wf', intent: { outcome: 'Say hi' }, stages };
+function viewOf(stages: StageKeys[]): ViewStages {
+  return { stages };
 }
 
 function fileOf(eol: string, lines: string[]): string {
@@ -132,7 +133,7 @@ interface Edit {
 }
 
 /** The edits of a list: each is a new list of stages. */
-function editsOf(stages: StageView[], pick: () => number): Edit[] {
+function editsOf(stages: StageKeys[], pick: () => number): Edit[] {
   const fresh = { name: 'extra', agent: 'k-tpm' };
   const kept = stages.map((stage, from) => ({ ...stage, from }));
   const at = Math.floor(pick() * (stages.length + 1));
@@ -158,7 +159,7 @@ function editsOf(stages: StageView[], pick: () => number): Edit[] {
   ];
 }
 
-const plainStages = (stages: readonly StageToWrite[]): StageView[] =>
+const plainStages = (stages: readonly StageToWrite[]): StageKeys[] =>
   stages.map(({ name, agent }) => ({ name, agent }));
 
 function textOf(written: Written, label: string): string {
@@ -166,7 +167,7 @@ function textOf(written: Written, label: string): string {
   return written.ok ? written.text : '';
 }
 
-function expectValid(text: string, stages: StageView[], label: string) {
+function expectValid(text: string, stages: StageKeys[], label: string) {
   const result = checkWorkflowText(text, 'wf');
   expect(
     result.diagnostics.map((d) => d.code),

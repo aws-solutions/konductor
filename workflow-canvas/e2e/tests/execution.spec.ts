@@ -48,7 +48,7 @@ test('runs the workflow on the stub: each stage goes from queued to running to d
   await expect(canvas.badge('node-stage-review')).toHaveText('Running', {
     timeout: STEP_TIMEOUT_MS,
   });
-  await canvas.expectBadges(['Done', 'Done', 'Running', 'Queued']);
+  await canvas.expectBadges(['Done', 'Passed', 'Running', 'Queued']);
   await expect(canvas.runStatus).toContainText(
     'Running review. 1 of 2 stages done.',
   );
@@ -56,7 +56,7 @@ test('runs the workflow on the stub: each stage goes from queued to running to d
   await expect(canvas.badge('node-end')).toHaveText('Passed', {
     timeout: STEP_TIMEOUT_MS,
   });
-  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await canvas.expectBadges(['Done', 'Passed', 'Passed', 'Passed']);
   await expect(canvas.runStatus).toContainText(
     'Run passed. 2 of 2 stages done. Exit code 0.',
   );
@@ -120,12 +120,31 @@ test('shows a failed stage with its words, the stages that will not run, and the
 
   await canvas.runButton.click();
 
-  await canvas.expectBadges(['Done', 'Failed', 'Not run', 'Halted']);
+  await canvas.expectBadges(['Done', 'Blocked', 'Not run', 'Halted']);
   await expect(canvas.runStatus).toContainText(
     'Run halted at draft. 0 of 2 stages done. Exit code 1.',
   );
   await expect(canvas.runButton).toBeEnabled();
   await expect(canvas.runError).toHaveCount(0);
+});
+
+test('shows the stage that stopped the run, its reason and what the reason means', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('halted', ['passed', 'blocked'], 'OUTPUT_MISSING'),
+  );
+
+  await canvas.runButton.click();
+
+  const blocked = canvas.page.getByTestId('blocked-stage');
+  await expect(blocked).toContainText('Blocked stage');
+  await expect(blocked).toContainText('review');
+  await expect(blocked).toContainText('OUTPUT_MISSING');
+  await expect(blocked).toContainText(
+    'A file that the stage must leave behind does not exist.',
+  );
 });
 
 test('says so when the stages of the run are not the stages in the graph', async ({
@@ -201,7 +220,7 @@ test('keeps following the run when one read of it fails', async ({
 
   await canvas.runButton.click();
 
-  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await canvas.expectBadges(['Done', 'Passed', 'Passed', 'Passed']);
   await expect(canvas.runError).toHaveCount(0);
 });
 
@@ -267,7 +286,7 @@ test('keeps following the run while the Designer tab is open', async ({
   await expect(canvas.page.getByTestId('status-badge')).toHaveCount(0);
   await canvas.selectTab('Run');
 
-  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await canvas.expectBadges(['Done', 'Passed', 'Passed', 'Passed']);
 });
 
 test('keeps the goal that was typed when the person comes back from the Designer tab', async ({
@@ -349,7 +368,7 @@ test('shows Ready when the page is opened again after the run has ended', async 
 }) => {
   await answerRunsWith(canvas.page, runReply('passed', ['passed', 'passed']));
   await canvas.runButton.click();
-  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await canvas.expectBadges(['Done', 'Passed', 'Passed', 'Passed']);
 
   await canvas.page.reload();
   await canvas.title.waitFor();
@@ -397,7 +416,7 @@ test('drops the session when the run start is answered 401, so a reload does not
   await expect(canvas.runError).toContainText(
     'The server no longer knows this session',
   );
-  await expect(canvas.runError).toContainText('fresh launch address');
+  await expect(canvas.runError).toContainText('Start flow view again');
   expect(await canvas.page.evaluate(() => window.sessionStorage.length)).toBe(
     0,
   );

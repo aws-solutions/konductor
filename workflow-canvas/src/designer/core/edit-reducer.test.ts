@@ -5,6 +5,7 @@ import {
   HELLO_DOCUMENT,
   HELLO_TEXT,
   HELLO_VIEW,
+  stageViewOf,
 } from '../../test-support/fixtures';
 import { stagesOf } from './draft';
 import { reduce, reduceSlot } from './edit-reducer';
@@ -35,10 +36,16 @@ function finding(path: string, message = 'Wrong.'): DiagnosticView {
   return { message, path, line: 2, severity: 'error' };
 }
 
+// The keys of the saved stages that a draft keeps.
+const KEPT_STAGES = HELLO_VIEW.stages.map(({ name, agent }) => ({
+  name,
+  agent,
+}));
+
 const NEW_DOCUMENT = {
   ...HELLO_DOCUMENT,
   hash: 'e'.repeat(64),
-  view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+  view: { ...HELLO_VIEW, stages: [stageViewOf('only', 'k-tpm')] },
 };
 
 const SAVED_HASH = 'b'.repeat(64);
@@ -78,7 +85,7 @@ describe('open', () => {
   it('starts a draft of the saved stages with the first one selected', () => {
     const state = opened();
 
-    expect(stagesOf(state.draft)).toEqual(HELLO_VIEW.stages);
+    expect(stagesOf(state.draft)).toEqual(KEPT_STAGES);
     expect(state.selectedId).toBe('s1');
     expect(state.revision).toBe(0);
     expect(state.save).toEqual({ phase: 'idle' });
@@ -143,7 +150,7 @@ describe('editing the draft', () => {
       { type: 'remove', id: 's2' },
     );
 
-    expect(stagesOf(state.draft)).toEqual([HELLO_VIEW.stages[0]]);
+    expect(stagesOf(state.draft)).toEqual([KEPT_STAGES[0]]);
     expect(state.selectedId).toBe('s1');
   });
 
@@ -261,7 +268,7 @@ describe('save', () => {
         type: 'saved',
         text: 'new text',
         result: savedResult([
-          { name: 'draft', agent: 'k-tpm' },
+          stageViewOf('draft', 'k-tpm'),
           HELLO_VIEW.stages[1]!,
         ]),
       },
@@ -288,7 +295,7 @@ describe('save', () => {
         type: 'saved',
         text: 'x',
         result: savedResult([
-          { name: 'draft', agent: 'k-tpm' },
+          stageViewOf('draft', 'k-tpm'),
           HELLO_VIEW.stages[1]!,
         ]),
       },
@@ -320,7 +327,7 @@ describe('save', () => {
         text: 'x',
         result: {
           ...savedResult([
-            { name: 'draft', agent: 'k-tpm' },
+            stageViewOf('draft', 'k-tpm'),
             HELLO_VIEW.stages[1]!,
           ]),
           diagnostics: [finding('stages[1].name', 'From the save.')],
@@ -343,7 +350,7 @@ describe('save', () => {
       type: 'saved',
       text: textOf(saving)!,
       result: savedResult([
-        { name: 'draft', agent: 'k-tpm' },
+        stageViewOf('draft', 'k-tpm'),
         HELLO_VIEW.stages[1]!,
       ]),
     });
@@ -582,7 +589,7 @@ describe('an answer that is meant for an earlier document or an earlier save', (
 });
 
 describe('an edit made while a save is in flight', () => {
-  const sentStages = [{ name: 'draft', agent: 'k-tpm' }, HELLO_VIEW.stages[1]!];
+  const sentStages = [stageViewOf('draft', 'k-tpm'), HELLO_VIEW.stages[1]!];
   const saving = () =>
     run(
       opened(),
@@ -731,7 +738,7 @@ describe('a reload', () => {
       '  - name: only\n    agent: k-tpm\n',
     ),
     hash: 'e'.repeat(64),
-    view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    view: { ...HELLO_VIEW, stages: [stageViewOf('only', 'k-tpm')] },
   };
 
   function reloading(): EditState {
