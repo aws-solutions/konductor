@@ -220,11 +220,13 @@ else
   BUDGET="$MEMORY_MAX"
 fi
 
-# check_write_urls <n> <line>... <entry>... <pattern>...: checks every link in
-# the write against the allowlist in a single python3 call, so all URL rules
-# live in one place. Each <line> is a new line of the write prefixed with C
-# when it directly follows another new line, or N when it starts a new run.
-# Each <entry> is that line's derived entry. The python side prints one
+# check_write_urls <n> <m> <line>... <entry>... <pattern>...: checks every
+# link in the write against the allowlist in a single python3 call, so all URL
+# rules live in one place. The <m> lines are every non-blank line of the
+# write, in order, each prefixed with two flags: C when it directly follows
+# another non-blank line or N when a blank line (or the start) comes before
+# it, then n for a new line or e for one already in the file. The <n>
+# entries are the derived entries of the new lines. The python side prints one
 # verdict per entry, OK or BLOCKED:<url> for its first blocked link, then one
 # JOINED:OK or JOINED:BLOCKED:<url> line for links split across lines, and
 # exits 1 if anything is blocked, 0 otherwise. Any other result is an
@@ -279,8 +281,10 @@ def renderings(text):
 
 # Inside a quoted URL attribute or a <...> link destination a space does not
 # end the URL: a URL parser percent-encodes it, and before an @ it is only
-# userinfo. Such a link runs to the closing quote or >, or to the end of the
-# text. Other attributes (title, alt) and bare text still end at whitespace.
+# userinfo. Such a link runs to the closing quote or >. With no closing quote
+# or > the attribute never ends, nothing renders as a link, and the link ends
+# at whitespace as in bare text. Other attributes (title, alt) and bare text
+# always end at whitespace.
 ENCLOSED = re.compile(
     r"""(?i)(?:\b(?:href|src|action|formaction|cite|poster|background|data|xlink:href)\s*=\s*(["'])|\]\(\s*(<))\s*$"""
 )
@@ -290,7 +294,12 @@ def link_end(text, m):
     if not opener:
         return m.end()
     close = text.find(">" if opener.group(2) else opener.group(1), m.start(3))
-    end = len(text) if close < 0 else close
+    if close < 0:
+        return m.end()
+    # A URL parser strips spaces from both ends of the value.
+    end = close
+    while end > m.start(3) and text[end - 1] == " ":
+        end -= 1
     # A tab or CR is removed before parsing; the rendering without them
     # reads this link whole, so this one stops where it used to.
     return m.end() if URL_STRIPPED.search(text, m.start(), end) else end
@@ -316,20 +325,24 @@ NEW_ENTRY_START = re.compile(
     r"[-*+]|>+|#{1,6}|[0-9]+[.)]|\[[0-9]{4}-[0-9]{2}-[0-9]{2}\]|\[origin:(agent|user)\]"
 )
 
-# Links that cross a line break when consecutive new lines are joined with
-# the breaks removed, as a URL parser does inside a quoted href. A link that
-# stays within one line is already checked on its own.
-def joined_links(lines):
+# Links that cross a line break when consecutive lines are joined with the
+# breaks removed, as a URL parser does inside a quoted href. A run holds both
+# new lines and lines already in the file, so a split link cannot be written
+# one half per write. Only a link that crosses a break next to a new line
+# counts: one inside a single line is checked on its own (or, for a line
+# already in the file, not at all), and one split only across lines already
+# in the file does not block an unrelated write.
+def joined_links(run):
     for f in TRANSFORMS:
-        pieces = [f(line) for line in lines]
+        pieces = [f(line) for line, _ in run]
         text = "".join(pieces)
         breaks, pos = [], 0
-        for piece in pieces[:-1]:
+        for i, piece in enumerate(pieces[:-1]):
             pos += len(piece)
-            breaks.append(pos)
+            breaks.append((pos, run[i][1] or run[i + 1][1]))
         for scheme, start, rest, a, b in links(text):
-            crossed = [k for k in breaks if a < k < b]
-            if not crossed:
+            crossed = [k for k, _ in breaks if a < k < b]
+            if not any(touches_new for k, touches_new in breaks if a < k < b):
                 continue
             tail = text[crossed[0]:b]
             if len(crossed) == 1 and NEW_ENTRY_START.fullmatch(tail):
@@ -341,10 +354,13 @@ def joined_links(lines):
 # that is not a plain ASCII host afterwards (an empty host, an encoded dot, a
 # raw non-ASCII label, a bracketed address) fails closed: allowlist an IDN by
 # its xn-- form.
-def hostname(rest):
+def authority_host(rest):
     authority = re.split(r"[/?#\\]", rest, maxsplit=1)[0]
     authority = HOST_TAIL.sub("", authority)
-    authority = authority.rsplit("@", 1)[-1]
+    return authority.rsplit("@", 1)[-1]
+
+def hostname(rest):
+    authority = authority_host(rest)
     host, sep, port = authority.rpartition(":")
     if not sep:
         host = authority
@@ -390,6 +406,13 @@ def host_matches(host, pattern):
     return all(label_matches(h, w) for h, w in zip(have, want))
 
 def allowed(scheme, rest, patterns):
+    # Only a link read to its closing quote or > can hold a space. A space in
+    # its host makes a URL parser fail, so nothing opens and nothing is
+    # blocked: "https:" left open at the end of one line before an ordinary
+    # entry that happens to hold a quote. Past an @ the space is userinfo and
+    # the host after it is checked as usual.
+    if " " in authority_host(rest):
+        return True
     if scheme != "https":
         return False
     host = hostname(rest)
@@ -402,8 +425,10 @@ def first_blocked(found, patterns):
     return None
 
 def main():
-    n = int(sys.argv[1])
-    lines, entries, patterns = sys.argv[2:2 + n], sys.argv[2 + n:2 + 2 * n], sys.argv[2 + 2 * n:]
+    n, m = int(sys.argv[1]), int(sys.argv[2])
+    lines = sys.argv[3:3 + m]
+    entries = sys.argv[3 + m:3 + m + n]
+    patterns = sys.argv[3 + m + n:]
     status = 0
     for entry in entries:
         url = None
@@ -415,14 +440,16 @@ def main():
         status = status or (url is not None)
     runs = []
     for line in lines:
-        if line.startswith("C") and runs:
-            runs[-1].append(line[1:])
+        item = (line[2:], line[1] == "n")
+        if line[0] == "C" and runs:
+            runs[-1].append(item)
         else:
-            runs.append([line[1:]])
+            runs.append([item])
     url = None
     for run in runs:
-        if len(run) > 1 and (url := first_blocked(joined_links(run), patterns)):
-            break
+        if len(run) > 1 and any(new for _, new in run):
+            if (url := first_blocked(joined_links(run), patterns)):
+                break
     print("JOINED:OK" if url is None else "JOINED:BLOCKED:" + url)
     return 1 if (status or url) else 0
 
@@ -588,28 +615,32 @@ url_interpreter_failure() {
 }
 
 # Run the URL check once for the whole write, before the per-line checks, so
-# that links split across consecutive new lines can be joined. A new line is a
-# non-blank line not already in the file; lines already in the file stay
-# exempt and end a run of new lines, as a blank line does.
+# that links split across lines can be joined. A new line is a non-blank line
+# not already in the file. Only new lines are checked on their own; lines
+# already in the file join runs with them, and a blank line ends a run.
 URL_VERDICTS=()
 URL_JOINED="JOINED:OK"
 URL_CHECK_FAILED=""
 if [[ ${#ALLOWLIST_PATTERNS[@]} -gt 0 ]]; then
   url_lines=()
   url_entries=()
-  prev_new=""
+  run_flag="N"
   while IFS= read -r line; do
-    if [[ "$line" =~ ^[[:space:]]*$ ]] || printf '%s\n' "$EXISTING" | grep -qxF -- "$line"; then
-      prev_new=""
+    if [[ "$line" =~ ^[[:space:]]*$ ]]; then
+      run_flag="N"
       continue
     fi
-    url_lines+=("${prev_new:-N}$line")
-    url_entries+=("$(derive_entry "$line")")
-    prev_new="C"
+    if printf '%s\n' "$EXISTING" | grep -qxF -- "$line"; then
+      url_lines+=("${run_flag}e$line")
+    else
+      url_lines+=("${run_flag}n$line")
+      url_entries+=("$(derive_entry "$line")")
+    fi
+    run_flag="C"
   done <<< "$PROPOSED"
   if [[ ${#url_entries[@]} -gt 0 ]]; then
     set +e
-    url_output="$(check_write_urls "${#url_entries[@]}" "${url_lines[@]}" "${url_entries[@]}")"
+    url_output="$(check_write_urls "${#url_entries[@]}" "${#url_lines[@]}" "${url_lines[@]}" "${url_entries[@]}")"
     url_status=$?
     set -e
     # A read loop, not mapfile: macOS still ships bash 3.2.

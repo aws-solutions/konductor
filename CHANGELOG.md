@@ -676,13 +676,14 @@ reference.
   that closes a markdown link, quote or emphasis right after the host no longer blocks an allowed
   link. A backslash-escaped colon or a character reference in the scheme (`https\://`,
   `https&#58;//`) is checked like a plain one, and a tab or CR inside a link is removed before the
-  check. Consecutive new lines are also checked joined, with the line breaks removed, so a link
-  split across lines is caught; lines already in the file are not rescanned. Inside a quoted URL
-  attribute such as `href` or a `<...>` link destination, a space does not end the link, so
-  `https://docs.example.com @evil.test/` there is checked as a link to `evil.test`. A bare scheme
-  inside a code span or emphasis (`` `https:` ``) is prose. Links without a scheme (`//host`,
-  `www.host`) are not checked. The URL check runs in one `python3` call per write. An interpreter
-  failure during the check is reported as an environment problem.
+  check. Consecutive lines are also checked joined, with the line breaks removed, so a link split
+  across lines is caught, even when one half is already in the file; a joined link blocks only when
+  it crosses a line break next to a new line. Inside a quoted URL attribute such as `href` or a
+  `<...>` link destination, a space does not end the link, so `https://docs.example.com @evil.test/`
+  there is checked as a link to `evil.test`. A bare scheme inside a code span or emphasis
+  (`` `https:` ``) is prose. Links without a scheme (`//host`, `www.host`) are not checked. The URL
+  check runs in one `python3` call per write. An interpreter failure during the check is reported as
+  an environment problem.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.

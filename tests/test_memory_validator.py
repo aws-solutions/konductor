@@ -1785,10 +1785,77 @@ def test_ordinary_lines_after_a_bare_scheme_are_not_joined_into_a_link(tmp_path,
     assert result.returncode == 0, f"{proposed!r} was rejected: {result.stderr}"
 
 
-def test_lines_already_in_the_file_are_not_joined(tmp_path):
-    existing = '- [2026-11-20] [origin:agent] Old <a href="https:\n'
-    proposed = existing + "[origin:agent]@evil.test/ is a sentence\n"
-    # The new line alone has no link, and the existing line stays exempt.
+_SPLIT_HEAD = '- [2026-11-20] [origin:agent] Old <a href="https:'
+_SPLIT_TAIL = '[origin:agent]@evil.test/">x</a>'
+_OTHER = "- [2026-11-20] [origin:agent] Unrelated fact"
+
+
+@pytest.mark.parametrize(
+    "existing, proposed",
+    [
+        # The new line completes a split href below an existing line.
+        (f"{_SPLIT_HEAD}\n", f"{_SPLIT_HEAD}\n{_SPLIT_TAIL}\n"),
+        # ...above an existing line.
+        (f"{_SPLIT_TAIL}\n", f"{_SPLIT_HEAD}\n{_SPLIT_TAIL}\n"),
+        # ...between two existing lines.
+        (
+            '- [2026-11-20] [origin:agent] Old <a href="https:\n[origin:agent]@evil.test/">x</a>\n',
+            '- [2026-11-20] [origin:agent] Old <a href="https:\n[origin:agent]//\n[origin:agent]@evil.test/">x</a>\n',
+        ),
+    ],
+)
+def test_new_line_that_completes_a_split_link_with_existing_lines_is_rejected(
+    tmp_path, existing, proposed
+):
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 1, f"{proposed!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+def test_split_link_only_across_existing_lines_does_not_block_an_unrelated_write(tmp_path):
+    existing = f"{_SPLIT_HEAD}\n{_SPLIT_TAIL}\n"
+    proposed = f"{existing}\n- [2026-11-24] [origin:agent] New fact\n"
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 0, result.stderr
+    # Directly below, with no blank line, the new entry still starts like an
+    # ordinary entry, so it does not extend the old link either.
+    proposed = f"{existing}- [2026-11-24] [origin:agent] New fact\n"
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "existing, new_line",
+    [
+        (f"{_SPLIT_HEAD}\n", "- [2026-11-24] [origin:agent] Next fact"),
+        (f"{_SPLIT_HEAD}\n", "[2026-11-24] [origin:agent] Next fact"),
+        (f"{_SPLIT_HEAD}\n", "[origin:agent] Next fact"),
+        ("- [2026-11-20] [origin:agent] See https://docs.example.com\n", "* [2026-11-24] [origin:agent] Next"),
+        (f"{_OTHER}\n", "- [2026-11-24] [origin:agent] Use https:"),
+        # The next entry holds a quote, which closes the old open href, but a
+        # host with a space in it is not a URL a parser accepts.
+        (f"{_SPLIT_HEAD}\n", '- [2026-11-24] [origin:agent] He said "hi"'),
+    ],
+)
+def test_existing_line_next_to_an_ordinary_new_entry_is_accepted(tmp_path, existing, new_line):
+    for proposed in (f"{existing}{new_line}\n", f"{new_line}\n{existing}"):
+        result = _write_verdict(tmp_path, proposed, existing=existing)
+        assert result.returncode == 0, f"{proposed!r} was rejected: {result.stderr}"
+
+
+def test_blocked_link_inside_one_existing_line_is_not_rescanned(tmp_path):
+    existing = "- [2026-11-20] [origin:agent] Old mirror https://evil.test/x\n"
+    for proposed in (
+        f"{existing}\n- [2026-11-24] [origin:agent] New fact\n",
+        f"{existing}- [2026-11-24] [origin:agent] New fact\n",
+    ):
+        result = _write_verdict(tmp_path, proposed, existing=existing)
+        assert result.returncode == 0, f"{proposed!r}: {result.stderr}"
+
+
+def test_blank_line_still_ends_a_run_that_includes_existing_lines(tmp_path):
+    existing = f"{_SPLIT_HEAD}\n"
+    proposed = f"{_SPLIT_HEAD}\n\n{_SPLIT_TAIL} is a sentence\n"
     result = _write_verdict(tmp_path, proposed, existing=existing)
     assert result.returncode == 0, result.stderr
 
@@ -1806,6 +1873,8 @@ def test_lines_already_in_the_file_are_not_joined(tmp_path):
         '<a href=" https://docs.example.com @evil.test/">x</a>',
         "[a](<https://docs.example.com @evil.test/>)",
         '<a href="https://docs.example.com @evil\t.test/">x</a>',
+        # Spaces at either end of the value are stripped before parsing.
+        '<a href="https://evil.test ">x</a>',
         '<a href="https://docs.example.com/ok">x</a> <a href="https://docs.example.com @evil.test/">y</a>',
     ],
 )
@@ -1821,6 +1890,9 @@ def test_space_inside_a_quoted_url_attribute_does_not_end_the_link(tmp_path, tex
         '<a href="https://docs.example.com/a b">x</a>',
         '<a href="https://docs.example.com/">x y</a>',
         "[a](<https://docs.example.com/a b>)",
+        '<a href="https://docs.example.com ">x</a>',
+        # A space in the host makes the URL fail to parse, so nothing opens.
+        '<a href="https://evil.test x">y</a>',
         # A non-URL attribute is prose: its spaces still end a link.
         '<abbr title="see https://docs.example.com for more">x</abbr>',
         '[a](https://docs.example.com "title with spaces")',
