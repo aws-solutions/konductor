@@ -83,7 +83,7 @@ async function openPage({
 
 const runTab = () => screen.getByRole('tab', { name: 'Run' });
 
-describe('the page without ?ui=next', () => {
+describe('the page with ?ui=classic', () => {
   it('draws the Designer that the page has today', async () => {
     await openPage({ nextUi: false });
 
@@ -97,7 +97,7 @@ describe('the page without ?ui=next', () => {
     expect(portsFor).not.toHaveBeenCalled();
   });
 
-  it('reads none of the calls of the views being built', async () => {
+  it('reads none of the calls of the newer views', async () => {
     const { ports } = await openPage({ nextUi: false });
 
     expect(ports.loadExtras).not.toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe('the page without ?ui=next', () => {
   });
 });
 
-describe('the page with ?ui=next', () => {
+describe('the page as it opens', () => {
   it('builds the calls of the views for the workflow it shows', async () => {
     const { portsFor, result } = await openPage({ nextUi: true });
 
@@ -182,7 +182,7 @@ describe('the page with ?ui=next', () => {
   });
 });
 
-describe('the run lifecycle with ?ui=next', () => {
+describe('the run lifecycle as the page opens', () => {
   const runningDraft = {
     events: [
       { seq: 1, type: 'stage_state', stage: 'draft', status: 'running' },
@@ -330,7 +330,7 @@ describe('the run lifecycle with ?ui=next', () => {
   });
 });
 
-describe('the check of a text with ?ui=next', () => {
+describe('the check of a text as the page opens', () => {
   const nameBox = () =>
     within(screen.getByRole('tabpanel', { name: 'Properties' })).getByRole(
       'textbox',

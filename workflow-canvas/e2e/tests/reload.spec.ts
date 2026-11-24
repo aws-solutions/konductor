@@ -3,7 +3,10 @@ import { expect } from '@playwright/test';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { test } from '../support/fixtures';
 import { sharedSession } from '../support/session';
-import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
+import {
+  classicUrl,
+  WorkflowCanvasPage,
+} from '../support/workflow-canvas-page';
 
 // A reload would ask the server for the page again. A request made after the
 // anchor was set is answered after any reload request, so once it is answered
@@ -168,7 +171,7 @@ test('resumes after a reload when the first load failed after the code worked', 
   await page.route('**/api/workflow', (route) =>
     route.fulfill({ status: 500, json: { error: 'Server error.' } }),
   );
-  await page.goto(`/#${STUB_LAUNCH_CODE}`);
+  await page.goto(classicUrl(STUB_LAUNCH_CODE));
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await page.unroute('**/api/workflow');
 
@@ -189,7 +192,7 @@ test('opens the kept session when the code in the address is spent', async ({
     }),
   );
 
-  await page.goto(`/?again#${NEW_CODE}`);
+  await page.goto(classicUrl(NEW_CODE, 'again'));
 
   await canvas.expectWorkflowDrawn();
   await expect(page.getByTestId('launch-notice')).toContainText(
@@ -204,7 +207,7 @@ test('resumes after a reload when a fresh address opens over a dead session and 
   page,
 }) => {
   const canvas = new WorkflowCanvasPage(page);
-  await page.goto('/?dead');
+  await page.goto(classicUrl(undefined, 'dead'));
   await page.evaluate(() =>
     window.sessionStorage.setItem(
       'konductor-workflow-canvas-session',
@@ -222,7 +225,7 @@ test('resumes after a reload when a fresh address opens over a dead session and 
         })
       : route.fulfill({ status: 500, json: { error: 'Server error.' } }),
   );
-  await page.goto(`/?fresh#${STUB_LAUNCH_CODE}`);
+  await page.goto(classicUrl(STUB_LAUNCH_CODE, 'fresh'));
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await page.unroute('**/api/workflow');
 

@@ -66,11 +66,11 @@ function drawsWorkflow(result: LoadResult | undefined): boolean {
  * selected view. Both views draw the workflow that `load` settles with, and
  * Run runs it, waiting with `scheduler` between two reads of the run.
  *
- * With `nextUi`, the two views being built take the place of the ones on the
- * page, `nextPortsFor` gives them the calls they need beyond the session's
- * own, and the Run view is the one that follows a run: the controller of the
- * Run tab stays idle, and the run it reports drives the swap guard and the
- * live region.
+ * With `nextUi`, the two newer views take the place of the ones they
+ * replaced, `nextPortsFor` gives them the calls they need beyond the
+ * session's own, and the Run view is the one that follows a run: the
+ * controller of the Run tab stays idle, and the run it reports drives the
+ * swap guard and the live region.
  */
 export function App({
   load,
@@ -89,7 +89,11 @@ export function App({
   runMemory?: RunMemory;
   /** Told what another workflow would take from the page. */
   swapRisk?: SwapRisk;
-  /** Draw the views being built, which `?ui=next` in the address asks for. */
+  /**
+   * Draw the two newer views. `main.tsx` reads the address and turns this on
+   * unless `?ui=classic` asks for the views they replaced. It is off here so
+   * that a caller which says nothing gets the older views.
+   */
   nextUi?: boolean;
   /**
    * Builds the calls those views make for the workflow that has just loaded.
@@ -100,7 +104,7 @@ export function App({
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
-  // The calls of the views being built belong to the workflow that loaded, so
+  // The calls of the newer views belong to the workflow that loaded, so
   // each load gets its own; the hooks of those views tell workflows apart by
   // them.
   const nextPorts = useMemo(
@@ -110,7 +114,7 @@ export function App({
         : undefined,
     [nextUi, result, nextPortsFor],
   );
-  // One follower at a time: with the views being built on the page, the Run
+  // One follower at a time: with the newer views on the page, the Run
   // view follows the run, so the controller of the Run tab is left idle.
   const execution = useExecution(
     !nextUi && result?.ok ? result.workflow.runs : undefined,
@@ -134,7 +138,7 @@ export function App({
         : undefined,
     [nextPorts, opened],
   );
-  // The editor of the views being built checks through that one call. Without
+  // The editor of the newer views checks through that one call. Without
   // the query it is the load as it came, so the page as it is today is left
   // alone.
   const loaded = useMemo(
@@ -171,7 +175,7 @@ export function App({
       ),
     [saved],
   );
-  // The calls the Run view of the views being built follows a run through,
+  // The calls the newer Run view follows a run through,
   // which belong to the workflow that loaded: another workflow is another
   // object, and the controller starts again for it, the run its session kept
   // included.

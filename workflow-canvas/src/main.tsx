@@ -12,7 +12,7 @@ import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
 import { sessionStorageMemory } from './launch/session-memory';
 import { createSwapRisk, guardOffers } from './launch/swap-guard';
 import { createNextPorts } from './next-ui/next-http';
-import { wantsNextUi } from './next-ui/next-ui';
+import { wantsClassicUi } from './next-ui/next-ui';
 import { tapSessions } from './next-ui/session-tap';
 import { installTheme } from './theme/install';
 import { useWorkflowSource } from './workflow/use-workflow-source';
@@ -26,10 +26,11 @@ installTheme(document.body);
 
 const sessions = sessionStorageMemory(window);
 
-// The views being built need calls that the API client does not have yet.
-// Each loaded workflow gets its own, built from the token that workflow was
-// loaded with, so no call of theirs can address another session.
-const nextUi = wantsNextUi(window.location.search);
+// The views the page now opens with need calls that the API client does not
+// have yet. Each loaded workflow gets its own, built from the token that
+// workflow was loaded with, so no call of theirs can address another session.
+// `?ui=classic` opens the views they replaced instead.
+const nextUi = !wantsClassicUi(window.location.search);
 const tap = tapSessions(createHttpApi());
 
 const nextPortsFor = (workflow: LoadedWorkflow) => {

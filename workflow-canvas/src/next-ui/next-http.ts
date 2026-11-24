@@ -14,7 +14,7 @@ import { runEventsPath } from '../run-client/follow-run-events';
 import type { ListRuns } from '../run-view/use-run-history';
 
 /*
- * The calls that the views being built need and the page's API client does
+ * The calls that the newer views need and the page's API client does
  * not have yet: the extra fields of the workflow, the agents, the past runs,
  * the events of a run and a check of a text that keeps the lines of each
  * stage. They talk to the relative `/api`, as the client does, so the page
@@ -258,7 +258,7 @@ function checkAnswerOf(body: unknown): CheckAnswer {
 }
 
 /**
- * Builds the calls of the views being built for one loaded workflow. The
+ * Builds the calls of the newer views for one loaded workflow. The
  * token is the one that workflow was loaded with, read once and held here,
  * so a session opened later, or one that is still waiting for its first
  * load, is never addressed by these calls. Each loaded workflow gets its own

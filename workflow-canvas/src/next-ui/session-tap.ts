@@ -4,7 +4,7 @@ import type { WorkflowDocument } from '../api/types';
 
 /**
  * A workflow API that ties the token of each load to the workflow it loaded,
- * so the page can build the calls of the views being built for the workflow
+ * so the page can build the calls of the newer views for the workflow
  * it shows.
  */
 export interface SessionTap {

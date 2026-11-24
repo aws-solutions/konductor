@@ -2,13 +2,16 @@
 import { expect, test, type Page } from '@playwright/test';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { sharedSession } from '../support/session';
-import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
+import {
+  classicUrl,
+  WorkflowCanvasPage,
+} from '../support/workflow-canvas-page';
 
 // The server takes the launch code and never answers.
 async function openAgainstSilentServer(page: Page) {
   await page.clock.install();
   await page.route('**/api/session', () => new Promise(() => {}));
-  await page.goto(`/#${STUB_LAUNCH_CODE}`);
+  await page.goto(classicUrl(STUB_LAUNCH_CODE));
 }
 
 test('says it is still waiting, and stopping ends in an error that names the next step', async ({
@@ -52,7 +55,7 @@ test('opens the workflow when the answer comes after the notice', async ({
         };
       }),
   );
-  await page.goto(`/#${STUB_LAUNCH_CODE}`);
+  await page.goto(classicUrl(STUB_LAUNCH_CODE));
   await page.clock.fastForward(5_000);
   await expect(page.getByTestId('launch-wait')).toBeVisible();
 
