@@ -123,9 +123,10 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | --- | --- |
 | `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, both sets in one pass, then `bench compare --aa vanilla` prints the floor. Paid (USD, cap 2). |
 | `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b, one bench run each) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
+| `cc-team-mode.patch` | D-241: the Claude Code team-mode change (`plugins/claude-code/team-mode.js` and its call in `installInto`) for the frozen bench 69149846. `run-cc-compare.sh` applies it as one commit in its own worktree and checks the tree. Not run. |
 | `cc-skill-loads.js` | Which skills each `run-cc-compare.sh` run loaded and whether in full (whole, partial, preload, failed, missing per must-load unit). Free. |
 | `run-cc-compare-judge.sh` | Judge pass of `run-cc-compare.sh`, non-Claude panel, then `report --baseline cc-vanilla`. Paid (USD, cap 2); `--plan` is free. |
-| `run-cc-compare.sh` | The forced experiment's 8 tasks on Claude Code: cc-vanilla against cc-konductor (f5d18459), 2 replicates, frozen bench 69149846, 32 runs. Paid (USD, cap 30); the default is a dry run, `--prepare` is free. `CC_MODEL`, `CC_ARMS`, `CC_CAP_USD` and `CC_RUN_CAP_USD` change the model, arms and caps for `run-cc-model-swap.sh`. |
+| `run-cc-compare.sh` | The forced experiment's 8 tasks on Claude Code: cc-vanilla against cc-konductor (f5d18459, with team mode: `cc-team-mode.patch`), 2 replicates, frozen bench 69149846, 32 runs. Paid (USD, cap 30); the default is a dry run, `--prepare` is free. `CC_MODEL`, `CC_ARMS`, `CC_CAP_USD` and `CC_RUN_CAP_USD` change the model, arms and caps for `run-cc-model-swap.sh`. |
 | `run-cc-model-swap.sh` | Claude Code twin of `run-model-swap.sh`: cc-konductor on Sonnet 5.5 (16 runs, cap USD 16; skipped when `run-cc-compare.sh`'s runs exist) and Opus 5.5 (16 runs, cap USD 32), run through `run-cc-compare.sh`; skill loads by `cc-skill-loads.js`. Paid per stage (`--go --stage S`); `--plan`, `--prepare` and `--summary` are free. |
 | `model-swap-summary.js` | Skill-load table of `run-model-swap.sh` per model and arm (task skill loaded, loaded whole, preview only, `find_skills`, "no skill fits", model mismatch), read with `cap nudge-check`'s reader. Free. |
 | `model-swap-judge.js` | Helpers of `run-model-swap-judge.sh`: cells that ran, the judge copy with the arm renamed `konductor-opus`, and the USD estimate from the LITE judge pass. Free. |
@@ -141,7 +142,7 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `nudge-fill.js` | The fill stage's cells and counted spend (each call at the larger of 15 and its credits) for `run-nudge.sh --fill`. Free. |
 | `lib.sh` | The spend and host helpers the paid run scripts here source (`budget_for`, `worst_case`, `wait_host`, `ledger_spent`; D-242). Sourced, never run. |
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
-| `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, and of `cc-skill-loads.js` on a made-up stream. Free. |
+| `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, of `cc-skill-loads.js` on a made-up stream, and of `cc-team-mode.patch` on the frozen bench. Free. |
 | `test-run-cc-model-swap-stub.sh` | Test of `run-cc-model-swap.sh` and the `CC_*` overrides of `run-cc-compare.sh` (plan, Opus stage, Sonnet reuse refusal, summary) with a stub bench. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
 | `test-run-model-swap-stub.sh` | Test of `run-model-swap.sh` (plan, paid path, resume, hook miss, counted-credit guard) and of `model-swap-summary.js` with a stub bench. Free. |
