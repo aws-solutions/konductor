@@ -11,6 +11,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { writeReport } = require('../runner/lib/introspect/report.js');
+const { OTLP, probeOf } = require('../runner/lib/introspect/index.js');
 
 function findRuns(root) {
   const out = [];
@@ -54,9 +55,9 @@ function rowFromReport(r, { run, timeline }) {
     collectorClean: w ? (w.available ? Boolean(w.clean) : null) : null,
     rootLoads: t?.rootLoads ?? null, childLoads: t?.childLoads ?? null, refused: t?.refused ?? null, failedCalls: t?.failed ?? null,
     childRefusedOrFailed: t?.childRefusedOrFailed ?? null,
-    // Claude Code only: one per (child, frontmatter skill), and the bytes of those skill files.
-    preloads: r.run.harness === 'claude-code' ? pre.reduce((n, c) => n + c.preloads.expected.length, 0) : null,
-    preloadBytes: r.run.harness === 'claude-code' ? pre.reduce((n, c) => n + c.preloads.expected.reduce((m, x) => m + (x.bytes ?? 0), 0), 0) : null,
+    // Claude Code only (the OTLP probe): one per (child, frontmatter skill), and the bytes of those skill files.
+    preloads: probeOf(r.run.harness) === OTLP ? pre.reduce((n, c) => n + c.preloads.expected.length, 0) : null,
+    preloadBytes: probeOf(r.run.harness) === OTLP ? pre.reduce((n, c) => n + c.preloads.expected.reduce((m, x) => m + (x.bytes ?? 0), 0), 0) : null,
     childrenLinked: (r.subagents || []).filter((c) => c.transcript).length,
     timeline,
   };

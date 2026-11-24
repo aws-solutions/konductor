@@ -9,9 +9,11 @@ const { createRegistry } = require('../core/registry.js');
 // the model on Amazon Bedrock through `opencode run` with the tools off and a one-line system prompt. More backends come
 // from bench/plugins as registry parts of kind `judge-backend` (FW-14): a descriptor `{ id, costUnit, label }` and an
 // entry module exporting `makeCaller({ timeoutMs, rawDir, log })`, which returns an async ({model, prompt}) caller.
+// The opencode backend's id, for the code that treats it apart (its prompt cap, cache records and caller).
+const OPENCODE_BACKEND = 'opencode';
 const BUILTIN_BACKENDS = Object.freeze([
   Object.freeze({ id: 'kiro', costUnit: 'credits', label: 'kiro-cli, spend in credits' }),
-  Object.freeze({ id: 'opencode', costUnit: 'usd', label: 'opencode on Bedrock, spend in USD' }),
+  Object.freeze({ id: OPENCODE_BACKEND, costUnit: 'usd', label: 'opencode on Bedrock, spend in USD' }),
 ]);
 const DEFAULT_BACKEND = 'kiro';
 const PLUGINS_DIR = path.resolve(__dirname, '..', 'plugins');
@@ -90,4 +92,4 @@ function checkOpencodeJudges(judges) {
   }
 }
 
-module.exports = { BACKENDS, BUILTIN_BACKENDS, DEFAULT_BACKEND, backendRegistry, checkBackend, makeBackendCaller, JUDGE_SYSTEM_PROMPT, systemPromptSha256, OPENCODE_MODELS, opencodeModel, checkOpencodeJudges };
+module.exports = { BACKENDS, BUILTIN_BACKENDS, DEFAULT_BACKEND, OPENCODE_BACKEND, backendRegistry, checkBackend, makeBackendCaller, JUDGE_SYSTEM_PROMPT, systemPromptSha256, OPENCODE_MODELS, opencodeModel, checkOpencodeJudges };

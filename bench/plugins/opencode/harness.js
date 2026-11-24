@@ -92,7 +92,7 @@ const countDirs = (dir) => fs.readdirSync(dir, { withFileTypes: true }).filter((
 
 // Fills the scratch HOME: config, translated agents and skills (konductor arms), a ripgrep copy, credentials.
 function installInto(home, { arm, prepared, ctx, config, outDir, credentials = true }) {
-  const cfgDir = path.join(home, '.config', 'opencode');
+  const cfgDir = path.join(home, CONFIG_REL);
   fs.mkdirSync(cfgDir, { recursive: true });
   fs.writeFileSync(path.join(cfgDir, 'opencode.json'), JSON.stringify(configJson({ konductor: !arm.vanilla }), null, 2) + '\n');
   const meta = {};
@@ -256,7 +256,7 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
 }
 
 function collectArtifacts(home, outDir) {
-  copyPlainFile(home, path.join('.config', 'opencode', 'opencode.json'), path.join(outDir, 'installed-config.json'));
+  copyPlainFile(home, path.join(CONFIG_REL, 'opencode.json'), path.join(outDir, 'installed-config.json'));
 }
 
 // A model can print files in its HOME, so exact secret values are scrubbed from every output.
@@ -298,7 +298,7 @@ function trialInstall(prepared, ctx) {
     const tmpdir = path.join(home, 'tmp');
     fs.mkdirSync(tmpdir, { recursive: true });
     execFileSync(ctx.opencode.bin, ['debug', 'agent', 'konductor'], { env: env({ arm: { vanilla: false }, config: ctx.config, ctx, home, tmpdir }), input: '', stdio: ['pipe', 'ignore', 'pipe'], timeout: 60000 });
-    prepared.skillInfo = skills.opencodeSkillInfo(path.join(home, '.config', 'opencode'), prepared.exportDir);
+    prepared.skillInfo = skills.opencodeSkillInfo(path.join(home, CONFIG_REL), prepared.exportDir);
     return meta.rewrittenAgents;
   } catch (e) {
     throw new Error(`opencode cannot load the installed agents: ${String(e.stderr || e.message).trim().split('\n')[0]}`);
@@ -310,6 +310,9 @@ function trialInstall(prepared, ctx) {
 const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 const rc = () => require('../../runner/lib/runconfig.js');
+
+// Where opencode reads its config under HOME (XDG_CONFIG_HOME is HOME/.config); the judge backend uses it too.
+const CONFIG_REL = path.join('.config', 'opencode');
 
 const flagValueOf = (opts, name) => (opts[name] && opts[name] !== true ? opts[name] : null);
 
@@ -359,7 +362,7 @@ const envOfArm = ({ konductor, config, ctx }) => envSetup({ arm: { vanilla: !kon
 const modelConfig = ({ opts, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: variantOf(opts.effort || defaultEffort) });
 
 module.exports = {
-  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig, credentialsFile, setUpRun, runEnvInfo, harnessRunConfig, envOfArm,
+  CONFIG_REL, id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig, credentialsFile, setUpRun, runEnvInfo, harnessRunConfig, envOfArm,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson, readProfile,
 };

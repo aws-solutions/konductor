@@ -25,7 +25,7 @@ const { openLedger } = require('../runner/lib/credit-ledger.js');
 const REASK_WORST_CREDITS = 15;
 const REASK_WORST_USD = 0.05;
 const { writeAtomic } = require('../runner/lib/owned.js');
-const { DEFAULT_BACKEND, checkBackend } = require('./backends.js');
+const { DEFAULT_BACKEND, OPENCODE_BACKEND, checkBackend } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 const { EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, exclusionClassOfRun, exclusionClassOfReason } = require('./exclusion.js');
@@ -180,7 +180,7 @@ function observedCostPerCall(judgments, usdMode) {
  */
 function estimateSpend({ judgments, usdMode, liveCalls, liveUnits = null, backend = null, observed }) {
   const unit = usdMode ? 'usd' : 'credits';
-  const be = backend ?? (usdMode ? 'opencode' : 'kiro');
+  const be = backend ?? (usdMode ? OPENCODE_BACKEND : DEFAULT_BACKEND);
   const data = observed === undefined ? loadObserved() : observed;
   const units = liveUnits ?? [{ judge: '*', kind: '*', live: liveCalls }];
   const fromData = liveCalls > 0 ? estimateFromObserved(data, be, units) : { low: 0, high: 0, measuredOn: null, observedCalls: 0 };

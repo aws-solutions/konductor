@@ -12,6 +12,7 @@ const sandbox = require('../runner/lib/sandbox.js');
 const { spawnWithTimeout } = require('../runner/lib/run-one.js');
 const { makeIsolation } = require('../runner/lib/isolate.js');
 const procs = require('../runner/lib/procs.js');
+const { OPENCODE_BACKEND } = require('./backends.js');
 
 // A caller is async ({model, prompt}) => {text, credits, latencyMs, error?, cached?}.
 
@@ -140,7 +141,7 @@ function withCache(caller, dir, { salt = null } = {}) {
       }
       fs.writeFileSync(file, JSON.stringify({
         model, promptSha: sha, prompt, response: r.text, credits: r.credits, latencyMs: r.latencyMs,
-        ...(r.usd !== undefined ? { backend: 'opencode', bedrockModelId: r.bedrockModelId ?? null, usd: r.usd, tokens: r.tokens ?? null } : {}),
+        ...(r.usd !== undefined ? { backend: OPENCODE_BACKEND, bedrockModelId: r.bedrockModelId ?? null, usd: r.usd, tokens: r.tokens ?? null } : {}),
       }));
     }
     return r;

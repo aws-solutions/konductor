@@ -27,3 +27,12 @@ test('the fetch audit covers the runtimes with the kiro-cli stream format, and n
   assert.equal(canAuditFetches('kiro-cli'), true);
   for (const id of ['opencode', 'claude-code', 'strands', 'no-such-runtime', undefined]) assert.equal(canAuditFetches(id), false, String(id));
 });
+
+test('the opencode judge backend id is one constant, and opencode config sits under HOME/.config/opencode', () => {
+  const { OPENCODE_BACKEND, BUILTIN_BACKENDS, DEFAULT_BACKEND } = require('../../judge/backends.js');
+  const { maxPromptBytes } = require('../../judge/config.js');
+  assert.ok(BUILTIN_BACKENDS.some((b) => b.id === OPENCODE_BACKEND && b.costUnit === 'usd'));
+  assert.equal(maxPromptBytes(OPENCODE_BACKEND), 400000);
+  assert.equal(maxPromptBytes(DEFAULT_BACKEND), 120000);
+  assert.equal(harnesses.opencode.CONFIG_REL, require('node:path').join('.config', 'opencode'));
+});

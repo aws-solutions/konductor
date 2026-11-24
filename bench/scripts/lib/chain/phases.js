@@ -15,6 +15,7 @@ const { studyDir, capDirs, capDirsKind, globIn } = require('./study-dirs.js');
 const { completeState, autonomyStats } = require('../study.js');
 const { backend, errorInfo } = require('../judgments.js');
 const { pilotSummary } = require('../chain-report.js');
+const { OPENCODE_BACKEND } = require('../../../judge/backends.js');
 
 const now = () => Date.now() / 1000;
 const tailLines = (f, n) => { try { return fs.readFileSync(f, 'utf8').split('\n').slice(-(n + 1)); } catch { return []; } };
@@ -132,7 +133,7 @@ async function p3Autonomy(ctx) {
 }
 
 // ================================================================ P4 JUDGE CAPABILITY
-const judgeArgs = (c, d) => ['judge', '--run', d, '--judge-backend', 'opencode', '--opencode-bin', c.oc, '--aws-creds-file', c.creds,
+const judgeArgs = (c, d) => ['judge', '--run', d, '--judge-backend', OPENCODE_BACKEND, '--opencode-bin', c.oc, '--aws-creds-file', c.creds,
   '--aws-profile', c.awsProfile, '--aws-region', c.awsRegion, '--profile', 'detailed', '--concurrency', c.judgeConc, '--budget-usd', c.judgeBudget];
 
 async function p4JudgeOne(ctx, d) {
@@ -142,7 +143,7 @@ async function p4JudgeOne(ctx, d) {
   const jf = path.join(d, 'judgments.json');
   if (fs.existsSync(jf)) {
     const be = backend(jf) ?? 'unreadable';
-    if (be !== 'opencode') return ctx.fail(`${jf} was written by the '${be}' backend; one backend per study. Move it aside by hand to rejudge.`);
+    if (be !== OPENCODE_BACKEND) return ctx.fail(`${jf} was written by the '${be}' backend; one backend per study. Move it aside by hand to rejudge.`);
   }
   for (let attempt = 1; ; attempt++) {
     const w = await waitForCredentials(ctx, `judging ${name}`);

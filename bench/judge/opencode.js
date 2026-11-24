@@ -13,7 +13,7 @@ const procs = require('../runner/lib/procs.js');
 const { opencode: oc } = require('../runner/lib/harness/index.js');
 const { aggregateEvents, rollUp, SQL } = require('../plugins/opencode/parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('../plugins/opencode/creds.js');
-const { JUDGE_SYSTEM_PROMPT, systemPromptSha256, opencodeModel } = require('./backends.js');
+const { JUDGE_SYSTEM_PROMPT, systemPromptSha256, opencodeModel, OPENCODE_BACKEND } = require('./backends.js');
 const { writeCredentials } = require('../runner/lib/aws-creds.js');
 
 // A caller is async ({model, prompt}) => {text, credits, usd, tokens, latencyMs, error?}. `model` is the logical panel id.
@@ -87,12 +87,12 @@ function makeOpencodeCaller({
     const home = path.join(root, 'home');
     const cwd = path.join(root, 'cwd');
     const tmpdir = path.join(root, 'tmp');
-    for (const d of [path.join(home, '.config', 'opencode'), cwd, tmpdir]) fs.mkdirSync(d, { recursive: true });
+    for (const d of [path.join(home, oc.CONFIG_REL), cwd, tmpdir]) fs.mkdirSync(d, { recursive: true });
     const promptPath = path.join(root, 'prompt.txt');
     const outPath = path.join(root, 'stdout.jsonl');
     const errPath = path.join(root, 'stderr.txt');
     try {
-      fs.writeFileSync(path.join(home, '.config', 'opencode', 'opencode.json'), `${JSON.stringify(configJson(m, { region, profile: awsProfile }), null, 2)}\n`);
+      fs.writeFileSync(path.join(home, oc.CONFIG_REL, 'opencode.json'), `${JSON.stringify(configJson(m, { region, profile: awsProfile }), null, 2)}\n`);
       if (credentials) {
         let creds;
         try { creds = await credentials.current(); } catch (e) { return { text: '', credits: 0, latencyMs: 0, error: `no usable AWS credentials: ${scrub(e.message)}`, auth: true }; }
@@ -162,7 +162,7 @@ function makeOpencodeCaller({
   caller.stopReason = () => stopped;
 
   caller.info = {
-    backend: 'opencode', opencodeVersion, binarySha256: sha256, region, awsProfile, systemPrompt: JUDGE_SYSTEM_PROMPT, systemPromptSha256: systemPromptSha256(),
+    backend: OPENCODE_BACKEND, opencodeVersion, binarySha256: sha256, region, awsProfile, systemPrompt: JUDGE_SYSTEM_PROMPT, systemPromptSha256: systemPromptSha256(),
     models: (judges) => Object.fromEntries(judges.map((j) => {
       const m = opencodeModel(j);
       return [j, { bedrockModelId: m.bedrockId, agent: m.agent, temperature: m.temperature, temperatureApplied: m.temperature !== null }];

@@ -16,7 +16,7 @@ const { loadRedactions } = require('../judge/redact.js');
 const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
 const { makeOpencodeCaller } = require('../judge/opencode.js');
 const { makeExportedCredentials, awsExport, isProfileName } = require('./lib/aws-creds.js');
-const { DEFAULT_BACKEND, checkBackend, makeBackendCaller, checkOpencodeJudges } = require('../judge/backends.js');
+const { DEFAULT_BACKEND, OPENCODE_BACKEND, checkBackend, makeBackendCaller, checkOpencodeJudges } = require('../judge/backends.js');
 const { opencode: oc } = require('./lib/harness/index.js');
 const { runJudging, planJudging } = require('../judge/run.js');
 const { rescoreQuotes, formatRescore } = require('../judge/rescore.js');
@@ -187,7 +187,7 @@ function judgeBackendOf(opts, judges) {
     backend: opts['judge-backend'] === undefined ? DEFAULT_BACKEND : String(opts['judge-backend']),
     budgetCredits: opts['budget-credits'] ?? null, budgetUsd: opts['budget-usd'] ?? null,
   });
-  const viaOpencode = backend === 'opencode';
+  const viaOpencode = backend === OPENCODE_BACKEND;
   if (backend !== DEFAULT_BACKEND && opts['judge-cmd']) throw new Error(`--judge-cmd and --judge-backend ${backend} cannot be used together`);
   if (viaOpencode) checkOpencodeJudges(judges);
   return { backend, viaOpencode, part };
