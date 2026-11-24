@@ -256,11 +256,15 @@ open rates per probe and arm. A gap between the two is the signal that the open 
 shape before. They are never pooled into the 35, and the release is burned after the run, as every release is
 ([the plan's rule](physical-ai.md#the-release-stays-private)).
 
-At freeze the owner records the hash:
+At freeze the owner records the hash (the same value `tools/make-fields.py` writes; a plain `tar | sha256sum` would
+change with file times, so do not use it):
 
 ```bash
-tar -cf - -C COUNTED_SET/held-back . | sha256sum      # goes into the fields file as heldBackSha256
+python3 bench/scripts/lib/heldback_sha.py COUNTED_SET/held-back      # goes into the fields file as heldBackSha256
 ```
+
+`plant-wave.sh 4` hashes the folder again and runs only when `PLANT_HELDBACK_SHA256` holds that recorded value. No
+hash was recorded at the 2026-11-20 freeze; the folder hashed to `decfaad9...79c08c4` on 2026-11-24 (31 variants).
 
 and may encrypt the folder for storage (`openssl enc -aes-256-cbc -pbkdf2 -in held-back.tar -out held-back.tar.enc`).
 The authors never hold that passphrase.
@@ -509,8 +513,16 @@ credits expected, soft cap 45, run once. One command does it:
 bash $CHECKOUT/bench/scripts/plant-wave.sh 0                 # the paid run (only this spends credits)
 bash $CHECKOUT/bench/scripts/plant-wave.sh 0 --prepare-only  # free: every check, then bench run --prepare-only
 bash $CHECKOUT/bench/scripts/plant-wave.sh 0 --wait          # wait for a quiet host / login instead of stopping
-bash $CHECKOUT/bench/scripts/plant-wave.sh --list            # the wave table (0 p1 dev box; 1 p1 counted; 2 p2/p5/p7; 3 p3/p4/p6)
+bash $CHECKOUT/bench/scripts/plant-wave.sh 2 --plan          # free: tasks, trials, ceiling and expected credits
+bash $CHECKOUT/bench/scripts/plant-wave.sh --list            # the wave table (0 p1 dev box; 1 p1 counted; 2 p2/p5/p7; 3 p3/p4/p6; 4 normal + held back)
 ```
+
+**Wave 4** cuts its own release, `plant-counted-r1-w4`, only when it starts: the counted-set policy files with the
+held-back variants and the normal tasks (`PLANT_NORMAL`, a folder of `plant-n*.json`, for example the plant-r2
+release tasks). It runs two parts, the normal tasks three times each with a 12-credit ceiling, then the held-back
+variants with what the wave's 49 credits leave. A part that fails, or leaves no credit total, stops the wave. A
+`PLANT_HELDBACK_SHA256` that does not match the folder stops it before any work; a paid wave 4 with none set stops
+before the first trial (see the held-back part above).
 
 The script finds its own defaults (the checkout it sits in, the counted-set folder, a cedarpy Python 3.12, the native
 kiro-cli for the pin, `~/.plant-release-key/private.pem`, and `/var/tmp/plant-counted-r1`); override any with the
