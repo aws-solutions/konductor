@@ -27,7 +27,7 @@ const ARMS = ['cc-vanilla', 'cc-konductor'];
 const REPS = [1, 2];
 const CAP_SHARE = 0.95;
 
-const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } }; // missing or cut: null
+const { readJsonOrNull: readJson } = require('../../runner/lib/util.js'); // missing or cut: null
 
 /** [action, reason] for one cell's result `r` (null when none) in run folder `dir`. */
 function classify(r, dir, runCap, bench) {
