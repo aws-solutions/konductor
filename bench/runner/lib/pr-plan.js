@@ -6,7 +6,12 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseArmSpec } = require('./arms.js');
+const { parseArmSpec, runtimeOfSpec, CC_PREFIX } = require('./arms.js');
+const { descriptorOf } = require('./harness/runtime.js');
+
+// The two runtimes pr-plan plans: the default one (no arm prefix, Kiro CLI) and the one under the cc- prefix.
+const KIRO = runtimeOfSpec('');
+const CC = runtimeOfSpec(CC_PREFIX);
 const { resolveRef } = require('./arm-source.js');
 const { loadTasks, loadSuite, suiteExtraDirs, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 
@@ -61,7 +66,7 @@ function parseNewArm(ref) {
     throw new Error(`--ref takes ${prefix}name=<git ref> or ${prefix}name=dir:<path> with a name of your own, got "${ref}"`);
   }
   const id = `${prefix}${parsed.name}`;
-  const harness = parsed.cc ? 'claude-code' : 'kiro-cli';
+  const harness = runtimeOfSpec(ref);
   if (parsed.kind === 'dir') {
     if (parsed.path.includes(',')) throw new Error(`the directory path contains a comma, which --arms cannot carry: ${parsed.path}`);
     return { id, harness, spec: `${id}=dir:${path.resolve(parsed.path)}`, parsed };
@@ -136,8 +141,8 @@ function planPr({
   const baseParsed = parseArmSpec(base);
   if (baseParsed.cc || baseParsed.oc || baseParsed.st) throw new Error(`--base names the Kiro CLI base arm (vanilla, main or a release tag such as ${DEFAULT_BASE}); Claude Code arms are compared with ${CC_BASE}`);
   if (baseParsed.kind === 'dir' || (baseParsed.kind === 'git' && !baseParsed.bare)) throw new Error(`--base takes vanilla, main or a release tag such as ${DEFAULT_BASE}`);
-  const kiroNew = added.filter((a) => a.harness === 'kiro-cli');
-  const ccNew = added.filter((a) => a.harness === 'claude-code');
+  const kiroNew = added.filter((a) => a.harness === KIRO);
+  const ccNew = added.filter((a) => a.harness === CC);
   for (const a of kiroNew) if (a.id === baseParsed.name) throw new Error(`the new arm is named "${a.id}", the same as the base arm`);
   for (const a of ccNew) if (a.id === CC_BASE) throw new Error(`the new arm is named "${a.id}", the same as the Claude Code base arm`);
   if (budgetCredits !== null && !kiroNew.length) throw new Error('--budget-credits applies to Kiro CLI arms, and this plan has none; Claude Code runs take --budget-usd');
@@ -178,15 +183,15 @@ function planPr({
     const estimate = est.missing ? null : est;
     const budget = budgetCredits !== null ? Number(budgetCredits) : Math.ceil(estimate.total * HEADROOM);
     const specs = [...armIds, ...kiroNew.map((a) => a.spec)];
-    const dir = outFor('kiro-cli');
-    groups.push({ harness: 'kiro-cli', unit: 'credits', base: baseParsed.name, newArms: kiroNew, arms: specs, out: dir, estimate, est, budget, budgetGiven: budgetCredits, commands: commandsFor(specs, dir, 'budget-credits', budget, baseParsed.name) });
+    const dir = outFor(KIRO);
+    groups.push({ harness: KIRO, unit: 'credits', base: baseParsed.name, newArms: kiroNew, arms: specs, out: dir, estimate, est, budget, budgetGiven: budgetCredits, commands: commandsFor(specs, dir, 'budget-credits', budget, baseParsed.name) });
   }
   if (ccNew.length) {
     const specs = [CC_BASE, ...ccNew.map((a) => a.spec)];
     const floor = ccFloorFor({ arms: [CC_BASE, ...ccNew.map((a) => a.id)], replicates: reps, taskCount });
     const budget = Number(budgetUsd);
-    const dir = outFor('claude-code');
-    groups.push({ harness: 'claude-code', unit: 'USD', base: CC_BASE, newArms: ccNew, arms: specs, out: dir, estimate: floor, est: floor, budget, budgetGiven: budget, commands: commandsFor(specs, dir, 'budget-usd', budget, CC_BASE) });
+    const dir = outFor(CC);
+    groups.push({ harness: CC, unit: 'USD', base: CC_BASE, newArms: ccNew, arms: specs, out: dir, estimate: floor, est: floor, budget, budgetGiven: budget, commands: commandsFor(specs, dir, 'budget-usd', budget, CC_BASE) });
   }
 
   const warnings = [];
@@ -197,7 +202,7 @@ function planPr({
     }
   }
   if (noVanilla && ccNew.length) warnings.push(`--no-vanilla drops vanilla from the Kiro CLI run only; the Claude Code run keeps ${CC_BASE} as its base`);
-  if (ccNew.length && budgetUsd !== null && Number(budgetUsd) < groups.find((g) => g.harness === 'claude-code').estimate.total) {
+  if (ccNew.length && budgetUsd !== null && Number(budgetUsd) < groups.find((g) => g.harness === CC).estimate.total) {
     warnings.push(`--budget-usd ${budgetUsd} is below the Claude Code floor from the smoke runs; some cells will be skipped`);
   }
 
@@ -215,9 +220,9 @@ function renderPlan({ suite, reps, groups, base, warnings, taskCount }) {
   for (const w of warnings) L.push('', `WARNING: ${w}`);
   let step = 1;
   for (const g of groups) {
-    const name = g.harness === 'kiro-cli' ? 'Kiro CLI' : 'Claude Code';
+    const name = descriptorOf(g.harness).label;
     L.push('', `${name} arms: ${g.arms.join(', ')}`);
-    if (g.harness === 'kiro-cli') {
+    if (g.harness === KIRO) {
       const e = g.estimate;
       if (e) {
         L.push(`Estimate (credits per arm for one pass over the suite, observed on ${OBSERVED.model}, n=1, so a rough guide only):`);

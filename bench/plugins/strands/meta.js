@@ -34,7 +34,8 @@ module.exports = Object.freeze({
     note: 'covers strands-agents-tools built-ins only; plant tools are forwarding stubs and never prompt',
   }),
   // Kind B: forwarding stubs inside the agent process dial gw.sock; the release pins `versions.strands`.
-  plant: Object.freeze({ mount: 'forwarder', pinKey: 'strands' }),
+  // `only`: every Strands arm is a plant arm. `hooked`: it may run the -hooked plant arms, whose agent carries tool hooks.
+  plant: Object.freeze({ mount: 'forwarder', pinKey: 'strands', only: true, hooked: true }),
   multiTurnNote: 'the launcher runs one prompt per run',
   trace: Object.freeze({ sessionFiles: false, timeNote: null, skillsListing: null }),
   report: Object.freeze({ factorialKey: null, usdNote: null, killNote: null, costWords: null }),

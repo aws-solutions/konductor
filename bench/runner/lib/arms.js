@@ -5,6 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const source = require('./arm-source.js');
 const { DESCRIPTORS } = require('./harness/descriptors.js');
+const { DEFAULT_RUNTIME } = require('./harness/runtime.js');
 const { AGENT_NAME: PLANT_AGENT } = require('./plant/agent-file.js');
 
 const MAIN_LABEL = 'main-unreleased';
@@ -14,6 +15,8 @@ const prefixOf = (runtime) => DESCRIPTORS.find((d) => d.id === runtime).armPrefi
 const OC_PREFIX = prefixOf('opencode');
 const CC_PREFIX = prefixOf('claude-code');
 const prefixedRuntime = (spec) => PREFIXED.find((d) => spec.startsWith(d.armPrefix));
+/** The runtime an arm spec selects: the one whose prefix it starts with, else the default runtime. */
+const runtimeOfSpec = (spec) => prefixedRuntime(spec)?.id ?? DEFAULT_RUNTIME;
 // The plant arms (FR-9) by external id, with the arm name the gateway and result.json use. Kiro CLI, or Strands under
 // `st-`. A `-hooked` arm is Strands only: its agent may carry tool hooks, so its trials are kept apart (design 15.3).
 const PLANT_ARMS = Object.freeze({ 'plant-policy': 'policy', 'plant-allowall': 'allow-all' });
@@ -24,10 +27,12 @@ const isHookedPlantArm = (spec) => Object.hasOwn(HOOKED_PLANT_ARMS, spec);
 const PLANT_RUNTIMES = DESCRIPTORS.filter((d) => d.plant);
 const plantRuntimeNames = PLANT_RUNTIMES.map((d) => (d.armPrefix ? `${d.proseName} (${d.armPrefix})` : d.proseName));
 const PLANT_ONLY = `plant arms run on ${plantRuntimeNames.slice(0, -1).join(', ')} or ${plantRuntimeNames.at(-1)} only`;
-const STRANDS_PREFIX = prefixOf('strands');
+// The plant-only runtime (descriptor `plant.only`): every arm under its prefix is a plant arm. Today Strands.
+const PLANT_ONLY_RUNTIME = DESCRIPTORS.find((d) => d.plant?.only);
+const STRANDS_PREFIX = PLANT_ONLY_RUNTIME.armPrefix;
 const STRANDS_PLANT_ONLY = 'Strands arms are plant arms only (st-plant-policy, st-plant-allowall, st-plant-policy-hooked, st-plant-allowall-hooked)';
 /** Every plant arm id a result can carry: the plain ids under each plant runtime's prefix, and the hooked ids under `st-`. */
-const PLANT_ARM_IDS = Object.freeze(PLANT_RUNTIMES.flatMap((d) => [...Object.keys(PLANT_ARMS), ...(d.id === 'strands' ? Object.keys(HOOKED_PLANT_ARMS) : [])].map((a) => `${d.armPrefix}${a}`)));
+const PLANT_ARM_IDS = Object.freeze(PLANT_RUNTIMES.flatMap((d) => [...Object.keys(PLANT_ARMS), ...(d.plant.hooked ? Object.keys(HOOKED_PLANT_ARMS) : [])].map((a) => `${d.armPrefix}${a}`)));
 const isPlantArmId = (armId) => PLANT_ARM_IDS.includes(armId);
 
 /**
@@ -44,7 +49,7 @@ function parseStrandsArm(rest) {
 function namesPlantArm(s) {
   const n = prefixedRuntime(s);
   if (!n) return isPlantArm(s) || isHookedPlantArm(s);
-  return n.id === 'strands' || namesPlantArm(s.slice(n.armPrefix.length));
+  return Boolean(n.plant?.only) || namesPlantArm(s.slice(n.armPrefix.length));
 }
 
 /**
@@ -55,7 +60,7 @@ function refusePrefixedPlant(spec, d) {
   const rest = spec.slice(d.armPrefix.length);
   if (!namesPlantArm(rest)) return;
   if (!d.plant || prefixedRuntime(rest)) throw new Error(`arm "${spec}": ${PLANT_ONLY}`);
-  if (isHookedPlantArm(rest) && d.id !== 'strands') throw new Error(`arm "${spec}": hooked plant arms run on Strands only (${STRANDS_PREFIX}${rest})`);
+  if (isHookedPlantArm(rest) && !d.plant.hooked) throw new Error(`arm "${spec}": hooked plant arms run on Strands only (${STRANDS_PREFIX}${rest})`);
 }
 const KNOWN_ARMS = ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main', 'oc-vanilla', 'oc-v1.2.0', 'oc-main', 'cc-vanilla', 'cc-main'];
 
@@ -104,7 +109,7 @@ const TAG_NAME_RE = /^v\d+\.\d+\.\d+$/;
 function parseArmSpec(spec) {
   const d = prefixedRuntime(spec);
   if (d) refusePrefixedPlant(spec, d);
-  if (d?.id === 'strands') return { ...parseStrandsArm(spec.slice(d.armPrefix.length)), st: true };
+  if (d?.plant?.only) return { ...parseStrandsArm(spec.slice(d.armPrefix.length)), st: true };
   if (d) return { ...parseArmSpec(spec.slice(d.armPrefix.length)), [d.armPrefix.slice(0, -1)]: true };
   if (spec === 'vanilla') return { kind: 'vanilla', name: 'vanilla' };
   if (isPlantArm(spec)) return { kind: 'plant', name: spec, plantArm: PLANT_ARMS[spec] };
@@ -180,9 +185,9 @@ function withProvenance(base, repo) {
 function resolveArm(spec, repo) {
   const d = prefixedRuntime(spec);
   if (d) refusePrefixedPlant(spec, d);
-  if (d?.id === 'strands') {
+  if (d?.plant?.only) {
     const parsed = parseStrandsArm(spec.slice(d.armPrefix.length));
-    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'plant', runtime: 'strands', agent: null, vanilla: true, plant: { arm: parsed.plantArm, hooks: parsed.hooks }, warnings: [] };
+    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'plant', runtime: d.id, agent: null, vanilla: true, plant: { arm: parsed.plantArm, hooks: parsed.hooks }, warnings: [] };
   }
   if (d) {
     const base = resolveArm(spec.slice(d.armPrefix.length), repo);
@@ -193,14 +198,14 @@ function resolveArm(spec, repo) {
   }
   const parsed = parseArmSpec(spec);
   if (parsed.kind === 'vanilla') {
-    return { id: parsed.name, label: parsed.name, ...(parsed.repeatOf ? { repeatOf: parsed.repeatOf } : {}), ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
+    return { id: parsed.name, label: parsed.name, ...(parsed.repeatOf ? { repeatOf: parsed.repeatOf } : {}), ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'none', runtime: DEFAULT_RUNTIME, agent: null, vanilla: true, warnings: [] };
   }
   // A plant arm installs nothing of konductor, so it takes the vanilla install path; `plant` marks the gateway run.
   if (parsed.kind === 'plant') {
-    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'plant', runtime: 'kiro-cli', agent: PLANT_AGENT, vanilla: true, plant: { arm: parsed.plantArm }, warnings: [] };
+    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, armKind: 'plant', runtime: DEFAULT_RUNTIME, agent: PLANT_AGENT, vanilla: true, plant: { arm: parsed.plantArm }, warnings: [] };
   }
   const base = parsed.kind === 'main' ? resolveMain(repo) : parsed.kind === 'dir' ? { ...dirArm(parsed, repo), source: 'dir' } : gitArm(parsed, repo);
-  return { ...withProvenance(base, repo), armKind: 'kiro-cli-v2', runtime: 'kiro-cli', agent: 'konductor', vanilla: false };
+  return { ...withProvenance(base, repo), armKind: 'kiro-cli-v2', runtime: DEFAULT_RUNTIME, agent: 'konductor', vanilla: false };
 }
 
 // Resolves a list of specs and refuses duplicate arm ids (the id names a directory in the run output).
@@ -271,4 +276,4 @@ function formatArmRows(arms) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ').trimEnd()).join('\n');
 }
 
-module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, PLANT_ARMS, HOOKED_PLANT_ARMS, PLANT_ARM_IDS, isPlantArmId, MAIN_LABEL, OC_PREFIX, CC_PREFIX, STRANDS_PREFIX };
+module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, PLANT_ARMS, HOOKED_PLANT_ARMS, PLANT_ARM_IDS, isPlantArmId, MAIN_LABEL, OC_PREFIX, CC_PREFIX, STRANDS_PREFIX, runtimeOfSpec };
