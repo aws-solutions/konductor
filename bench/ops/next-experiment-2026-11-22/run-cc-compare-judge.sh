@@ -13,6 +13,8 @@
 # the forced pass's USD 0.30 for 6) must stay under the cap, and the bench's own USD guard (--budget-usd, what is left
 # of the cap) checks before every call. Each task is judged in a copy under ROOT/judge/runs, so the raw runs stay as
 # they ran; the report goes to reports/next-experiment-2026-11-22/judge-cc/report. Rerun to resume.
+# run-cc-team.sh sets ROOT (its own runs), CAP_USD, CC_JUDGE_REPORT (its own report) and CC_JUDGE_ALSO (the study's
+# judged copies, added to the report so it holds all three arms); with none set the pass is as before.
 set -u
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 
@@ -21,7 +23,8 @@ HERE=$WS/reports/next-experiment-2026-11-22
 ROOT=${ROOT:-/var/tmp/cc-compare}
 OUT=$ROOT/runs
 J=$ROOT/judge
-REPORT=$HERE/judge-cc/report
+REPORT=${CC_JUDGE_REPORT:-$HERE/judge-cc/report}      # run-cc-team.sh: its own report
+ALSO=${CC_JUDGE_ALSO:-}                               # run-cc-team.sh: more judged run dirs (comma list) for the report
 B=$WS/reports/lite-run-2026-11-21/judge/bench          # LITE judge worktree, read only here
 BENCH_SHA=69149846ad65f1016ec386e88ec9043bdec57203
 H=$WS/scripts/lite-helper.js
@@ -83,7 +86,7 @@ main() {
   done
   [ "$PLAN_ONLY" = 1 ] && exit 0
   extra=$(printf '%s\n' "${packs[@]}" | sort -u | paste -sd, -)
-  runs=$(printf '%s,' "${judged[@]}"); runs=${runs%,}
+  runs=$(printf '%s,' "${judged[@]}"); runs=${runs%,}${ALSO:+,$ALSO}
   node bench/runner/bench.js report --run "$runs" --baseline cc-vanilla --extra-tasks "$extra" --out "$REPORT" > "$REPORT.log" 2>&1 \
     || say "report failed: see $REPORT.log"
   say "judge spend USD $(node "$H" judge-spent "$J/runs") of $CAP_USD"
