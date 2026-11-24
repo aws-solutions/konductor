@@ -306,10 +306,9 @@ export function DesignView({
     total: state.draft.stages.length,
   };
   // The keys of the picked stage come from the check of the file as it was
-  // loaded: that is what the file holds, and a save of a changed stage would
-  // drop whatever the editor cannot write. The stage is taken from the place
-  // it was loaded from, which a rename or another stage being added or
-  // deleted does not move.
+  // loaded: that is what the file holds. The stage is taken from the place it
+  // was loaded from, which a rename or another stage being added or deleted
+  // does not move.
   const fileView = opened.answer?.view ?? null;
   const viewStage = picked
     ? sourceStageOf(fileView, sources.of(picked.id))
@@ -317,8 +316,9 @@ export function DesignView({
   const values = picked ? fieldValuesOf(viewStage, picked) : {};
   const kindOf = typeof viewStage?.kind === 'string' ? viewStage.kind : 'agent';
   const rules = stageFields[kindOf] ?? [];
-  // Only the name and the agent go through the editor; every other key is
-  // shown as the file has it, until the stage writer can keep them.
+  // Only the name and the agent go through the editor, so every other key is
+  // shown read-only: a save keeps each of its bytes, but nothing on the page
+  // can change it yet.
   const readOnlyKeys = rules
     .map((rule) => rule.key)
     .filter((key) => !SAVABLE_KEYS.includes(key));

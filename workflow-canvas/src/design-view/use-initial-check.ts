@@ -14,9 +14,9 @@ export interface InitialCheck {
   readonly failure?: string;
   /**
    * Asks for the check again after a `failure`, so one failed read does not
-   * leave every loaded stage unsaveable until the page is reloaded. It does
-   * nothing while a check is in flight, once one has answered, or after the
-   * view has gone.
+   * leave a person without the keys of a stage until the page is reloaded. It
+   * does nothing while a check is in flight, once one has answered, or after
+   * the view has gone.
    */
   checkAgain(): void;
 }

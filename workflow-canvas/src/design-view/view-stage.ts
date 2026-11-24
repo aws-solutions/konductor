@@ -4,31 +4,15 @@ import type { CheckView, CheckViewStage } from '../designer-view/yaml-draft';
 import type { MarkedStage } from '../designer-view/YamlPane';
 import type { FieldValues } from '../designer-view/field-rules';
 
-/** The keys of a stage that the editor can write today. */
+/**
+ * The keys of a stage the editor has an event for, so the form lets a person
+ * type in them. Every other key of the stage is shown read-only: a save keeps
+ * each of its bytes, but nothing on the page can change it yet.
+ */
 export const SAVABLE_KEYS: readonly string[] = ['name', 'agent'];
 
 /** The keys that the server works out, which are not keys of the file. */
 const DERIVED_KEYS: ReadonlySet<string> = new Set(['kind', 'range']);
-
-/**
- * The keys of a stage that a save would drop: every key of the file but the
- * name and the agent, which are the only ones the editor's reducer has an
- * event for. The stage writer rebuilds a stage it is given, so a save of a
- * stage with any of these would lose them.
- */
-export function droppedKeysOf(
-  stage: CheckViewStage | undefined,
-): readonly string[] {
-  return Object.entries(stage ?? {})
-    .filter(
-      ([key, value]) =>
-        typeof value !== 'undefined' &&
-        !DERIVED_KEYS.has(key) &&
-        !SAVABLE_KEYS.includes(key),
-    )
-    .map(([key]) => key)
-    .sort();
-}
 
 /** The stage of `view` called `name`, or `undefined` when it has none. */
 export function checkStageOf(
@@ -56,7 +40,7 @@ export interface PickedStage {
 /**
  * Where a stage of the draft comes from in the file as it was loaded: the
  * place it had there, or `added` for a stage made since, which the file has
- * no stage for and so has nothing to lose.
+ * no stage for.
  *
  * A place, not a name and not the current position: a person renames a stage
  * and adds and deletes others, and only the place it was loaded from still
@@ -112,7 +96,7 @@ function keepsTheFilesStages(sources: readonly StageSource[]): boolean {
  * answers.
  *
  * The file as it was loaded is read by `sourceStageOf` instead, which takes
- * the place a stage was loaded from, the same identity the save guard holds.
+ * the place a stage was loaded from.
  */
 export function pickedStageOf(
   view: CheckView | null | undefined,
@@ -169,58 +153,4 @@ export function fieldValuesOf(
     name: draft.name,
     agent: draft.agent,
   };
-}
-
-/** A stage of the draft, as the save guard reads it. */
-export interface GuardedStage {
-  readonly draft: DraftStage;
-  /** Where in the file as loaded this stage came from. */
-  readonly source: StageSource;
-  /** Whether the person has changed its name or its agent since the load. */
-  readonly changed: boolean;
-}
-
-const ONLY_TWO = 'Only the name and the agent of a stage can be saved yet.';
-
-/**
- * How to get out of a refusal that comes from a check the server did not
- * answer: the view offers that check again, and a reload reads the file
- * afresh.
- */
-export const CHECK_AGAIN = 'Check the file again, or reload the page.';
-
-/**
- * Why a save of this workflow is refused, or `undefined` when it may go
- * ahead. The stage writer of the editor rebuilds a stage it changed from the
- * name and the agent alone, so saving a stage that has another key, such as a
- * prompt, would drop it from the file. Until the writer keeps those keys, a
- * change to such a stage is not saved at all.
- *
- * The guard fails closed. A changed stage whose file stage cannot be read is
- * refused as well, because the keys it would drop are then unknown: that is
- * so while the first check of the file is in flight, after that check failed,
- * and for a file that has no stage at the place this one was loaded from. The
- * refusal then says how to get out of it, because a lost read would otherwise
- * leave a person with a message and nothing to do about it. A stage the
- * person added has nothing in the file to lose, and an unchanged stage keeps
- * its own lines, so neither is refused.
- */
-export function saveRefusal(
-  stages: readonly GuardedStage[],
-  /** The file as it was loaded, or `null` while it is not known. */
-  file: CheckView | null | undefined,
-): string | undefined {
-  for (const stage of stages) {
-    if (!stage.changed || stage.source.kind === 'added') continue;
-    const name = stage.draft.name;
-    const saved = sourceStageOf(file, stage.source);
-    if (saved === undefined) {
-      return `A save would rebuild ${name}, and the keys it has in the file are not known, so it is refused. ${CHECK_AGAIN} ${ONLY_TWO}`;
-    }
-    const dropped = droppedKeysOf(saved);
-    if (dropped.length > 0) {
-      return `A save would drop the ${dropped.join(' and ')} of ${name}, so it is refused. ${ONLY_TWO}`;
-    }
-  }
-  return undefined;
 }

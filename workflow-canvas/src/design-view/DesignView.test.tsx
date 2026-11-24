@@ -93,8 +93,8 @@ stages:
     prompt: Check the greeting.
 `);
 
-// A comment inside the stage that is edited: the writer builds that stage
-// from its name and its agent, so the comment would go with the save.
+// A comment inside the stage that is edited. The writer changes the bytes of
+// the value it was asked to change and leaves the rest, so the comment stays.
 const COMMENT_INSIDE = withText(`format: konductor/1
 name: hello
 version: 0.1.0
@@ -648,9 +648,9 @@ describe('DesignView, the Properties tab', () => {
     expect(written).toContain('prompt: Write the greeting to README.md.');
   });
 
-  it('reads the keys again on Check again, which lets the save go ahead', async () => {
-    // A file whose stages hold the name and the agent alone, so nothing but
-    // the failed check stands in the way of the save.
+  it('reads the keys again on Check again, and the save still goes ahead', async () => {
+    // The default file, whose stages hold the name and the agent only, so the
+    // keys the check brings back are the two the form can type in.
     const { edits } = drawn({
       openedFails: 'The server said no.',
       openedRecovers: true,
