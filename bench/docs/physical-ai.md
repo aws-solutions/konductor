@@ -257,9 +257,17 @@ adapter are in [benchmark your own agent](benchmark-your-own-agent.md#track-1-an
 
 The arm cell is ours: our MuJoCo model, our eight tools, our gateway and our rules. We looked at
 [Strands Robots](https://github.com/strands-labs/robots) as a source of more robot arms. Two reviews agreed: do not
-swap our arm for it, and do not treat it as a new agent type. If more arm models are wanted later, the plan is a
-second arm body file behind the same gateway, using only its robot models and physics. That needs inverse kinematics
-for a new arm, about five to eight days of free work, and a new signed release.
+swap our arm for it, and do not treat it as a new agent type. It is a tool library for the Strands harness we already
+have, not an agent type, so an agent holding its tools is still a Strands agent. Its own tools must never reach a
+counted run: they skip the gateway, and its sim tools let an agent move the block by hand.
+
+If more arm models are wanted later, the plan is a new body file, `arm_body_sr.py`, behind the same `ArmBody`
+interface and the same gateway, using only its robot models and physics. The gateway drives it through `act()`,
+never the library's agent path, so its own safety chain never hides a try. The library has no inverse kinematics, so a
+new arm needs its own. That is about five to eight days of free work and a new signed release.
+
+Not verified yet: the same poses on every host, whether `sim.backend` stays stable across versions, whether its
+contact depth is enough for R4, and the license of each robot model.
 
 `bench/physical/test/test_arm_body_contract.py` is the first step. It lists what any arm body must do for the plant:
 put the hand where asked, move it on command, undo a dry run, give the same poses for the same inputs, and report a
