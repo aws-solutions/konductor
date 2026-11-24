@@ -23,6 +23,11 @@ export interface RunProgress {
   readonly blocked?: { readonly name: string; readonly reason?: string };
   /** Set once the run has ended. */
   readonly outcome?: 'passed' | 'halted';
+  /**
+   * Set when the run is over but no `run_finished` event said how it ended,
+   * so nothing here is still at work.
+   */
+  readonly ended?: true;
   readonly elapsedMs: number;
 }
 
@@ -30,12 +35,15 @@ export interface RunProgress {
  * Where `run` is. The elapsed time runs from the start to the end of the run,
  * or to `clock()` while it goes on, and is never below zero. The end is the
  * `at` of the `run_finished` event once it is read, so a page that follows
- * only events stops the clock too, or else `timing.finishedAt`.
+ * only events stops the clock too, or else `timing.finishedAt`. With
+ * `ended`, the follower says the server has no more events for the run, so a
+ * run with no `run_finished` is over all the same.
  */
 export function runProgress(
   run: FollowedRun,
   timing: RunTiming,
   clock: Clock,
+  { ended = false }: { readonly ended?: boolean } = {},
 ): RunProgress {
   const running = run.stages.find((stage) => stage.status === 'running');
   const blocked = run.stages.find((stage) => stage.status === 'blocked');
@@ -43,7 +51,7 @@ export function runProgress(
   return {
     passed: run.stages.filter((stage) => stage.status === 'passed').length,
     total: run.stages.length,
-    ...(running ? { running: running.name } : {}),
+    ...(running && !(ended && !run.outcome) ? { running: running.name } : {}),
     ...(blocked
       ? {
           blocked: {
@@ -53,6 +61,7 @@ export function runProgress(
         }
       : {}),
     ...(run.outcome ? { outcome: run.outcome.status } : {}),
+    ...(ended && !run.outcome ? { ended: true as const } : {}),
     elapsedMs: Math.max(0, end - timing.startedAt),
   };
 }
@@ -66,6 +75,7 @@ export function progressText(progress: RunProgress): string {
     return `Run halted${at}. ${count}`;
   }
   if (progress.blocked) return `Blocked at ${progress.blocked.name}. ${count}`;
+  if (progress.ended) return `The run ended. ${count}`;
   if (progress.running) return `Running ${progress.running}. ${count}`;
   return `Waiting for the next stage. ${count}`;
 }

@@ -40,14 +40,16 @@ function StageButton({
 
 function Stages({
   run,
+  ended,
   reasonSentence,
 }: {
   run: FollowedRun;
+  ended: boolean;
   reasonSentence: ReasonSentence;
 }) {
   const listId = useId();
   const [picked, setPicked] = useState<string>();
-  const runFinished = run.outcome !== undefined;
+  const runFinished = run.outcome !== undefined || ended;
   const shown = shownStage(run, picked);
   if (shown === undefined) {
     return <p className="wf-floor-note">This run has no stages.</p>;
@@ -93,6 +95,7 @@ export function RunFloor({
   runId,
   progress,
   history,
+  ended = false,
   reasonSentence,
 }: {
   /** The run as `applyRunEvents` keeps it, or `undefined` before there is one. */
@@ -106,6 +109,11 @@ export function RunFloor({
   progress: RunProgress | undefined;
   /** The past runs, as `GET /api/runs` lists them. */
   history: readonly RunSummaryRow[];
+  /**
+   * The run is over although no `run_finished` event said how it ended, as
+   * the follower can report. Nothing is then shown as still at work.
+   */
+  ended?: boolean;
   reasonSentence: ReasonSentence;
 }) {
   return (
@@ -113,7 +121,12 @@ export function RunFloor({
       <div className="wf-floor-main">
         {progress && <RunProgressStrip progress={progress} />}
         {run ? (
-          <Stages key={runId} run={run} reasonSentence={reasonSentence} />
+          <Stages
+            key={runId}
+            run={run}
+            ended={ended}
+            reasonSentence={reasonSentence}
+          />
         ) : (
           <p className="wf-floor-note">No run yet.</p>
         )}

@@ -51,22 +51,28 @@ const HISTORY: RunSummaryRow[] = [
 
 const RUN_ID = '20261024-0412-a7b3c';
 
-function floor(run: FollowedRun | undefined, runId = RUN_ID) {
+function floor(
+  run: FollowedRun | undefined,
+  { runId = RUN_ID, ended = false } = {},
+) {
   return (
     <RunFloor
       run={run}
       runId={run ? runId : undefined}
       progress={
-        run ? runProgress(run, { startedAt: 0 }, () => 65_000) : undefined
+        run
+          ? runProgress(run, { startedAt: 0 }, () => 65_000, { ended })
+          : undefined
       }
       history={HISTORY}
+      ended={ended}
       reasonSentence={reasonSentence}
     />
   );
 }
 
-function renderFloor(run: FollowedRun | undefined) {
-  return render(floor(run));
+function renderFloor(run: FollowedRun | undefined, ended = false) {
+  return render(floor(run, { ended }));
 }
 
 const stageButton = (name: string) =>
@@ -74,6 +80,36 @@ const stageButton = (name: string) =>
 const detail = (name: string) => screen.getByRole('region', { name });
 const consoleBox = (name: string) =>
   screen.getByRole('region', { name: `Console lines of ${name}` });
+
+describe('RunFloor when the run is over with no last event', () => {
+  it('says the run ended instead of naming a stage at work', () => {
+    renderFloor(RUNNING, true);
+
+    expect(screen.getByTestId('run-progress').textContent).toContain(
+      'The run ended. 1 of 2 stages passed.',
+    );
+  });
+
+  it('shows the stage that was running as not finished', () => {
+    renderFloor(RUNNING, true);
+
+    const stages = within(
+      screen.getByRole('region', { name: 'Stages' }),
+    ).getAllByRole('button');
+    expect(stages.map((button) => button.textContent)).toEqual([
+      'draftPassed',
+      'reviewNot finished',
+    ]);
+  });
+
+  it('says that no more console lines can come', () => {
+    renderFloor(runWith([]), true);
+
+    expect(
+      within(detail('draft')).getByText('No live output is available.'),
+    ).toBeTruthy();
+  });
+});
 
 describe('RunFloor', () => {
   it('shows the progress, the stages, the detail of the stage at work and the past runs', () => {
@@ -141,7 +177,7 @@ describe('RunFloor', () => {
       { seq: 1, type: 'stage_state', stage: 'draft', status: 'passed' },
       { seq: 2, type: 'stage_state', stage: 'review', status: 'running' },
     ]);
-    rerender(floor(second, '20261024-0501-b8c4d'));
+    rerender(floor(second, { runId: '20261024-0501-b8c4d' }));
 
     expect(stageButton('review').getAttribute('aria-current')).toBe('true');
     expect(stageButton('draft').getAttribute('aria-current')).toBeNull();
