@@ -34,6 +34,9 @@ function run(root, extraEnv = {}) {
   delete env.BENCH_REQUIRE_ARM;
   if (!('KONDUCTOR_WS' in extraEnv)) delete env.KONDUCTOR_WS;
   if (!('BENCH_ARM_PYTHON' in extraEnv)) delete env.BENCH_ARM_PYTHON;
+  if (!('BENCH_STRANDS_PYTHON' in extraEnv)) delete env.BENCH_STRANDS_PYTHON;
+  // HOME is the fake repo, so the default Strands venv (~/.cache/konductor-strands) of the real host is never found.
+  if (!('HOME' in extraEnv)) env.HOME = root;
   return spawnSync('bash', [SCRIPT, '--tap'], { env, encoding: 'utf8', timeout: 60000 });
 }
 
@@ -113,4 +116,43 @@ test('an arm venv whose base Python is gone stops the run with the rebuild comma
   const r = run(root, { BENCH_ARM_PYTHON: path.join(venv, 'bin', 'python') });
   assert.equal(r.status, 2, r.stdout + r.stderr);
   assert.ok(r.stderr.includes(`Rebuild its venv: bash bench/ops/workspace/rebuild-arm-venv.sh --venv ${venv}`), r.stderr);
+});
+
+// Strands: with a Strands Python (BENCH_STRANDS_PYTHON, else ~/.cache/konductor-strands/bin/python) the node tests get
+// it and the Python test_strands_*.py files run with it as "strands py:" lines; a Strands test that still skips fails
+// the run. With none, the run says so and prints the count of skipped Strands tests, so the reading can count them.
+const STRANDS_SKIP = "test('st', { skip: 'set BENCH_STRANDS_PYTHON to an interpreter with strands-agents' }, () => {});";
+function strandsPy(root) {
+  const p = path.join(root, '.cache', 'konductor-strands', 'bin', 'python');
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, '#!/bin/sh\n[ "$1" = -c ] && exit 0\nexec python3 "$@"\n', { mode: 0o755 });
+  return p;
+}
+
+test('a Strands Python in the default place: node tests see it, test_strands_*.py run with it, 0 skips, exit 0', (t) => {
+  const nodeBody = "test('env', () => { if (!process.env.BENCH_STRANDS_PYTHON) throw new Error('no BENCH_STRANDS_PYTHON'); });";
+  const { root } = fakeRepo(t, { nodeBody, pyBody: PY_OK });
+  fs.writeFileSync(path.join(root, 'bench/physical/test/test_strands_fake.py'), `import unittest\n\n\nclass S(unittest.TestCase):\n${PY_OK}\n`);
+  strandsPy(root);
+  const r = run(root);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^ok 1 - strands py: test_strands_fake\.S\.test_one$/m);
+  assert.match(r.stdout, /^# strands py tests 1$/m);
+  assert.match(r.stdout, /^# strands skips 0$/m);
+});
+
+test('a Strands Python is present and a Strands test skips: the run fails', (t) => {
+  const { root } = fakeRepo(t, { nodeBody: STRANDS_SKIP, pyBody: PY_OK });
+  const r = run(root, { BENCH_STRANDS_PYTHON: strandsPy(root) });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /^# strands skips 1$/m);
+  assert.match(r.stderr, /1 Strands test\(s\) skipped/);
+});
+
+test('no Strands Python: the run says so and counts the skipped Strands tests, exit 0', (t) => {
+  const { root } = fakeRepo(t, { nodeBody: STRANDS_SKIP, pyBody: PY_OK });
+  const r = run(root);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^# no Strands Python \(.*\): the Strands tests skip$/m);
+  assert.match(r.stdout, /^# strands skips 1$/m);
 });

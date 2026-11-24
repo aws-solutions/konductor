@@ -76,7 +76,7 @@ leak_list > "$OUT/leaks-before.txt"
 failures_of() { sed -n 's/^ *not ok [0-9][0-9]* - \(.*\)$/\1/p' "$1" | sed 's/ # .*$//' | sort -u; }
 
 run_once() {   # run_once N
-  local n=$1 code=0 armskips
+  local n=$1 code=0 armskips stskips
   local env=(env TMPDIR=/tmp LD_LIBRARY_PATH="$ARM_FFI" BENCH_ARM_PYTHON="$ARM_PYTHON" PLANT_CS="$PLANT_CS")
   say "run $n: start (timeout ${RUN_TIMEOUT}s)"
   (cd "$REPO" && "${env[@]}" timeout -k 60 "$RUN_TIMEOUT" nice -n 19 bash -c "$SUITE_CMD") > "$OUT/run-$n.tap" 2>&1 || code=$?
@@ -90,6 +90,10 @@ run_once() {   # run_once N
   fi
   armskips=$(grep -Ec '# SKIP (no Python with|.*(MuJoCo|cedarpy))' "$OUT/run-$n.tap" || true)
   [ "$armskips" = 0 ] || echo "run $n skipped $armskips arm test(s) with an arm python set" >> "$OUT/broken-runs.txt"
+  # test.sh prints "# strands skips N": with a Strands Python a skip already fails the run; with none on the host the
+  # Strands tests did not run at all, which must not read as clean either.
+  stskips=$(sed -n 's/^# strands skips \([0-9][0-9]*\)$/\1/p' "$OUT/run-$n.tap" | tail -1)
+  [ "${stskips:-0}" = 0 ] || echo "run $n skipped $stskips Strands test(s) ($(grep -m1 '^# no Strands Python' "$OUT/run-$n.tap" | sed 's/^# //' || true))" >> "$OUT/broken-runs.txt"
   return 0
 }
 
@@ -128,9 +132,9 @@ TOTAL=$((NEW + FLAKY + LEAKED + BROKEN))
   echo "new failures (both runs, not in the base set): $NEW"
   echo "flaky (one run only): $FLAKY"
   echo "leaked kbench-*/kplant-* dirs in $LEAK_DIR: $LEAKED"
-  echo "broken runs (timed out, no totals, or arm tests skipped; counted too): $BROKEN"
+  echo "broken runs (timed out, no totals, or arm or Strands tests skipped; counted too): $BROKEN"
   for n in 1 2; do
-    echo "run $n: $(grep -E '^# (tests|pass|fail|skipped|py tests|py pass|py fail|py skipped)' "$OUT/run-$n.tap" | tr '\n' ' ')"
+    echo "run $n: $(grep -E '^# (tests|pass|fail|skipped|py tests|py pass|py fail|py skipped|strands skips)' "$OUT/run-$n.tap" | tr '\n' ' ')"
   done
   [ -s "$OUT/leaks-transient.txt" ] && echo "not counted: $(grep -c . "$OUT/leaks-transient.txt") dir(s) gone within ${LEAK_SETTLE}s (another process's live dir): $(tr '\n' ' ' < "$OUT/leaks-transient.txt")"
   for f in new-failures flaky leaked-dirs broken-runs; do

@@ -48,6 +48,18 @@ else
   echo "# no arm Python ($ARM_PY): the arm tests skip"
 fi
 
+# The Strands Python (an interpreter with strands-agents; the Strands plugin tests and test_strands_*.py need it):
+# BENCH_STRANDS_PYTHON, else the venv bench/ops/workspace/run-physical-ai-wave0.sh uses. With one, any Strands test
+# that still skips fails the run; with none, the run says so and counts the skips on the "# strands skips" line.
+STRANDS_PY=${BENCH_STRANDS_PYTHON:-$HOME/.cache/konductor-strands/bin/python}
+STRANDS=0
+if [ -x "$STRANDS_PY" ] && "$STRANDS_PY" -c 'import strands' 2>/dev/null; then
+  STRANDS=1
+  export BENCH_STRANDS_PYTHON=$STRANDS_PY
+else
+  echo "# no Strands Python ($STRANDS_PY): the Strands tests skip"
+fi
+
 cd "$R"
 node_code=0
 # NODE_TEST_CONTEXT is set when this script runs under a node test; the inner run must report on its own.
@@ -56,7 +68,22 @@ env -u NODE_TEST_CONTEXT node --test --test-concurrency=1 "${REPORTER[@]}" \
 py_code=0
 "$PY" bench/scripts/unittest-tap.py bench/physical/test 2>"$LOGS/py.err" | tee "$LOGS/py.tap" || py_code=$?
 [ "$py_code" = 0 ] || cat "$LOGS/py.err" >&2
+# The Strands Python tests again with the Strands Python (the arm Python has no strands-agents, so they skip above).
+if [ "$STRANDS" = 1 ]; then
+  "$STRANDS_PY" bench/scripts/unittest-tap.py bench/physical/test 'test_strands_*.py' 2>"$LOGS/st.err" \
+    | sed 's/ - py: / - strands py: /; s/^# py /# strands py /' | tee "$LOGS/st.tap" || py_code=$?
+  [ "$py_code" = 0 ] || cat "$LOGS/st.err" >&2
+fi
 
+st_node=$(grep -c 'SKIP set BENCH_STRANDS_PYTHON' "$LOGS/node.log" || true)
+if [ "$STRANDS" = 1 ]; then st_py=$(grep -c '# SKIP' "$LOGS/st.tap" || true)
+else st_py=$(grep -c '# SKIP strands-agents is not installed' "$LOGS/py.tap" || true); fi
+st_skips=$((st_node + st_py))
+echo "# strands skips $st_skips"
+st_bad=0
+if [ "$STRANDS" = 1 ] && [ "$st_skips" != 0 ]; then
+  st_bad=1; echo "# FAIL: $st_skips Strands test(s) skipped although $STRANDS_PY imports strands" >&2
+fi
 skips=0
 if [ "$ARM" = 1 ]; then
   node_skips=$(grep -c 'no Python with' "$LOGS/node.log" || true)
@@ -75,4 +102,4 @@ if [ -n "${KONDUCTOR_WS:-}" ]; then
   if [ "$ops_code" = 0 ]; then echo "ok 1 - ops: every workspace owner script is a launcher into bench/ops"
   else echo "not ok 1 - ops: every workspace owner script is a launcher into bench/ops"; fi
 fi
-[ "$node_code" = 0 ] && [ "$py_code" = 0 ] && [ "$skips" = 0 ] && [ "$ops_code" = 0 ]
+[ "$node_code" = 0 ] && [ "$py_code" = 0 ] && [ "$skips" = 0 ] && [ "$st_bad" = 0 ] && [ "$ops_code" = 0 ]
