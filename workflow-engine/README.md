@@ -36,8 +36,8 @@ has no canvas server yet.
   Claude Code session for each stage and maps the agent's `tools` to `--allowedTools` rules; and the `fake` harness,
   which replays scripted replies and is for tests only.
   The canvas server (`canvas/`) is the HTTP adapter of step 1g. It adds no port to the core. It binds `127.0.0.1` only,
-  answers the six operations of [the canvas contract](../workflow-canvas/api/openapi.yaml) from the checker, the file
-  source and the run state, and serves the built page with a `Content-Security-Policy` header that has `frame-ancestors
+  answers the operations of [the canvas contract](../workflow-canvas/api/openapi.yaml) from the checker, the file
+  source and the run state (all but `getRunEvents`, which the session leaves out of its `capabilities`), and serves the built page with a `Content-Security-Policy` header that has `frame-ancestors
   'none'`. It uses the standard library only: one thread for each connection, at most 32 open at once, a request line of
   at most 8 KiB, a header block of at most 32 KiB with at most 64 headers, a body of at most 1 MiB and 15 seconds to
   send a request, of which a connection that sends no byte gets 5. A thirty-third connection is closed at once, and 32

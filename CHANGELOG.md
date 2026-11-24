@@ -92,6 +92,10 @@ reference.
   that changes the bytes leaves the trust record, so the next run needs `flow trust` again. `KONDUCTOR_CANVAS_DIR`
   names the folder of the built page. `workflow-canvas/api/corpus/` holds workflow files and their diagnostics that
   the stub and the Rust loader both check.
+- The canvas server answers `stage_fields` on the workflow, `listAgents` and `listRuns`, and its session reports
+  `konductor_version`, `capabilities` and `limits`, so the page loads on the real server as it does on the stub.
+  `getRunEvents` is not served yet and is not in `capabilities`. A run's state document keeps its `goal`; a document
+  from before reads with an empty goal.
 
 ### Changed
 

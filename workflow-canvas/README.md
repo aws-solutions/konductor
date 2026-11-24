@@ -330,16 +330,16 @@ WC_SERVER_BIN=/path/to/konductor npx vitest run stub-api
 Each test then starts `flow view` on a temporary project with the sample workflow, its prompt files and a fake harness.
 The fixtures of the stub are put into the real server: an `untrusted` root has no trust record, a `busy` one has a
 process that holds the workspace lock, a blocked stage is a fake reply that ends it badly, and a missing harness is
-one that is not on the `PATH`. Of the 953 tests, 835 pass and 118 are skipped (`test-support/real-server-skips.ts` names
-each opt-in skip and why). The skips are 11 tests that read the stub's clock or ids, expect the stub's harness
-`kiro-cli`, or compare message prose; 3 tests of blocked reasons that the first release cannot produce; 7 tests of a
-root with no file, because `flow view` of a name with no file is a usage error; 3 tests of the stub's reusable launch
-code; and 44 tests of what the real server does not have yet: `listAgents` (2), `getRunEvents` (17), `listRuns` (13) and
-the `stage_fields` answer of the workflow view (12). 15 more tests need an engine feature that has not landed:
-13 need the data-between-stages keys (slice 2: declared params and outputs) and 2 need the check keys (slice 3a), and the
-slice that lands removes each skip. 35 more tests are of the workflow library (`GET /api/library`, `GET
-/api/library/{name}` and `POST /api/library/{name}/copy`), which the real server does not serve yet (follow-up 28). Without
-the variable all 953 run on the stub.
+one that is not on the `PATH`. Of the 953 tests, 861 pass and 92 are skipped (`test-support/real-server-skips.ts` names
+each opt-in skip and why). The skips are 12 tests that read the stub's clock, ids or start times, expect the stub's
+harness `kiro-cli`, or compare message prose; 3 tests of blocked reasons that the first release cannot produce; 7 tests
+of a root with no file, because `flow view` of a name with no file is a usage error; 3 tests of the stub's reusable
+launch code; and 17 tests of `getRunEvents`, which the real server does not serve yet. The server answers every other
+operation of the contract. 15 more tests need an engine feature that has not landed: 13 need the data-between-stages
+keys (slice 2: declared params and outputs) and 2 need the check keys (slice 3a), and the slice that lands removes each
+skip. 35 more tests are of the workflow library (`GET /api/library`, `GET /api/library/{name}` and
+`POST /api/library/{name}/copy`), which the real server does not serve yet (follow-up 28). Without the variable all 953
+run on the stub.
 
 ### The shared corpus
 
