@@ -5,3 +5,4 @@ S4 gpt-5.6-luna t3-db-audit-retention t3-db-order-history
 S5 deepseek-3.2 t5-qa-scheduler-gaps t5-qa-suite-audit
 S6 qwen3-coder-next t10-tpm-ring-rollout-v4 t12-mux-parallel-merge t2-dr-notify-fanout-v6
 S7 glm-5 t11-fresh-session-memory t11-merge-pricing-branches t11-twin-pricing-validation
+S8 deepseek-3.2 t13-doc-api-reference-drift t13-log-auth-credential-stuffing t7-program-rollup
