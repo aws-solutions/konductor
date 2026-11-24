@@ -1673,6 +1673,28 @@ def test_escaped_scheme_to_an_allowed_host_is_accepted(tmp_path, text):
     assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        # A URL parser removes ASCII tab, CR and LF before parsing.
+        '<a href="https:\t//evil.test/">x</a>',
+        '<a href="https:/\t/evil.test/">x</a>',
+        '<a href="https://docs.example.com\t.evil.test/">x</a>',
+        '<a href="https://docs.example.com\r.evil.test/">x</a>',
+        "[a](ht\ttps://evil.test/)",
+    ],
+)
+def test_tab_or_carriage_return_inside_a_link_is_still_checked(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+def test_tab_inside_an_allowed_link_is_accepted(tmp_path):
+    result = _url_verdict(tmp_path, '<a href="https:\t//docs.example.com/">x</a>')
+    assert result.returncode == 0, result.stderr
+
+
 def test_non_https_urls_pass_without_an_allowlist(tmp_path):
     # No allowlist means every URL is allowed, whatever its scheme.
     write_config(tmp_path / ".konductor" / "memory-config.json", [])

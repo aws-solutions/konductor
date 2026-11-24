@@ -251,12 +251,17 @@ HOST_TAIL = re.compile(r"[.,;:!?)\]}'\"`>*_~]+$")
 # character references, so https\://x and https&#58;//x still render as links.
 MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
-# The entry as written plus each way a renderer can decode it. A link that
-# any of them shows must pass.
+# A URL parser removes every ASCII tab, CR and LF before it parses, so
+# https:<TAB>//evil.test opens https://evil.test.
+URL_STRIPPED = re.compile(r"[\t\r\n]")
+
+# The entry as written plus each way a renderer or URL parser can decode it.
+# A link that any of them shows must pass.
 def renderings(text):
     md = MD_ESCAPE.sub(r"\1", text)
     decoded = html.unescape(text)
-    return dict.fromkeys([text, md, decoded, html.unescape(md), MD_ESCAPE.sub(r"\1", decoded)])
+    forms = [text, md, decoded, html.unescape(md), MD_ESCAPE.sub(r"\1", decoded)]
+    return dict.fromkeys(forms + [URL_STRIPPED.sub("", f) for f in forms])
 
 def links(text):
     pos = 0
