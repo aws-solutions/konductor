@@ -5,6 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, mkResult } = require('./helpers.js');
@@ -63,6 +64,15 @@ function setup() {
 }
 
 const byTask = (rows) => Object.fromEntries(rows.map((r) => [`${r.task}#${r.rep}`, r]));
+
+test('D-147: a task the owner marked low split (pilot.lowSplit) carries the low-split flag, others do not', () => {
+  const { pack, w1, w2 } = setup();
+  const f = path.join(pack, 't8', 't8-a.json');
+  write(f, json({ ...JSON.parse(fs.readFileSync(f, 'utf8')), pilot: { lowSplit: { date: '2026-11-24', why: 'code scores 95 to 100 and one judge item' } } }));
+  const rows = byTask(pilotRows([w1, w2], { packDir: pack }));
+  assert.match(rows['t8-a#1'].flags['low-split'], /one judge item/);
+  assert.equal(rows['t8-b#1'].flags['low-split'], undefined);
+});
 
 test('each flag fires on the run that earns it and on no other', () => {
   const { pack, w1, w2 } = setup();
