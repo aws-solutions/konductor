@@ -3,7 +3,7 @@
 # test-run-standard.sh: paid-path test for run-standard.sh with a stub bench, helper and kiro-cli. No model, no keys,
 # no spend, private locks, every dir under /var/tmp. Checks the prepare-only dry run, the paid path through both
 # stages, the per-stage cap, resume, the ledger check, the stage gate, the HOME guard, the heavy-lock wait, the frozen
-# noskills hash and the frozen kit copy. Run by bench/runner/test/kit-standard.test.js.
+# noskills and list-hook hashes and the frozen kit copy. Run by bench/runner/test/kit-standard.test.js.
 #
 #   bash bench/kit/standard/test-run-standard.sh
 set -uo pipefail
@@ -20,7 +20,10 @@ const fs = require('fs'); const path = require('path');
 const a = process.argv.slice(2); fs.appendFileSync(process.env.CALLS, a.join(' ') + '\n');
 const arg = (f) => a[a.indexOf(f) + 1];
 if (a[0] === 'cap') {
-  console.log(JSON.stringify({ armSpec: `konductor-noskills=dir:${process.env.T}/variants/v1/tree`, meta: { variantHash: process.env.STUB_VHASH || 'hash-one' } }));
+  const hook = a.includes('--hook');
+  const name = hook ? 'konductor-list' : 'konductor-noskills'; const v = hook ? 'v2' : 'v1';
+  const hash = hook ? (process.env.STUB_LHASH || 'lhash-one') : (process.env.STUB_VHASH || 'hash-one');
+  console.log(JSON.stringify({ armSpec: `${name}=dir:${process.env.T}/variants/${v}/tree`, meta: { variantHash: hash } }));
 } else if (a[0] === 'scenarios') {
   console.log('| stub table |');
 } else if (a[0] === 'run' && !a.includes('--prepare-only')) {
@@ -69,8 +72,9 @@ bash -n "$SCRIPT" && ok "bash -n clean" || bad "syntax"
 : > "$T/calls"; run A --prepare-only; rc=$?
 [ "$rc" = 0 ] && ok "prepare-only exits 0" || { bad "prepare-only exit $rc"; cat "$T/log"; }
 grep -q '^cap variant .*--base '"$SHA"' --preset noskills.*--verify' "$T/calls" && ok "prepare-only builds and trial-installs noskills" || bad "no noskills --verify build: $(cat "$T/calls")"
+grep -q '^cap variant .*--base '"$SHA"' --hook list.*--verify' "$T/calls" && ok "prepare-only builds and trial-installs the list-hook arm" || bad "no list --verify build: $(cat "$T/calls")"
 grep -q '^run .*--prepare-only' "$T/calls" && [ "$(grep '^run ' "$T/calls" | grep -vc -- --prepare-only)" = 0 ] && ok "prepare-only starts no paid run" || bad "prepare-only calls: $(cat "$T/calls")"
-grep -q -- "--arms vanilla,konductor=$SHA,konductor-noskills=dir:$T/variants/v1/tree" "$T/calls" && ok "three arms passed" || bad "arms: $(grep '^run' "$T/calls")"
+grep -q -- "--arms vanilla,konductor=$SHA,konductor-noskills=dir:$T/variants/v1/tree,konductor-list=dir:$T/variants/v2/tree " "$T/calls" && ok "four arms passed" || bad "arms: $(grep '^run' "$T/calls")"
 [ ! -e "$T/A/plan.json" ] && [ -s "$T/A/prepare/plan-preview.json" ] && [ ! -e "$T/A/runs" ] && [ ! -e "$T/A/kit" ] && ok "preview plan only; no frozen plan, kit or runs" || bad "prepare-only left: $(ls "$T/A")"
 grep -q 't1-x: no recheck at v1' "$T/log" && ok "skipped tasks listed with their reason" || bad "no skipped list"
 
@@ -79,9 +83,9 @@ grep -q 't1-x: no recheck at v1' "$T/log" && ok "skipped tasks listed with their
 [ "$rc" = 0 ] && grep -q 'all units finished' "$T/log" && ok "paid path finishes both stages" || { bad "paid exit $rc"; tail -n 20 "$T/log"; }
 grep -q "kit $T/B/kit" "$T/log" && [ -f "$T/B/kit/run-standard.sh" ] && ok "paid start freezes the kit and runs the copy" || bad "kit copy: $(grep 'run-standard.sh' "$T/log")"
 [ "$(runs)" = 4 ] && ok "4 bench runs (2 batches x 2 stages)" || bad "bench runs: $(runs)"
-nth_run 1 | grep -q -- '--replicate-offset 0 --budget-credits 775 --run-credit-limit 23' && ok "stage 1 first batch: budget 800 - 0 - 25" || bad "first run: $(nth_run 1)"
-nth_run 2 | grep -q -- '--budget-credits 675 --run-credit-limit 15' && ok "second batch budget takes the stage's spend off" || bad "second run: $(nth_run 2)"
-nth_run 3 | grep -q -- '--replicate-offset 1 --budget-credits 775' && ok "stage 2 has its own cap" || bad "third run: $(nth_run 3)"
+nth_run 1 | grep -q -- '--replicate-offset 0 --budget-credits 1075 --run-credit-limit 23' && ok "stage 1 first batch: budget 1100 - 0 - 25" || bad "first run: $(nth_run 1)"
+nth_run 2 | grep -q -- '--budget-credits 975 --run-credit-limit 15' && ok "second batch budget takes the stage's spend off" || bad "second run: $(nth_run 2)"
+nth_run 3 | grep -q -- '--replicate-offset 1 --budget-credits 1075' && ok "stage 2 has its own cap" || bad "third run: $(nth_run 3)"
 [ "$(ls "$T"/B/runs/r*/*.done | wc -l)" = 4 ] && ok "4 done markers" || bad "done markers: $(ls "$T"/B/runs/r*/)"
 [ -s "$T/B/plan.json" ] && [ -s "$T/reports-B/plan.json" ] && [ -s "$T/reports-B/code-gap.md" ] && ok "plan frozen; tables and plan copied to REPORTS" || bad "reports: $(ls "$T/reports-B")"
 grep -q '^cap variant' "$T/calls" && ! grep -q '^cap variant.*--verify' "$T/calls" && ok "paid path rebuilds noskills without a trial install" || bad "paid cap variant: $(grep '^cap' "$T/calls")"
@@ -92,11 +96,11 @@ grep -q '^cap variant' "$T/calls" && ! grep -q '^cap variant.*--verify' "$T/call
 
 # C2. STAGES=3: a third replicate with its own cap (the full design of the run plan)
 : > "$T/calls"; STAGES=3 run C2 --foreground; rc=$?
-[ "$rc" = 0 ] && [ "$(runs)" = 6 ] && nth_run 5 | grep -q -- '--replicate-offset 2 --budget-credits 775' && ok "STAGES=3 runs a third stage with its own cap" || bad "STAGES=3: rc $rc, runs $(runs); $(nth_run 5)"
+[ "$rc" = 0 ] && [ "$(runs)" = 6 ] && nth_run 5 | grep -q -- '--replicate-offset 2 --budget-credits 1075' && ok "STAGES=3 runs a third stage with its own cap" || bad "STAGES=3: rc $rc, runs $(runs); $(nth_run 5)"
 
-# D. stage cap: 770 credits in the first batch leaves 5 < run limit 15, so t9 and stage 2 never start
-: > "$T/calls"; STUB_SPEND=770 run D --foreground; rc=$?
-[ "$rc" = 1 ] && [ "$(runs)" = 1 ] && grep -q 'stage cap reached before r1 t9: 770 real credits' "$T/log" && ok "stage cap stops before a batch it cannot cover" || bad "cap: rc $rc, runs $(runs); $(grep -E 'STOP|cap' "$T/log")"
+# D. stage cap: 1070 credits in the first batch leaves 5 < run limit 15, so t9 and stage 2 never start
+: > "$T/calls"; STUB_SPEND=1070 run D --foreground; rc=$?
+[ "$rc" = 1 ] && [ "$(runs)" = 1 ] && grep -q 'stage cap reached before r1 t9: 1070 real credits' "$T/log" && ok "stage cap stops before a batch it cannot cover" || bad "cap: rc $rc, runs $(runs); $(grep -E 'STOP|cap' "$T/log")"
 
 # E. a failed batch resumes with --resume on the rerun
 : > "$T/calls"; echo 4 > "$T/rc"; STUB_RC_FILE="$T/rc" run E --foreground; rc=$?
@@ -127,7 +131,9 @@ pkill -P "$HOLDER" 2>/dev/null; kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/de
 
 # J. a noskills tree that changed since the plan was frozen is refused
 : > "$T/calls"; STUB_VHASH=hash-two run B --foreground; rc=$?
-[ "$rc" = 1 ] && [ "$(runs)" = 0 ] && grep -q 'differs from the frozen plan' "$T/log" && ok "changed noskills hash refused" || bad "hash: rc $rc; $(tail -n 3 "$T/log")"
+[ "$rc" = 1 ] && [ "$(runs)" = 0 ] && grep -q 'noskills arm hash .* differs from the frozen plan' "$T/log" && ok "changed noskills hash refused" || bad "hash: rc $rc; $(tail -n 3 "$T/log")"
+: > "$T/calls"; STUB_LHASH=lhash-two run B --foreground; rc=$?
+[ "$rc" = 1 ] && [ "$(runs)" = 0 ] && grep -q 'list arm hash .* differs from the frozen plan' "$T/log" && ok "changed list-hook hash refused" || bad "list hash: rc $rc; $(tail -n 3 "$T/log")"
 
 # K. a kit that differs from the study's frozen kit is refused; the frozen copy itself still runs
 cp -a -- "$SELF" "$T/newkit" && echo '# a later edit' >> "$T/newkit/helper.js"

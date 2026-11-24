@@ -54,7 +54,8 @@ test('kit standard: helper cc-plan mirrors the plan under the cc- prefix and pri
   const repo = path.join(__dirname, '..', '..', '..');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccplan-'));
   try {
-    const plan = { konductorSha: 'kon-sha', noskillsArm: 'konductor-noskills=dir:/var/tmp/x/tree', run: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], batches: { t1: { tasks: ['a', 'b'], expected: 37.5 }, t9: { tasks: ['c'], expected: 7.5 } } };
+    // expected is in Kiro credits over the four Kiro arms (ratio sum 5.35): 53.5 is 10 plain credits, 10.7 is 2
+    const plan = { konductorSha: 'kon-sha', noskillsArm: 'konductor-noskills=dir:/var/tmp/x/tree', run: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], batches: { t1: { tasks: ['a', 'b'], expected: 53.5 }, t9: { tasks: ['c'], expected: 10.7 } } };
     const file = path.join(dir, 'plan.json');
     fs.writeFileSync(file, JSON.stringify(plan));
     const r = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'cc-plan', '.', file], { cwd: repo, encoding: 'utf8' });
@@ -62,7 +63,7 @@ test('kit standard: helper cc-plan mirrors the plan under the cc- prefix and pri
     const c = JSON.parse(r.stdout);
     assert.deepEqual(c.arms, ['cc-vanilla', 'cc-konductor=kon-sha', 'cc-konductor-noskills=dir:/var/tmp/x/tree']);
     assert.deepEqual(c.armIds, ['cc-vanilla', 'cc-konductor', 'cc-konductor-noskills']);
-    // t1: 37.5 expected Kiro credits over the ratio sum 3.75 = 10 plain credits; x 0.071 USD x (1 + 1.59 + 1.3) = 2.76
+    // t1: 10 plain credits x 0.071 USD x (1 + 1.59 + 1.3) = 2.76
     assert.equal(c.batches.t1.expectedUsd, 2.76);
     assert.equal(c.batches.t9.expectedUsd, 0.55);
     assert.equal(c.expectedUsdPerStage, 3.31);
