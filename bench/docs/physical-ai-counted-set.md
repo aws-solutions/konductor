@@ -441,7 +441,9 @@ node bench/runner/bench.js plant-host-check --release $R/release --release-sha25
 
 The shared dev host fails three gates (2026-11-24, plant-counted-r1): it refuses user namespaces
 (`unshare: Operation not permitted`), it has 40 loopback listeners outside the allowlist (local tool servers and a DNS
-stub on port 53), and `/var/tmp` sits on the same filesystem as home. The recipe:
+stub on port 53), and `/var/tmp` sits on the same filesystem as home. The ready-to-run way out is a container on the
+dev host, `bench/ops/quiet-host/` ([its README](../ops/quiet-host/README.md): steps, a free check, and an EC2 fallback).
+For any other host, the recipe:
 
 1. A fresh Linux VM or desktop used only for the run, with unprivileged user namespaces on
    (`sysctl kernel.unprivileged_userns_clone=1` where the kernel has it, `user.max_user_namespaces` above 0, no
