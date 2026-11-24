@@ -32,15 +32,12 @@ use super::install::{github, github_branch, remote_orchestrate};
 use crate::cli::output::ColorMode;
 
 // Test-only synchronization point, compiled only under `#[cfg(test)]`:
-// lets a test deterministically block `run_update_one_target` between
-// `install_from_local` completing and the finalize fresh-read, instead
-// of relying on a timing assumption about which of two racing threads
-// finishes first. The sole caller,
+// runs a test-supplied closure inside `run_update_one_target` after
+// `install_from_local` completes and before the finalize manifest
+// re-read, so a test can make a write land between the initial read and
+// that re-read without relying on thread timing. The sole caller,
 // `update_finalize_index_reflects_a_concurrently_installed_other_strategy`,
-// uses it to guarantee its concurrent installer thread's write has
-// already committed before the fresh read runs -- without this, the
-// read's outcome depends on thread-scheduling speed, which made that
-// test flaky on a different build platform.
+// uses it to add a `claude` slot mid-update.
 #[cfg(test)]
 thread_local! {
     static MID_UPDATE_SYNC_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> =
@@ -2400,33 +2397,30 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Races a real concurrent `claude` install against
-    /// `update_one_target` refreshing the already-tracked
-    /// `kiro-cli-v2` slot, proving the finalize index write re-reads
-    /// the manifest fresh instead of reusing a pre-install snapshot --
-    /// so the index agrees with the correct post-race manifest state
-    /// rather than a stale snapshot.
+    /// A `claude` install that lands while `update_one_target` refreshes
+    /// the already-tracked `kiro-cli-v2` slot must still appear in the
+    /// finalize index write, proving that write re-reads the manifest
+    /// instead of reusing the pre-install `tracked_strategy_names`
+    /// snapshot.
     ///
-    /// Ordering between the installer thread's write and this
-    /// function's own finalize fresh-read is enforced via
-    /// `MID_UPDATE_SYNC_HOOK` (a real synchronization primitive)
-    /// rather than left to thread-scheduling speed: this test asserts
-    /// on what a third, synchronous call observes DURING the race,
-    /// which needs an explicit ordering guarantee to be deterministic.
+    /// The `claude` write runs inside `MID_UPDATE_SYNC_HOOK`, which
+    /// fires after the initial manifest read and before the finalize
+    /// re-read. That forces the one ordering where the two differ: the
+    /// snapshot names only `kiro-cli-v2`, the fresh read names both. A
+    /// background thread could land before the initial read instead,
+    /// and that round would pass without exercising the re-read.
     #[test]
     fn update_finalize_index_reflects_a_concurrently_installed_other_strategy() {
-        const ITERATIONS: usize = 20;
-        for i in 0..ITERATIONS {
-            let _home = HomeGuard::new(&format!("update-finalize-race-home-{i}"));
-            let target = scratch_dir(&format!("update-finalize-race-target-{i}"));
-            let repo_root = scratch_dir(&format!("update-finalize-race-repo-{i}"));
-            install_fixture(&target, &repo_root);
+        let _home = HomeGuard::new("update-finalize-race-home");
+        let target = scratch_dir("update-finalize-race-target");
+        let repo_root = scratch_dir("update-finalize-race-repo");
+        install_fixture(&target, &repo_root);
 
-            let (installer_done_tx, installer_done_rx) = std::sync::mpsc::channel::<()>();
-            let target_for_installer = target.clone();
-            let installer = std::thread::spawn(move || {
-                let result = manifest::upsert_strategy(
-                    &target_for_installer,
+        let target_for_hook = target.clone();
+        MID_UPDATE_SYNC_HOOK.with(|hook| {
+            *hook.borrow_mut() = Some(Box::new(move || {
+                manifest::upsert_strategy(
+                    &target_for_hook,
                     StrategyManifest::new(
                         "claude",
                         "2026-01-15T09:30:00Z",
@@ -2439,85 +2433,64 @@ mod tests {
                             provenance: manifest::Provenance::Created,
                         }],
                     ),
-                );
-                // Signal unconditionally, even on failure -- the hook
-                // below must still unblock so a genuine
-                // `upsert_strategy` regression surfaces through
-                // `installer.join()`'s own assertion below, rather than
-                // hanging this test forever.
-                let _ = installer_done_tx.send(());
-                result
-            });
+                )
+                .expect("upsert_strategy must succeed mid-update");
+            }));
+        });
 
-            // Deterministically guarantees the installer's write has
-            // already committed by the time `run_update_one_target`'s
-            // finalize fresh-read executes -- see this test's own doc
-            // comment above for why a bare `thread::spawn` + late
-            // `join()` (this test's own prior shape) cannot guarantee
-            // that ordering.
-            MID_UPDATE_SYNC_HOOK.with(|hook| {
-                *hook.borrow_mut() = Some(Box::new(move || {
-                    installer_done_rx
-                        .recv()
-                        .expect("installer thread must signal completion before the finalize read");
-                }));
-            });
+        // `harness: None` is unambiguous because only `kiro-cli-v2` is
+        // tracked at the initial read; an exit of 64 here would mean
+        // `claude` landed before it.
+        let code = update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            None,
+            false, /* use_github_token */
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            false,
+            false,
+            false, /* enable_telemetry */
+            ColorMode::disabled(),
+            None, /* latest_release_tag_cache */
+        );
+        assert_eq!(code, 0, "update must succeed");
+        assert!(
+            MID_UPDATE_SYNC_HOOK.with(|hook| hook.borrow().is_none()),
+            "update must have fired the mid-update hook"
+        );
 
-            let code = update_one_target(
-                &target,
-                Some(repo_root.to_str().unwrap()),
-                None,
-                false, /* use_github_token */
-                None,  /* release_version */
-                false, /* force */
-                false,
-                false,
-                false,
-                false,
-                false, /* enable_telemetry */
-                ColorMode::disabled(),
-                None, /* latest_release_tag_cache */
-            );
-            assert_eq!(code, 0, "round {i}: update must succeed");
+        let manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        let mut manifest_names = manifest.strategy_names();
+        manifest_names.sort_unstable();
+        assert_eq!(
+            manifest_names,
+            vec!["claude", "kiro-cli-v2"],
+            "the manifest must track both strategies"
+        );
 
-            installer
-                .join()
-                .unwrap_or_else(|_| panic!("round {i}: installer thread must not panic"))
-                .unwrap_or_else(|_| panic!("round {i}: upsert_strategy must succeed"));
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        let idx = index::read_index().unwrap().unwrap();
+        let entry = idx
+            .installs
+            .iter()
+            .find(|e| e.target_dir == canonical)
+            .expect("target_dir entry must still exist");
+        let mut index_names = entry.strategies.clone();
+        index_names.sort_unstable();
+        assert_eq!(
+            index_names,
+            vec!["claude".to_string(), "kiro-cli-v2".to_string()],
+            "update's finalize write must re-read the manifest fresh, not \
+             reuse the pre-install tracked_strategy_names snapshot -- otherwise a \
+             concurrently-installed claude slot would be silently dropped from the \
+             index even though its manifest slot survives on disk"
+        );
 
-            // The manifest is always correct regardless of interleaving
-            // (manifest.rs's own locking guarantees this) -- the INDEX
-            // must now agree with it.
-            let manifest = manifest::read_manifest(&target).unwrap().unwrap();
-            let mut manifest_names = manifest.strategy_names();
-            manifest_names.sort_unstable();
-            assert_eq!(
-                manifest_names,
-                vec!["claude", "kiro-cli-v2"],
-                "round {i}: the manifest must track both strategies regardless of interleaving"
-            );
-
-            let canonical = index::canonicalize_target_dir(&target).unwrap();
-            let idx = index::read_index().unwrap().unwrap();
-            let entry = idx
-                .installs
-                .iter()
-                .find(|e| e.target_dir == canonical)
-                .unwrap_or_else(|| panic!("round {i}: target_dir entry must still exist"));
-            let mut index_names = entry.strategies.clone();
-            index_names.sort_unstable();
-            assert_eq!(
-                index_names,
-                vec!["claude".to_string(), "kiro-cli-v2".to_string()],
-                "round {i}: update's finalize write must re-read the manifest fresh, not \
-                 reuse the pre-install tracked_strategy_names snapshot -- otherwise a \
-                 concurrently-installed claude slot would be silently dropped from the \
-                 index even though its manifest slot survives on disk"
-            );
-
-            fs::remove_dir_all(&target).ok();
-            fs::remove_dir_all(&repo_root).ok();
-        }
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
     }
 
     /// A non-matching `--harness` value at a 2+-strategy target is a

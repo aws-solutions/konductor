@@ -268,13 +268,13 @@ fn expect_error(response: &serde_json::Value) -> (i64, &str) {
     (code, message)
 }
 
-/// The JSON-RPC error code rmcp 2.1.0 uses for `ErrorCode::INVALID_PARAMS`
-/// (confirmed in `rmcp-2.1.0/src/model.rs`: `pub const INVALID_PARAMS:
+/// The JSON-RPC error code rmcp 3.11.0 uses for `ErrorCode::INVALID_PARAMS`
+/// (confirmed in `rmcp-3.11.0/src/model.rs`: `pub const INVALID_PARAMS:
 /// Self = Self(-32602);` -- standard JSON-RPC 2.0 "Invalid params").
 const INVALID_PARAMS: i64 = -32602;
 
-/// The JSON-RPC error code rmcp 2.1.0 uses for `ErrorCode::INTERNAL_ERROR`
-/// (confirmed in `rmcp-2.1.0/src/model.rs`: `pub const INTERNAL_ERROR:
+/// The JSON-RPC error code rmcp 3.11.0 uses for `ErrorCode::INTERNAL_ERROR`
+/// (confirmed in `rmcp-3.11.0/src/model.rs`: `pub const INTERNAL_ERROR:
 /// Self = Self(-32603);` -- standard JSON-RPC 2.0 "Internal error").
 const INTERNAL_ERROR: i64 = -32603;
 
