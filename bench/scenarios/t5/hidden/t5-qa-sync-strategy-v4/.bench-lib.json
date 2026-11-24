@@ -1,0 +1,4 @@
+{
+  "findings-kit/findings-key.js": "findings-key.cjs",
+  "findings.test.js": "findings.test.js"
+}

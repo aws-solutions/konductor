@@ -204,3 +204,23 @@ One rubric criterion (`explanation`) carried the whole judged score. Added `ties
 `replacement-assertions-concrete` (weight 2) and `no-false-accusation` (weight 1), each with Fail, Partial and Pass
 anchors. No prompt, check, key or fixture change; gates stand. A score for the new criteria needs a re-judge (paid,
 not run). Non-Claude recheck: pending (`handEdited.version` 4).
+
+## t5-qa-checkout-strategy-v5 and t5-qa-sync-strategy-v4 (2026-11-24, mate key-rewrite worker, claude; key validity audit)
+
+New versioned tasks and keys (`hidden/<id>-vN/findings-kit/key.json`, written by `bench/scenarios/rewrite-keyword-keys.js`,
+which also checks them); the base tasks and keys are unchanged. The key validity audit of the LITE runs
+(`reports/task-key-fixes-2026-11-24.md` in the mate workspace) found that each risk's "named with a fitting test" check
+is a keyword gate: a plan that names the file and the right test loses the item when its wording is not on the list.
+The stock-race item lost it in 21 of 21 runs (plans wrote "two concurrent reserve calls, exactly one succeeds"; the
+list had atomic, concurrency, oversell, compare-and-decrement); the guard item in 17 of 20; in the sync plan the
+tie-order, retry and verification items in 13 of 18 each. Each item's fix list is now an alternative set made from the
+wordings correct plans used in the saved runs of every arm (the sets are the data in `rewrite-keyword-keys.js`; the
+derivation is `reports/task-key-fixes-2026-11-24-data/synonyms.txt`). Two items gain a second location where plans
+placed the risk: retry-double-charge also at `src/orders/checkout.js` (16 of 21 plans put the one-charge test there),
+timezone-naive-ordering also at `src/conflicts/resolve-conflict.js` (0 of 18 plans named `timestamps.js`; they tested
+offsets and zone-less strings in the conflict test). Locations otherwise, severities and the precision test are as
+before. The task check "at least 8 (6) `location` entries" becomes "at least 1": the request asks for a handful of
+risks, the precision test already bounds the list at 12, and the check still fails the untouched folder. Gates:
+reference 100, stub 7.1, lazy 37 (was 15.5: the wider sets credit the mechanical half-copy more; under the 40 gate),
+alt 100. Re-score of the saved LITE runs: checkout 59 to 82 -> 83 to 89 per arm, sync 27 to 72 -> 31 to 83.
+Non-Claude recheck: pending (`handEdited.version`).

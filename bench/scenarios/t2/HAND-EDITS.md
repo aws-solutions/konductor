@@ -196,3 +196,22 @@ kept. Re-score of the 21 saved LITE runs: the fixed keywords alone lift the hidd
 with the length term gone it is 65 to 90% (every run but one finds 6 or 7 of the 7 seeded defects). Gates: reference
 100, stub 7.1, lazy 28.6, alt 100, dump 28.6 (the dump baseline stays under the gate without the length term).
 Non-Claude recheck: pending (`handEdited.version` 5).
+
+## t2-dr-notify-fanout-v6 and t2-arch-dr-split-checkout-v4 (2026-11-24, mate key-rewrite worker, claude; key validity audit)
+
+New versioned tasks and keys (`hidden/<id>-vN/hidden/key.json`, written and checked by
+`bench/scenarios/rewrite-keyword-keys.js`); the base tasks and keys are unchanged. A seeded defect named at its section
+earns nothing unless the finding's fix or issue holds a fix keyword (`fixRequired` in the shared hidden test); the key
+validity audit of the LITE runs found the lists too narrow for the wording correct reviews use. Split review: k1
+(shared storage) missed in 18 of 21 runs that named section 3.2 (reviews wrote "owning team", "single writer", "write
+only its own tables", "written approval"; the list had service-owned schema, stop direct writes, separate database);
+k2 (compensation) in 20 of 21 ("void the authorization", "release the reservation", "reserve before authorizing"; the
+list had saga, compensating action, durable workflow); k3 in 12, k4 in 10. Fan-out review after its v4 keywords: k1 in 4
+of 18 ("ledger", "claim", "collapse key"), k2 in 1, k4 in 2. Each item's list is now an alternative set made from the
+saved runs of every arm (the sets are the data in `rewrite-keyword-keys.js`; derivation in
+`reports/task-key-fixes-2026-11-24-data/synonyms.txt`); the gate itself stays, so a generic remark at a section still
+earns nothing. The split review also gets `"lengthAllowance": null` (no length term; the request sets no cap), as the
+fan-out review has since v5. Sections, severities and the three structural checks are as before. Gates: reference 100,
+stub 7.1, lazy 28.6, alt 100, dump 28.6. Re-score of the saved LITE runs: split review 52 to 67 -> 93 to 95 per arm,
+fan-out 46 to 52 -> 85 to 91. Both now sit in a narrow band near the top (the audit's section on discrimination).
+Non-Claude recheck: pending (`handEdited.version`).

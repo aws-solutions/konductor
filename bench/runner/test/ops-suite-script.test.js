@@ -19,3 +19,11 @@ test('run-full-suite-twice-v2.sh: every stub case passes (reading, arm skips, co
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /all cases pass/);
 });
+
+test('run-overnight.sh: the stub cases pass (step order, stop at a failing step, give-up after the wait limit)', { timeout: 120000 }, () => {
+  const env = { ...process.env };
+  for (const k of ['KONDUCTOR_WS', 'OVERNIGHT_WAIT_PAT', 'OVERNIGHT_POLL_S', 'MAX_WAIT_MIN']) delete env[k];
+  const r = spawnSync('bash', [path.join(__dirname, '..', '..', 'ops', 'workspace', 'test-run-overnight-stub.sh')], { encoding: 'utf8', env, timeout: 110000 });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /all cases pass/);
+});

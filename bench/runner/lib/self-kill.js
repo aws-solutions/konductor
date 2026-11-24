@@ -4,12 +4,11 @@
 // hung probe, the pattern also matched kiro-cli's own node, and kiro-cli exited on SIGTERM. That is the agent's own act,
 // a run result, not an infrastructure failure, so the runner flags it and the infra check does not count it.
 const path = require('node:path');
+const { readTextOrNull } = require('./util.js');
 
 const KILL_RE = /\b(pkill|killall|kill)\b/;
 const INTERRUPTED = 'interrupted before it reported a result';
 const SELF_KILL_FLAG = 'agentSelfKill';
-const { readTextOrNull } = require('./util.js');
-
 const readText = (f) => readTextOrNull(f) ?? ''; // a missing file reads as empty
 
 /**

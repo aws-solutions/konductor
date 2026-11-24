@@ -235,6 +235,10 @@
       "sha256": "3a22863919ce53397c0a90ab739770910b24fba1e33aa93b5e728c57098974a8",
       "legacyRecheckVersion": 3
     },
+    "t2-arch-dr-split-checkout-v4": {
+      "version": 4,
+      "sha256": "5aa510165e8b0708f88e82cc847439771af5ccf952deeab085ee231ad20bb40c"
+    },
     "t2-arch-dr-two-regions": {
       "version": 5,
       "sha256": "8681136eb7b073d5f29f1ec19a1233ef27175304470ab539ddeef7cf422c6e9d",
@@ -261,6 +265,10 @@
     "t2-dr-notify-fanout-v5": {
       "version": 5,
       "sha256": "d15762959772da91879d8ccd5e33a3eb0ac3c7933eb65dfbe60d40d892a8a362"
+    },
+    "t2-dr-notify-fanout-v6": {
+      "version": 6,
+      "sha256": "66446cfb4d20f9de263079a3d7a490b92638929c31e7206cca1e0d5744163e9d"
     },
     "t2-dr-orders-dynamo-model": {
       "version": 1,
@@ -550,6 +558,10 @@
       "version": 4,
       "sha256": "1b4f8d9939861dbccedfdea9fee59aba0c31f0867b3bec3573067717dce19c2e"
     },
+    "t5-qa-checkout-strategy-v5": {
+      "version": 5,
+      "sha256": "b2b5bc6b785cd50c2180d33c753b7c3c54f4a404406b57d44eefe6378dd37353"
+    },
     "t5-qa-flaky-fix": {
       "version": 2,
       "sha256": "18c0ae78b4297c5cbd6ddbd0c1e60af7b7f4297d495d0cc6acfff83530ba65a4",
@@ -584,6 +596,10 @@
       "version": 3,
       "sha256": "6e605a1330594a87279c1edc344098d2d1d17164549700b9385d4cba63257ff6",
       "legacyRecheckVersion": 2
+    },
+    "t5-qa-sync-strategy-v4": {
+      "version": 4,
+      "sha256": "4d9868410020c6ec46e7deec255a6c855c081fbf216ae3449342ccfefa2e58ab"
     },
     "t6-architect-idea-spike": {
       "version": 3,
