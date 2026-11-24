@@ -426,7 +426,10 @@ stub on port 53), and `/var/tmp` sits on the same filesystem as home. The recipe
 1. A fresh Linux VM or desktop used only for the run, with unprivileged user namespaces on
    (`sysctl kernel.unprivileged_userns_clone=1` where the kernel has it, `user.max_user_namespaces` above 0, no
    AppArmor rule that restricts them). `unshare -Urm true` must exit 0.
-2. Nothing else listening on loopback or wildcard addresses. sshd on a non-loopback address is fine. Do not run Kiro
+2. Nothing else listening on loopback or wildcard addresses. sshd on `0.0.0.0:22` and chronyd on `127.0.0.1:323`
+   count as listeners too: reach the host with SSM Session Manager and stop sshd and chronyd for the run, or list them
+   in the release's `network-allowlist.txt` (`tcp 0.0.0.0:22 sshd`) and sign it again. A container on its own network
+   has no listeners at all. Do not run Kiro
    Crew, IDE servers or other agents on it during a wave.
 3. A separate mount for the out dir (for example `/var/tmp` on its own disk), outside home and outside `TMPDIR`.
 4. The pinned Kiro CLI build installed, the owner signed in, and the cedarpy Python venv (plus MuJoCo for the arm).
