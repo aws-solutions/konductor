@@ -65,19 +65,21 @@ function withSource(tree) {
   rehash(tree.dir, { sources: { [PILOT]: { ...src, subject_sha256: unit.sha256 } } });
 }
 
-test('all 35 of Michael Lin\'s baselines pass the full verifier against this tree, every one with a status', () => {
+test('33 of Michael Lin\'s 35 baselines pass the full verifier against this tree, every one with a status (K-7 retired two)', () => {
   const v = verifyBaselines({ dir: BASELINES_DIR, skillsDir: SKILLS });
   assert.deepEqual(v.problems, []);
-  assert.equal(v.skillCount, 35);
-  assert.equal(v.fileCount, 175);
+  assert.equal(v.skillCount, 33);
+  assert.equal(v.fileCount, 165);
   const status = baselineStatus({ skillsDir: SKILLS });
   const by = Object.fromEntries(status.map((s) => [s.skill, s.status]));
-  assert.equal(by['asana-sprint-planning'], 'folded');
+  // K-7 (owner yes, 2026-11-24): the folded asana-sprint-planning and adr-generator baselines are retired; the merged
+  // skills get fresh baselines in the next approved baseline run.
+  assert.equal(by['asana-sprint-planning'], undefined);
+  assert.equal(by['adr-generator'], undefined);
   assert.equal(by['dynamodb-validation'], 'removed');
-  assert.equal(by['adr-generator'], 'folded', 'folded into decision-writing by main (#166)');
   assert.equal(by['sprint-planning'], 'stale');
   const count = (s) => status.filter((x) => x.status === s).length;
-  assert.equal(count('fresh') + count('stale') + count('folded') + count('removed'), 35);
+  assert.equal(count('fresh') + count('stale') + count('folded') + count('removed'), 33);
 });
 
 test('the verifier refuses an unlisted file, a missing listed file, invalid rules and a repeated key', (t) => {

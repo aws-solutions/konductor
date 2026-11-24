@@ -1,11 +1,6 @@
 {
   "format_version": 1,
   "files": {
-    "adr-generator/rules.json": "a263fa38f35fcbd5fba76002e0da1c4ecae42f7920ad27ae4b1f9ff8afcbbe5a",
-    "adr-generator/tasks-rules-c1.buckets.json": "4237d6239107823f522858066efd985f52b43b962df1377902f988773eedee5e",
-    "adr-generator/tasks-rules-c1.json": "26ededa9e3db59cdf6e457163bf6d65f0081be913f9c19d83fef8197ed5cf88e",
-    "adr-generator/tasks-rules-v1.buckets.json": "3a2d6d9bc1b88e072539375a082eb2a5945d6e397c9d35c3833fe9bb94ae2fdf",
-    "adr-generator/tasks-rules-v1.json": "1c2957c06d29a04e9e88ab9393ce7ccf94f3c9ca23eaf3561bdb2dd800bcb2ef",
     "adversarial-code-review/rules.json": "60203277da9dc6d0191fd5c7f18dc799e06c7c67a3643913ee4b0881009ee341",
     "adversarial-code-review/tasks-rules-b3.buckets.json": "cc0723f6b4d34fff9a53619f50c46adabca6f45bd960af2756b32a614f7eab5a",
     "adversarial-code-review/tasks-rules-b3.json": "0fdcd842fef6946b46cea8d87634a854e3fc85b1c9193d291d843aab69df59d6",
@@ -16,11 +11,6 @@
     "adversarial-code-review-pass-integrity/tasks-rules-b4.json": "ccd841b090435dc766ac6433703c167d7181d68122e6b75bf6e8fe691f53fa88",
     "adversarial-code-review-pass-integrity/tasks-rules-c3.buckets.json": "e12c56879c65a33df1803898efc63b24d4ae9e667155ea124bfff863a38382ed",
     "adversarial-code-review-pass-integrity/tasks-rules-c3.json": "aa43de28d4141c9d5804915394800decad4490c402cf55074d7e95cd8b65f35e",
-    "asana-sprint-planning/rules.json": "8ecc980377744952b2aba10adea3a6821909043c3e1828f91e02a1fb3e5cbfc8",
-    "asana-sprint-planning/tasks-rules-b5.buckets.json": "e3a2f03f9465f334c2f8aca83fdbd3e1b6359a4d5bdd44748194594e47ceaa78",
-    "asana-sprint-planning/tasks-rules-b5.json": "bb40111b344ae2a7d13b6f3c178a602bd4c357add6668d13d757671f9f2f9708",
-    "asana-sprint-planning/tasks-rules-c4.buckets.json": "e4bb03a3b9fb75b902d801b5c0de92db4bb6cc322c0094d867d433ab893c201a",
-    "asana-sprint-planning/tasks-rules-c4.json": "916c1c5fadb8c3495763c4cb0e899b4fb20621384ed97848acc4dba6211dfe88",
     "code-review/rules.json": "04e97748cf87874f090c6c863c5bf023b511afff88ebae3b2cbad6bc82af0c20",
     "code-review/tasks-rules-b6.buckets.json": "e36c87438714b9dd76d0f0a6a0276551a905ba6919fe8047201ce00f6a968531",
     "code-review/tasks-rules-b6.json": "34caa4bc05daf7f80be47f4db934344642ed118c802449d052f231b04b474476",
@@ -178,26 +168,6 @@
     "user-story-writing/tasks-rules-c2.json": "e22bb1d3a6cd336911e4329986399418f9679e002895d37edb056c8a985378f2"
   },
   "identities": {
-    "adr-generator": {
-      "replaced_by": "decision-writing",
-      "how": "folded",
-      "note": "folded in #166 (5464bf0a): decision-writing gained an ADR Mode with the generator's steps; the old ADR tasks and rule quotes do not establish equivalence with decision-writing",
-      "migration": {
-        "approved_by": null,
-        "date": null,
-        "note": ""
-      }
-    },
-    "asana-sprint-planning": {
-      "replaced_by": "sprint-planning",
-      "how": "folded",
-      "note": "asana-sprint-planning was removed and its material folded into sprint-planning's references/asana.md. Its old tasks and rule quotes do not establish equivalence with the new skill plus its reference.",
-      "migration": {
-        "approved_by": null,
-        "date": null,
-        "note": ""
-      }
-    },
     "dynamodb-validation": {
       "replaced_by": null,
       "how": "removed",

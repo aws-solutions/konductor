@@ -1,6 +1,6 @@
 # Frozen baselines for the quick check
 
-All 35 baselines are copied from Michael Lin's `bench/baselines/` (pull requests #268 to #271, commit `33b385f9`), same repository, Apache-2.0. The skill folders are byte-identical to his. `MANIFEST.json` holds his hashes for them, plus one cap field, `identities`.
+33 baselines are copied from Michael Lin's `bench/baselines/` (pull requests #268 to #271, commit `33b385f9`), same repository, Apache-2.0. The skill folders are byte-identical to his. His other two, `asana-sprint-planning` and `adr-generator`, were retired on 2026-11-24 (owner decision, DEBT K-7): both skills were folded into others (`sprint-planning`, `decision-writing`), so their old tasks no longer test a skill; the merged skills get fresh baselines in the next approved baseline run. `MANIFEST.json` holds his hashes for them, plus one cap field, `identities`.
 
 Each skill folder has `rules.json` (the skill's rules and the hash of the SKILL.md they came from) and two batches of 8 tasks (`tasks-<batch>.json`, with `.buckets.json` sidecars). A folder may also have `selection.json`, the requests for the selection test (`cap select`): at least 3 that should load the skill and 3 that should not, none naming it. None of the 35 has one yet; each is drafted and checked as the baseline rule in design 20.10 says.
 
