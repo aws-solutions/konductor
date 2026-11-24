@@ -225,6 +225,30 @@
       "version": 5,
       "sha256": "40b12cee682980cadc0db2f706560e3972f1449748d113fb517121afa300542e"
     },
+    "t13-doc-agents-onboarding": {
+      "version": 1,
+      "sha256": "1e7bff20ed25dad6d501abf1647e447c0267420bbb1cec6b8c84bff9d1fa660a"
+    },
+    "t13-doc-api-reference-drift": {
+      "version": 1,
+      "sha256": "c8d45eda6bd498f1f1e43e695717ce6ca8f353321df2b84ec3d3fa54b672ceac"
+    },
+    "t13-log-auth-credential-stuffing": {
+      "version": 1,
+      "sha256": "df79c009555e40b34d5ff5da90c03481b615e8bdd54c053a319ed2f3bbfb1e3d"
+    },
+    "t13-log-batch-slowdown": {
+      "version": 1,
+      "sha256": "4f28763c4ce86e05ae20559863c2e6be4d7c3e014d6eecc1c542e6181b322bea"
+    },
+    "t13-triage-crash-reports": {
+      "version": 1,
+      "sha256": "9fe3942e784f9bedcacaece962a72bcf6b176dedd2386d0fea84896e9f024762"
+    },
+    "t13-triage-issue-queue": {
+      "version": 1,
+      "sha256": "055eae541fd320e110daeb2e7746031e371de967f10ba806d76a0902e23c5db3"
+    },
     "t2-arch-dr-event-store": {
       "version": 5,
       "sha256": "b3291963eb8a734a4d186d4c81745b7ae5e3b5200206a61c58d114a77a30b298",
