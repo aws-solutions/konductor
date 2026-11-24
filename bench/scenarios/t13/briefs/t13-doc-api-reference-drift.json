@@ -1,0 +1,26 @@
+{
+  "id": "t13-doc-api-reference-drift",
+  "kind": "doc",
+  "phase": "documentation",
+  "role": "developer",
+  "questions": "scripted",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "answerer": "glm-5",
+  "stack": "node",
+  "size": "30 to 40",
+  "voice": "a maintainer of a small open-source library, writing to a contributor",
+  "source": { "url": "https://github.com/sindresorhus/p-queue", "licence": "MIT; idea only (a small queue library whose docs could drift), no text used", "licenceCheckedAt": "2026-11-24", "use": "idea" },
+  "outFile": "docs/api.md",
+  "blockFields": "`functions` (list of `{ \"name\", \"signature\", \"defaults\" (object of the option defaults as numbers or booleans), \"status\" (one of `current`, `deprecated`, `removed-from-docs`) }`, one per function the document covers), `examplesChecked` (the number of fenced ```js blocks in README.md and docs/api.md that the agent ran), `notes` (list of short strings: what was wrong before, and what the colleague confirmed).",
+  "kindExtra": "Key shape for this task: one `some` item per current function (6) matching `name` and `status: current`; `number` items for the four option defaults read from the `createQueue` entry's `defaults`; one `some` item for the deprecated function (`status: deprecated`) and a `text` item on its `notes` or signature naming the replacement (`drain|use drain|replaced by drain`); one `none` item that no function with `status: current` matches the removed function's name; one `number` item `examplesChecked` equal to the count of fenced js blocks (tolerance 0); three `text` items for the asked facts. Beside the block key, write `hidden/examples.test.js` yourself (selfcheck keeps extra hidden files) and add a second `tests` check for it: it extracts every fenced ```js block from README.md and docs/api.md, writes each to a temp file beside `src/`, runs it with `node` and a 5 s timeout, and fails on a non-zero exit; it asserts at least 4 blocks. A `fixture_unchanged` check covers `src/` and `test/`.",
+  "scriptedUser": {
+    "facts": [
+      { "id": "F1", "topics": ["node version", "node versions", "which node", "supported node", "engines", "node 16", "runtime"], "answer": "We support Node 18 and 20. Node 16 was dropped in 2.0, so the docs should say 18 or newer." },
+      { "id": "F2", "topics": ["retrynow", "retry now", "deprecated", "removal", "removed in", "when will", "which release"], "answer": "retryNow goes away in 3.0. No date is set, so say 'removed in 3.0' and point people at drain." },
+      { "id": "F3", "topics": ["report bugs", "bug report", "where to report", "issues page", "issue tracker", "contact", "support email"], "answer": "Bugs go to the GitHub issues page, not email. Please say so in the README." }
+    ]
+  },
+  "brief": "Phase: technical documentation. Role: developer (library maintainer). Repo: a small Node.js library `@acme/retry-queue` (about 500 lines in `src/`, CommonJS, no dependencies) with a passing test suite. Its README.md and docs/api.md were written for version 1 and never updated; users file issues saying the examples fail. Build `src/` with exactly six exported current functions: `createQueue(opts)`, `enqueue(queue, job, opts)`, `drain(queue)`, `onFailure(queue, fn)`, `pause(queue)`, `resume(queue)`, with option defaults in code of `maxAttempts: 5`, `baseDelayMs: 200`, `jitter: true`, `concurrency: 4`; plus one exported function `retryNow(queue)` marked `@deprecated` in its JSDoc and replaced by `drain`. Give `enqueue`'s JSDoc a typo in a parameter name (`attemts`) while the code says `attempts`; the docs must follow the code and the agent must not edit `src/`. Write the stale docs for v1: `createQueue(maxAttempts, delay)` positional, defaults stated as 3 attempts and 100 ms, a function `flush(queue)` that no longer exists, no mention of `pause` and `resume`, four fenced ```js examples of which three fail against today's code and one still runs. CHANGELOG.md records every change tersely and honestly (2.0.0: options object; defaults 5 attempts and 200 ms; `flush` removed, use `drain`; `retryNow` deprecated). docs/STYLE.md has two rules: examples use `require`, and every function gets a one-line summary before its signature. The request asks the agent to bring README.md and docs/api.md in line with `src/`, make every example run as written, mark deprecated things and name their replacement, not change library code or tests, and end docs/api.md with the JSON block. The lazy answer keeps the old defaults and bumps the version; the copy answer pastes the CHANGELOG into the README; both must fail the examples test and the defaults items. The three scripted facts (Node versions, the removal release of retryNow, where to report bugs) are not in the repo; the reference asks for them and states them with 'the maintainer confirmed'.",
+  "briefNote": "Full brief with the key table, rubric and gates: reports/new-task-briefs-2026-11-24/t13-doc-api-reference-drift.md in the owner workspace."
+}

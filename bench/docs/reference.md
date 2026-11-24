@@ -1317,7 +1317,9 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   entry of a linted task that no longer matches (remove it: the baseline only shrinks).
 - `scenarios coverage DIR --base REF|dir:PATH [--selection-only FILE] [--out DIR] [--fail-on-hole]` builds the coverage matrix from the task files and writes
   `coverage.json` and `coverage.md` (into `--out`, default DIR). View 1 is phase by role: counts of real tasks (not twins or controls) against the target
-  counts of the plan, a phase needing 8 tasks and 5 held-out, a role 8 real tasks. View 2 has one row per skill, SOP and agent of the tree: owner agents,
+  counts of the plan, a phase needing 8 tasks and 5 held-out, a role 8 real tasks. The rows are the plan's 15 phases plus three added on 2026-11-24 for
+  batch T13 (`documentation`, `triage`, `log-analysis`, two tasks each as the target; `coverage.js` ADDED_PHASES); the LITE rule reads the 15 core phases
+  only, so adding a phase never moves a locked level pick. View 2 has one row per skill, SOP and agent of the tree: owner agents,
   targeted tasks split into DEV and HELD-OUT by the SR-32 rule (`bench/scenarios/split.js`), twins and controls, effect tasks and a status. A unit is
   **covered** with 3 targeted tasks (2 HELD-OUT) and 1 twin or control (a twin of a task that targets it, or a control that lists it in
   `loadCheck.mustNotLoad`). A unit short of that is a **hole**, or **selection-only** when `selection-only.json` (`{ "skill:name": "reason" }`, beside

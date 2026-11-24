@@ -10,7 +10,7 @@ const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench } = require('./helpers.js');
 const { selectLevel, planLevel, levelRecord, levelHeader, LITE_PHASES } = require('../../scenarios/levels.js');
 const { splitOf, hashOf } = require('../../scenarios/split.js');
-const { PHASES } = require('../../scenarios/coverage.js');
+const { CORE_PHASES, ADDED_PHASES } = require('../../scenarios/coverage.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 
@@ -144,5 +144,8 @@ test('the CLI refuses --level full without --prereg and --level beside --tasks, 
   assert.match(full.stderr, /--level full is the pre-registered run: give --prereg FILE/);
   const both = cli(['--level', 'lite', '--tasks', 't1']);
   assert.match(both.stderr, /--level and --tasks both select tasks/);
-  assert.equal(PHASES.length - 1, LITE_PHASES.length);
+  // The LITE rule reads the plan's 15 core phases minus multi-phase; phases added later (T13) stay out of it.
+  assert.equal(CORE_PHASES.length - 1, LITE_PHASES.length);
+  assert.equal(LITE_PHASES.length, 14);
+  for (const p of ADDED_PHASES) assert.ok(!LITE_PHASES.includes(p));
 });

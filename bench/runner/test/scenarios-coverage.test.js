@@ -10,7 +10,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write } = require('./helpers.js');
 const { splitOf, hashOf } = require('../../scenarios/split.js');
-const { buildCoverage, renderCoverageMd, PHASES, ROLES, TARGET } = require('../../scenarios/coverage.js');
+const { buildCoverage, renderCoverageMd, PHASES, CORE_PHASES, ADDED_PHASES, ROLES, TARGET, PHASE_LABEL } = require('../../scenarios/coverage.js');
 const { scanRepo, loadAgentSpecs } = require('../../cap/scan.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
@@ -39,11 +39,29 @@ test('the split follows the SR-32 rule: the first 8 hex digits of the salted sha
   assert.equal(splitOf('abc'), want);
 });
 
-test('the target matrix sums to the plan: 131 real tasks, 8 to 11 per phase', () => {
-  const total = PHASES.reduce((n, p) => n + ROLES.reduce((m, r) => m + TARGET[p][r], 0), 0);
+test('the target matrix sums to the plan: 131 real tasks over the 15 core phases, 8 to 11 per phase', () => {
+  const total = CORE_PHASES.reduce((n, p) => n + ROLES.reduce((m, r) => m + TARGET[p][r], 0), 0);
   assert.equal(total, 131);
-  const roles = Object.fromEntries(ROLES.map((r) => [r, PHASES.reduce((n, p) => n + TARGET[p][r], 0)]));
+  const roles = Object.fromEntries(ROLES.map((r) => [r, CORE_PHASES.reduce((n, p) => n + TARGET[p][r], 0)]));
   assert.deepEqual(roles, { pm: 13, tpm: 12, architect: 24, developer: 36, frontend: 8, qa: 8, security: 8, sre: 10, reviewer: 12 });
+});
+
+test('the three added phases (T13) sit after the core ones, each with a label and a two-task target, and count in the matrix', () => {
+  assert.deepEqual(ADDED_PHASES, ['documentation', 'triage', 'log-analysis']);
+  assert.deepEqual(PHASES, [...CORE_PHASES, ...ADDED_PHASES]);
+  for (const p of ADDED_PHASES) {
+    assert.equal(typeof PHASE_LABEL[p], 'string');
+    assert.equal(ROLES.reduce((n, r) => n + TARGET[p][r], 0), 2);
+  }
+  const scan = new Map();
+  const tasks = [
+    { id: 't13-doc-a', prompt: 'p', phase: 'documentation', role: 'developer' },
+    { id: 't13-log-a', prompt: 'p', phase: 'log-analysis', role: 'security' },
+  ];
+  const cov = buildCoverage({ tasks, scan });
+  assert.equal(cov.matrix.cells.documentation.developer.count, 1);
+  assert.equal(cov.matrix.phaseTotals['log-analysis'].count, 1);
+  assert.ok(cov.shortfalls.includes('phase triage has 0 tasks, needs 8'));
 });
 
 function fixtureTasks() {

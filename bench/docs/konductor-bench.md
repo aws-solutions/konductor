@@ -198,6 +198,7 @@ The same comparison runs for `konductor` against `konductor-noskills` and for `k
 | Piece | State |
 | --- | --- |
 | Task batches t1 to t12 | in `bench/scenarios/`, listed by `suites/pack.json` |
+| Task batch t13 (documentation, triage, log analysis) | briefs, config and tests in `bench/scenarios/t13/`; the six tasks wait for the paid authoring step |
 | Leak lint, coverage matrix, run levels, pre-registration lock, bootstrap and verdict words | built (`bench/scenarios/`) |
 | `konductor-noskills` arm, the per-run load check, and dropping one SOP or agent (`cap variant --drop`) | built |
 | LITE | ran on 2026-11-21 on Kiro CLI; a check, not a verdict |

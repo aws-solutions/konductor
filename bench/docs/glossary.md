@@ -17,7 +17,7 @@ reports print it.
 | **Replicate** | One more run of the same task and arm. Several replicates show how much results jump around. |
 | **A/A pair** | The same arm run twice under two names. The gap between the two is the noise. |
 | **Suite** | A named set of tasks and arms for `run --suite NAME`, such as `hard`. |
-| **Pack** | The scenario tasks T1 to T12 (`bench/scenarios/`, listed in `suites/pack.json`). |
+| **Pack** | The scenario tasks T1 to T12 (`bench/scenarios/`, listed in `suites/pack.json`). T13 (documentation, triage, log analysis) holds briefs only until its paid authoring step runs. |
 | **Run level** | LITE, STANDARD or FULL: how much of the pack one study runs ([run levels](run-levels.md)). Not the same as `--suite lite`. |
 | **DEV, HELD-OUT** | Every pack task is split by a fixed hash of its id. Tuning happens on DEV; a FULL verdict comes from HELD-OUT only. |
 | **Sandbox** | The walls a run gets: its own home and scratch dir, with the rest of the host hidden or read-only (`--isolate unshare` on Linux, `sandbox-exec` on macOS). |

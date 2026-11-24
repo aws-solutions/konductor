@@ -15,12 +15,13 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const { taskFilesOf } = require('./files.js');
 const { hashOf, splitOf } = require('./split.js');
-const { PHASES, ROLES } = require('./coverage.js');
+const { CORE_PHASES, ROLES } = require('./coverage.js');
 
 const LEVELS = ['lite', 'standard', 'full'];
 const LITE_SOFT_SEC_MAX = 900;
-// The 14 phases of the LITE rule: the taxonomy without the long multi-phase row.
-const LITE_PHASES = PHASES.filter((p) => p !== 'multi-phase');
+// The 14 phases of the LITE rule: the plan's taxonomy without the long multi-phase row. Phases added later (ADDED_PHASES)
+// stay out, so the locked LITE and STANDARD picks do not move when a new type of work gets tasks.
+const LITE_PHASES = CORE_PHASES.filter((p) => p !== 'multi-phase');
 
 const softSecOf = (t) => t.limits?.softSec ?? t.timeoutSec ?? Infinity;
 const byHash = (a, b) => hashOf(a.id) - hashOf(b.id) || (a.id < b.id ? -1 : 1);
