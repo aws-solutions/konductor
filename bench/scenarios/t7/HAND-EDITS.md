@@ -182,3 +182,15 @@ says "on the shared tool" (every run copied the memo and failed); `pilot-ready-d
 migration dependency (8 runs carry REQ-012 on no migration workstream), which are substance, not wording. Same
 fixture and prompt as v5; 20 assertions. Gates: reference 100, stub 4.8, lazy 39.3, alt 100. Non-Claude recheck:
 pending (`handEdited.version` 6).
+
+## Expert keys for three code-saturated tasks (2026-11-24, mate debt worker, claude; owner yes on D-139)
+
+Tasks: t7-dep-conflicts v6, t7-program-rollup v6, t7-status-slip v5.
+
+Pilot wave 7 scored these 100 on code for any decent answer, and they had no `expertKey`, so only the two-item rubric could separate answers. Each now has four expert items read from its own fixture (beyond the seeded findings the hidden tests and rubric already check) and four weak answers:
+
+- t7-dep-conflicts: the full driver chain to DLT-045; the ATL-007 and CND-009 misses also reach the launch, so fixing CND-017 alone leaves a six-day slip to 2027-10-06; a feasible pull-in of the one-point CND-017 in S16; a way to break the BCN-020/CND-020 cycle before its 2027-08-20 and 2027-08-22 needs.
+- t7-program-rollup: 129 points of capacity by 2027-10-15 against 254 open (about 125 to cut); ARC's 88 open points exceed its own 87 through S-15, so the pooled 2027-11-26 date needs work to move; the 37-point serial chain; a dated unblock ask for ARC-117 and the stale BEAM-224 row.
+- t7-status-slip: the reversal of last week's green note; the 18-point velocity, not the 23.6 normalized capacity, drives the date; PLT-014 is Low priority and unassigned at the head of the critical path; 2027-07-18 holds only once PLT-014 has an owner.
+
+The two keys the owner was asked about (t7-sprint-capacity, the estimate key) are kept as they are. Not rechecked yet: each needs one non-Claude recheck at its new version (paid; owner command in reports/debt-owner-decisions-2026-11-24.md).

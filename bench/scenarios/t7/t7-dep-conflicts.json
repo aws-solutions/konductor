@@ -1,7 +1,7 @@
 {
   "id": "t7-dep-conflicts",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -60,6 +60,36 @@
       "weight": 2
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "driver-chain",
+        "source": "Wikipedia, Critical path method, https://en.wikipedia.org/wiki/Critical_path_method (CC BY-SA 4.0, idea only)",
+        "text": "Shows why a 1-point ticket drives the launch by tracing the register chain CND-017 -> DLT-011 -> DLT-025 -> CND-030 -> DLT-039 -> DLT-041 -> DLT-043 -> DLT-045. Naming four or more links in order passes. Weak: names CND-017 as the driver with no chain."
+      },
+      {
+        "id": "second-slip",
+        "source": "Wikipedia, Critical path method, https://en.wikipedia.org/wiki/Critical_path_method (CC BY-SA 4.0, idea only)",
+        "text": "Notes that the ATL-007 and CND-009 misses also reach DLT-045 (ATL-007 via BCN-012, CND-004 and DLT-004; CND-009 via BCN-024 and CND-028), so recovering CND-017 alone still leaves a six-day slip to 2027-10-06. Either path with its new date passes. Weak: implies fixing CND-017 restores 2027-09-30."
+      },
+      {
+        "id": "recovery-ask",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
+        "text": "Gives a concrete recovery ask for the driver: CND-017 is one point and Cinder has 20 points in S16 (2027-08-02 to 2027-08-13), so pulling it in to meet the 2027-08-10 need looks feasible. Weak: \"escalate the dependency\" with no ask."
+      },
+      {
+        "id": "cycle-break",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "Proposes how to break the BCN-020/CND-020 cycle (one side ships an agreed interface or stub first) and names the needed-by dates 2027-08-20 and 2027-08-22 it must beat. Weak: names the cycle with no way out."
+      }
+    ],
+    "weakAnswers": [
+      "The launch moves to 2027-10-08 because CND-017 is late, with no chain shown.",
+      "Fixing the CND-017 handoff puts the launch back on 2027-09-30.",
+      "There is a circular dependency between Beacon and Cinder that the teams should discuss.",
+      "Several handoffs are late, so the teams should escalate them."
+    ]
+  },
   "targetSkills": [
     "program-planning",
     "progress-tracking"

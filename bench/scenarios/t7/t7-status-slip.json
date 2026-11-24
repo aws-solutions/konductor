@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -60,6 +60,36 @@
       "weight": 1
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "reversal-stated",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
+        "text": "Says plainly that last week's note (week ending 2027-06-07) called the launch green and on track for 2027-06-25, and that this update reverses it. Weak: reports red with no mention of last week's green."
+      },
+      {
+        "id": "velocity-not-capacity",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
+        "text": "Forecasts from the 18-point delivered velocity and says the 23.6 normalized capacity is a planning allowance, not delivery, so a capacity-based date would be earlier than the data supports. Weak: divides the open points by the capacity sheet."
+      },
+      {
+        "id": "priority-mismatch",
+        "source": "Wikipedia, Critical path method, https://en.wikipedia.org/wiki/Critical_path_method (CC BY-SA 4.0, idea only)",
+        "text": "Flags that PLT-014 is recorded as Low priority with no assignee although it starts the critical path, and asks to raise it. Weak: treats PLT-014 as a routine low-priority item."
+      },
+      {
+        "id": "date-condition",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "States that 2027-07-18 holds only if PLT-014 gets an owner now, and that each day it stays unassigned moves the date. Weak: gives the date with no condition."
+      }
+    ],
+    "weakAnswers": [
+      "The launch is amber and should land shortly after 2027-06-25.",
+      "The team has 23.6 points of capacity, so the 24 open points finish in about one sprint.",
+      "The launch is red; teams are working hard to recover.",
+      "PLT-014 is a low-priority platform item and does not need leadership attention."
+    ]
+  },
   "targetSkills": [
     "status-reporting",
     "risk-management",
