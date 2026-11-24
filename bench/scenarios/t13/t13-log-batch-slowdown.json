@@ -123,7 +123,35 @@
         "verdict": "pass",
         "note": "All key values are derivable: growth rate ~11 min/night from finish-time sequence (04:18, 04:30, 04:41, 04:52... = +12, +11, +11); first slow night 04-03 from workers=2 in logs; predicted miss 04-15 from 06:24 + 11 = 06:35 > 06:30 deadline."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks for SRE analysis of logs without prescribing specific method; specifies JSON format but not analysis approach."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains logs, config history, volume data; answer requires analyzing finish times, identifying parallelism change, calculating trends."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Key references log dates, enrich stage, parallelism change, evidence paths that exist in fixture; rubric aligns with analysis method and cause identification."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can parse logs, find finish times, identify 2026-04-03 change, calculate growth rate, predict miss date using 06:30 deadline."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

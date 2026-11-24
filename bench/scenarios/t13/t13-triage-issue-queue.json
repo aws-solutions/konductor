@@ -128,7 +128,35 @@
         "verdict": "pass",
         "note": "The task is fair: all required facts (releaseFreeze, securitySla, webCapacity) must be obtained from the scriptedUser since they're not in the fixture. All evidence citations have corresponding support in the issues (export, Safari, 10 MB, etc.). The CODEOWNERS provides 5 teams that cover all 24 issues."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks to triage 24 issues using local docs without prescribing method. No misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains issue files, CODEOWNERS, severity docs. Does not list answer or describe finished triage decisions."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Key checks all issues present, facts from scripted questions, owners from CODEOWNERS, evidence citations exist, rubric aligns with request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer could read issues, apply severity ladder, assign owners, identify duplicates. Edits widened acceptance (patterns, precision threshold, ranges)."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

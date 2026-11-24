@@ -116,7 +116,35 @@
         "verdict": "pass",
         "note": "All key values are derivable from the fixture: SyncRoot has exactly 170 reports/120 users (within 153-187/108-132 tolerances), TrayIcon has 15 reports in 4.1.3 (proving non-regression), LocalDatabase has 3 distinct users (within 2-4 tolerance), ThumbnailCache has 20 reports/20 users with 'dropping pending uploads' at log:320 indicating data loss. Evidence tests cite actual file:line references present in fixture."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks to triage crash reports and apply policy without prescribing specific method. No misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains crash data, policy docs, release diffs. Does not list answer or describe finished behavior."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Key checks defect signatures/counts from crash data, evidence citations exist, rubric aligns with request about asking/verification/policy."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer could analyze crash files, group by signature, apply policy. Edits widened acceptance (regex patterns, denial guards, answer forms)."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

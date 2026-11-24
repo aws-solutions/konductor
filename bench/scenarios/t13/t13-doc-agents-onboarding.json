@@ -151,7 +151,35 @@
         "verdict": "pass",
         "note": "All key values are derivable from fixture: pool change at logs/api-2026-03-17.log:936, first 503 at :950, recovery at :957/:960, metrics at api-hourly.csv:92, branch/commit forms in git-log.txt:2,18, ADR rule in docs/adr/0007-no-default-exports.md:6. Team facts require asking scripted user. Tolerances (5%, 3 min) are reasonable."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks for documentation based on repository evidence without prescribing specific method or tool; no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains outdated CONTRIBUTING.md; answer must be derived from analyzing package.json, Makefile, git-log.txt, ADR docs, etc."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Key references pnpm, node version, git-log.txt, ADR docs, scripted user facts that all exist in fixture or request; rubric aligns with asking for unknown facts and following evidence."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can examine repository files to determine current practices, ask for unknown facts, and produce correct documentation that differs from reference."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
