@@ -1,0 +1,199 @@
+{
+  "outputFile": "docs/TEST-STRATEGY.md",
+  "findingsKey": [
+    {
+      "id": "checkpoint-before-commit",
+      "location": [
+        "src/migration/batch-runner.js",
+        "migrateBatches"
+      ],
+      "severity": "critical",
+      "fix": [
+        "checkpoint",
+        "commit",
+        "crash",
+        "atomic",
+        "resume",
+        "killed",
+        "kill at",
+        "interrupted",
+        "partial page",
+        "dead-letter",
+        "dead letter",
+        "bad row",
+        "reject count"
+      ]
+    },
+    {
+      "id": "mapper-silent-coercion",
+      "location": [
+        "src/mapping/field-mapper.js",
+        "mapCustomer"
+      ],
+      "severity": "high",
+      "fix": [
+        "precision",
+        "truncat",
+        "coerc",
+        "lossy",
+        "round-trip",
+        "overflow",
+        "silent",
+        "silently",
+        "non-numeric",
+        "reject",
+        "credit_limit",
+        "credit limit",
+        "undefined",
+        "blank",
+        "padded",
+        "over-length",
+        "too long",
+        "emoji",
+        "encoding",
+        "every source column",
+        "mapped or"
+      ]
+    },
+    {
+      "id": "tie-order-dependence",
+      "location": [
+        "src/conflicts/resolve-conflict.js",
+        "resolveConflict"
+      ],
+      "severity": "high",
+      "fix": [
+        "tie",
+        "deterministic",
+        "order",
+        "stable",
+        "equal timestamps",
+        "equal timestamp",
+        "equal instants",
+        "same timestamp",
+        "identical timestamps",
+        "equal",
+        "version precedence",
+        "tie-break",
+        "ties"
+      ]
+    },
+    {
+      "id": "retry-reapplies-change",
+      "location": [
+        "src/capture/apply-change.js",
+        "applyChange"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempot",
+        "dedup",
+        "exactly once",
+        "change id",
+        "duplicate",
+        "twice",
+        "applied once",
+        "one effect",
+        "same change",
+        "retry",
+        "retryable",
+        "backoff",
+        "maxAttempts",
+        "attempt",
+        "attempts"
+      ]
+    },
+    {
+      "id": "count-only-verification",
+      "location": [
+        "src/verification/verify-migration.js",
+        "verifyMigration"
+      ],
+      "severity": "high",
+      "fix": [
+        "content",
+        "field-level",
+        "checksum",
+        "hash",
+        "per-record",
+        "row-level",
+        "field",
+        "fields",
+        "differ",
+        "differs",
+        "mismatch",
+        "ids differ",
+        "different ids",
+        "values",
+        "compare",
+        "equal counts",
+        "same count",
+        "counts match",
+        "missing row",
+        "extra row"
+      ]
+    },
+    {
+      "id": "timezone-naive-ordering",
+      "location": [
+        "src/conflicts/timestamps.js",
+        "compareTimestamps",
+        "src/conflicts/resolve-conflict.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "timezone",
+        "time zone",
+        "utc",
+        "offset",
+        "zone",
+        "zone-less",
+        "offsets",
+        "tz",
+        "mixed zones"
+      ]
+    },
+    {
+      "id": "dead-letter-loses-reason",
+      "location": [
+        "src/queue/dead-letter-queue.js",
+        "DeadLetterQueue"
+      ],
+      "severity": "medium",
+      "fix": [
+        "reason",
+        "error message",
+        "preserve",
+        "diagnostic",
+        "error",
+        "error cause",
+        "error code",
+        "stored",
+        "persist",
+        "persisted",
+        "error text",
+        "keeps the error"
+      ]
+    },
+    {
+      "id": "resume-path-unexercised",
+      "location": [
+        "src/migration/resume.js",
+        "resumeMigration"
+      ],
+      "severity": "critical",
+      "fix": [
+        "resume",
+        "restart",
+        "cursor",
+        "end-to-end",
+        "integration",
+        "rerun",
+        "re-run",
+        "checkpoint",
+        "pick up"
+      ]
+    }
+  ],
+  "_note": "Semantic fix keywords (2026-11-24): each risk's \"fitting test\" words accept the wordings a correct plan used in the saved LITE runs of every arm; timezone-naive-ordering gain a second location where plans placed the risk. Locations, severities and the precision test are unchanged."
+}

@@ -1,0 +1,418 @@
+{
+  "id": "t5-qa-sync-strategy-v4",
+  "class": "hard",
+  "version": 4,
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "architecture"
+  ],
+  "questions": "allowed",
+  "prompt": "We migrate customer data to the new store on a weekend two weeks from now, and I own the sync service that does it. I have limited time and want a plan for what to test and in what order, not a tour of every file. Read the repository, including the source, the existing tests and the docs, then write docs/TEST-STRATEGY.md: where the real risk is, how severe it is, the test that should cover each risk, an order we can work through in the two weeks, and what could go wrong if we skip the rest. This is planning only; do not change application code, fixtures, generated files or existing tests. End the document with one fenced `json` block holding an array of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add). Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit.",
+  "fixture": "t5-qa-sync-strategy",
+  "hidden": "t5-qa-sync-strategy-v4",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 findings.test.js",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/TEST-STRATEGY.md",
+      "pattern": "\"location\"\\s*:",
+      "min": 1,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/mapping/generated/legacy-field-map.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "decision-quality",
+      "criterion": "The plan makes a defensible migration-weekend decision rule and ties skipped work to concrete customer or operator consequences. Fail: it lists tests by file with no go or no-go rule, or says the rest is low risk with no consequence. Partial: it has an order of work and some severities, but the decision rule for the weekend (what must pass, what blocks the cutover, how to roll back) is vague, or skipped work has no consequence. Pass: it sets the minimum set of tests that must pass before the weekend and the go, no-go and rollback conditions, orders the two weeks by risk and dependency, and for each area it skips says what a customer or the operator would see if it failed (duplicate or missing records, a half-copied run that cannot resume), with severities matching the closing JSON list.",
+      "weight": 2
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are judgment about test design, not a pattern in the text)"
+    }
+  ],
+  "findingsKey": [
+    {
+      "id": "checkpoint-before-commit",
+      "location": [
+        "src/migration/batch-runner.js",
+        "migrateBatches"
+      ],
+      "severity": "critical",
+      "fix": [
+        "checkpoint",
+        "commit",
+        "crash",
+        "atomic",
+        "resume",
+        "killed",
+        "kill at",
+        "interrupted",
+        "partial page",
+        "dead-letter",
+        "dead letter",
+        "bad row",
+        "reject count"
+      ]
+    },
+    {
+      "id": "mapper-silent-coercion",
+      "location": [
+        "src/mapping/field-mapper.js",
+        "mapCustomer"
+      ],
+      "severity": "high",
+      "fix": [
+        "precision",
+        "truncat",
+        "coerc",
+        "lossy",
+        "round-trip",
+        "overflow",
+        "silent",
+        "silently",
+        "non-numeric",
+        "reject",
+        "credit_limit",
+        "credit limit",
+        "undefined",
+        "blank",
+        "padded",
+        "over-length",
+        "too long",
+        "emoji",
+        "encoding",
+        "every source column",
+        "mapped or"
+      ]
+    },
+    {
+      "id": "tie-order-dependence",
+      "location": [
+        "src/conflicts/resolve-conflict.js",
+        "resolveConflict"
+      ],
+      "severity": "high",
+      "fix": [
+        "tie",
+        "deterministic",
+        "order",
+        "stable",
+        "equal timestamps",
+        "equal timestamp",
+        "equal instants",
+        "same timestamp",
+        "identical timestamps",
+        "equal",
+        "version precedence",
+        "tie-break",
+        "ties"
+      ]
+    },
+    {
+      "id": "retry-reapplies-change",
+      "location": [
+        "src/capture/apply-change.js",
+        "applyChange"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempot",
+        "dedup",
+        "exactly once",
+        "change id",
+        "duplicate",
+        "twice",
+        "applied once",
+        "one effect",
+        "same change",
+        "retry",
+        "retryable",
+        "backoff",
+        "maxAttempts",
+        "attempt",
+        "attempts"
+      ]
+    },
+    {
+      "id": "count-only-verification",
+      "location": [
+        "src/verification/verify-migration.js",
+        "verifyMigration"
+      ],
+      "severity": "high",
+      "fix": [
+        "content",
+        "field-level",
+        "checksum",
+        "hash",
+        "per-record",
+        "row-level",
+        "field",
+        "fields",
+        "differ",
+        "differs",
+        "mismatch",
+        "ids differ",
+        "different ids",
+        "values",
+        "compare",
+        "equal counts",
+        "same count",
+        "counts match",
+        "missing row",
+        "extra row"
+      ]
+    },
+    {
+      "id": "timezone-naive-ordering",
+      "location": [
+        "src/conflicts/timestamps.js",
+        "compareTimestamps",
+        "src/conflicts/resolve-conflict.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "timezone",
+        "time zone",
+        "utc",
+        "offset",
+        "zone",
+        "zone-less",
+        "offsets",
+        "tz",
+        "mixed zones"
+      ]
+    },
+    {
+      "id": "dead-letter-loses-reason",
+      "location": [
+        "src/queue/dead-letter-queue.js",
+        "DeadLetterQueue"
+      ],
+      "severity": "medium",
+      "fix": [
+        "reason",
+        "error message",
+        "preserve",
+        "diagnostic",
+        "error",
+        "error cause",
+        "error code",
+        "stored",
+        "persist",
+        "persisted",
+        "error text",
+        "keeps the error"
+      ]
+    },
+    {
+      "id": "resume-path-unexercised",
+      "location": [
+        "src/migration/resume.js",
+        "resumeMigration"
+      ],
+      "severity": "critical",
+      "fix": [
+        "resume",
+        "restart",
+        "cursor",
+        "end-to-end",
+        "integration",
+        "rerun",
+        "re-run",
+        "checkpoint",
+        "pick up"
+      ]
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "rehearsal",
+        "text": "Plans a full rehearsal or shadow run on production-shaped data with realistic volume, skew and dirty records, and uses it to time the weekend window.",
+        "source": "Stripe, Online migrations at scale, https://stripe.com/blog/online-migrations (vendor copyright; idea only)"
+      },
+      {
+        "id": "done-criteria",
+        "text": "Defines what 'migrated correctly' means (per-record content comparison, counts by status, sampling plus full checksums) and the go or no-go and rollback criteria before the weekend.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "rerun-safety",
+        "text": "Tests that the whole migration and each batch can be stopped, rerun and resumed without duplicates or gaps, including a kill at a random point.",
+        "source": "Stripe, Online migrations at scale, https://stripe.com/blog/online-migrations (vendor copyright; idea only)"
+      },
+      {
+        "id": "data-shape",
+        "text": "Covers data the happy-path fixtures lack: nulls, very long values, odd encodings, records changed during the copy, and records deleted at the source.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "test-levels",
+        "text": "Chooses a level per risk (unit for mapping, integration with a real store for checkpoints and conflicts, end-to-end for resume) and says which tests need real infrastructure.",
+        "source": "Google Testing Blog, Test Sizes, https://testing.googleblog.com/2010/12/test-sizes.html (copyright Google; idea only)"
+      },
+      {
+        "id": "order-and-exit",
+        "text": "Orders the two weeks by blast radius and dependency, with a minimum set that must pass, and states the cost of skipping the rest.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "monitoring",
+        "text": "Plans monitoring and a stop switch for the migration weekend itself (lag, error rate, dead-letter growth).",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Says 'increase unit test coverage' for every module in turn.",
+      "Lists only the mapping and CLI because they are the most visible code.",
+      "Proposes a big end-to-end test run once, the week before, with no rehearsal or exit criteria.",
+      "Gives no order and no statement of what is skipped."
+    ]
+  },
+  "targetSkills": [
+    "e2e-test-strategy",
+    "test-coverage-analysis",
+    "risk-management"
+  ],
+  "targetSop": "k-test-coverage-review",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "e2e-test-strategy",
+      "test-coverage-analysis",
+      "risk-management"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/wstg",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T5, owner decision 2026-11-20); failed deepseek drafts were re-authored with gpt, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt requests a test strategy document with specific structure (risk, severity, tests, ordering) but does not name methods, tools, or reveal the hidden findings. The agent must discover issues through code reading."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is clear: produce docs/TEST-STRATEGY.md with a JSON block containing location, severity, and fix fields. The grader uses flexible matching (location on token edge, severity within one level, keyword matching), accommodating reasonable variation in responses."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No revealing comments (checked for TODO/FIXME/BUG), docs describe general architecture without exposing issues, existing tests are happy-path only. All 8 seeded findings require careful code inspection to identify (e.g., checkpoint-before-commit race, retry idempotency, count-only verification)."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Appropriately challenging. A superficial list would fail: the grader requires location matching to specific files, severity within one level, fix keywords matching seeded issues, and penalizes overly long lists (precision term). Naive approaches would miss critical race conditions and idempotency issues."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All seeded findings are discoverable by reading code: checkpoint written before batch commit in batch-runner.js, retry without dedup in apply-change.js, count-only verification in verify-migration.js, timezone-naive comparison in timestamps.js, lost error context in dead-letter-queue.js, non-deterministic tie-breaking in resolve-conflict.js, silent coercion in field-mapper.js/type-converters.js. No flaky or timing-dependent tests."
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "rubric check: Rubric items decision-quality and expert-key ask for go/no-go criteria, rollback conditions, and expertKey scoring, which match the request for a migration test plan. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal (write docs/TEST-STRATEGY.md with risk analysis, test plan, order, and JSON block) but does not name specific methods, tools, or reference the findingsKey items the hidden tests check.)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "rubric check: The anchors (minimum set to pass, go/no-go/rollback conditions, consequence for skipped work) are judge-only; the fixture has migration code but not the strategy. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain source code and tests to analyze, but no document listing the expected findings, bugs, or answers the hidden key expects.)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "rubric check: The example consequences (duplicate or missing records, half-copied run that cannot resume) are plausible migration failures for a sync service. Earlier glm-5 check of the request, fixture and key: pass (All 8 locations in findingsKey exist in fixture: batch-runner.js, field-mapper.js, resolve-conflict.js, apply-change.js, verify-migration.js, timestamps.js, dead-letter-queue.js, and resume.js. The risks follow from analyzing these files (e.g., checkpoint written before commit in batch-runner.js line 8-9, silent truncation in field-mapper.js line 6-7, count-only verification in verify-migration.js)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "rubric check: Different correct strategies can reach Pass as long as they have decision rules, consequences, and address expertKey items; specific tests can vary. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can read the source files, tests, and docs in fixture to identify the risks (atomicity gap, silent coercion, tie-breaking, idempotency, verification depth, timezone handling, dead-letter context, resume path) and produce a test strategy document.)."
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-24",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 37,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-24"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate key-rewrite worker (2026-11-24): semantic fix keywords from the saved LITE runs of every arm; timezone-naive-ordering also at src/conflicts/resolve-conflict.js; the at-least-6-risks check dropped",
+    "log": "HAND-EDITS.md",
+    "version": 4
+  }
+}

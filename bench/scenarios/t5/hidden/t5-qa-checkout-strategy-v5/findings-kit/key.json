@@ -1,0 +1,191 @@
+{
+  "outputFile": "docs/TEST-PLAN.md",
+  "findingsKey": [
+    {
+      "id": "money-floating-point",
+      "location": [
+        "src/orders/price.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "cents",
+        "integer",
+        "decimal",
+        "minor unit",
+        "floating",
+        "half cent",
+        "rounding",
+        "x 100",
+        "1.005",
+        "3224",
+        "exact amount"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "webhook-replay",
+      "location": [
+        "src/payments/webhook.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempotency",
+        "event id",
+        "replay",
+        "duplicate",
+        "twice",
+        "same event",
+        "delivered again",
+        "second delivery",
+        "redeliver",
+        "out of order",
+        "stale"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "inventory-read-write-race",
+      "location": [
+        "src/inventory/reservation.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "atomic",
+        "concurrency",
+        "concurrent",
+        "concurrently",
+        "parallel",
+        "simultaneous",
+        "overlapping",
+        "exactly one",
+        "one succeeds",
+        "never below zero",
+        "never goes negative",
+        "oversell",
+        "compare-and-decrement",
+        "race condition",
+        "locking"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "retry-double-charge",
+      "location": [
+        "src/payments/retry.js",
+        "src/orders/checkout.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempotency",
+        "status lookup",
+        "ambiguous timeout",
+        "double-charge",
+        "double charge",
+        "no retry",
+        "not retried",
+        "one charge",
+        "charges once",
+        "charged once",
+        "same order id",
+        "one effective charge",
+        "timeout",
+        "decline"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "email-swallowed-error",
+      "location": [
+        "src/notifications/email.js"
+      ],
+      "severity": "medium",
+      "fix": [
+        "log",
+        "alert",
+        "surface",
+        "propagate",
+        "dead-letter",
+        "retry",
+        "swallow",
+        "swallowed",
+        "fail silently",
+        "silently",
+        "error is reported",
+        "surfaced"
+      ],
+      "fixMin": 1,
+      "weight": 1
+    },
+    {
+      "id": "settlement-local-cutoff",
+      "location": [
+        "src/jobs/settlement.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "utc",
+        "timezone",
+        "time zone",
+        "cutoff",
+        "midnight",
+        "local time",
+        "tz",
+        "day boundary"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "refund-rounding",
+      "location": [
+        "src/orders/refunds.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "remainder",
+        "allocat",
+        "cents",
+        "rounding",
+        "sum of",
+        "amount",
+        "2500",
+        "exact",
+        "math.round",
+        "x 100",
+        "integer",
+        "equals the charge"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "guard-disabled-by-default",
+      "location": [
+        "src/orders/checkout.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "flag",
+        "default",
+        "disabled",
+        "out-of-stock",
+        "out of stock",
+        "oversell",
+        "guard",
+        "requireInventoryGuard",
+        "stock is restored",
+        "restores stock",
+        "releases",
+        "released",
+        "decrement"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    }
+  ],
+  "_note": "Semantic fix keywords (2026-11-24): each risk's \"fitting test\" words accept the wordings a correct plan used in the saved LITE runs of every arm; retry-double-charge gain a second location where plans placed the risk. Locations, severities and the precision test are unchanged."
+}
