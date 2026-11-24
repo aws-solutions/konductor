@@ -428,6 +428,53 @@ function startupConfig({ arm, home, cwd, strictMcp, read }) {
   };
 }
 
+/**
+ * The keys of a run (run-cmd.js), checked before anything starts: from the environment `env`, or with --aws-profile read
+ * from that profile before each run that needs fresh ones (`creds`, else null). A bench plant control as --claude-bin
+ * calls no model, so it needs no keys (D-113). Throws when the keys are missing.
+ */
+function runCredentials({ opts, deps = {}, env: baseEnv = process.env }) {
+  const { profileCredentials } = require('../../runner/lib/aws-creds.js');
+  const creds = opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
+  const control = typeof opts['claude-bin'] === 'string' && isPlantControl(path.resolve(opts['claude-bin']));
+  if (!control) checkCredentials(creds ? { ...baseEnv, ...creds.current() } : baseEnv);
+  return { creds };
+}
+
+/** The run flags (run-cmd.js): --run-budget-usd (positive), --aws-region, and a Bedrock model id. */
+function runOptions({ opts }) {
+  let runBudgetUsd = null;
+  if (opts['run-budget-usd'] !== undefined) {
+    runBudgetUsd = Number(opts['run-budget-usd']);
+    if (opts['run-budget-usd'] === true || !(runBudgetUsd > 0)) throw new Error('--run-budget-usd must be a positive number');
+  }
+  if (!canonicalModel(opts.model || DEFAULT_MODEL)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
+  return { runBudgetUsd, region: opts['aws-region'] && opts['aws-region'] !== true ? opts['aws-region'] : REGION };
+}
+
+const flagValueOf = (opts, name) => (opts[name] && opts[name] !== true ? opts[name] : null);
+
+/**
+ * The claude binary, region, per-run budget and credentials of a run, set on `ctx` (run-cmd.js, DEBT D-24). Throws when
+ * the binary has no --effort, or when `outDir` holds runs of another claude binary and --allow-claude-change is not given.
+ */
+function setUpRun(ctx, { opts, config, outDir, ccRegion, runBudgetUsd, ccCreds, log }) {
+  const { readRunConfigs } = require('../../runner/lib/run-configs.js');
+  const toolsDir = flagValueOf(opts, 'claude-tools-dir');
+  ctx.claude = resolveClaude({ binOverride: flagValueOf(opts, 'claude-bin') ?? undefined, toolsDir: toolsDir ?? undefined });
+  if (!ctx.claude.supportsEffort) throw new Error(`${ctx.claude.bin} (claude ${ctx.claude.version}) has no --effort flag, so the run could not apply --effort ${config.effort}; use a claude that lists --effort in claude --help`);
+  const claudeChanged = claudeChanges(readRunConfigs(outDir), ctx.claude);
+  if (claudeChanged.length && !opts['allow-claude-change']) throw new Error(describeClaudeChanges(claudeChanged, ctx.claude, outDir, toolsDir));
+  if (claudeChanged.length) log(`warning: --allow-claude-change: ${describeClaudeChanges(claudeChanged, ctx.claude, outDir, toolsDir).split('. One study')[0]}`);
+  Object.assign(ctx, { region: ccRegion, runBudgetUsd, ...(ccCreds ? { awsCreds: ccCreds } : {}) });
+  const credsNote = ccCreds ? `credentials from profile ${ccCreds.profile}, read again before a run when they expire within 15 minutes` : `credentials from the environment (${credentialNames().join(', ')})`;
+  log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), effort ${config.effort}, region ${ccRegion}, permission mode ${PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);
+  const versionNote = versionWarning(ctx.claude.version);
+  if (versionNote) log(`warning: ${versionNote}`);
+  const shadow = PROFILE_VARS.filter((k) => process.env[k]);
+  if (shadow.length) log(`note: ${shadow.join(', ')} ${shadow.length === 1 ? 'is' : 'are'} set here and is not passed to claude (the SDK would skip the exported keys)`);
+}
+
 /** The environment facts a run records (run-harness.js envInfoOf): the claude version and region. */
 const runEnvInfo = ({ ctx, ccRegion }) => ({ kiroCliVersion: null, harnessVersion: ctx.claude.version, modelListSnapshotPath: null, region: ccRegion });
 
@@ -446,7 +493,7 @@ function modelConfig({ opts, defaultEffort }) {
 }
 
 module.exports = {
-  id, meta, modelConfig, skillDirs, startupConfig, runEnvInfo, harnessRunConfig, envOfArm, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, modelConfig, runCredentials, runOptions, setUpRun, skillDirs, startupConfig, runEnvInfo, harnessRunConfig, envOfArm, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   listingMismatch: listing.listingMismatch, resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,

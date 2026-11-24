@@ -112,6 +112,44 @@ function finalize(outDir, ctx) {
 
 const rc = () => require('../../runner/lib/runconfig.js');
 
+/**
+ * The Bedrock model and keys of a run (run-cmd.js), or nulls: a Strands run on Bedrock spends money, so it needs an
+ * --aws-profile whose keys alone reach the agent (its --budget-usd cap is checked by paid-run.js). Throws when missing.
+ */
+function runOptions({ opts, deps = {} }) {
+  const stModel = bedrockModelOf(opts.model ?? '');
+  let stCreds = null;
+  if (stModel) {
+    if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
+    const { profileCredentials } = require('../../runner/lib/aws-creds.js');
+    stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
+    stCreds.current();
+  } else if (opts['aws-profile'] !== undefined) {
+    throw new Error('--aws-profile applies to a Strands run only with a bedrock: model; the fake model takes no credentials');
+  }
+  return { stModel, stCreds };
+}
+
+const flagValueOf = (opts, name) => (opts[name] && opts[name] !== true ? opts[name] : null);
+
+/**
+ * The Strands interpreter and agent file of a run, set on `ctx` (run-cmd.js), with the spend cap when it runs on Bedrock
+ * (DEBT D-24). `state.charged` is read live, so the cap's `left()` falls as the command spends.
+ */
+function setUpRun(ctx, { opts, config, stModel, stCreds, budgetCredits, state, log }) {
+  ctx.strands = resolveStrands({ python: flagValueOf(opts, 'strands-python') ?? 'python3', agentFile: flagValueOf(opts, 'strands-agent') });
+  if (stCreds) Object.assign(ctx, { awsCreds: stCreds, strandsSpend: { capUsd: budgetCredits, left: () => budgetCredits - state.charged } });
+  const credsNote = stCreds ? `${stModel.region}, keys of profile ${stCreds.profile}, hard spend cap $${budgetCredits} for the command` : 'no credentials passed';
+  log(`strands-agents ${ctx.strands.version} (${ctx.strands.python}), agent ${ctx.strands.agentFile ?? 'plain Agent'}, model ${config.model}, ${credsNote}`);
+}
+
+/** The hook census of a plant suite (run-cmd.js setUpPlantSuite): a plain arm whose agent can change plant calls is refused. */
+function plantPreflight({ ctx, suite, arms, scratchDir, wrap, log }) {
+  const { preflightStrands } = require('../../runner/lib/plant/strands-census.js');
+  suite.strandsCensus = preflightStrands({ strands: ctx.strands, suite, arms, env: env({ home: scratchDir, tmpdir: scratchDir }), scratch: scratchDir, wrap });
+  log(`plant: Strands hook census: ${suite.strandsCensus.problems.length ? suite.strandsCensus.problems.join('; ') : 'no hook, middleware or tool swap that can change a plant call'}`);
+}
+
 /** The environment facts a run records (run-harness.js envInfoOf): the strands-agents version. */
 const runEnvInfo = ({ ctx }) => ({ kiroCliVersion: null, harnessVersion: ctx.strands.version, modelListSnapshotPath: null });
 
@@ -137,4 +175,4 @@ function envOfArm({ stCreds }) {
 /** The run's model config from --model and --effort (run-cmd.js): the model as given; the launcher takes no effort. */
 const modelConfig = ({ opts }) => ({ model: opts.model, effort: 'default' });
 
-module.exports = { id, meta, streams: require('./streams.js'), modelConfig, runEnvInfo, harnessRunConfig, envOfArm, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
+module.exports = { id, meta, streams: require('./streams.js'), modelConfig, runOptions, setUpRun, plantPreflight, runEnvInfo, harnessRunConfig, envOfArm, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };

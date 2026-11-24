@@ -11,7 +11,7 @@ const { applyArmOptions, attachVariant } = require('./arm-opts.js');
 const { applyOracle } = require('./oracle.js');
 const { applyForcedMustLoad } = require('./forced-must-load.js');
 const { STOP_ON } = require('./stop-watch.js');
-const { harnessFor, opencode: oc, claudeCode: cc, strands: st } = require('./harness/index.js');
+const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime, descriptorOf, supporting, notSupporting, joinNames } = require('./harness/runtime.js');
 const { DESCRIPTORS, REGISTRY } = require('./harness/descriptors.js');
 const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
@@ -24,7 +24,7 @@ const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
 const rc = require('./runconfig.js');
-const { setUpOpencode, setUpClaude, setUpStrands, envInfoOf, harnessRunConfig, writeEnvJson } = require('./run-harness.js');
+const { envInfoOf, harnessRunConfig, writeEnvJson } = require('./run-harness.js');
 const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = require('./profiles.js');
 const { loadRun } = require('./load-run.js');
 const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
@@ -39,10 +39,8 @@ const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
 const { preparePlantSuite, checkSuiteShape } = require('./plant/intake.js');
 const { preflightWalls, trialGatewayRows, checklistWithTrials } = require('./plant/walls.js');
-const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
-const { profileCredentials } = require('./aws-creds.js');
 const { writeRunConfig } = require('./run-configs.js');
 const { makeRunnerLog } = require('./log.js');
 const { preloadSchemas } = require('./schema.js');
@@ -229,27 +227,10 @@ function fillOpts(opts, budgetCredits) {
 }
 
 /**
- * The Bedrock model and credentials of a Strands run (DEBT D-24), or nulls: a Strands run on Bedrock spends money, so it
- * needs an --aws-profile whose keys alone reach the agent (its --budget-usd cap is checked by paid-run.js). Throws when missing.
- */
-function strandsSpendOpt({ isSt, opts, deps }) {
-  const stModel = isSt ? st.bedrockModelOf(opts.model ?? '') : null;
-  let stCreds = null;
-  if (stModel) {
-    if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
-    stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
-    stCreds.current();
-  } else if (isSt && opts['aws-profile'] !== undefined) {
-    throw new Error('--aws-profile applies to a Strands run only with a bedrock: model; the fake model takes no credentials');
-  }
-  return { stModel, stCreds };
-}
-
-/**
  * Prepares the plant suite of a run (DEBT D-24): release intake, the wall prober under unshare, the Strands hook census,
  * and the log lines that say what the suite counts as. Sets ctx.plant, ctx.cgroup and the plant masks; returns the suite.
  */
-async function setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, deps, isolation, isSt, scratchDir, log }) {
+async function setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, deps, isolation, harness, scratchDir, log }) {
   const plantSuite = preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, ...deps.plant });
   // A setup step that throws after intake removes the suite here: the caller has not been handed it yet.
   try {
@@ -262,11 +243,8 @@ async function setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo,
       plantSuite.walls = walls;
       log(`plant walls: prober passed; ${walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}; cgroup ${walls.cgroup.ok ? walls.cgroup.caps : `missing (${walls.cgroup.reason})`}`);
     }
-    if (isSt) {
-      const wrap = (file, args) => makeIso(ctx, arms[0], scratchDir, null).wrap(file, args);
-      plantSuite.strandsCensus = preflightStrands({ strands: ctx.strands, suite: plantSuite, arms, env: st.env({ home: scratchDir, tmpdir: scratchDir }), scratch: scratchDir, wrap });
-      log(`plant: Strands hook census: ${plantSuite.strandsCensus.problems.length ? plantSuite.strandsCensus.problems.join('; ') : 'no hook, middleware or tool swap that can change a plant call'}`);
-    }
+    // A harness whose agent can change plant calls in its own process checks the suite first (Strands: the hook census).
+    harness.plantPreflight?.({ ctx, suite: plantSuite, arms, scratchDir, wrap: (file, args) => makeIso(ctx, arms[0], scratchDir, null).wrap(file, args), log });
     if (plantSuite.hostNoise.length) log(`warning: plant: host failed quiet-host checks (${plantSuite.hostNoise.join(', ')}); this suite is not counted`);
     log(`plant release ${plantSuite.release.manifest.release} (manifest ${plantSuite.release.manifestSha256.slice(0, 12)}, key ${plantSuite.release.keyId.slice(0, 12)}), ${plantSuite.control ? 'control' : plantSuite.counted ? 'counted' : `NOT COUNTED (${plantSuite.notCounted.join('; ')})`} suite`);
   } catch (e) {
@@ -342,24 +320,6 @@ function resolveRunArms({ opts, suite, tasks, repo, benchDir, profile }) {
     armIds.push(copy.id);
   }
   return { arms, armIds, armOpts, aa, variants: arms.map(attachVariant).filter(Boolean) };
-}
-
-/**
- * The Claude Code run flags (DEBT D-24): --run-budget-usd (positive) and --aws-region (Claude Code only), and the
- * model, which must be a Bedrock id. `{ runBudgetUsd, ccRegion }`, nulls for other harnesses.
- */
-function claudeRunOpts(opts, isCc) {
-  if (!isCc) {
-    if (opts['aws-region'] !== undefined) throw new Error('--aws-region applies to Claude Code (cc-) arms only; judge commands take it separately');
-    return { runBudgetUsd: null, ccRegion: null };
-  }
-  let runBudgetUsd = null;
-  if (opts['run-budget-usd'] !== undefined) {
-    runBudgetUsd = Number(opts['run-budget-usd']);
-    if (opts['run-budget-usd'] === true || !(runBudgetUsd > 0)) throw new Error('--run-budget-usd must be a positive number');
-  }
-  if (!cc.canonicalModel(opts.model || cc.DEFAULT_MODEL)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
-  return { runBudgetUsd, ccRegion: opts['aws-region'] && opts['aws-region'] !== true ? opts['aws-region'] : cc.REGION };
 }
 
 /**
@@ -579,18 +539,13 @@ async function cmdRun(opts, deps = {}) {
     return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, tasks, benchDir, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
   }
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
-  const isOc = runtimes[0] === 'opencode';
-  const isCc = runtimes[0] === 'claude-code';
-  const isSt = runtimes[0] === 'strands';
   const desc = descriptorOf(runtimes[0]);
   const unit = desc.costUnit;
   const isUsd = unit === 'usd';
   const { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn } = checkHarnessFlags({ opts, tasks, runtime: runtimes[0] });
-  // Claude Code takes exported keys: from the environment, or with --aws-profile read from that profile before each run that needs fresh ones.
-  const ccCreds = isCc && opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
-  // A bench plant control as --claude-bin calls no model, so it needs no keys (D-113).
-  const ccControl = isCc && typeof opts['claude-bin'] === 'string' && cc.isPlantControl(path.resolve(opts['claude-bin']));
-  if (isCc && !ccControl) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
+  // A harness whose agent signs its own model calls checks its credentials before anything starts (runCredentials).
+  const harness = harnessFor({ runtime: runtimes[0] });
+  const ccCreds = harness.runCredentials ? harness.runCredentials({ opts, deps }).creds : null;
   requireRunBudget({ free: isFreeRun({ opts }), budget: budgetCredits, budgetFlag });
   const { maxAuthFailures, maxToolCalls, seed, isolate, envKeep } = runLimitsOpt(opts);
   const { pairOrder, fillBudget } = fillOpts(opts, budgetCredits);
@@ -607,11 +562,13 @@ async function cmdRun(opts, deps = {}) {
   // Pins python3 for the agent, the checks and the gateway (S6); refuses when tasks run Python and 3.12 is not found.
   const pythonPin = pinPython({ tasks, scratchDir, benchDir, flag: strOpt(opts.python), plantPython: strOpt(opts['plant-python']) });
 
-  const { runBudgetUsd, ccRegion } = claudeRunOpts(opts, isCc);
+  // The harness's own run options (runOptions): Claude Code's per-run budget and region, Strands' Bedrock model and keys.
+  const runOpts = harness.runOptions ? harness.runOptions({ opts, deps }) : {};
+  if (opts['aws-region'] !== undefined && runOpts.region === undefined) throw new Error('--aws-region applies to Claude Code (cc-) arms only; judge commands take it separately');
+  const { runBudgetUsd = null, region: ccRegion = null, stModel = null, stCreds = null } = runOpts;
   // A Strands run on Bedrock spends money. It needs --budget-usd (what is left of it is each run's hard cap, enforced
   // in the launcher before every model call) and --aws-profile (only that profile's exported keys reach the agent).
   // Strands arms are plant arms, and a plant suite runs at --parallel 1 (intake.js), so no two runs share what is left.
-  const { stModel, stCreds } = strandsSpendOpt({ isSt, opts, deps });
   const config = modelConfigOf({ runtime: runtimes[0], opts, agentEngine });
   const state = { results: [], spent: 0, charged: 0 };
   let runConfig = { suite: suite.name, armIds, startedAt: new Date().toISOString(), seed };
@@ -637,9 +594,8 @@ async function cmdRun(opts, deps = {}) {
     log(`isolation gate: hashing ${ctx.installsGate.dirs.join(', ')} before and after each run and the batch`);
     const batchWindow = ctx.installsGate.begin();
     const batchFrom = new Date().toISOString();
-    if (isOc) setUpOpencode(ctx, { opts, cacheDir, awsCredsFile, awsProfile, config, log });
-    if (isCc) setUpClaude(ctx, { opts, config, outDir, ccRegion, runBudgetUsd, ccCreds, log });
-    if (isSt) setUpStrands(ctx, { opts, config, stModel, stCreds, budgetCredits, state, log });
+    // The harness's own run context: its binary, credentials and spend cap (setUpRun; Kiro CLI's is set above).
+    harness.setUpRun?.(ctx, { opts, cacheDir, awsCredsFile, awsProfile, config, outDir, ccRegion, runBudgetUsd, ccCreds, stModel, stCreds, budgetCredits, state, log });
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     log(`arms:\n${preflightTable(arms, prepared, errors)}`);
 
@@ -650,7 +606,7 @@ async function cmdRun(opts, deps = {}) {
     ctx.mask = maskPaths({ benchDir, extraDirs, outDir, awsCredsFile });
     Object.assign(ctx, { runCreditLimit, stopOn, maxToolCalls });
     ctx.keyRoots = [benchDir];
-    if (arms.some((a) => a.plant)) plantSuite = await setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, deps, isolation, isSt, scratchDir, log });
+    if (arms.some((a) => a.plant)) plantSuite = await setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, deps, isolation, harness, scratchDir, log });
     ctx.tripwire = tripwireOf({ opts, home, repo: REPO, tripExtra, outDir, cacheDir, cargoTarget, scratchDir, realCache });
     ctx.envInfo = envInfoOf({ runtime: runtimes[0], ctx, ccRegion, outDir, authDb, scratchDir, envKeep, config });
     const { interpreters, toolchainCheck } = toolchainOf(tasks, benchDir, log);

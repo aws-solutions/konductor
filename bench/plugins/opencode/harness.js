@@ -311,6 +311,17 @@ const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 const rc = () => require('../../runner/lib/runconfig.js');
 
+const flagValueOf = (opts, name) => (opts[name] && opts[name] !== true ? opts[name] : null);
+
+/** The opencode binary, ripgrep and credentials of a run, set on `ctx` (run-cmd.js, DEBT D-24). Throws without ripgrep. */
+function setUpRun(ctx, { opts, cacheDir, awsCredsFile, awsProfile, config, log }) {
+  ctx.opencode = resolveOpencode({ cacheDir, binOverride: flagValueOf(opts, 'opencode-bin') });
+  ctx.rgBin = resolveRipgrep(flagValueOf(opts, 'rg-bin'));
+  if (!ctx.rgBin) throw new Error('ripgrep (rg) not found on PATH; install it or pass --rg-bin PATH (opencode would otherwise download it at run time)');
+  Object.assign(ctx, { awsCredsFile, awsProfile });
+  log(`opencode ${ctx.opencode.version} (${ctx.opencode.bin}), sha256 ${ctx.opencode.sha256.slice(0, 12)}, model ${PROVIDER}/${config.model}, variant ${config.effort}, region ${REGION}`);
+}
+
 /** The environment facts a run records (run-harness.js envInfoOf): the opencode version and region. */
 const runEnvInfo = ({ ctx }) => ({ kiroCliVersion: null, harnessVersion: ctx.opencode.version, modelListSnapshotPath: null, region: REGION });
 
@@ -335,7 +346,7 @@ const envOfArm = ({ konductor, config, ctx }) => envSetup({ arm: { vanilla: !kon
 const modelConfig = ({ opts, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: variantOf(opts.effort || defaultEffort) });
 
 module.exports = {
-  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig, runEnvInfo, harnessRunConfig, envOfArm,
+  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig, setUpRun, runEnvInfo, harnessRunConfig, envOfArm,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson, readProfile,
 };
