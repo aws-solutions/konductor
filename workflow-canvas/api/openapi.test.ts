@@ -606,10 +606,19 @@ describe('workflow canvas API contract', () => {
     const closed = (schema: Schema | undefined) =>
       collectObjects(schema).filter((node) => isRecord(node['properties']));
 
+    // A request object that lists its properties must refuse any other
+    // field. The exception is a mapping whose keys are named by a pattern
+    // and whose values have a schema of their own, as a run's `params` is:
+    // a key the pattern refuses never reaches the server, and a key it
+    // allows but the workflow does not declare is `bad_params`.
+    const named = (node: Schema) =>
+      node['propertyNames'] !== undefined &&
+      isRecord(node['additionalProperties']);
+
     it('refuses unknown fields in every request', () => {
       for (const { label, media } of listRequestBodies(spec)) {
         const open = closed(media.schema).filter(
-          (node) => node['additionalProperties'] !== false,
+          (node) => node['additionalProperties'] !== false && !named(node),
         );
         expect(open, label).toEqual([]);
       }
@@ -1037,7 +1046,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.8.3');
+      expect(info.version).toBe('1.9.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1485,6 +1494,12 @@ describe('workflow canvas API contract', () => {
       );
       expect(description).toMatch(/409 `already_running`/);
       expect(description).not.toMatch(/every run that/);
+    });
+
+    it('says that version 1.9.0 reads the keys that carry data between stages', () => {
+      expect(spec.info.description).toMatch(
+        /Version 1\.9\.0 only\s+adds, in the sense the rule means: it reads the keys that carry data\s+between stages, `stages\[\]\.outputs` and the params other than `goal`, and\s+it gives a reference in a `prompt` its meaning/,
+      );
     });
 
     it('says that version 1.8.3 changes wording only, about which runs are listed', () => {

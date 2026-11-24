@@ -114,18 +114,20 @@ export class WorkflowApi {
 
   /**
    * Starts a run of the saved root workflow and returns its id. The refusals
-   * come in the order of the contract: the file, the workflow, trust, a run
-   * that is active, the harness. The workflow is trusted only while the file
-   * still has the bytes it had when the stub started.
+   * come in the order of the contract: the file, the workflow, the params,
+   * trust, a run that is active, the harness. The workflow is trusted only
+   * while the file still has the bytes it had when the stub started.
    */
-  startRun(goal: string): { run_id: string } {
+  startRun(params: Record<string, string>): { run_id: string } {
     const file = this.store.read(this.root);
     if (!file) {
       throw new ApiError('not_found', 'The workflow has not been saved yet.');
     }
     const check = checkWorkflowText(file.text, this.root);
     if (!check.view) throw invalidWorkflow(check);
-    const stageNames = check.view.stages.map((stage) => stage.name);
+    const view = check.view;
+    refuseUndeclared(params, view);
+    const stageNames = view.stages.map((stage) => stage.name);
     if (this.trustedHash !== file.hash) throw untrusted(this.root);
     this.findOtherRun();
     const active = this.runs.activeRunId();
@@ -150,8 +152,8 @@ export class WorkflowApi {
     const runId = this.runs.start(
       this.root,
       stageNames,
-      goal,
-      this.planOfRun(),
+      params.goal ?? '',
+      this.planOfRun(view),
     );
     return { run_id: runId };
   }
@@ -214,9 +216,12 @@ export class WorkflowApi {
     };
   }
 
-  private planOfRun(): RunPlan {
-    const { blocks } = this.behavior;
-    return blocks ? { block: { at: blocks.stage, reason: blocks.reason } } : {};
+  private planOfRun(view: WorkflowView): RunPlan {
+    const { blocks, unwrittenOutput } = this.behavior;
+    if (blocks) return { block: { at: blocks.stage, reason: blocks.reason } };
+    return declares(view, unwrittenOutput)
+      ? { unwritten: unwrittenOutput }
+      : {};
   }
 
   // A missing name is the root; a malformed one is refused.
@@ -241,6 +246,32 @@ export class WorkflowApi {
 // stands in the workflow's default goal, or its outcome.
 function goalOfOther(view: WorkflowView): string {
   return view.params?.goal?.default ?? view.intent.outcome;
+}
+
+// A run takes the goal and the params the workflow declares, and nothing
+// else. The HTTP layer has already checked the shape of each value.
+function refuseUndeclared(
+  params: Record<string, string>,
+  view: WorkflowView,
+): void {
+  const undeclared = Object.keys(params).filter(
+    (name) => name !== 'goal' && view.params?.[name] === undefined,
+  );
+  if (undeclared.length === 0) return;
+  throw new ApiError(
+    'bad_params',
+    `The workflow does not declare the param \`${undeclared[0]}\`.`,
+  );
+}
+
+// Whether a stage of the workflow declares the output named.
+function declares(
+  view: WorkflowView,
+  named: { stage: string; output: string } | undefined,
+): named is { stage: string; output: string } {
+  if (!named) return false;
+  const stage = view.stages.find((found) => found.name === named.stage);
+  return stage?.outputs?.[named.output] !== undefined;
 }
 
 function emptyDocument(name: string): WorkflowDocument {

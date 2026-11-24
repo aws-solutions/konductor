@@ -74,7 +74,11 @@ describe('POST /api/run', () => {
   it.each([
     ['no goal', { params: {} }],
     ['an empty goal', { params: { goal: '' } }],
-    ['another key in params', { params: { goal: 'x', extra: 1 } }],
+    [
+      'a param the workflow does not declare',
+      { params: { goal: 'x', topic: 'y' } },
+    ],
+    ['a name that is not a param name', { params: { goal: 'x', Topic: 'y' } }],
     ['a goal of 2049 characters', { params: { goal: 'x'.repeat(2049) } }],
   ])('is bad_params with %s', async (_, body) => {
     const reply = await stub().client.post(RUN, body);
@@ -94,9 +98,15 @@ describe('POST /api/run', () => {
     ['no params', {}],
     ['params that is not an object', { params: 'x' }],
     ['a goal that is not a string', { params: { goal: 7 } }],
+    ['a param that is not a string', { params: { goal: 'x', topic: 7 } }],
     ['another field', { params: { goal: 'x' }, extra: 1 }],
   ])('is a bad request with %s', async (_, body) => {
     expectError(await stub().client.post(RUN, body), 400, 'bad_request');
+  });
+
+  it('is bad_params with a param longer than the goal may be', async () => {
+    const body = { params: { goal: 'x', topic: 'y'.repeat(2049) } };
+    expectError(await stub().client.post(RUN, body), 422, 'bad_params');
   });
 
   it('checks the goal before the state of the run', async () => {
@@ -469,5 +479,75 @@ describe('the order of the refusals of POST /api/run', () => {
         'bad_params',
       );
     });
+  });
+});
+
+const WITH_DATA = `format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+params:
+  topic:
+    description: What to greet.
+    default: the README
+stages:
+  - name: draft
+    agent: k-developer
+    prompt: Write about {run.topic} to {draft.design}.
+    outputs:
+      design: DESIGN.md
+  - name: review
+    agent: k-quality-assurance
+    prompt: Read {draft.design}.
+`;
+
+describe('POST /api/run of a workflow that declares data', () => {
+  const stub = useStub({ files: { hello: WITH_DATA } });
+
+  it('takes a value for a declared param', async () => {
+    const body = { params: { goal: 'g', topic: 'the CHANGELOG' } };
+    const reply = await stub().client.post(RUN, body);
+    expectContract(reply, 'POST', RUN);
+    expect(reply.status).toBe(202);
+  });
+
+  it('takes the goal on its own, leaving the param to its default', async () => {
+    expect((await stub().client.post(RUN, GOAL)).status).toBe(202);
+  });
+});
+
+describe('POST /api/run when a declared output is left unwritten', () => {
+  const stub = useStub({
+    files: { hello: WITH_DATA },
+    behavior: { unwrittenOutput: { stage: 'draft', output: 'design' } },
+  });
+
+  it('blocks that stage with OUTPUT_MISSING once the run is over', async () => {
+    const runId = await start(stub());
+    stub().clock.advance(DEFAULT_STAGE_MS * 3);
+    const reply = await stub().client.get(`/api/runs/${runId}`);
+    expectContract(reply, 'GET', RUNS);
+    const { run } = reply.body as {
+      run: { status: string; stages: Record<string, unknown> };
+    };
+    expect(run.status).toBe('halted');
+    expect(run.stages['draft']).toEqual({
+      status: 'blocked',
+      reason: 'OUTPUT_MISSING',
+    });
+  });
+});
+
+describe('POST /api/run when an unwritten output is not declared', () => {
+  const stub = useStub({
+    files: { hello: WITH_DATA },
+    behavior: { unwrittenOutput: { stage: 'draft', output: 'notes' } },
+  });
+
+  it('passes every stage, since the stage never had to write it', async () => {
+    const runId = await start(stub());
+    stub().clock.advance(DEFAULT_STAGE_MS * 3);
+    expect(await stagesOf(stub(), runId)).toEqual(['passed', 'passed']);
   });
 });

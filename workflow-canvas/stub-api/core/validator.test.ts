@@ -341,7 +341,7 @@ describe('keys', () => {
   });
 
   it('suggests only a key that this version reads', () => {
-    const text = `${HEAD}${STAGES}    outputz: x\n    prompt_fil: x.md\n`;
+    const text = `${HEAD}${STAGES}    on_faill: x\n    prompt_fil: x.md\n`;
     const found = checkWorkflowText(text, 'hello').diagnostics;
     expect(found.map((d) => [d.code, d.suggestion])).toEqual([
       ['UNKNOWN_KEY', undefined],
@@ -371,10 +371,10 @@ describe('keys', () => {
   });
 
   it('reports a key of a later slice once as unsupported and then as duplicates', () => {
-    const text = stageWith('outputs: {}', 'outputs: {}');
+    const text = stageWith('parallel: true', 'parallel: true');
     expect(codesOf(text)).toEqual([
-      ['NOT_SUPPORTED_BY_THIS_BUILD', 'stages.write.outputs', 9, 5],
-      ['DUPLICATE_KEY', 'stages.write.outputs', 10, 5],
+      ['NOT_SUPPORTED_BY_THIS_BUILD', 'stages.write.parallel', 9, 5],
+      ['DUPLICATE_KEY', 'stages.write.parallel', 10, 5],
     ]);
   });
 
@@ -509,14 +509,6 @@ describe('keys of a later slice', () => {
       8,
       7,
     ],
-    [
-      'params.<name>',
-      '2',
-      `${HEAD}params:\n  topic:\n    type: string\n${STAGES}`,
-      7,
-      3,
-    ],
-    ['stages[].outputs', '2', stageWith('outputs: {a: A.md}'), 9, 5],
     ['stages[].done_when', '3a', stageWith('done_when: [a]'), 9, 5],
     ['stages[].on_fail', '4', stageWith('on_fail: x'), 9, 5],
     ['stages[].max_iterations', '4', stageWith('max_iterations: 2'), 9, 5],
@@ -577,24 +569,23 @@ describe('keys of a later slice', () => {
     expect(found?.message).toContain('Slice 13 adds it.');
   });
 
-  it('names slice 2 for a reference in a prompt, at the value', () => {
-    const text = stageWith('prompt: Read {plan.design} and {run.goal}.');
+  it('names slice 13 for a param type other than string, at the value', () => {
+    const text = `${HEAD}params:\n  count:\n    type: integer\n${STAGES}`;
     const [found, ...rest] = checkWorkflowText(text, 'hello').diagnostics;
     expect(rest).toEqual([]);
     expect(found).toMatchObject({
       code: 'NOT_SUPPORTED_BY_THIS_BUILD',
-      path: 'stages.write.prompt',
-      line: 9,
+      path: 'params.count.type',
+      line: 8,
     });
-    expect(found?.message).toContain('Slice 2 adds it.');
+    expect(found?.message).toContain('Slice 13 adds it.');
   });
 
-  it('does not echo the name of a param', () => {
+  it('does not echo the name of a param it refuses', () => {
     const text = `${HEAD}params:\n  AKIAIOSFODNN7EXAMPLE: x\n${STAGES}`;
     const [found] = checkWorkflowText(text, 'hello').diagnostics;
-    expect(found?.code).toBe('NOT_SUPPORTED_BY_THIS_BUILD');
+    expect(found?.code).toBe('INVALID_NAME');
     expect(found?.message).not.toContain('AKIA');
-    expect(found?.message).toContain('Slice 2 adds it.');
   });
 
   it('is still an unknown key when no slice plans it', () => {
@@ -629,7 +620,7 @@ describe('planned forms of released keys', () => {
   it('reports outputs and a run string as the later keys they are', () => {
     const outputs = stageWith('outputs:', '  design: {path: D.md}');
     expect(codesOf(outputs)).toEqual([
-      ['NOT_SUPPORTED_BY_THIS_BUILD', 'stages.write.outputs', 9, 5],
+      ['WRONG_TYPE', 'stages.write.outputs.design', 10, 15],
     ]);
     const run = `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n    - id: a\n      run: make test\n${STAGES}`;
     expect(codesOf(run)).toEqual([
@@ -946,5 +937,135 @@ describe('a key in a message', () => {
   ])('is not shown for %s', (_, key) => {
     const message = unknownKeyMessage(key);
     expect(message).toBe('Unknown key (not shown).');
+  });
+});
+
+describe('the data a stage declares', () => {
+  const PARAM =
+    'params:\n  topic:\n    type: string\n    description: A topic.\n    default: hats\n    required: true\n';
+
+  it('reads a param other than the goal, with all four of its keys', () => {
+    const text = `${HEAD}${PARAM}${STAGES}`;
+    const { diagnostics, view } = checkWorkflowText(text, 'hello');
+    expect(diagnostics).toEqual([]);
+    expect(view?.params).toEqual({
+      topic: {
+        type: 'string',
+        description: 'A topic.',
+        default: 'hats',
+        required: true,
+      },
+    });
+  });
+
+  it('keeps the goal beside another param, in the order of the file', () => {
+    const goal = 'params:\n  goal:\n    default: g\n  topic:\n    default: t\n';
+    const view = checkWorkflowText(`${HEAD}${goal}${STAGES}`, 'hello').view;
+    expect(Object.keys(view?.params ?? {})).toEqual(['goal', 'topic']);
+  });
+
+  it('reads the outputs of a stage as paths, by name', () => {
+    const text = stageWith('outputs:', '  design: docs/DESIGN.md');
+    const { diagnostics, view } = checkWorkflowText(text, 'hello');
+    expect(diagnostics).toEqual([]);
+    expect(view?.stages[0]?.outputs).toEqual({ design: 'docs/DESIGN.md' });
+  });
+
+  it('refuses an output name that does not start with a letter', () => {
+    expect(codesOf(stageWith('outputs:', '  1design: D.md'))).toEqual([
+      ['INVALID_NAME', 'stages.write.outputs.1design', 10, 7],
+    ]);
+  });
+
+  it('refuses a param name that is not a param name', () => {
+    const text = `${HEAD}params:\n  Topic:\n    default: t\n${STAGES}`;
+    expect(codesOf(text)).toEqual([['INVALID_NAME', 'params.Topic', 7, 3]]);
+  });
+
+  it('takes a param name with an underscore, which an output name refuses', () => {
+    const text = `${HEAD}params:\n  diff_input:\n    required: true\n${STAGES}`;
+    expect(codesOf(text)).toEqual([]);
+    expect(codesOf(stageWith('outputs:', '  diff_input: D.md'))).toEqual([
+      ['INVALID_NAME', 'stages.write.outputs.diff_input', 10, 7],
+    ]);
+  });
+
+  it('refuses a required that is not a boolean', () => {
+    const text = `${HEAD}params:\n  topic:\n    required: yes please\n${STAGES}`;
+    expect(codesOf(text)).toEqual([
+      ['WRONG_TYPE', 'params.topic.required', 8, 15],
+    ]);
+  });
+
+  it('refuses an output path that breaks the path rules', () => {
+    expect(codesOf(stageWith('outputs:', '  design: ../D.md'))).toEqual([
+      ['INVALID_VALUE', 'stages.write.outputs.design', 10, 15],
+    ]);
+  });
+});
+
+describe('references in a prompt', () => {
+  it('takes a param of the run, and the goal whether it is declared or not', () => {
+    const declared = `${HEAD}params:\n  topic:\n    default: t\nstages:\n  - name: write\n    agent: k-developer\n    prompt: Write {run.topic} for {run.goal}.\n`;
+    expect(codesOf(declared)).toEqual([]);
+  });
+
+  it('takes an output of the same stage and of an earlier one', () => {
+    const text = `${HEAD}stages:\n  - name: plan\n    agent: k-architect\n    prompt: Write to {plan.design}.\n    outputs:\n      design: DESIGN.md\n  - name: build\n    agent: k-developer\n    prompt: Read {plan.design}.\n`;
+    expect(codesOf(text)).toEqual([]);
+  });
+
+  it('refuses an output the named stage does not declare', () => {
+    const text = stageWith('prompt: Read {write.design}.', 'outputs: {}');
+    const [found] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(found).toMatchObject({
+      code: 'INVALID_VALUE',
+      path: 'stages.write.prompt',
+      line: 9,
+      column: 18,
+      end_column: 32,
+    });
+    expect(found?.message).toContain('does not declare');
+  });
+
+  it('refuses an output of a stage that runs later', () => {
+    const text = `${HEAD}stages:\n  - name: plan\n    agent: k-architect\n    prompt: Read {build.out}.\n  - name: build\n    agent: k-developer\n    outputs:\n      out: O.md\n`;
+    const [found, ...rest] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(rest).toEqual([]);
+    expect(found).toMatchObject({
+      code: 'INVALID_VALUE',
+      path: 'stages.plan.prompt',
+      line: 9,
+      column: 18,
+    });
+    expect(found?.message).toContain('runs later');
+  });
+
+  it('refuses a param the file does not declare, and a stage it does not have', () => {
+    const text = stageWith('prompt: Read {run.nope} and {other.x}.');
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'stages.write.prompt', 9, 18],
+      ['INVALID_VALUE', 'stages.write.prompt', 9, 33],
+    ]);
+  });
+
+  it('leaves a number and a JSON shape as plain text', () => {
+    const text = stageWith('prompt: Report {1.5} as {severity, file, line}.');
+    expect(codesOf(text)).toEqual([]);
+  });
+
+  it('points at each of two references to the same missing output', () => {
+    const text = stageWith('prompt: "{write.a} then {write.a}"', 'outputs: {}');
+    expect(
+      checkWorkflowText(text, 'hello').diagnostics.map((d) => d.column),
+    ).toEqual([14, 29]);
+  });
+
+  it('does not echo a name that may be a secret', () => {
+    const text = stageWith('prompt: Read {run.wjalrxutnfemi1k7}.');
+    const [found] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(found?.code).toBe('INVALID_VALUE');
+    expect(found?.message).not.toContain('wjalrxutnfemi1k7');
+    expect(found?.message).toContain('(not shown)');
   });
 });

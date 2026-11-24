@@ -23,10 +23,12 @@ export const SLICES = [
 export type Slice = (typeof SLICES)[number];
 
 /** The newest slice this build reads. A key of a later one is named, not read. */
-export const BUILD_SLICE: Slice = '1';
+export const BUILD_SLICE: Slice = '2';
 
 /** The slice that adds the string form of `intent`. */
 export const INTENT_STRING_SLICE: Slice = '13';
+/** The slice that adds the param types besides `string`. */
+export const PARAM_TYPE_SLICE: Slice = '13';
 /** The slice that gives references like `{plan.design}` a meaning. */
 export const REFERENCE_SLICE: Slice = '2';
 
@@ -89,6 +91,22 @@ export const GOAL_KEYS: KeyTable = {
   keys: [rule('description', '1'), rule('default', '1')],
 };
 
+export const PARAM_KEYS: KeyTable = {
+  prefix: 'params.<name>.',
+  keys: [
+    rule('type', '2'),
+    rule('description', '2'),
+    rule('default', '2'),
+    rule('required', '2'),
+  ],
+};
+
+export const OUTPUT_KEYS: KeyTable = {
+  prefix: 'stages[].outputs.',
+  keys: [],
+  otherKeys: '2',
+};
+
 export const STAGE_KEYS: KeyTable = {
   prefix: 'stages[].',
   keys: [
@@ -119,7 +137,9 @@ export const KEY_TABLES: readonly KeyTable[] = [
   CHECK_KEYS,
   PARAMS_KEYS,
   GOAL_KEYS,
+  PARAM_KEYS,
   STAGE_KEYS,
+  OUTPUT_KEYS,
 ];
 
 /** The slice of a key in a mapping, or `undefined` if no slice plans it. */

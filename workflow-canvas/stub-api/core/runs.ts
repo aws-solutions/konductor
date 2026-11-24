@@ -24,6 +24,12 @@ export interface RunPlan {
   block?: { at: number; reason: StageReason };
   /** The run never ends, as when another program holds it. */
   neverEnds?: boolean;
+  /**
+   * An output a stage leaves unwritten. The simulator writes the files a
+   * stage declares, so this is how a caller asks for the case the runner
+   * blocks: the first stage with an unwritten output is `OUTPUT_MISSING`.
+   */
+  unwritten?: { stage: string; output: string };
 }
 
 interface StartedRun {
@@ -93,7 +99,7 @@ export class RunSimulator {
     const startedAt = this.clock.now();
     const runId = this.newRunId(startedAt);
     const order = [...stageNames];
-    const normal = normalized(plan, stageNames.length);
+    const normal = normalized(plan, order);
     const run = {
       runId,
       workflow,
@@ -217,12 +223,21 @@ function cappedGoal(goal: string): Pick<RunSummary, 'goal' | 'goal_truncated'> {
   return { goal: kept, goal_truncated };
 }
 
-// A blocked stage past the end of the list is the last one.
-function normalized(plan: RunPlan, stageCount: number): RunPlan {
-  const { block } = plan;
-  if (!block) return plan;
+// An output a stage did not write blocks that stage, which is what the runner
+// does when a declared file is not there. A blocked stage past the end of the
+// list is the last one.
+function normalized(plan: RunPlan, order: readonly string[]): RunPlan {
+  const withBlock = plan.block ? plan : blockForUnwritten(plan, order);
+  const { block } = withBlock;
+  if (!block) return withBlock;
   return {
-    ...plan,
-    block: { ...block, at: Math.min(block.at, stageCount - 1) },
+    ...withBlock,
+    block: { ...block, at: Math.min(block.at, order.length - 1) },
   };
+}
+
+function blockForUnwritten(plan: RunPlan, order: readonly string[]): RunPlan {
+  const at = plan.unwritten ? order.indexOf(plan.unwritten.stage) : -1;
+  if (at === -1) return plan;
+  return { ...plan, block: { at, reason: 'OUTPUT_MISSING' } };
 }

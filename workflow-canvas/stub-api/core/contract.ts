@@ -26,6 +26,13 @@ export const FORMAT = 'konductor/1';
 export const SUGGESTED_VERSION = '0.1.0';
 
 export const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+/**
+ * An output name. It starts with a letter so that a reference can name it and
+ * a number such as `{1.5}` stays literal text.
+ */
+export const OUTPUT_NAME_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
+/** A param name. It allows `_`, so `diff_input` and `pr_url` fit. */
+export const PARAM_NAME_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 // Three whole numbers without leading zeros.
 export const VERSION_PATTERN =
   /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
@@ -36,8 +43,14 @@ export const VERSION_PATTERN =
 export const PATH_PATTERN_SOURCE =
   '^(?![A-Za-z]:)(?!/)(?:(?!\\.{1,2}(?:/|$))[^\\\\/\\x00-\\x1f\\x7f-\\x9f]+)(?:/(?!\\.{1,2}(?:/|$))[^\\\\/\\x00-\\x1f\\x7f-\\x9f]+)*$';
 export const PATH_PATTERN = new RegExp(PATH_PATTERN_SOURCE);
-// A reference to a param or an output, which slice 2 gives a meaning.
-export const REFERENCE_PATTERN = /\{[a-z0-9][a-z0-9-]*\.[a-z_][a-z0-9_-]*\}/;
+// A reference to a param or an output, as in `{run.goal}` or `{plan.design}`.
+// The source is kept as text because the contract compares it with its own
+// pattern, and because the scan needs its own global copy.
+export const REFERENCE_PATTERN_SOURCE =
+  '\\{[a-z0-9][a-z0-9-]*\\.[a-z_][a-z0-9_-]*\\}';
+export const REFERENCE_PATTERN = new RegExp(REFERENCE_PATTERN_SOURCE);
+/** The name a reference uses for the run's own params, as in `{run.goal}`. */
+export const RUN_REFERENCE_SCOPE = 'run';
 export const HASH_PATTERN = /^[0-9a-f]{64}$/;
 export const RUN_ID_PATTERN = /^[0-9]{8}-[0-9]{4}-[a-z0-9]{5}$/;
 export const RESERVED_STAGE_NAMES: ReadonlySet<string> = new Set([
@@ -55,6 +68,16 @@ export function codePointLength(text: string): number {
 /** A workflow name, stage name or agent id is lower-case words with hyphens. */
 export function isName(value: string): boolean {
   return NAME_PATTERN.test(value);
+}
+
+/** An output name is a name that starts with a letter. */
+export function isOutputName(value: string): boolean {
+  return OUTPUT_NAME_PATTERN.test(value);
+}
+
+/** A param name is lower-case words joined by `_`, starting with a letter. */
+export function isParamName(value: string): boolean {
+  return PARAM_NAME_PATTERN.test(value);
 }
 
 /** A stage name must be a name and must not be one of the reserved words. */

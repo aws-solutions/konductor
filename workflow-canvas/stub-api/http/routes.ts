@@ -127,7 +127,7 @@ export function buildRoutes(
           secured: true,
           handle: ({ body }) => {
             const { params } = readRunRequest(body);
-            return { status: 202, body: api.startRun(params.goal) };
+            return { status: 202, body: api.startRun(params) };
           },
         },
       },

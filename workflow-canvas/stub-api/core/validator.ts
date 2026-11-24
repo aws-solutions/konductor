@@ -4,18 +4,19 @@ import {
   codePointLength,
   FORMAT,
   isName,
+  isOutputName,
+  isParamName,
   isUsableStageName,
   MAX_INTENT_CHARS,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_YAML_DEPTH,
   PATH_PATTERN,
-  REFERENCE_PATTERN,
   RESERVED_STAGE_NAMES,
   SUGGESTED_VERSION,
   VERSION_PATTERN,
 } from './contract.ts';
-import { Reporter, type Segment } from './diagnostics.ts';
+import { Reporter, type Segment, type Span } from './diagnostics.ts';
 import {
   builtInKeys,
   CHECK_KEYS,
@@ -24,8 +25,10 @@ import {
   INTENT_STRING_SLICE,
   isBuiltIn,
   isStageKind,
+  OUTPUT_KEYS,
+  PARAM_KEYS,
+  PARAM_TYPE_SLICE,
   PARAMS_KEYS,
-  REFERENCE_SLICE,
   sliceOf,
   STAGE_KEYS,
   TOP_KEYS,
@@ -41,6 +44,12 @@ import type {
   Stage,
   WorkflowView,
 } from './model.ts';
+import {
+  isRunReference,
+  offsetInSource,
+  referencesIn,
+  type Reference,
+} from './references.ts';
 import { SourceMap } from './source-map.ts';
 import { suggestKey } from './suggest.ts';
 import {
@@ -55,6 +64,10 @@ import {
 
 const NAME_RULE =
   'must be lower-case letters, digits and hyphens, start with a letter or digit, and have at most 64 characters';
+const OUTPUT_NAME_RULE =
+  'must be lower-case letters, digits and hyphens, start with a letter, and have at most 64 characters';
+const PARAM_NAME_RULE =
+  'must be lower-case letters, digits and underscores, start with a letter, and have at most 64 characters';
 
 interface Context {
   reporter: Reporter;
@@ -154,7 +167,7 @@ function readTopLevel(root: YAMLMap, ctx: Context): WorkflowView {
   const name = readWorkflowName(entries.get('name'), ctx);
   const intent = readIntent(entries.get('intent'), root, ctx);
   const params = readParams(entries.get('params'), ctx);
-  const stages = readStages(entries.get('stages'), root, ctx);
+  const stages = readStages(entries.get('stages'), root, params, ctx);
   return {
     format,
     version,
@@ -254,6 +267,19 @@ function readName(
   if (text === undefined || isName(text)) return text;
   const message = `\`${entry.keyText}\` ${NAME_RULE}.`;
   ctx.reporter.report('INVALID_NAME', path, valueSpanOf(entry), message);
+  return undefined;
+}
+
+/** The boolean value of an entry, or `undefined` after a WRONG_TYPE. */
+function readBoolean(
+  entry: MapEntry,
+  path: Segment[],
+  ctx: Context,
+): boolean | undefined {
+  const { value } = entry;
+  if (isScalar(value) && typeof value.value === 'boolean') return value.value;
+  const message = `\`${entry.keyText}\` must be \`true\` or \`false\`.`;
+  ctx.reporter.report('WRONG_TYPE', path, valueSpanOf(entry), message);
   return undefined;
 }
 
@@ -444,7 +470,9 @@ function readCheckId(
   return id;
 }
 
-// `params` holds the goal. A param with another name is a later key.
+// `params` holds the goal and any other param the file declares. The goal
+// takes a description and a default; another param also takes a type and
+// whether it is required.
 function readParams(
   entry: MapEntry | undefined,
   ctx: Context,
@@ -456,8 +484,24 @@ function readParams(
     return undefined;
   }
   const entries = readEntries(entry.value, ['params'], PARAMS_KEYS, ctx);
-  const goal = entries.get('goal');
-  return goal ? { goal: readGoal(goal, ctx) } : {};
+  const params: Record<string, Param> = {};
+  for (const [name, found] of entries) {
+    if (name === 'goal') {
+      params.goal = readGoal(found, ctx);
+    } else if (readParamName(found, name, ctx)) {
+      params[name] = readParam(found, name, ctx);
+    }
+  }
+  return params;
+}
+
+// A param name is checked at its key, where the author wrote it.
+function readParamName(entry: MapEntry, name: string, ctx: Context): boolean {
+  if (isParamName(name)) return true;
+  const message = `The param name ${quote(name)} ${PARAM_NAME_RULE}.`;
+  const path = ['params', name];
+  ctx.reporter.report('INVALID_NAME', path, spanOf(entry.key), message);
+  return false;
 }
 
 function readGoal(entry: MapEntry, ctx: Context): Param {
@@ -477,9 +521,52 @@ function readGoal(entry: MapEntry, ctx: Context): Param {
   return param;
 }
 
+function readParam(entry: MapEntry, name: string, ctx: Context): Param {
+  const path = ['params', name];
+  if (!isMap(entry.value)) {
+    const message = `\`${name}\` must be a mapping.`;
+    ctx.reporter.report('WRONG_TYPE', path, valueSpanOf(entry), message);
+    return {};
+  }
+  const entries = readEntries(entry.value, path, PARAM_KEYS, ctx);
+  const param: Param = {};
+  const type = entries.get('type');
+  if (type) {
+    const read = readParamType(type, [...path, 'type'], ctx);
+    if (read !== undefined) param.type = read;
+  }
+  for (const key of ['description', 'default'] as const) {
+    const found = entries.get(key);
+    const text = found && readString(found, [...path, key], ctx);
+    if (text !== undefined) param[key] = text;
+  }
+  const required = entries.get('required');
+  if (required) {
+    const read = readBoolean(required, [...path, 'required'], ctx);
+    if (read !== undefined) param.required = read;
+  }
+  return param;
+}
+
+// Every value is a string in this release; the other types are planned.
+function readParamType(
+  entry: MapEntry,
+  path: Segment[],
+  ctx: Context,
+): 'string' | undefined {
+  const text = readString(entry, path, ctx);
+  if (text === undefined) return undefined;
+  if (text === 'string') return 'string';
+  const message = `The param type ${quote(text)} is not supported by this build. ${laterSlice(PARAM_TYPE_SLICE)}`;
+  const span = valueSpanOf(entry);
+  ctx.reporter.report('NOT_SUPPORTED_BY_THIS_BUILD', path, span, message);
+  return undefined;
+}
+
 function readStages(
   entry: MapEntry | undefined,
   root: YAMLMap,
+  params: Record<string, Param> | undefined,
   ctx: Context,
 ): Stage[] {
   if (!entry) {
@@ -497,10 +584,19 @@ function readStages(
     ctx.reporter.report('INVALID_VALUE', ['stages'], spanOf(list), message);
   }
   const used = new Set<string>();
-  return list.items.flatMap((item, index) => {
+  const read = list.items.flatMap((item, index) => {
     const stage = readStage(item, index, used, ctx);
     return stage ? [stage] : [];
   });
+  checkReferences(read, params, ctx);
+  return read.map(({ stage }) => stage);
+}
+
+/** A stage and the prompt entry its references were written in. */
+interface ReadStage {
+  stage: Stage;
+  index: number;
+  prompt?: MapEntry;
 }
 
 function readStage(
@@ -508,7 +604,7 @@ function readStage(
   index: number,
   used: Set<string>,
   ctx: Context,
-): Stage | undefined {
+): ReadStage | undefined {
   const path = ['stages', index];
   if (!isMap(item)) {
     const message = 'A stage must be a mapping.';
@@ -523,9 +619,54 @@ function readStage(
   const agentEntry = entries.get('agent');
   const agent = agentEntry && readName(agentEntry, [...path, 'agent'], ctx);
   const prompts = readPrompts(entries, path, ctx);
+  const outputs = readOutputs(entries.get('outputs'), path, ctx);
   if (!name || !agent) return undefined;
   const range = lineRangeOf(item, ctx.source);
-  return { name, kind: 'agent', agent, ...prompts, range };
+  const stage: Stage = {
+    name,
+    kind: 'agent',
+    agent,
+    ...prompts,
+    ...(outputs === undefined ? {} : { outputs }),
+    range,
+  };
+  const prompt = entries.get('prompt');
+  return { stage, index, ...(prompt === undefined ? {} : { prompt }) };
+}
+
+// `outputs` maps an output name to a file the stage must leave behind. The
+// name is checked at its key and the path by the path rules.
+function readOutputs(
+  entry: MapEntry | undefined,
+  path: Segment[],
+  ctx: Context,
+): Record<string, string> | undefined {
+  if (!entry) return undefined;
+  const outputsPath = [...path, 'outputs'];
+  if (!isMap(entry.value)) {
+    const message = '`outputs` must be a mapping of names to paths.';
+    const span = valueSpanOf(entry);
+    ctx.reporter.report('WRONG_TYPE', outputsPath, span, message);
+    return undefined;
+  }
+  const entries = readEntries(entry.value, outputsPath, OUTPUT_KEYS, ctx);
+  const outputs: Record<string, string> = {};
+  for (const [name, found] of entries) {
+    if (!isOutputName(name)) {
+      const message = `The output name ${quote(name)} ${OUTPUT_NAME_RULE}.`;
+      const span = spanOf(found.key);
+      ctx.reporter.report(
+        'INVALID_NAME',
+        [...outputsPath, name],
+        span,
+        message,
+      );
+      continue;
+    }
+    const file = readPath(found, [...outputsPath, name], ctx);
+    if (file !== undefined) outputs[name] = file;
+  }
+  return outputs;
 }
 
 // From the line of the stage's first key to the last line that holds its text.
@@ -634,13 +775,99 @@ function readPrompt(
   const text = readString(entry, path, ctx);
   if (text === undefined) return undefined;
   const length = codePointLength(text);
-  const span = valueSpanOf(entry);
   if (length < 1 || length > MAX_PROMPT_CHARS) {
     const message = `\`prompt\` must have 1 to ${MAX_PROMPT_CHARS} characters.`;
-    ctx.reporter.report('INVALID_VALUE', path, span, message);
-  } else if (REFERENCE_PATTERN.test(text)) {
-    const message = `A reference such as \`{plan.design}\` is not supported by this build. ${laterSlice(REFERENCE_SLICE)}`;
-    ctx.reporter.report('NOT_SUPPORTED_BY_THIS_BUILD', path, span, message);
+    ctx.reporter.report('INVALID_VALUE', path, valueSpanOf(entry), message);
   }
   return text;
+}
+
+/**
+ * Checks every reference in every prompt. `{run.<param>}` names a param of
+ * the run, and `{<stage>.<output>}` an output of that stage or an earlier
+ * one. A reference the file does not declare is an `INVALID_VALUE` at the
+ * reference, which is where the author can fix it.
+ */
+function checkReferences(
+  read: readonly ReadStage[],
+  params: Record<string, Param> | undefined,
+  ctx: Context,
+): void {
+  const outputsBefore = new Map<string, Set<string>>();
+  const stagesAhead = new Set(read.map(({ stage }) => stage.name));
+  for (const { stage, index, prompt } of read) {
+    outputsBefore.set(stage.name, new Set(Object.keys(stage.outputs ?? {})));
+    stagesAhead.delete(stage.name);
+    if (!prompt) continue;
+    const text = isScalar(prompt.value) ? prompt.value.value : undefined;
+    if (typeof text !== 'string') continue;
+    const path = ['stages', index, 'prompt'];
+    const seen = new Map<string, number>();
+    for (const reference of referencesIn(text)) {
+      const skip = seen.get(reference.text) ?? 0;
+      seen.set(reference.text, skip + 1);
+      const problem = referenceProblem(
+        reference,
+        params,
+        outputsBefore,
+        stagesAhead,
+      );
+      if (problem === undefined) continue;
+      const span = spanOfReference(prompt, reference, skip, ctx);
+      ctx.reporter.report('INVALID_VALUE', path, span, problem);
+    }
+  }
+}
+
+// What is wrong with a reference, or `undefined` when it resolves.
+function referenceProblem(
+  reference: Reference,
+  params: Record<string, Param> | undefined,
+  outputsBefore: ReadonlyMap<string, ReadonlySet<string>>,
+  stagesAhead: ReadonlySet<string>,
+): string | undefined {
+  const { scope, name } = reference;
+  const shown = quoteReference(reference);
+  if (isRunReference(reference)) {
+    // The goal is a param of every run, declared or not.
+    const declared = name === 'goal' || params?.[name] !== undefined;
+    return declared
+      ? undefined
+      : `${shown} names a param that the file does not declare.`;
+  }
+  if (stagesAhead.has(scope)) {
+    return `${shown} names a stage that runs later. A stage can name only its own outputs and those of an earlier stage.`;
+  }
+  const outputs = outputsBefore.get(scope);
+  if (!outputs) {
+    return `${shown} names a stage that the file does not have.`;
+  }
+  return outputs.has(name)
+    ? undefined
+    : `${shown} names an output that the stage ${quote(scope)} does not declare.`;
+}
+
+// A reference is echoed only when both of its names are plain, since a
+// message never quotes a value that looks like a secret.
+function quoteReference(reference: Reference): string {
+  const plain =
+    quote(reference.scope).startsWith('`') &&
+    quote(reference.name).startsWith('`');
+  return plain ? `\`${reference.text}\`` : 'The reference (not shown)';
+}
+
+// Where the reference sits in the text. A quoted scalar may escape what it
+// holds, so a reference the source does not spell out is reported at the
+// whole prompt instead.
+function spanOfReference(
+  prompt: MapEntry,
+  reference: Reference,
+  skip: number,
+  ctx: Context,
+): Span {
+  const [start, end] = valueSpanOf(prompt);
+  const source = ctx.source.text.slice(start, end);
+  const at = offsetInSource(source, reference, skip);
+  if (at === undefined) return [start, end];
+  return [start + at, start + at + reference.text.length];
 }

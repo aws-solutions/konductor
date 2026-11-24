@@ -41,9 +41,12 @@ export interface Check {
   file: string;
 }
 
+/** One input of a run. Every value is a string in this release. */
 export interface Param {
+  type?: 'string';
   description?: string;
   default?: string;
+  required?: boolean;
 }
 
 export interface Intent {
@@ -66,6 +69,8 @@ export interface Stage {
   agent: string;
   prompt?: string;
   prompt_file?: string;
+  /** The files the stage must leave behind, by output name, in file order. */
+  outputs?: Record<string, string>;
   range: LineRange;
 }
 
