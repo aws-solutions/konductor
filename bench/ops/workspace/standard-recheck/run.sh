@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# STANDARD gate rechecks: one non-Claude recheck of the current version of each of the 18 DEV tasks the STANDARD
-# gate skips (10 with no recheck, 8 hand-edited past their recheck). Owner terminal only: PAID (Kiro credits).
+# STANDARD gate rechecks: one non-Claude recheck of the current version of each of the 19 DEV tasks the STANDARD
+# gate skips (10 with no recheck, 9 hand-edited past their recheck; the ninth is t2-dr-notify-fanout-v6, whose key was
+# rewritten on 2026-11-24). Owner terminal only: PAID (Kiro credits).
 #
 #   bash run.sh --dry-run    free: builds every call's bundle from the pinned bench commit, checks the queue, prints
-#                            the calls, families and the counted cap; no model call, no ledger line
+#                            the calls, families and the counted cap; no model call, no ledger line, no pin
 #   bash run.sh              the paid queue, one call at a time; rerun to resume (finished calls are skipped)
 #
 # Queue (queue.txt): 7 calls of 2 or 3 tasks, each by a non-Claude family (deepseek-3.2, qwen3-coder-next, glm-5,
@@ -12,8 +13,10 @@
 # counted call (spent + 15 <= CAP), else the queue stops; the counted figure is written after the call. No retry: a
 # call with no recheck.json is logged NOJSON and the queue stops. Touch $S/STOP to stop before the next call.
 # Each call runs kiro-cli in an empty HOME made by the bench's own sandbox helpers, on a bundle built from a detached
-# worktree pinned at the first start (pin.txt), never beside a pilot, a forced-small run or a held heavy lock.
-# The results go to $S/results/<call>.json; applying them to review.recheck is a separate free step for a worker.
+# worktree pinned at the first paid start (pin.txt). While nothing is spent, the pin follows the worktree's head, so a
+# task edited after a dry run is rechecked at the content STANDARD will run. Never beside a pilot, a forced-small run
+# or a held heavy lock. The results go to $S/results/<call>.json; applying them to review.recheck is a separate free
+# step for a worker.
 #
 # Overrides (env, for test-run.sh): S, PIN_REPO, KIRO, CAP, LEDGER, HEAVY_LOCK, HOST_CHECK, WAIT_MAX.
 set -u
@@ -80,8 +83,12 @@ main() {
     git -C "$WS/worktrees/konductor-debt5" worktree add -q --detach "$PIN_REPO" origin/feat/bench-pilot-nk || stop "cannot add $PIN_REPO"
   fi
   pin=$(git -C "$PIN_REPO" rev-parse HEAD)
-  [ -s "$S/pin.txt" ] || echo "$pin" > "$S/pin.txt"
-  [ "$(cat "$S/pin.txt")" = "$pin" ] || stop "$PIN_REPO is at ${pin:0:8}, not the queue's pin $(cut -c1-8 "$S/pin.txt")"
+  if [ -s "$S/pin.txt" ] && [ "$(cat "$S/pin.txt")" != "$pin" ]; then
+    if [ "$(spent)" = 0 ] && [ -z "$(ls -A "$S/results" 2>/dev/null)" ]; then
+      say "re-pinned: nothing spent, the queue's pin $(cut -c1-8 "$S/pin.txt") moves to ${pin:0:8}"; echo "$pin" > "$S/pin.txt"
+    else stop "$PIN_REPO is at ${pin:0:8}, not the queue's pin $(cut -c1-8 "$S/pin.txt")"; fi
+  fi
+  [ "$dry" = 1 ] || [ -s "$S/pin.txt" ] || echo "$pin" > "$S/pin.txt"
   [ -z "$(git -C "$PIN_REPO" status --porcelain)" ] || stop "$PIN_REPO has local changes"
   say "pin ${pin:0:8}; cap $CAP counted ($COUNT_MIN per call minimum); spent so far $(spent)"
   if [ "$dry" = 1 ]; then

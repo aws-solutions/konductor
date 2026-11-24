@@ -31,7 +31,17 @@ bash -n "$HERE/run.sh" && ok "bash -n clean" || bad syntax
 : > "$T/calls"; run A --dry-run; rc=$?
 [ "$rc" = 0 ] && [ "$(calls)" = 0 ] && grep -q 'dry run: 7 calls, at least 105 counted of the 105 cap' "$T/log" && [ ! -s "$T/A.ledger" ] && ok "dry run: 7 bundles, no call, no ledger line" || { bad "dry: rc $rc"; cat "$T/log"; }
 [ "$(ls "$T/A/dry" | wc -l)" = 7 ] && [ -f "$T/A/dry/S4/tasks/t3-db-audit-retention/task.json" ] && ok "every call's bundle is built" || bad "bundles: $(ls "$T/A/dry")"
+[ -f "$T/A/dry/S6/tasks/t2-dr-notify-fanout-v6/task.json" ] && ok "S6 holds the v6 fan-out review (hand-edited 2026-11-24)" || bad "S6 lacks t2-dr-notify-fanout-v6"
 grep -q '"review"' "$T/A/dry/S4/tasks/t3-db-audit-retention/task.json" && bad "bundle shows review" || ok "bundle hides review and pilot"
+[ ! -e "$T/A/pin.txt" ] && ok "dry run writes no pin" || bad "dry run wrote pin.txt"
+
+# a pin left by an earlier start with nothing spent moves to the worktree's head; one with spend does not
+mkdir -p "$T/P"; echo 0000000000000000000000000000000000000000 > "$T/P/pin.txt"
+: > "$T/calls"; run P --dry-run; rc=$?
+[ "$rc" = 0 ] && [ "$(cat "$T/P/pin.txt")" = "$(git -C "$PIN" rev-parse HEAD)" ] && grep -q 're-pinned' "$T/log" && ok "unspent queue re-pins to the worktree head" || { bad "re-pin: rc $rc"; tail -3 "$T/log"; }
+mkdir -p "$T/Q"; echo 0000000000000000000000000000000000000000 > "$T/Q/pin.txt"; echo "X1 deepseek-3.2 15 real=1 rc=0 t" > "$T/Q.ledger"
+: > "$T/calls"; run Q --dry-run; rc=$?
+[ "$rc" = 1 ] && grep -q "not the queue's pin" "$T/log" && ok "a spent queue keeps its pin" || { bad "spent pin: rc $rc"; tail -3 "$T/log"; }
 
 : > "$T/calls"; run B; rc=$?
 [ "$rc" = 0 ] && [ "$(calls)" = 7 ] && [ "$(ls "$T/B/results" | wc -l)" = 7 ] && ok "paid queue: 7 calls, 7 results" || { bad "paid: rc $rc, calls $(calls)"; tail -5 "$T/log"; }

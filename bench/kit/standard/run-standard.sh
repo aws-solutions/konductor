@@ -24,7 +24,7 @@
 # Needs: S (the study dir), R (a dedicated konductor worktree; the kit moves its pin, so run the kit from outside it),
 # KBIN (the pinned kiro-cli 3.5.0). Optional: COST (pilot cost JSON, [{id, credits}]), REPORTS (a dir the tables are
 # copied to), PY312, KONDUCTOR_SHA (default origin/main at the first start), BENCH_REF. Test overrides: HELPER,
-# KBIN_PIN, NO_FETCH, HEAVY_LOCK, LITE_LOCK, OWN_LOCK, WAIT_MAX, WAIT_STEP, STAGE_CAP, HOST_CHECK.
+# KBIN_PIN, NO_FETCH, HEAVY_LOCK, LITE_LOCK, OWN_LOCK, WAIT_MAX, WAIT_STEP, STAGE_CAP, STAGES (replicates, default 2), HOST_CHECK.
 set -u
 
 KIT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -46,7 +46,7 @@ HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 LITE_LOCK=${LITE_LOCK:-/var/tmp/konductor-lite.lock}
 OWN_LOCK=${OWN_LOCK:-/var/tmp/konductor-standard.lock}
 WAIT_MAX=${WAIT_MAX:-3600}; WAIT_STEP=${WAIT_STEP:-60}
-STAGE_CAP=${STAGE_CAP:-800}; MARGIN=25; STAGES=2
+STAGE_CAP=${STAGE_CAP:-800}; MARGIN=25; STAGES=${STAGES:-2}
 SEED=20261121
 PLAN=$ROOT/plan.json
 STOPPED=""
