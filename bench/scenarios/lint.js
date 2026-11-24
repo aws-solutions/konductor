@@ -4,7 +4,8 @@
 // Prompt leak lint (plan 4.5). A prompt must not teach the method: it may not name a konductor skill, SOP or agent,
 // use a term from the fixed method list, or tell the agent not to ask on a task where questions are allowed.
 // A v3 task (one with a `phase`) must also record where it came from: authorship.source, and a licence when the
-// source is a public one. A v3 task's judges may carry at most 30% of its score (judge-share). lint-files.js adds the
+// source is a public one. A v3 task's judges may carry at most 30% of its score, or 40% when it has a tests check
+// (judge-share; owner yes on D-81, 2026-11-24). lint-files.js adds the
 // rules that read a task's fixture and hidden files. Known findings sit in lint-baseline.json, each with its DEBT row:
 // they are reported but do not fail the lint; a new finding fails it, and so does a baseline entry that no longer matches.
 
@@ -18,6 +19,8 @@ const { DEFAULT_WEIGHTS } = require('../report/scores.js');
 
 const BASELINE_FILE = path.join(__dirname, 'lint-baseline.json');
 const MAX_JUDGE_SHARE = 0.3;
+// D-81 (owner, 2026-11-24): a task whose hidden tests carry half the code score may give its judges up to 40%.
+const MAX_JUDGE_SHARE_WITH_TESTS = 0.4;
 
 // The fixed method list. Acronyms are matched in capitals only ("RICE" is a method, "rice" is food); phrases ignore case.
 // Plain deliverable names a user would say (ADR, postmortem, threat model, runbook) are not in this list.
@@ -118,8 +121,9 @@ function judgeShare(task, weights = DEFAULT_WEIGHTS) {
 function judgeShareFindings(task) {
   if (!isV3(task)) return [];
   const share = judgeShare(task);
-  return share !== null && share > MAX_JUDGE_SHARE + 1e-9
-    ? [{ rule: 'judge-share', where: 'checks', detail: `judges carry ${Math.round(share * 100)}% of the score (at most ${MAX_JUDGE_SHARE * 100}%); add a tests check` }]
+  const max = (task.checks ?? []).some((c) => c?.type === 'tests') ? MAX_JUDGE_SHARE_WITH_TESTS : MAX_JUDGE_SHARE;
+  return share !== null && share > max + 1e-9
+    ? [{ rule: 'judge-share', where: 'checks', detail: `judges carry ${Math.round(share * 100)}% of the score (at most ${max * 100}%); add a tests check` }]
     : [];
 }
 

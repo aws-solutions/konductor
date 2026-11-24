@@ -1307,7 +1307,7 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   task has no `Fail:`, `Partial:` and `Pass:` anchors in its criterion; the `expert-key` placeholder is exempt), `rubric-count` (a judged v3 task has fewer than 3
   criteria in the rubric the judge scores, each `expertKey` item counted, so one judge line would decide it; the 69 tasks
   under 3 on 2026-11-23 are in the baseline as D-225), `judge-share` (a v3 task's judges carry more than
-  30% of its score under the default weights, for example no `tests` check), `key-negation` (a block key item fails an answer whose text matches a
+  30% of its score under the default weights, or more than 40% when it has a `tests` check (owner, 2026-11-24, D-81); for example no `tests` check), `key-negation` (a block key item fails an answer whose text matches a
   `none` pattern, so a correct denial of the wrong cause loses it; a pattern anchored as `^...$` is exempt; a key graded by the shared
   `block-key.js`, which skips a denied claim in `none` lists, is checked only for `none` items, and a `none` item with its own `match.none`
   denial guard is exempt), `bare-test-dir` (a fixture's
