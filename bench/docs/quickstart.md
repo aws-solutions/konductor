@@ -3,6 +3,8 @@
 
 [← bench home](../README.md) · [glossary](glossary.md) · [scoring](scoring.md) · [troubleshooting](troubleshooting.md)
 
+**Quick start:** after this free tour, [benchmark my agent](how-to/benchmark-an-agent.md) is the first paid run in seven steps.
+
 Everything on this page is free: no model call, no credits, no AWS keys, no login. You need Linux (macOS runs part 1 only), Node 22
 or later, `git`, a clone of this repository, and (for part 2) Python 3.10 or newer, or 3.12 for the robot arm. Run every command from the repository root.
 
