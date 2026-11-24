@@ -256,3 +256,18 @@ drain does not fit, so rolling is out for a stated reason. The file names no oth
 the existing files are unchanged. Gates: reference 100, stub 0, lazy 25, alt 100; a rolling answer (the reference
 with decision rolling) scores 0, failing the `decision-is-canary` gate. Non-Claude recheck: pending
 (`handEdited.version` 6). The LITE run reads its pinned copy, not this branch.
+
+## t8-dec-deploy-strategy-v7 (2026-11-24, mate task-key-fix worker, claude; LITE fault 1)
+
+New versioned task and key (`t8-dec-deploy-strategy-v7.json`, `hidden/t8-dec-deploy-strategy-v7/block-kit/key.json`);
+the base task (v6) and its key are unchanged, so the study's scores stay reproducible. The v4 key the LITE study ran
+gated on `decision` = canary, so a reasoned rolling plan scored 0 on code while the judges gave it 56 to 75; the v4
+folder never ruled rolling out (v6 added `deploy/fleet-updater.md` for that, after the runs). The v7 key scores the
+reasoning: the gate is "not blue/green" (the folder rules a second fleet out on cost and capacity); one option is
+chosen (canary or rolling); blue/green is rejected for capacity or cost; the other option is rejected for a reason the
+folder supports (drain, sessions, exposure, the revert limit, the $720 slice, routing, signal dilution, a redundant
+first batch). Two more faults in the same key: `constraint-capacity` wanted "40 hosts" and "72%" in one constraint
+(most answers split them; now two items, `constraint-capacity` and `constraint-fleet-size`), and the 78% revisit
+item did not accept "CPU" (the v6 wording is kept). Same fixture and prompt as v6. Re-score of the 21 saved LITE runs:
+every arm's mean goes to 100 (`reports/task-key-fixes-2026-11-24.md` in the mate workspace). Gates: reference 100,
+stub 0, lazy 25, alt 100. Non-Claude recheck: pending (`handEdited.version` 7).

@@ -1,0 +1,223 @@
+{
+  "id": "t8-dec-deploy-strategy-v7",
+  "class": "hard",
+  "version": 7,
+  "phase": "decisions",
+  "role": "sre",
+  "phases2": [
+    "release-ops"
+  ],
+  "questions": "allowed",
+  "prompt": "The platform lead wants us to stop debating how RelayRoom releases reach production. Review the material in this folder and write a decision record at decisions/0007-deploy-strategy.md. Choose exactly one of rolling, blue/green, or canary, explain why the other two do not fit, and turn the operational limits into practical rollout and rollback rules. End the document with its last fenced ```json block containing one object. The object must have decision (string, one option name), options (list of objects with name and verdict strings, where verdict is chosen or rejected, plus reasons as a list of strings), constraints (list of objects with id, text, and source strings, where source is the path of the file in this folder the constraint came from), and revisitWhen (list of strings). Include units for counts, percentages, minutes, dollars, hosts, and sessions. Times must be ISO 8601 UTC. Keep the record specific enough for the on-call team to use.",
+  "fixture": "t8-dec-deploy-strategy",
+  "hidden": "t8-dec-deploy-strategy-v7",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 4,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "decisions/0007-deploy-strategy.md",
+      "weight": 3,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/capacity-report.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "operational-clarity",
+      "criterion": "The prose gives an on-call engineer a clear, service-specific explanation of the trade-offs and the chosen rollout behavior. Fail: the record is a generic pros-and-cons list, or names canary without numbers from this folder, so an on-call engineer could not act on it. Partial: it picks one option and gives some rollout or rollback rules, but the first-stage size, the watch time, or the handling of long-lived websocket sessions is missing or has no unit. Pass: it chooses canary and rejects blue/green (second fleet cost against the dollar and host figures in the capacity report) and rolling (whole-fleet exposure and the 40-minute drain against the revert limit) with those numbers, gives a first-stage host count and percent, the signal and minutes to watch before widening, a stop rule, and what happens to sessions on the new version at rollback, each with units. (code cannot check this because the automated key only inspects structured values and selected evidence patterns).",
+      "weight": 1
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "blast-radius",
+        "text": "Sizes the first stage by how many users a bad release may reach before it is detected, and ties that size to the detection signal and its delay.",
+        "source": "Martin Fowler, BlueGreenDeployment, https://martinfowler.com/bliki/BlueGreenDeployment.html (copyright Martin Fowler; idea only)"
+      },
+      {
+        "id": "draining",
+        "text": "Handles long-lived sessions: how connections drain or move during each option, and what users see.",
+        "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "schema-compat",
+        "text": "Sequences schema changes across the period when two versions run (add first, remove only after the old version is gone), not only notes that both must work.",
+        "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
+      },
+      {
+        "id": "rollback-speed",
+        "text": "Explains how a rollback treats sessions already on the new version, and how that fits the revert limit given the drain time.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "canary-signal",
+        "text": "If canary is considered, says what traffic share and metrics make the canary signal meaningful for this service.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "detection",
+        "text": "Names the signals that decide go or stop at each stage and how long to watch them before widening.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Blue/green is best practice and gives zero downtime.",
+      "Canary, because large companies use it.",
+      "Rolling update, because it is the platform default.",
+      "A pros and cons table with no tie to the service's numbers."
+    ]
+  },
+  "targetSkills": [
+    "decision-research",
+    "decision-writing",
+    "trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "decision-research",
+      "decision-writing",
+      "trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/release-engineering/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks for analysis of existing material but does not specify how to derive the decision or which causes/constraints to prioritize. It gives general formatting guidance, not a specific method or workflow."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All key identifiers (40-host fleet, 72% utilization, 12-minute revert window, 40-minute drain, 4 host canary, 342 line log citation) are explicitly stated in the fixture. The request defines the decision options, output format, and constraint source requirements precisely."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The incident mechanism the reviewer found in incident-list.md is no longer graded: the cause and log-citation items were removed from the key and the request after review; the key checks the choice, the rejections and the six constraints with their numbers and sources. (reviewer: The notes/ meeting note mentions 'room names should be case-sensitive' which is unrelated, but more critically the incident-list.md directly names the failure mechanism ('upstream connection-pool waiting followed by retries') and the session-router log line 342 explicitly records the pool config change at 14:32, giving away both root cause and the exact citation the key requires.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The decoy (database latency) is explicitly ruled out in incident-list.md. A wrong answer that blames database issues or picks blue/green (favored in old-release-wiki but contradicted by finance-note and capacity-report) would fail multiple key items: decision-is-canary, bluegreen-rejected-for-capacity-cost, rolling-rejected-for-broad-exposure, and constraint-cost."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Every key item is derivable from fixture content: 40-host fleet and 72% utilisation (capacity-report.md), 40-minute drain (slo.md), two versions compatibility (schema-compatibility.md), $2,800 cap vs $7,200 for second fleet (finance-note.md), 3 deploys/week goal (deploy-goals.md), 12-minute revert window (compliance-note.md), 78% threshold (capacity-report.md), and the exact pool/retry log evidence (session-router.log:342 and incident-list.md)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The incident mechanism the reviewer found in incident-list.md is no longer graded: the cause and log-citation items were removed from the key and the request after review; the key checks the choice, the rejections and the six constraints with their numbers and sources. (reviewer: The incident-list.md RR-221 incident explicitly describes the failure mechanism as 'upstream connection-pool waiting followed by retries' and identifies the 240→120 pool setting change, directly revealing the cause the key item 'cause-is-pool-reduction-and-retries' requires.)"
+      }
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks to write decision record and choose among three deployment strategies, no method mandated or decoy present."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture provides constraints (capacity, cost, drain times) but doesn't prescribe answer or describe finished behavior hidden tests check."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Key items reference specific data from fixture files (40 hosts, 72%, 40 min drain, $2,800/$7,200 costs, etc.) and rubric anchors reward outcome request asks for."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can analyze constraints, choose canary (cost prevents blue/green, broad exposure prevents rolling), and write valid decision record differing from reference."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-key-fix worker (2026-11-24): key scores the reasoning, not the label; rolling passes the gate when blue/green is rejected for cost and canary for a folder reason (LITE fault 1)",
+    "log": "HAND-EDITS.md",
+    "version": 7
+  },
+  "pilot": {
+    "scores": {
+      "fixReason": "cannot pass by re-weighting: the mechanical lazy answer (lib/answers.js) meets most hidden block-key items, so even with every non-test check failing it would score 51.6 (gate 40). The key needs items a half-copy misses. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
+    },
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-24",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 25,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-24"
+    }
+  },
+  "lockedAt": null
+}

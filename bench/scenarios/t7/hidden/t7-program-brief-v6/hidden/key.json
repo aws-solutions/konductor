@@ -1,0 +1,339 @@
+{
+  "_v6": "Workstreams are found by topic (selection, identity, migration tokens in the name), not by the exact names the v5 key invented and neither the request nor the folder gives. The migration dependency may be REQ-012 itself or the identity workstream by name. The last milestone accepts the memo's own phrase (on the shared tool). Same 20 assertions. Pilot ready may be dated 2027-06-18 (the memo's suggestion) or 2027-06-17 (capacity-2027.csv lists 2027-06-18 as a holiday). The open-question topics are matched by topic words, not one fixed word each.",
+  "output": "docs/program-brief.md",
+  "block": "program",
+  "assertions": [
+    {
+      "id": "identity-dependency-owner",
+      "desc": "Names the shared identity dependency ticket and its owner",
+      "op": "includes",
+      "path": "shared_dependencies",
+      "ids": [
+        "REQ-012",
+        "Identity Services"
+      ]
+    },
+    {
+      "id": "migration-workstream-dependency",
+      "desc": "The migration workstream carries the identity dependency (the ticket, or the identity workstream by name)",
+      "op": "cites",
+      "path": "workstreams",
+      "field": "depends_on",
+      "ids": [
+        [
+          "REQ-012",
+          "identity",
+          "OIDC",
+          "sign-in"
+        ]
+      ],
+      "whereNames": {
+        "name": [
+          "migration",
+          "migrations",
+          "migrate",
+          "cutover",
+          "cutovers",
+          "cut-over",
+          "adoption",
+          "onboarding",
+          "rollout"
+        ]
+      }
+    },
+    {
+      "id": "roadmap-teams",
+      "desc": "Names both teams in the roadmap conflict",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "between",
+      "ids": [
+        "Atlas",
+        "Beacon"
+      ],
+      "min": 2
+    },
+    {
+      "id": "staffing-gap",
+      "desc": "Reports the engineering staffing gap",
+      "op": "number",
+      "path": "headcount_gap",
+      "value": 3,
+      "tol": 0
+    },
+    {
+      "id": "required-constraints",
+      "desc": "Carries the retention, sign-in, and rollback constraints",
+      "op": "includes",
+      "path": "constraints",
+      "ids": [
+        "365 days",
+        "OIDC",
+        "rollback"
+      ]
+    },
+    {
+      "id": "tool-decision-date",
+      "desc": "Dates the tool decision checkpoint from the memo",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
+      "ids": [
+        "2027-05-14"
+      ]
+    },
+    {
+      "id": "pilot-ready-date",
+      "desc": "Dates the pilot-ready checkpoint from the memo, or the working day before it (2027-06-18 is a listed holiday)",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
+      "ids": [
+        [
+          "2027-06-18",
+          "2027-06-17"
+        ]
+      ]
+    },
+    {
+      "id": "first-cutover-date",
+      "desc": "Dates the first-cutover checkpoint from the memo",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
+      "ids": [
+        "2027-07-30"
+      ]
+    },
+    {
+      "id": "final-milestone-date",
+      "desc": "Dates the all-teams checkpoint from the memo",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
+      "ids": [
+        "2027-08-27"
+      ]
+    },
+    {
+      "id": "feature-flag-decoy",
+      "desc": "Does not turn the out-of-scope high-vote request into a workstream",
+      "op": "absent",
+      "path": "workstreams",
+      "ids": [
+        "REQ-068"
+      ]
+    },
+    {
+      "id": "all-workstreams",
+      "desc": "Names a workstream for each of tool selection, identity integration, and migration",
+      "op": "includes",
+      "path": "workstreams",
+      "field": "name",
+      "ids": [
+        [
+          "selection",
+          "select",
+          "decision",
+          "evaluation",
+          "evaluate",
+          "governance",
+          "choice",
+          "choose"
+        ],
+        [
+          "identity",
+          "OIDC",
+          "sign-in",
+          "SSO",
+          "authentication"
+        ],
+        [
+          "migration",
+          "migrations",
+          "migrate",
+          "cutover",
+          "cutovers",
+          "cut-over",
+          "adoption",
+          "onboarding",
+          "rollout"
+        ]
+      ]
+    },
+    {
+      "id": "open-question-coverage",
+      "desc": "Carries the ownership, identity, pilot, audit and staffing questions (each by topic words)",
+      "op": "includes",
+      "path": "open_questions",
+      "ids": [
+        [
+          "ownership",
+          "owner",
+          "owns",
+          "own"
+        ],
+        [
+          "Identity Services",
+          "REQ-012",
+          "identity"
+        ],
+        [
+          "pilot"
+        ],
+        [
+          "audit",
+          "retention",
+          "history"
+        ],
+        [
+          "leadership",
+          "staffing",
+          "headcount",
+          "engineers",
+          "engineer",
+          "gap"
+        ]
+      ]
+    },
+    {
+      "id": "tool-decision-date-attached",
+      "desc": "Attaches the tool decision date to the named milestone",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        "Tool decision"
+      ],
+      "where": {
+        "date": "2027-05-14"
+      }
+    },
+    {
+      "id": "pilot-ready-date-attached",
+      "desc": "Attaches the pilot-ready date (or the working day before the holiday) to the named milestone",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        "Pilot ready"
+      ],
+      "where": {
+        "date": [
+          "2027-06-18",
+          "2027-06-17"
+        ]
+      }
+    },
+    {
+      "id": "first-cutover-date-attached",
+      "desc": "Attaches the first-cutover date to the named milestone",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        "First product cutover"
+      ],
+      "where": {
+        "date": "2027-07-30"
+      }
+    },
+    {
+      "id": "final-date-attached",
+      "desc": "Attaches the all-teams date to the named milestone (the memo says: all in-scope teams on the shared tool)",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        [
+          "All in-scope teams on shared tool",
+          "All in-scope teams on the shared tool",
+          "all in-scope teams"
+        ]
+      ],
+      "where": {
+        "date": "2027-08-27"
+      }
+    },
+    {
+      "id": "decoy-out-of-scope",
+      "desc": "Lists the high-vote request as out of scope",
+      "op": "includes",
+      "path": "out_of_scope",
+      "ids": [
+        "REQ-068"
+      ]
+    },
+    {
+      "id": "tool-selection-teams",
+      "desc": "Names all product teams in the tool selection workstream",
+      "op": "includes",
+      "path": "workstreams",
+      "field": "teams",
+      "ids": [
+        "Atlas",
+        "Beacon",
+        "Cedar"
+      ],
+      "whereNames": {
+        "name": [
+          "selection",
+          "select",
+          "decision",
+          "evaluation",
+          "evaluate",
+          "governance",
+          "choice",
+          "choose"
+        ]
+      }
+    },
+    {
+      "id": "identity-workstream-teams",
+      "desc": "Names the service and product teams in the identity workstream",
+      "op": "includes",
+      "path": "workstreams",
+      "field": "teams",
+      "ids": [
+        "Identity Services",
+        "Atlas",
+        "Beacon",
+        "Cedar"
+      ],
+      "whereNames": {
+        "name": [
+          "identity",
+          "OIDC",
+          "sign-in",
+          "SSO",
+          "authentication"
+        ]
+      }
+    },
+    {
+      "id": "migration-workstream-teams",
+      "desc": "Names all product teams across the migration and cutover workstreams",
+      "op": "includes",
+      "path": "workstreams",
+      "field": "teams",
+      "ids": [
+        "Atlas",
+        "Beacon",
+        "Cedar"
+      ],
+      "whereNames": {
+        "name": [
+          "migration",
+          "migrations",
+          "migrate",
+          "cutover",
+          "cutovers",
+          "cut-over",
+          "adoption",
+          "onboarding",
+          "rollout"
+        ]
+      }
+    }
+  ]
+}

@@ -184,3 +184,15 @@ Re-grade of the six saved reviews (`analysis-fix11-regrade.js`): matched items K
 separates them by recall; the scores differ only by the length term (21 findings allowed, 33 to 45 written) and
 severity. The length term still takes about half of every score and the prompt does not state a limit: left for the
 owner. Gates: reference 100, stub 7.1, lazy 28.6, alt 100, dump 28.6. Non-Claude recheck: pending (`handEdited.version` 4).
+
+## t2-dr-notify-fanout-v5 (2026-11-24, mate task-key-fix worker, claude; LITE fault 4)
+
+New versioned task and key (`t2-dr-notify-fanout-v5.json`, `hidden/t2-dr-notify-fanout-v5/hidden/key.json`); the base
+task (v4) and its key are unchanged. The request sets no cap on the number of findings, yet the key scaled any list
+past 21 findings by 21 / reported; the LITE reviews held 27 to 48 findings, so the term took about half of every
+score in every arm. The v5 key writes `"lengthAllowance": null`, which the shared hidden test (`lib/hidden/
+findings.test.cjs`) now reads as "no length term"; precision is still reported. The v4 keyword fix (k3, k4, k6) is
+kept. Re-score of the 21 saved LITE runs: the fixed keywords alone lift the hidden share from 20 to 45% to 30 to 55%;
+with the length term gone it is 65 to 90% (every run but one finds 6 or 7 of the 7 seeded defects). Gates: reference
+100, stub 7.1, lazy 28.6, alt 100, dump 28.6 (the dump baseline stays under the gate without the length term).
+Non-Claude recheck: pending (`handEdited.version` 5).

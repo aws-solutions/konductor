@@ -165,3 +165,20 @@ The judge-vs-code edits of 2026-11-21 changed these tasks without a new version,
 
 Round 6 non-Claude recheck (2026-11-21, qwen3-coder-next, call Q1): t7-dev-breakdown v6 and t7-status-slip-twin v8 pass
 4 of 4, in `review.recheck`. The call read the content at v5 and v7; the D-150 bump to v6 and v8 changed only the version.
+
+## t7-program-brief-v6 (2026-11-24, mate task-key-fix worker, claude; LITE fault 2)
+
+New versioned task and key (`t7-program-brief-v6.json`, `hidden/t7-program-brief-v6/hidden/key.json`); the base task
+(v5) and its key are unchanged. Five of the v5 key's 20 assertions needed three exact workstream names ("Tool selection
+and governance", "Identity integration", "Migration and cutover") that neither the request nor the folder gives; no run
+of the LITE study used them. The v6 key finds a workstream by topic words in its name (selection or decision; identity
+or OIDC; migration or cutover, and the like), with two small grader features in `lib/hidden/plan-grade.cjs`: an id may
+be a list of alternative tokens, and `whereNames` filters the elements an assertion reads. Three more faults of the
+same kind, found on the re-score: `final-date-attached` wanted "All in-scope teams on shared tool" while the memo
+says "on the shared tool" (every run copied the memo and failed); `pilot-ready-date` wanted 2027-06-18, which
+`capacity-2027.csv` lists as a holiday, so 12 of 21 runs moved it to 2027-06-17 and failed (both dates now pass);
+`open-question-coverage` wanted the five literal words ownership, Identity Services, pilot, audit and leadership (0 of
+21 passed; now topic words). Left as they are: `required-constraints` (11 runs name no rollback constraint) and the
+migration dependency (8 runs carry REQ-012 on no migration workstream), which are substance, not wording. Same
+fixture and prompt as v5; 20 assertions. Gates: reference 100, stub 4.8, lazy 39.3, alt 100. Non-Claude recheck:
+pending (`handEdited.version` 6).

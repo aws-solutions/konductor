@@ -1,0 +1,264 @@
+{
+  "id": "t2-dr-notify-fanout-v5",
+  "version": 5,
+  "class": "design",
+  "phase": "design-review",
+  "phases2": [],
+  "role": "reviewer",
+  "prompt": "We're replacing our cron-based notification system with a new fanout service. The team has written up a design - it's in docs/design/notification-fanout.md, with supporting context in the docs/ and data/ folders. I need you to review it and write up what you find. We've had issues with duplicate sends before (see the incident report), and costs are tight. Look for things that could break in production, cost surprises, or compliance gaps. Write your review to REVIEW.md at the top of the project. End it with a fenced json list of findings, each with location (the section number of the document, like 3.2), severity (critical, high, medium, low or nit), issue and fix.",
+  "questions": "allowed",
+  "fixture": "t2-dr-notify-fanout",
+  "hidden": "t2-dr-notify-fanout-v5",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 20,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const H=new Set();for(const l of fs.readFileSync(\"docs/design/notification-fanout.md\",\"utf8\").split(\"\\n\")){const m=l.match(/^#+\\s*(?:section\\s*)?(\\d+(?:\\.\\d+)*)/i);if(m)H.add(m[1])}process.exit(L.every(x=>{const m=String(x.location).match(/\\d+(?:\\.\\d+)*/);return m&&H.has(m[0])})?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/design/notification-fanout.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Each important finding explains the concrete consequence in this project and proposes a fix a developer can act on, without inventing problems that aren't there. Fail: generic findings (\"add validation\", \"consider security\"), or a finding the packet does not support. Partial: findings are grounded in the packet but some lack an actionable fix or a concrete consequence. Pass: every important finding names the place, the concrete consequence in this project and a fix a developer can build, and no finding is invented. (code cannot check this because it requires understanding technical tradeoffs and project context).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "Consumers lack deduplication mechanism, which combined with at-least-once delivery will cause duplicate notifications as documented in the January incident report.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "Retry logic has no cap and no dead-letter queue, meaning vendor outages could create infinite retry storms that overwhelm the system.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "Design capacity of 10,000 notifications/sec is 20x the current peak of 500/sec shown in traffic-by-hour.csv, with no justification for such over-provisioning.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "SendGrid limit is 100 emails/sec per vendor-limits.yaml, but the design doesn't include throttling mechanisms to prevent exceeding this limit.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "User contact data (device tokens, email addresses) is included in each queued event and stored for 30 days without encryption, violating data protection requirements in service-targets.md.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "99.95% availability target requires multi-zone deployment, but the design specifies single availability zone in us-east-1.",
+      "weight": 1
+    },
+    {
+      "id": "k7",
+      "finding": "Quiet hours implementation uses hardcoded US/Eastern timezone instead of respecting individual user time zones and preferences.",
+      "weight": 1
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "The design commits offsets only after batch completion, which means processing failures can cause repeated reprocessing of the same messages during consumer restarts.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Hardcoded configuration values like batch size and timeouts violate the third factor (config) by not storing config in environment variables.",
+        "source": "The Twelve-Factor App, https://12factor.net (MIT)"
+      },
+      {
+        "id": "e4",
+        "text": "The circuit breaker pattern after 5 consecutive failures lacks hysteresis, potentially causing rapid toggling between open and closed states during partial outages.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e6",
+        "text": "The design lacks canary deployment strategy for vendor API changes, risking production outages when switching to new API versions.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e7",
+        "text": "No mention of consumer group rebalancing impact during autoscaling events, which can cause processing pauses and latency spikes.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e8",
+        "text": "The 30-second batch timeout is longer than most Kubernetes liveness probe defaults, risking pod termination during legitimate long-running processing.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "The design should use Redis instead of Kafka for better performance.",
+      "The service should be written in Rust instead of Go for memory safety.",
+      "The team should implement blockchain for notification traceability.",
+      "All notifications should be end-to-end encrypted with user keys.",
+      "The system needs artificial intelligence to predict notification timing."
+    ]
+  },
+  "targetSkills": [
+    "adversarial-design-review",
+    "doc-accuracy-analyzer",
+    "cost-estimation"
+  ],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-design-review",
+      "doc-accuracy-analyzer"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review",
+      "code-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/enhancements",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "minimax",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Mention of past duplicate issue is contextual business background, not explicit hint to planted bug"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Clear review scope, output location, and JSON format specified"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Requires cross-file analysis and understanding Kafka delivery semantics - not trivially shallow"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All 7 key items verifiable in fixture with supporting evidence and appropriate severities"
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, tests, or file names point at planted problems"
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "rubric check: Rubric aligns with request for 'things that could break in production, cost surprises, or compliance gaps' - no extra method. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt asks to 'review it and write up what you find' without naming a method, checklist, or process. References incident report for context but doesn't point at planted problems or decoys.)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "rubric check: Judge-only rubric with quality anchors; no answer content in criterion text. Earlier minimax-m2.5 check of the request, fixture and key: pass (Design doc describes features positively (e.g., 'no notification is ever dropped', 'Protected by TLS between services'). Supporting files (incident report, vendor-limits, traffic data, service-targets) provide context but don't state what is wrong.)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "rubric check: Verified: vendor-limits.yaml has sendgrid per_second:100, traffic-by-hour.csv shows ~500/sec peak, matching findingsKey. Earlier minimax-m2.5 check of the request, fixture and key: pass (k1:5.3.3 (at-least-once without deduplication), k2:5.3.2 (retry requeues forever), k3:5.5 (10k vs 500 peak), k4:5.4.2 (100/sec limit without throttling), k5:5.7.1 (TLS only, no at-rest encryption per service-targets), k6:5.6 (single AZ vs 99.95% SLA), k7:5.8 (hardcoded US/Eastern). All match document sections and severities are defensible.)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "rubric check: Different correctly-grounded findings can Pass; rubric judges consequence explanation and fix actionability. Earlier minimax-m2.5 check of the request, fixture and key: pass (Each finding requires cross-referencing: 5.3.3 + incident report (deduplication), 5.3.2 (no DLQ), 5.5 + traffic-by-hour.csv (over-provisioning), 5.4.2 + vendor-limits.yaml (throttling), 5.7.1 + service-targets.md (encryption), 5.6 (single AZ), 5.8 (timezone). All items findable from fixture alone.)."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-key-fix worker (2026-11-24): no length term, the request sets no cap on findings; v4 keywords kept (LITE fault 4)",
+    "log": "HAND-EDITS.md",
+    "version": 5
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-24",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 28.6,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-24"
+    }
+  }
+}

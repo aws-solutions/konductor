@@ -5,7 +5,8 @@
 // live and what it does differently. Only `dir` is required; every other field has the default below.
 //   dir             the batch directory
 //   prefix          task file prefix (default: the directory name and a dash, `t1-`)
-//   fixtureDir(task), hiddenDir(task), solutionDir(id), answerDir(id, kind)   where the parts of a task live
+//   fixtureDir(task), hiddenDir(task), solutionDir(id), answerDir(id, kind)   where the parts of a task live; a versioned
+//                   task (`<id>-vN`) reads its base task's solutions and answers when it has none of its own
 //   variants(task, cfg)   extra answers to score once: [{ name, overlay (a dir or a function of the workspace) }]
 //   modes(task, cfg)      replaces the whole list of scored answers (default: reference, stub, lazy, alt, variants)
 //   conversation(task, modeName)  a scripted-user conversation for the run (BENCH_CONVERSATION), or null
@@ -22,6 +23,19 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+/** The base task id of a versioned one: `t8-dec-deploy-strategy-v7` is a new key or prompt on `t8-dec-deploy-strategy`. */
+const baseId = (id) => String(id).replace(/-v\d+$/, '');
+
+/**
+ * `<dir>/<part>/<id>/<more...>`, or the base task's when a versioned task has none of its own (a versioned task
+ * shares its base task's solution and answers). A batch config reads solutions and answers through this.
+ */
+function partDir(dir, part, id, ...more) {
+  const own = path.join(dir, part, id, ...more);
+  const base = path.join(dir, part, baseId(id), ...more);
+  return !fs.existsSync(own) && base !== own && fs.existsSync(base) ? base : own;
+}
+
 function loadConfig(fileOrObject) {
   const raw = typeof fileOrObject === 'string' ? require(fileOrObject) : fileOrObject;
   if (!raw || !raw.dir) throw new Error('a batch config needs dir');
@@ -34,8 +48,9 @@ function loadConfig(fileOrObject) {
   cfg.ids = raw.ids ?? (() => fs.readdirSync(dir).filter((n) => n.startsWith(cfg.prefix) && n.endsWith('.json')).map((n) => n.slice(0, -5)).sort());
   cfg.fixtureDir = raw.fixtureDir ?? ((task) => path.join(dir, 'fixtures', task.fixture || task.id));
   cfg.hiddenDir = raw.hiddenDir ?? ((task) => path.join(dir, 'hidden', task.hidden || task.id));
-  cfg.solutionDir = raw.solutionDir ?? ((id) => path.join(dir, 'solutions', id));
-  cfg.answerDir = raw.answerDir ?? ((id, kind) => path.join(dir, 'answers', id, kind));
+  // A versioned task (`<id>-vN`) shares its base task's solution and answers unless it has its own.
+  cfg.solutionDir = raw.solutionDir ?? ((id) => partDir(dir, 'solutions', id));
+  cfg.answerDir = raw.answerDir ?? ((id, kind) => partDir(dir, 'answers', id, kind));
   cfg.canary = raw.canary ?? false;
   cfg.modes = raw.modes ? (task) => raw.modes(task, cfg) : (task) => defaultModes(task, cfg);
   return cfg;
@@ -58,4 +73,4 @@ function defaultModes(task, cfg) {
   return modes;
 }
 
-module.exports = { loadConfig, defaultModes };
+module.exports = { loadConfig, defaultModes, partDir, baseId };

@@ -14,6 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { partDir } = require('../lib/config.js');
 
 const DIR = __dirname;
 const FENCE = '```';
@@ -65,7 +66,7 @@ function lazy(task) {
 
 function alt(task) {
   return (ws) => {
-    const ref = fs.readFileSync(path.join(DIR, 'solutions', task.id, 'REVIEW.md'), 'utf8');
+    const ref = fs.readFileSync(partDir(DIR, 'solutions', task.id, 'REVIEW.md'), 'utf8');
     const list = JSON.parse([...ref.matchAll(new RegExp(`^${FENCE}json[ \\t]*\\n([\\s\\S]*?)^${FENCE}[ \\t]*$`, 'gim'))].pop()[1]);
     const findings = list.reverse().map((f) => {
       const loc = String(f.location);

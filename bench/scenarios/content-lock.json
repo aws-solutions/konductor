@@ -258,6 +258,10 @@
       "sha256": "630dc12eb12bf1e335b67e789f6f6777ccd51ebafb0d27da97b70919303f8a3f",
       "legacyRecheckVersion": 3
     },
+    "t2-dr-notify-fanout-v5": {
+      "version": 5,
+      "sha256": "d15762959772da91879d8ccd5e33a3eb0ac3c7933eb65dfbe60d40d892a8a362"
+    },
     "t2-dr-orders-dynamo-model": {
       "version": 1,
       "sha256": "ec378839d520e2f17d9d65b69aaa1138c2a01dd5171a8804752d2120cb438d40"
@@ -649,6 +653,10 @@
       "sha256": "a50695e9ce3c0d0c6f10f9d37f87ebf448ee3b1ca3f5045e4f8df24cf51d7b9d",
       "legacyRecheckVersion": 5
     },
+    "t6-req-field-inspections-v7": {
+      "version": 7,
+      "sha256": "c1693f835666f00fc0ecc2ff198ae44dcaf8c2146ab36773e96f5223a18defa4"
+    },
     "t6-req-library-holds": {
       "version": 3,
       "sha256": "a9645987e1b93888667b680958324bbc0f33ce2a53c77f353e17cafeb60dec53",
@@ -692,6 +700,10 @@
       "version": 5,
       "sha256": "221b481f13306ad46008a971ec5d3c3038877cc13a36fdd6ebc743f678823364",
       "legacyRecheckVersion": 5
+    },
+    "t7-program-brief-v6": {
+      "version": 6,
+      "sha256": "3ee59069077e3ed230d0cc293ec9f83d39c9684f14617bd969c547a3030cf27a"
     },
     "t7-program-rollup": {
       "version": 5,
@@ -741,6 +753,10 @@
       "version": 6,
       "sha256": "050bcdee5295e9090e7ce044e5911eb1b28f157fbca1364937ea744273d214b8",
       "legacyRecheckVersion": 4
+    },
+    "t8-dec-deploy-strategy-v7": {
+      "version": 7,
+      "sha256": "3a80d5d0b3567a95a31c78ce1bf96772c9786fa5f3fe3152986329c9a26339ab"
     },
     "t8-heldout-incident-handoff": {
       "version": 2,

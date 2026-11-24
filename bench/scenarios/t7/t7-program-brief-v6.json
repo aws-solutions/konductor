@@ -1,0 +1,237 @@
+{
+  "id": "t7-program-brief-v6",
+  "class": "design",
+  "version": 6,
+  "phase": "ideation",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need a program brief I can take to the next staff meeting. Read this folder's memo, team tool inventories, roadmaps, request export, staffing, and capacity information. Frame the move to one shared deployment tool: state the problem, name the workstreams, show dependencies, call out conflicts and constraints, give the first milestones with dates, and be clear about what remains unknown and what is outside this effort. Write the requester-facing document to docs/program-brief.md. Include one fenced JSON block whose info string is program. The JSON must have exactly these named fields: problem (string); workstreams (list of objects with name string, teams list of strings, and depends_on list of names or ids); shared_dependencies (list of strings); conflicts (list of objects with between list of teams and about string); headcount_gap (number); constraints (list of strings); milestones (list of objects with name string and date string in YYYY-MM-DD format); open_questions (list of strings); and out_of_scope (list of ids).",
+  "fixture": "t7-program-brief",
+  "hidden": "t7-program-brief-v6",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 20,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/program-brief.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?program(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"2027-08-27\",\"365 days\",\"atlas\",\"beacon\",\"identity services\",\"oidc\",\"req-012\",\"req-068\"];process.exit(items.filter(named).length>=7?0:1)'",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/program-brief.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "leadership-memo.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/program-brief.md",
+      "pattern": "```[ \\t]*(json[ \\t]+)?program",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "director-bottom-line",
+      "criterion": "The prose gives the director a clear bottom line early and explains why the proposed work and dates are credible or conditional. Fail: no bottom line, or the brief just picks a tool and a big cutover. Partial: states the program outcome and the 2027-08-27 date but not what makes the date conditional. Pass: the opening says one shared deployment tool for Atlas, Beacon and Cedar by 2027-08-27, credible only if Identity Services is staffed (REQ-012) and the Atlas and Beacon ownership conflict is settled before the pilot, and gives the 3-engineer gap (7 asked, 4 available). (code cannot check this because it cannot judge narrative clarity or reasoning)",
+      "weight": 2
+    },
+    {
+      "id": "decision-useful-uncertainty",
+      "criterion": "The prose distinguishes confirmed facts from unresolved decisions and gives practical evidence or ownership needed to close the open questions. Fail: unknowns are generic (for example risks remain) or the memo's staffing ask is repeated without the gap. Partial: separates known from unknown but names no owner or evidence to close them. Pass: confirmed facts (the 365-day audit retention bar from the Atlas path, OIDC sign-in, approval history, 4 of 7 engineers available, REQ-012 owned by Identity Services) are separated from open decisions (tool choice, single owner for Atlas and Beacon, add people versus reduce waves versus move the date), each open item has an owner or the evidence needed to close it, and the feature-flag request is placed outside this program. (code cannot check this because it cannot assess honest uncertainty or usefulness to staff)",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "explicit-success-bar",
+        "text": "State measurable acceptance evidence for the shared tool, including audit retrieval, approval history, rollback behavior, and identity integration, rather than treating tool selection as the outcome.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      },
+      {
+        "id": "single-decision-owner",
+        "text": "Resolve the Atlas and Beacon overlap with one accountable decision owner and a recorded decision, while keeping each team responsible for its own cutover work.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "safe-release-path",
+        "text": "Treat the pilot and cutovers as release-engineering work: preserve auditability, make rollback a tested path, and use a small representative first wave before broad adoption.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "dependency-readiness",
+        "text": "Make Identity Services readiness a dated entry condition for the pilot, including the token and secrets interface, rather than listing it as a generic dependency with no owner commitment.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      },
+      {
+        "id": "capacity-tradeoff",
+        "text": "Show the three-engineer gap as a leadership decision: add people, reduce the migration wave, or move the target date, and do not present the current capacity rows as a guarantee.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "operational-observability",
+        "text": "Name the operational evidence that will be watched during migration, such as failed promotions, approval records, audit retrieval, and rollback success, so the program can stop a wave safely.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Pick the tool with the most votes and migrate all three teams in one big cutover.",
+      "Repeat the memo's staffing request without calculating the available headcount or stating the gap.",
+      "List three workstreams but omit the Identity Services dependency and its owner.",
+      "Accept both roadmap owners and treat the feature-flag request as part of the deployment program."
+    ]
+  },
+  "targetSkills": [
+    "program-planning",
+    "decision-research",
+    "risk-management"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "program-planning",
+      "decision-research",
+      "risk-management"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/enhancements",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not name methods, frameworks, or hint at seeded traps. It asks for a program brief with specific JSON fields but does not reveal the conflict, staffing gap calculation, or the decoy."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fail",
+        "note": "The key requires exact workstream names ('Tool selection and governance', 'Identity integration', 'Migration and cutover') but the prompt only says 'name the workstreams' without specifying what names to use. The 'ownership-question' assertion requires the exact word 'ownership' in open_questions, but reasonable agents could phrase this differently (e.g., 'Who leads the migration?')."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No columns or notes in the fixture reveal the conflict, gap, or decoy directly. REQ-027's comment hints at the ownership question but requires reading the request export - it's legitimate data, not a hidden answer."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that trusts obvious readings passes 8/19 tests (42%), below the half threshold. The task requires discovering the conflict (comparing roadmaps), calculating the staffing gap (memo ask vs headcount.csv), and identifying the 365-day constraint (atlas-tools.csv)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values follow from the fixture data: staffing gap (7 requested - 4 available = 3), REQ-012 as shared dependency (all three roadmaps list it), conflict (Atlas and Beacon both own 'Shared deployment migration' in Q3), 365-day retention (ForgeRun active tool in atlas-tools.csv, memo requirement). Tolerances are reasonable (exact for headcount_gap, inclusive string matching for constraints)."
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "rubric check: Rubric evaluates bottom-line clarity and handling of uncertainty within the program brief scope requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt states the goal, source files, and output format without naming methods, tools, or revealing the traps like REQ-068 decoy or Atlas/Beacon ownership conflict.)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "rubric check: Fixture provides memo, roadmaps, and capacity data; no pre-written brief visible. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain raw evidence (memo, roadmaps, inventories, requests, headcount) with no explicit answer keys or findings lists.)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "rubric check: Rubric anchors (2027-08-27 date, 3-engineer gap, Atlas/Beacon/Cedar teams, REQ-012, OIDC) reference fixture entities; no mismatched figures. Earlier glm-5 check of the request, fixture and key: pass (All key expectations are derivable from fixture: REQ-012 in open-requests.csv line 12, Atlas/Beacon conflict in their roadmaps, 3-engineer gap from headcount.csv (7 requested - 4 available), milestone dates and constraints in leadership-memo.md.)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "rubric check: Different brief structures and milestone organizations can Pass if grounded in fixture data. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can synthesize all required elements from the fixture: calculate the gap, identify conflicts, find dependencies, extract constraints and dates, and recognize the out-of-scope REQ-068 feature flag request.)."
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "repeats": 3,
+        "deterministic": true,
+        "sameTwice": true
+      },
+      "fixReason": "cannot pass by re-weighting: the scripted shallow answer meets 8 of 11 hidden items (lazy 80.5; 57.7 even with every non-test check failing). The key checks single short items a half-list still holds (one shared dependency, two constraints, the decoy); it needs new key items from the data (each workstream with its dependency, the milestone dates). Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
+    },
+    "reference": 100,
+    "stub": 4.8,
+    "decision": "keep",
+    "date": "2026-11-24",
+    "dryRun": {
+      "reference": 100,
+      "stub": 4.8,
+      "lazy": 39.3,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "date": "2026-11-24"
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-key-fix worker (2026-11-24): workstreams found by topic, not by three invented names; migration may depend on the identity workstream; last milestone accepts the memo phrase (LITE fault 2)",
+    "log": "HAND-EDITS.md",
+    "version": 6
+  }
+}

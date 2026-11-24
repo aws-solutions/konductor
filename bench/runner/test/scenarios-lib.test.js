@@ -133,6 +133,26 @@ test('the dry run scores reference, stub, lazy and alternative answers and recor
   }
 });
 
+// A versioned task (`<id>-vN`, a new key or prompt on the same fixture) has no solution or answer folder of its own:
+// it reads its base task's, so the dry run can score it (the vN files of 2026-11-22 could not be dry-run at all).
+test('a versioned task falls back to its base task for solutions and answers', () => {
+  const root = tmp();
+  try {
+    const dir = path.join(root, 'tx');
+    write(path.join(dir, 'solutions', 'tx-a', 'answer.md'), 'x');
+    write(path.join(dir, 'answers', 'tx-a', 'lazy', 'answer.md'), 'x');
+    write(path.join(dir, 'solutions', 'tx-b-v3', 'answer.md'), 'x');
+    const cfg = loadConfig({ dir });
+    assert.equal(cfg.solutionDir('tx-a-v4'), path.join(dir, 'solutions', 'tx-a'));
+    assert.equal(cfg.answerDir('tx-a-v4', 'lazy'), path.join(dir, 'answers', 'tx-a', 'lazy'));
+    assert.equal(cfg.solutionDir('tx-b-v3'), path.join(dir, 'solutions', 'tx-b-v3'), 'its own folder comes first');
+    assert.equal(cfg.solutionDir('tx-c-v2'), path.join(dir, 'solutions', 'tx-c-v2'), 'no base folder: the own path, so the caller sees the miss');
+    assert.equal(cfg.answerDir('tx-a-v4', 'alt'), path.join(dir, 'answers', 'tx-a-v4', 'alt'), 'no base alt answer: the own path');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('a batch config can replace the modes and the gates (a scripted good and bad agent)', () => {
   const root = tmp();
   const was = process.env.TMPDIR;

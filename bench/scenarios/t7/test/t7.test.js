@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { readBlock, gradeAssertion, getPath } = require('../../lib/hidden/plan-grade.cjs');
 const CFG = require('../scenario.config.js');
-const { loadConfig } = require('../../lib/config.js');
+const { loadConfig, partDir } = require('../../lib/config.js');
 const { render } = require('../../lib/prompt.js');
 const { shallow, vary, follow, DEFAULTS } = require('../../lib/answers.js');
 const { sharedHelpers } = require('../../../runner/lib/hidden-lib.js');
@@ -43,6 +43,41 @@ test('readBlock also takes the name after a json language tag, but not a json bl
 test('cites: a list in where accepts any of its values', () => {
   assert.ok(g({ op: 'cites', path: 'risks', field: 'tickets', ids: ['CHK-40'], where: { kind: ['schedule', 'other'] } }).ok);
   assert.ok(!g({ op: 'cites', path: 'risks', field: 'tickets', ids: ['CHK-40'], where: { kind: ['schedule', 'scope'] } }).ok);
+});
+
+// A key that cannot know the exact label an author will choose (a workstream name the sources never give) names the
+// topic instead: an id may be a list of alternative tokens, and whereNames picks the elements whose field names one.
+const brief = {
+  workstreams: [
+    { name: 'Tool decision and requirements', teams: ['Atlas', 'Beacon', 'Cedar'], depends_on: [] },
+    { name: 'Deployment identity and OIDC sign-in', teams: ['Identity Services', 'Atlas', 'Beacon', 'Cedar'], depends_on: ['REQ-012'] },
+    { name: 'Atlas migration', teams: ['Atlas'], depends_on: ['Deployment identity and OIDC sign-in'] },
+    { name: 'Beacon and Cedar cutovers', teams: ['Beacon', 'Cedar'], depends_on: ['Atlas migration'] },
+  ],
+};
+const gb = (a) => gradeAssertion(brief, { id: 'x', ...a });
+const MIGRATION = ['migration', 'cutover', 'cutovers'];
+
+test('an id written as a list of alternatives is named when any one of them is', () => {
+  assert.ok(gb({ op: 'includes', path: 'workstreams', field: 'name', ids: [['selection', 'decision'], ['identity', 'oidc'], MIGRATION] }).ok);
+  assert.ok(!gb({ op: 'includes', path: 'workstreams', field: 'name', ids: [['selection', 'governance']] }).ok, 'none of the alternatives is named');
+  assert.ok(gb({ op: 'cites', path: 'workstreams', field: 'depends_on', ids: [['REQ-012', 'identity']], whereNames: { name: MIGRATION } }).ok, 'a dependency on the identity workstream by name counts');
+  assert.match(gb({ op: 'includes', path: 'workstreams', field: 'name', ids: [['selection', 'governance']] }).detail, /0 of 1/);
+});
+
+test('whereNames keeps the elements whose field names one of the tokens, on a token edge', () => {
+  assert.ok(gb({ op: 'includes', path: 'workstreams', field: 'teams', ids: ['Atlas', 'Beacon', 'Cedar'], whereNames: { name: MIGRATION } }).ok, 'the migration workstreams together name all three teams');
+  assert.ok(!gb({ op: 'includes', path: 'workstreams', field: 'teams', ids: ['Identity Services'], whereNames: { name: MIGRATION } }).ok, 'the identity team sits in another workstream');
+  assert.ok(gb({ op: 'includes', path: 'workstreams', field: 'teams', ids: ['Identity Services', 'Atlas', 'Beacon', 'Cedar'], whereNames: { name: ['identity', 'oidc'] } }).ok);
+  assert.ok(!gb({ op: 'includes', path: 'workstreams', field: 'teams', ids: ['Atlas'], whereNames: { name: ['migrations'] } }).ok, 'migrations is not the token migration');
+  assert.ok(!gb({ op: 'cites', path: 'workstreams', field: 'teams', ids: ['Atlas'], whereNames: { name: ['nothing'] } }).ok);
+  assert.match(gb({ op: 'cites', path: 'workstreams', field: 'teams', ids: ['Atlas'], whereNames: { name: ['nothing'] } }).detail, /nothing/);
+});
+
+test('includes with a field reads that field of each element, and without one the whole element', () => {
+  assert.ok(gb({ op: 'includes', path: 'workstreams', field: 'teams', ids: ['Identity Services'] }).ok);
+  assert.ok(!gb({ op: 'includes', path: 'workstreams', field: 'teams', ids: ['REQ-012'] }).ok, 'REQ-012 is in depends_on, not teams');
+  assert.ok(gb({ op: 'includes', path: 'workstreams', ids: ['REQ-012'] }).ok);
 });
 
 test('getPath matches keys ignoring case and indexes lists', () => {
@@ -196,15 +231,15 @@ const tasks = fs.readdirSync(DIR).filter((f) => /^t7-.*\.json$/.test(f)).map((f)
 
 test('every assembled task names its grader helpers and has its key and reference', () => {
   for (const t of tasks) {
-    const hid = path.join(DIR, 'hidden', t.id, 'hidden');
-    const helpers = sharedHelpers(path.join(DIR, 'hidden', t.id)).map(([rel]) => rel);
+    const hid = path.join(DIR, 'hidden', t.hidden ?? t.id, 'hidden');
+    const helpers = sharedHelpers(path.join(DIR, 'hidden', t.hidden ?? t.id)).map(([rel]) => rel);
     for (const f of GRADER_FILES) {
       assert.ok(helpers.includes(`hidden/${f}`), `${t.id}: .bench-lib.json does not name ${f}`);
       assert.ok(!fs.existsSync(path.join(hid, f)), `${t.id}: commits a copy of ${f}`);
     }
     const key = JSON.parse(fs.readFileSync(path.join(hid, 'key.json'), 'utf8'));
     assert.strictEqual(t.checks[0].min, key.assertions.length, t.id);
-    assert.ok(fs.existsSync(path.join(DIR, 'solutions', t.id, key.output)), `${t.id}: reference ${key.output} missing`);
+    assert.ok(fs.existsSync(partDir(DIR, 'solutions', t.id, key.output)), `${t.id}: reference ${key.output} missing (its own, or its base task's for a -vN task)`);
     assert.ok(fs.existsSync(path.join(DIR, 'fixtures', t.fixture)), `${t.id}: fixture ${t.fixture} missing`);
   }
 });

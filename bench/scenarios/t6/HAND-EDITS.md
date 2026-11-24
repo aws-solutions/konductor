@@ -392,3 +392,13 @@ Fail lines are stricter (a safety stop that needs a reading now fails `safety-st
 
 Free gates after: references 100, alternatives 100, stub 0, lazy 14.3 and 11.4. Each needs a non-Claude recheck at
 its new version before a lock.
+
+## t6-req-field-inspections-v7 (2026-11-24, mate task-key-fix worker, claude; LITE fault 3)
+
+New versioned task and hidden dir (`t6-req-field-inspections-v7.json`, `hidden/t6-req-field-inspections-v7/`); the
+base task (v6) is unchanged. The invented-number test's ground list named `data/inspection-log-q4.csv`, a file the
+brief planned ("last quarter's inspection log CSV") and the fixture never had; it read as empty, so it could only
+shrink the allowed set, and the re-score of the 21 saved LITE runs shows no score change. The v7 list names the 26
+files the folder holds. The log itself is still missing from the folder (bench/DEBT.md D-244): adding it now would
+change the task after the runs, so it waits for a version the owner approves. Gates: reference 100, stub 0, lazy
+14.3, alt 100. Non-Claude recheck: pending (`handEdited.version` 7).

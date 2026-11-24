@@ -21,6 +21,7 @@ const GENERIC_ASK = 'Is there anything else I should know before I start?';
 const FAMILY = { 'claude-sonnet-5.5': 'claude', 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'qwen', 'minimax-m2.5': 'minimax' };
 const DATE = '2026-11-20';
 const { readJson } = require('../../runner/lib/util.js');
+const { partDir } = require('../lib/config.js');
 
 const SCRIPTED = `2. The scripted user (\`scriptedUser\` in task-draft.json). The colleague knows 4 to 8 facts that are NOT in the fixture or the request, that a careful practitioner would think to ask about after reading the folder (the folder shows the gap, for example data with two time zones but no rule for them), and that change the requirements. For each fact write:
    - \`id\`: F1, F2, ...
@@ -82,7 +83,7 @@ const asksOf = (dir) => (dir && fs.existsSync(path.join(dir, 'ASKS.json')) ? rea
 function conversation(task, mode) {
   if (!task.scriptedUser) return null;
   if (mode === 'stub') return { questions: [] };
-  const dir = mode === 'reference' ? path.join(DIR, 'solutions', task.id) : path.join(DIR, 'answers', task.id, mode);
+  const dir = mode === 'reference' ? partDir(DIR, 'solutions', task.id) : partDir(DIR, 'answers', task.id, mode);
   return converse(task, asksOf(dir));
 }
 
@@ -94,7 +95,7 @@ function taskErrors(task) {
     let got = null;
     try { got = JSON.stringify(readJson(answers)); } catch { /* missing */ }
     if (got !== want) errors.push('hidden answers.json does not match scriptedUser');
-    const asks = asksOf(path.join(DIR, 'solutions', task.id));
+    const asks = asksOf(partDir(DIR, 'solutions', task.id));
     if (!asks.length) errors.push('scripted task needs solutions/<id>/ASKS.json with the reference asks');
     const missing = unmatchedFacts(task, converse(task, asks));
     if (missing.length) errors.push(`reference asks do not unlock: ${missing.join(', ')}`);
@@ -162,7 +163,7 @@ function writeAnswers(s, id) {
 
 // Further correct answers (answers/<id>/alt-*), for example a plan that books less than all the free time.
 const extraAnswers = (id) => {
-  const d = path.join(DIR, 'answers', id);
+  const d = partDir(DIR, 'answers', id);
   return fs.existsSync(d) ? fs.readdirSync(d).filter((n) => n.startsWith('alt-')).sort() : [];
 };
 
@@ -170,7 +171,7 @@ module.exports = {
   dir: DIR,
   conversation,
   taskErrors,
-  variants: (task) => extraAnswers(task.id).map((name) => ({ name, overlay: path.join(DIR, 'answers', task.id, name) })),
+  variants: (task) => extraAnswers(task.id).map((name) => ({ name, overlay: partDir(DIR, 'answers', task.id, name) })),
   // Each further correct answer must score 80 or more, like the alternative.
   gates: (out, defaults) => {
     const g = { ...defaults };

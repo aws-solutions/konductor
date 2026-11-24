@@ -11,7 +11,7 @@
 //              values accepts any one of them, for a fact the sources support two ways), so a
 //              risk's kind or owner is checked on the risk that names the ticket, wherever it sits in the list
 //   absent     no element of the list at `path` names any of `ids` (a decoy: a ticket that looks risky and is not)
-//   includes   the list at `path` holds every one of `ids` (`any: true`: at least one)
+//   includes   the list at `path` holds every one of `ids` (`any: true`: at least one), read from `field` when given
 //   excludes   the list at `path` holds none of `ids`
 //   order      `ids` appear in the list at `path` in this order (other items may sit between them)
 //   date       the value at `path` is an ISO date within `tolDays` (default 0) of `value`
@@ -20,7 +20,10 @@
 //   precision  of the elements of the list at `path`, at least `min` (a share, default 0.5) name one of `ids`,
 //              and there are at most `maxCount` of them (so a long list does not win)
 // A `path` that holds an object is read as the list of its values. Paths are dot-separated keys; a key matches an object key ignoring case, and a number indexes a list.
-// Ids match on a token edge, ignoring case: "PAY-21" does not match "PAY-212".
+// Ids match on a token edge, ignoring case: "PAY-21" does not match "PAY-212". An id may be a list of alternative
+// tokens (["migration", "cutover"]): it is named when any one of them is, for a label the sources never fix.
+// `cites` and `includes` take `whereNames: {field: [tokens]}`: only the elements whose `field` names one of the tokens
+// are read, so a workstream is found by its topic when its exact name is the author's choice.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -57,10 +60,15 @@ function getPath(obj, dotPath) {
 }
 
 const textOf = (v) => (v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v));
-const names = (v, id) => new RegExp(`(?<![a-z0-9])${escapeRe(norm(id))}(?![a-z0-9])`).test(norm(textOf(v)));
+const namesToken = (v, id) => new RegExp(`(?<![a-z0-9])${escapeRe(norm(id))}(?![a-z0-9])`).test(norm(textOf(v)));
+const names = (v, id) => (Array.isArray(id) ? id.some((alt) => namesToken(v, alt)) : namesToken(v, id));
+const idText = (id) => (Array.isArray(id) ? id.join(' or ') : String(id));
 const elementText = (el, field) => (field && el && typeof el === 'object' && !Array.isArray(el) ? getPath(el, field) : el);
 // A list, or the values of an object (a plan keyed by sprint is a list of sprints).
 const list = (v) => (Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : []);
+// The elements an assertion reads: with `whereNames`, those whose named fields each name one of the given tokens.
+const picked = (doc, a) => list(getPath(doc, a.path)).filter((el) => Object.entries(a.whereNames || {}).every(([f, tokens]) => names(elementText(el, f), tokens)));
+const whereText = (a) => (a.whereNames ? ` among elements whose ${Object.entries(a.whereNames).map(([f, t]) => `${f} names ${idText(t)}`).join(' and ')}` : '');
 const hitsIn = (el, field, ids) => ids.filter((id) => names(elementText(el, field), id));
 const toDay = (v) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v ?? '').trim());
@@ -71,21 +79,21 @@ const toNum = (v) => (typeof v === 'number' ? v : typeof v === 'string' && v.tri
 
 const OPS = {
   cites(doc, a) {
-    const els = list(getPath(doc, a.path));
+    const els = picked(doc, a);
     const fits = (el) => Object.entries(a.where || {}).every(([f, v]) => (Array.isArray(v) ? v : [v]).some((w) => same(getPath(el, f), w)));
     const ok = els.some((el) => hitsIn(el, a.field, a.ids).length >= (a.min ?? 1) && fits(el));
     const what = a.where ? ` with ${JSON.stringify(a.where)}` : '';
-    return { ok, detail: ok ? 'cited' : `no element of ${a.path} names ${a.ids.join(', ')}${what}` };
+    return { ok, detail: ok ? 'cited' : `no element of ${a.path} names ${a.ids.map(idText).join(', ')}${what}${whereText(a)}` };
   },
   absent(doc, a) {
     const bad = list(getPath(doc, a.path)).filter((el) => hitsIn(el, a.field, a.ids).length > 0);
-    return { ok: bad.length === 0, detail: bad.length ? `${a.path} names decoy ${a.ids.join(', ')}` : 'decoy not named' };
+    return { ok: bad.length === 0, detail: bad.length ? `${a.path} names decoy ${a.ids.map(idText).join(', ')}` : 'decoy not named' };
   },
   includes(doc, a) {
-    const els = list(getPath(doc, a.path));
-    const found = a.ids.filter((id) => els.some((el) => names(el, id)));
+    const els = picked(doc, a);
+    const found = a.ids.filter((id) => els.some((el) => names(elementText(el, a.field), id)));
     const ok = a.any ? found.length > 0 : found.length === a.ids.length;
-    return { ok, detail: `${found.length} of ${a.ids.length} present` };
+    return { ok, detail: `${found.length} of ${a.ids.length} present${whereText(a)}` };
   },
   excludes(doc, a) {
     const els = list(getPath(doc, a.path));
