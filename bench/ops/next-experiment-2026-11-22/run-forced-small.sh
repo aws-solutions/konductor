@@ -32,7 +32,9 @@ HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 CAP=150
 REPS=6
 OFFSET=6                                                 # replicates 7..12
+spent_all() { ledger_spent "$OUT"; }
 stop() { echo "stop: $*" >&2; exit 1; }
+. "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 
 # task batch runLimit budget (runLimit is the LITE batch's per-run cap; budget covers 6 forced + 6 vanilla runs;
 # the review's estimate is about 60 and 63 credits)
@@ -57,21 +59,6 @@ check_prefix() {
   [ "$got" = "$want" ] || stop "$pre hashes to $got, manifest says $want"
 }
 
-spent_all() {
-  node -e 'const {readLedger}=require(process.argv[1]); const fs=require("fs"), p=require("path"); const d=process.argv[2];
-    let s=0; for (const t of fs.existsSync(d)?fs.readdirSync(d):[]) if (!t.endsWith(".done")) s+=readLedger(p.join(d,t)).totals.total; console.log(s.toFixed(2))' \
-    "$R/bench/runner/lib/credit-ledger.js" "$OUT"
-}
-
-# Budget for one task, as in run-forced-aa-r2.sh: a command can spend up to 0.9 x budget + one run's limit. The budget
-# is max(own budget, limit), cut so that spent + 0.9 x budget + limit <= CAP. Prints STOP when even one run would not fit.
-budget_for() {
-  bs=$1; bl=$2; bb=$3
-  awk -v s="$bs" -v c="$CAP" -v l="$bl" -v b="$bb" 'BEGIN { if (b < l) b = l; m = (c - s - l) / 0.9; if (m < b) b = m;
-    if (b < l) print "STOP"; else printf "%d", b }'
-}
-worst_case() { awk -v s="$1" -v b="$2" -v l="$3" 'BEGIN { printf "%.2f", s + 0.9 * b + l }'; }
-
 # Wait (up to 24 h) until no other paid run of this experiment is running.
 wait_others() {
   i=0; pids=''
@@ -82,17 +69,6 @@ wait_others() {
     [ "$i" = 0 ] && echo "[$(date -u +%H:%M)] waiting for pid $pids"
     i=$((i + 1)); [ "$i" -le 288 ] || stop "still running after 24 h: $pids"
     sleep 300
-  done
-}
-
-# Wait (up to 60 min) for load under LOAD_MAX and a free heavy lock before a task starts.
-wait_host() {
-  i=0; l=''
-  while :; do
-    l=$(cut -d' ' -f1 /proc/loadavg)
-    if awk -v l="$l" -v m="$LOAD_MAX" 'BEGIN { exit !(l < m) }' && flock -n "$HEAVY_LOCK" true; then return 0; fi
-    i=$((i + 1)); [ "$i" -le 60 ] || stop "load $l or heavy lock busy for 60 min"
-    sleep 60
   done
 }
 

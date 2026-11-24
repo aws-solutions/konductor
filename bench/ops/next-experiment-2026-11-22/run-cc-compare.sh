@@ -54,6 +54,7 @@ MODE=${1:-}
 DRY_SPENT=0
 say() { echo "[$(date -u +%H:%M)] $*"; }
 stop() { echo "stop: $*" >&2; exit 1; }
+. "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 
 # task batch version (versions: prefixes/manifest.json, frozen at 69149846)
 TASKS='t8-dec-deploy-strategy t8 4
@@ -112,27 +113,6 @@ spent_all() {
 # Finished runs (result.json) of one task.
 runs_done() { find "$OUT/$1" -name result.json -not -path '*/workspace/*' 2>/dev/null | wc -l; }
 
-# Budget for one task: max(own budget, one run), cut so spent + 0.9 x budget + one run <= CAP. STOP: one run won't fit.
-budget_for() {
-  awk -v s="$1" -v c="$CAP_USD" -v l="$RUN_CAP_USD" -v b="$TASK_BUDGET" 'BEGIN { if (b < l) b = l; m = (c - s - l) / 0.9;
-    if (m < b) b = m; if (b < l) print "STOP"; else printf "%.2f", b }'
-}
-# Worst case after a task: spent + min(runs left x one run, 0.9 x budget + one run).
-worst_case() {
-  awk -v s="$1" -v b="$2" -v n="$3" -v l="$RUN_CAP_USD" 'BEGIN { w = 0.9 * b + l; if (n * l < w) w = n * l; printf "%.2f", s + w }'
-}
-
-# Wait (up to 60 min) for load under LOAD_MAX, a free heavy lock and no other bench run.
-wait_host() {
-  local i=0 l
-  while :; do
-    l=$(cut -d' ' -f1 /proc/loadavg)
-    if awk -v l="$l" -v m="$LOAD_MAX" 'BEGIN { exit !(l < m) }' && flock -n "$HEAVY_LOCK" true && ! pgrep -f "$WAIT_PAT" >/dev/null; then return 0; fi
-    i=$((i + 1)); [ "$i" -le 60 ] || stop "load $l, heavy lock or another bench run busy for 60 min"
-    sleep 60
-  done
-}
-
 # The bench argument list of one task (without --budget-usd, --out and --resume).
 bench_args() {
   local task=$1 batch=$2
@@ -153,13 +133,13 @@ run_task() {
       [ -f "$OUT/$task/run-config.json" ] || stop "$OUT/$task exists with no run-config.json: check it by hand"
       resume=(--resume)
     fi
-    wait_host; s=$(spent_all)
+    wait_host "$WAIT_PAT"; s=$(spent_all)
   else s=$DRY_SPENT; fi
-  budget=$(budget_for "$s")
+  budget=$(budget_for "$s" "$RUN_CAP_USD" "$TASK_BUDGET" "$CAP_USD" %.2f)
   [ "$budget" = STOP ] && stop "spent USD $s of $CAP_USD: $task cannot fit one run of USD $RUN_CAP_USD"
-  echo "| $task | $left | $s | $budget | $(worst_case "$s" "$budget" "$left") |"
+  echo "| $task | $left | $s | $budget | $(worst_case "$s" "$budget" "$RUN_CAP_USD" "$left") |"
   bench_args "$task" "$batch"
-  if [ "$MODE" != --go ]; then DRY_SPENT=$(worst_case "$s" "$budget" "$left"); return 0; fi
+  if [ "$MODE" != --go ]; then DRY_SPENT=$(worst_case "$s" "$budget" "$RUN_CAP_USD" "$left"); return 0; fi
   mkdir -p "$OUT"
   # </dev/null: the task list is on this loop's stdin, and the command must not read it.
   if [ -n "$STUB" ]; then $STUB "${BENCH[@]}" --aws-profile "$CC_AWS_PROFILE" --budget-usd "$budget" --out "$OUT/$task" "${resume[@]}" </dev/null || rc=$?
@@ -186,7 +166,7 @@ main() {
     [ -n "$STUB" ] || unshare -Urm true 2>/dev/null || stop "user namespaces are blocked in this shell (--isolate unshare needs them): run from your own terminal"
   fi
   if [ "$MODE" = --prepare ]; then
-    wait_host
+    wait_host "$WAIT_PAT"
     mkdir -p "$ROOT"
     po=$(mktemp -d "$ROOT/prep.XXXXXX")
     bench_args t8-dec-deploy-strategy t8

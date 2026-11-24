@@ -139,6 +139,7 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-nudge-judge.sh` | Judge pass of the nudge-arm run. Paid (USD). `--fill` judges only the fill-stage tasks (cap USD 0.5). |
 | `run-nudge.sh` | The nudge-arm run. Paid. `--fill` runs only the 3 cells the 450 cap left budget skipped (cap 60 counted credits); `--fill --plan` is free. |
 | `nudge-fill.js` | The fill stage's cells and counted spend (each call at the larger of 15 and its credits) for `run-nudge.sh --fill`. Free. |
+| `lib.sh` | The spend and host helpers the paid run scripts here source (`budget_for`, `worst_case`, `wait_host`, `ledger_spent`; D-242). Sourced, never run. |
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, and of `cc-skill-loads.js` on a made-up stream. Free. |
 | `test-run-cc-model-swap-stub.sh` | Test of `run-cc-model-swap.sh` and the `CC_*` overrides of `run-cc-compare.sh` (plan, Opus stage, Sonnet reuse refusal, summary) with a stub bench. Free. |

@@ -41,7 +41,9 @@ EXPECT_PER_SET=${EXPECT_PER_SET:-120}
 # The 8 tasks of run-forced-aa-r2.sh and their batch folders (--extra-tasks).
 TASK_IDS=t8-dec-deploy-strategy,t5-qa-checkout-strategy,t5-qa-sync-strategy,t6-req-field-inspections,t2-dr-notify-fanout,t2-arch-dr-split-checkout,t7-program-brief,t1-nfr-report-queries
 BATCHES='t8 t5 t6 t2 t7 t1'
+spent_all() { ledger_spent "$OUT" a b; }
 stop() { echo "stop: $*" >&2; exit 1; }
+. "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 case "$GO" in ''|--go) ;; *) echo "usage: sh run-aa-pack.sh [--go]" >&2; exit 64 ;; esac
 
 [ -e "$R" ] || stop "$R is missing (run-forced-aa-r2.sh creates it)"
@@ -53,22 +55,6 @@ if [ "$GO" = --go ] && [ -z "$STUB" ]; then
   unshare -Urm true 2>/dev/null || stop "user namespaces are blocked in this shell (--isolate unshare needs them): run from your own terminal"
 fi
 
-# Spend so far: the ledgers of both set dirs.
-spent_all() {
-  node -e 'const {readLedger}=require(process.argv[1]); const fs=require("fs"), p=require("path"); const d=process.argv[2];
-    let s=0; for (const set of ["a","b"]) if (fs.existsSync(p.join(d,set))) s+=readLedger(p.join(d,set)).totals.total; console.log(s.toFixed(2))' \
-    "$R/bench/runner/lib/credit-ledger.js" "$OUT"
-}
-
-# Budget for one set, as in run-forced-small.sh: a command can spend up to 0.9 x budget + one run's limit. The budget
-# is max(own budget, limit), cut so that spent + 0.9 x budget + limit <= CAP. Prints STOP when even one run would not fit.
-budget_for() {
-  bs=$1; bl=$2; bb=$3
-  awk -v s="$bs" -v c="$CAP" -v l="$bl" -v b="$bb" 'BEGIN { if (b < l) b = l; m = (c - s - l) / 0.9; if (m < b) b = m;
-    if (b < l) print "STOP"; else printf "%d", b }'
-}
-worst_case() { awk -v s="$1" -v b="$2" -v l="$3" 'BEGIN { printf "%.2f", s + 0.9 * b + l }'; }
-
 # Wait (up to 24 h) until no other paid run of this host is running.
 wait_others() {
   i=0; pids=''
@@ -79,17 +65,6 @@ wait_others() {
     [ "$i" = 0 ] && echo "[$(date -u +%H:%M)] waiting for pid $pids"
     i=$((i + 1)); [ "$i" -le 288 ] || stop "still running after 24 h: $pids"
     sleep 300
-  done
-}
-
-# Wait (up to 60 min) for load under LOAD_MAX and a free heavy lock before a task starts.
-wait_host() {
-  i=0; l=''
-  while :; do
-    l=$(cut -d' ' -f1 /proc/loadavg)
-    if awk -v l="$l" -v m="$LOAD_MAX" 'BEGIN { exit !(l < m) }' && flock -n "$HEAVY_LOCK" true; then return 0; fi
-    i=$((i + 1)); [ "$i" -le 60 ] || stop "load $l or heavy lock busy for 60 min"
-    sleep 60
   done
 }
 
