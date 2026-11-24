@@ -147,29 +147,30 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
-      "date": "2026-11-20",
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-24",
+      "version": 9,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The task.json prompt specifies deliverables, SQLite, required JSON fields, and constraints, but does not prescribe a method or name a trap or answer."
+          "note": "The prompt asks for a schema design and decision without naming a specific method; constraints.txt:13 requires avoiding full table scans but this is a constraint, not a decoy."
         },
         {
           "check": "fixture-lists-no-answer",
-          "verdict": "fail",
-          "note": "fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ index approach, its approximately 3.1 TB size, the storage violation, and the Premium-cost consequence. fixture/prototype-results.md lines 17-20 and 97-114 also name Option 2 as the primary recommendation and explicitly reject Option 1 with the expected storage and cost."
+          "verdict": "pass",
+          "note": "prototype-results.md lists all measurements and projections without verdict labels; the option ids (single-column-all, composite-optimized, two-table-normalized) appear only in section headers, not as labeled answers."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The expected findings are grounded in the fixture: storage, growth, query/index tradeoffs, option projections, and current pricing appear in fixture/requirements.md, fixture/traffic-analysis.md, fixture/prototype-results.md, and fixture/pricing-guide.md. The option IDs used by the checks are direct descriptive slugs of the documented composite, normalized, and comprehensive-index options."
+          "note": "Hidden tests accept 'composite-optimized' which is the only option at 2.5 TB exactly (prototype-results.md); 'two-table-normalized' at 2.61 TB exceeds the 2.5 TB hard limit in constraints.txt:3-7, so tests correctly require rejecting it."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can derive the required schema indexes and constraints from fixture/query-patterns.sql, fixture/constraints.txt, and fixture/prototype-results.md, and can calculate the decision JSON from fixture/pricing.csv. The fixture even provides the tested index designs and the recommended composite option, so no hidden-overlay information is needed to produce a passing answer."
+          "note": "A developer can calculate from prototype-results.md that Option 2 (2.5 TB) fits the constraint while Options 1 (3.1 TB) and 3 (2.61 TB) exceed it; the choice is derivable from fixture data alone."
         }
       ]
     }
