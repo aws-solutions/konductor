@@ -33,3 +33,23 @@ test('kiro-cli and opencode take no run options of their own', () => {
   assert.equal(HARNESSES['kiro-cli'].runOptions, undefined);
   assert.equal(HARNESSES.opencode.runOptions, undefined);
 });
+
+test('claude-code checkFlags and prepareOnlyCheck: its effort words, and prepare-only runs its arms alone', () => {
+  assert.doesNotThrow(() => cc.checkFlags({ opts: {}, defaultEffort: cc.EFFORT_LEVELS[0] }));
+  assert.throws(() => cc.checkFlags({ opts: { effort: 'nope' }, defaultEffort: cc.EFFORT_LEVELS[0] }));
+  assert.throws(() => cc.prepareOnlyCheck({ opts: {}, runtimes: ['claude-code', 'kiro-cli'] }), /prepare them apart from kiro-cli arms/);
+});
+
+test('opencode credentialsFile: --aws-creds-file is needed and must hold the profile', () => {
+  const oc = HARNESSES.opencode;
+  assert.throws(() => oc.credentialsFile({ opts: {} }), /--aws-creds-file is required for opencode arms/);
+  const fs = require('node:fs');
+  const dir = fs.mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'oc-creds-'));
+  const file = require('node:path').join(dir, 'credentials');
+  fs.writeFileSync(file, '[bench]\naws_access_key_id = k\naws_secret_access_key = s\n');
+  try {
+    assert.deepEqual(oc.credentialsFile({ opts: { 'aws-creds-file': file } }), { awsCredsFile: file, awsProfile: 'bench' });
+    assert.throws(() => oc.credentialsFile({ opts: { 'aws-creds-file': file, 'aws-profile': 'other' } }));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  for (const r of ['kiro-cli', 'claude-code', 'strands']) assert.equal(HARNESSES[r].credentialsFile, undefined);
+});

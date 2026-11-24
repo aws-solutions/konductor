@@ -11,7 +11,7 @@ const { applyArmOptions, attachVariant } = require('./arm-opts.js');
 const { applyOracle } = require('./oracle.js');
 const { applyForcedMustLoad } = require('./forced-must-load.js');
 const { STOP_ON } = require('./stop-watch.js');
-const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
+const { harnessFor } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime, descriptorOf, supporting, notSupporting, joinNames } = require('./harness/runtime.js');
 const { DESCRIPTORS, REGISTRY } = require('./harness/descriptors.js');
 const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
@@ -93,11 +93,6 @@ function maskPaths({ benchDir, extraDirs = [], outDir, awsCredsFile = null }) {
   return [...benchMask(benchDir, extraDirs), outDir, ...(awsCredsFile ? [awsCredsFile] : [])];
 }
 
-function need(opts, name) {
-  if (!opts[name] || opts[name] === true) throw new Error(`--${name} is required for opencode arms`);
-  return opts[name];
-}
-
 function summarize(runConfig, state, extra) {
   const usd = isUsdRuntime(runConfig.harness);
   return {
@@ -116,17 +111,12 @@ function summarize(runConfig, state, extra) {
 // and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
 function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log, tasks = [], benchDir }) {
   if (runtimes.some((r) => !descriptorOf(r).supports.prepareOnly)) throw new Error(`--prepare-only covers ${joinNames(supporting('prepareOnly').map((d) => d.proseName))} arms; ${joinNames(notSupporting('prepareOnly').map((d) => d.proseName))} arms need their binary and AWS credentials, so check them with a normal run`);
-  // Claude Code arms are built and trial-installed with their model pin check; claude itself is never started.
-  const isCc = runtimes.includes('claude-code');
-  if (isCc && runtimes.length > 1) throw new Error(`--prepare-only checks Claude Code arms against a Bedrock model id; prepare them apart from ${runtimes.filter((r) => r !== 'claude-code').join(', ')} arms`);
-  const ccModel = isCc ? opts.model || cc.DEFAULT_MODEL : null;
-  if (isCc && !cc.canonicalModel(ccModel)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
+  // A harness checks what prepare-only needs of it (prepareOnlyCheck: Claude Code's Bedrock model, its scratch root, a
+  // run of its arms alone); its binary itself is never started.
+  for (const r of runtimes) harnessFor({ runtime: r }).prepareOnlyCheck?.({ opts, runtimes, defaultEffort: DEFAULT_EFFORT });
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   ensureOwnedDir(cacheDir, 'cache');
-  // Claude Code loads every .claude/skills above a run's cwd as project skills. Runs, trial installs and listing probes
-  // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
-  if (isCc) cc.checkScratchRoot(os.tmpdir());
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
@@ -168,7 +158,8 @@ function checkHarnessFlags({ opts, tasks, runtime }) {
   for (const [flag, why] of Object.entries(desc.flags.refused)) {
     if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to ${desc.proseName} arms (${why})`);
   }
-  if (runtime === 'claude-code') cc.effortOf(opts.effort || DEFAULT_EFFORT);
+  // A harness checks its own flags here (checkFlags: Claude Code's effort word).
+  harnessFor({ runtime }).checkFlags?.({ opts, defaultEffort: DEFAULT_EFFORT });
   if (!desc.supports.multiTurn) {
     const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
     if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
@@ -329,7 +320,6 @@ function resolveRunArms({ opts, suite, tasks, repo, benchDir, profile }) {
  * which Claude Code or konductor would find skills that are not the arm's.
  */
 function runPaths({ opts, repo, arms, isUsd, runtime, log }) {
-  const isOc = runtime === 'opencode';
   const outDir = path.resolve(opts.out || path.join(repo, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
   const resume = opts.resume ? { errors: Boolean(opts['resume-errors']) } : null;
   if (opts['resume-errors'] && !resume) throw new Error('--resume-errors needs --resume');
@@ -341,9 +331,8 @@ function runPaths({ opts, repo, arms, isUsd, runtime, log }) {
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   const authDb = isUsd ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
   if (authDb && !fs.existsSync(authDb)) throw new Error(`kiro-cli auth database not found: ${authDb} (log in with kiro-cli first)`);
-  const awsCredsFile = isOc ? path.resolve(need(opts, 'aws-creds-file')) : null;
-  const awsProfile = isOc ? (opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench') : null;
-  if (isOc) oc.readProfile(awsCredsFile, awsProfile);
+  // A harness whose agent reads a credentials file names it (credentialsFile: opencode's --aws-creds-file and profile).
+  const { awsCredsFile = null, awsProfile = null } = harnessFor({ runtime }).credentialsFile?.({ opts }) ?? {};
 
   ensureOwnedDir(outDir, 'run-out');
   ensureOwnedDir(cacheDir, 'cache');

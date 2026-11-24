@@ -428,6 +428,20 @@ function startupConfig({ arm, home, cwd, strictMcp, read }) {
   };
 }
 
+/** The run flags only Claude Code checks (run-cmd.js checkHarnessFlags): the effort must be one of its levels. */
+const checkFlags = ({ opts, defaultEffort }) => { effortOf(opts.effort || defaultEffort); };
+
+/**
+ * What --prepare-only needs of Claude Code arms (run-cmd.js): they run on their own, with a Bedrock model id, and the
+ * scratch root has no .claude above it (Claude Code loads every .claude/skills above a run's cwd as project skills, and
+ * trial installs and listing probes make their dirs under os.tmpdir()). claude itself is never started.
+ */
+function prepareOnlyCheck({ opts, runtimes }) {
+  if (runtimes.length > 1) throw new Error(`--prepare-only checks Claude Code arms against a Bedrock model id; prepare them apart from ${runtimes.filter((r) => r !== id).join(', ')} arms`);
+  if (!canonicalModel(opts.model || DEFAULT_MODEL)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
+  checkScratchRoot(require('node:os').tmpdir());
+}
+
 /**
  * The keys of a run (run-cmd.js), checked before anything starts: from the environment `env`, or with --aws-profile read
  * from that profile before each run that needs fresh ones (`creds`, else null). A bench plant control as --claude-bin
@@ -493,7 +507,7 @@ function modelConfig({ opts, defaultEffort }) {
 }
 
 module.exports = {
-  id, meta, modelConfig, runCredentials, runOptions, setUpRun, skillDirs, startupConfig, runEnvInfo, harnessRunConfig, envOfArm, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, modelConfig, checkFlags, prepareOnlyCheck, runCredentials, runOptions, setUpRun, skillDirs, startupConfig, runEnvInfo, harnessRunConfig, envOfArm, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   listingMismatch: listing.listingMismatch, resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,

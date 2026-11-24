@@ -313,6 +313,19 @@ const rc = () => require('../../runner/lib/runconfig.js');
 
 const flagValueOf = (opts, name) => (opts[name] && opts[name] !== true ? opts[name] : null);
 
+/**
+ * The credentials file and profile a run copies into the agent's HOME (run-cmd.js runPaths): --aws-creds-file (needed)
+ * and --aws-profile (default `bench`). Throws when the file is not given or has no such profile.
+ */
+function credentialsFile({ opts }) {
+  const file = opts['aws-creds-file'];
+  if (!file || file === true) throw new Error('--aws-creds-file is required for opencode arms');
+  const awsCredsFile = require('node:path').resolve(file);
+  const awsProfile = opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench';
+  readProfile(awsCredsFile, awsProfile);
+  return { awsCredsFile, awsProfile };
+}
+
 /** The opencode binary, ripgrep and credentials of a run, set on `ctx` (run-cmd.js, DEBT D-24). Throws without ripgrep. */
 function setUpRun(ctx, { opts, cacheDir, awsCredsFile, awsProfile, config, log }) {
   ctx.opencode = resolveOpencode({ cacheDir, binOverride: flagValueOf(opts, 'opencode-bin') });
@@ -346,7 +359,7 @@ const envOfArm = ({ konductor, config, ctx }) => envSetup({ arm: { vanilla: !kon
 const modelConfig = ({ opts, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: variantOf(opts.effort || defaultEffort) });
 
 module.exports = {
-  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig, setUpRun, runEnvInfo, harnessRunConfig, envOfArm,
+  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig, credentialsFile, setUpRun, runEnvInfo, harnessRunConfig, envOfArm,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson, readProfile,
 };
