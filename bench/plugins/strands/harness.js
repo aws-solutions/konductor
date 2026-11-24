@@ -110,7 +110,31 @@ function finalize(outDir, ctx) {
   return scrubTreeDetailed(outDir, secretLiterals(process.env, ctx?.awsCreds ? ctx.awsCreds.values() : []), { shapes: true });
 }
 
+const rc = () => require('../../runner/lib/runconfig.js');
+
+/** The environment facts a run records (run-harness.js envInfoOf): the strands-agents version. */
+const runEnvInfo = ({ ctx }) => ({ kiroCliVersion: null, harnessVersion: ctx.strands.version, modelListSnapshotPath: null });
+
+/** The harness part of the run config (run-harness.js harnessRunConfig): interpreter, agent file, census and Bedrock pin. */
+function harnessRunConfig({ ctx, plantSuite, stModel, stCreds, budgetCredits }) {
+  return {
+    harnessVersion: ctx.strands.version,
+    strands: {
+      python: ctx.strands.python, version: ctx.strands.version, agentFile: ctx.strands.agentFile, adapter: 'kind B: plant tools are forwarding stubs', census: plantSuite?.strandsCensus ?? null,
+      bedrock: stModel ? { ...stModel, spendCapUsd: budgetCredits, awsProfile: stCreds.profile } : null,
+    },
+    env: rc().envPolicy(process.env, []),
+  };
+}
+
+/** The agent env env.json describes: the launcher env is the whole env, so every key is set and nothing passed through. */
+function envOfArm({ stCreds }) {
+  const placeholder = stCreds ? { awsCreds: { current: () => Object.fromEntries(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'].map((k) => [k, '<set>'])) } } : null;
+  const set = env({ home: '<run-home>', tmpdir: '<run>/tmp', ctx: placeholder });
+  return { keys: Object.keys(set).sort(), set, unset: [] };
+}
+
 /** The run's model config from --model and --effort (run-cmd.js): the model as given; the launcher takes no effort. */
 const modelConfig = ({ opts }) => ({ model: opts.model, effort: 'default' });
 
-module.exports = { id, meta, streams: require('./streams.js'), modelConfig, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
+module.exports = { id, meta, streams: require('./streams.js'), modelConfig, runEnvInfo, harnessRunConfig, envOfArm, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };

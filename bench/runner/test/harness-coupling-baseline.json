@@ -36,7 +36,6 @@
     "runner/lib/plant/stream-match.js": 2,
     "runner/lib/profiles.js": 2,
     "runner/lib/run-cmd.js": 7,
-    "runner/lib/run-harness.js": 9,
     "runner/lib/run-one.js": 1,
     "runner/lib/runconfig.js": 2,
     "runner/lib/sandbox.js": 4,

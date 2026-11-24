@@ -309,11 +309,33 @@ function trialInstall(prepared, ctx) {
 
 const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
+const rc = () => require('../../runner/lib/runconfig.js');
+
+/** The environment facts a run records (run-harness.js envInfoOf): the opencode version and region. */
+const runEnvInfo = ({ ctx }) => ({ kiroCliVersion: null, harnessVersion: ctx.opencode.version, modelListSnapshotPath: null, region: REGION });
+
+/** The harness part of the run config (run-harness.js harnessRunConfig): the pinned package, binary, model and region. */
+function harnessRunConfig({ ctx, config, awsProfile }) {
+  return {
+    harnessVersion: ctx.opencode.version,
+    opencode: {
+      npmPackage: `opencode-ai@${VERSION}`, version: ctx.opencode.version, binaryPath: ctx.opencode.bin, binarySha256: ctx.opencode.sha256,
+      provider: PROVIDER, modelId: config.model, region: REGION, variant: config.effort, title: TITLE,
+      awsProfile, ripgrep: ctx.rgBin,
+      promptCache: 'Bedrock prompt cache lives about 5 minutes; back-to-back runs can read cache written by the previous run, so cache read and write vary with run order (seeded shuffle kept)',
+    },
+    env: rc().envPolicy(process.env, []),
+  };
+}
+
+/** The agent env env.json describes for a konductor or vanilla arm. */
+const envOfArm = ({ konductor, config, ctx }) => envSetup({ arm: { vanilla: !konductor }, config, ctx, home: '<run-home>' });
+
 /** The run's model config from --model and --effort (run-cmd.js): opencode's default model, the effort as a variant. */
 const modelConfig = ({ opts, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: variantOf(opts.effort || defaultEffort) });
 
 module.exports = {
-  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig,
+  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS, modelConfig, runEnvInfo, harnessRunConfig, envOfArm,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson, readProfile,
 };

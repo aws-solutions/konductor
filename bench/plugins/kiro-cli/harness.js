@@ -339,12 +339,48 @@ function checkScratchRoot(dir) {
   }
 }
 
+const rc = () => require('../../runner/lib/runconfig.js');
+
+/** The kiro-cli model list (`chat --list-models`) under a scratch HOME with the auth db copied in. */
+function listModels(kiroBin, authDb, scratchDir, envKeep, agentEngine) {
+  const dir = fs.mkdtempSync(path.join(scratchDir, 'm-'));
+  try {
+    sandbox.copyAuthDb(authDb, dir);
+    fs.mkdirSync(path.join(dir, 'tmp'), { recursive: true });
+    const { env: childEnv } = buildChildEnv(process.env, { home: dir, agentEngine, keep: envKeep });
+    return require('node:child_process').execFileSync(kiroBin, ['chat', '--list-models', '-f', 'json'], { env: childEnv, encoding: 'utf8' });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** The environment facts a run records (run-harness.js envInfoOf): the CLI version and its model list, in `<outDir>/model-list.json`. */
+function runEnvInfo({ ctx, outDir, authDb, scratchDir, envKeep, config }) {
+  const modelListPath = path.join(outDir, 'model-list.json');
+  fs.writeFileSync(modelListPath, listModels(ctx.kiroBin, authDb, scratchDir, envKeep, config.agentEngine));
+  return { kiroCliVersion: sandbox.kiroCliVersion(ctx.kiroBin), modelListSnapshotPath: modelListPath };
+}
+
+/** The harness part of the run config (run-harness.js harnessRunConfig): the env policy and which kiro binary ran. */
+function harnessRunConfig({ envKeep, kiro }) {
+  return {
+    requireMcpStartup: true,
+    env: rc().envPolicy(process.env, envKeep),
+    kiroBinary: { path: kiro.bin, bypassedShim: kiro.shim },
+    kiroEnabledFeatures: process.env.KIRO_ENABLED_FEATURES ?? null,
+    agentEnginesAvailable: rc().availableEngines(kiro.bin),
+  };
+}
+
+/** The agent env env.json describes: the runner's child env for a konductor or vanilla arm. */
+const envOfArm = ({ konductor, config, envKeep }) => buildChildEnv(process.env, { home: '<run-home>', agentEngine: config.agentEngine, keep: envKeep, konductor });
+
 // The model a run uses when --model is not given.
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 /** The run's model config from --model and --effort (run-cmd.js), with the --agent-engine value. */
 const modelConfig = ({ opts, agentEngine, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: opts.effort || defaultEffort, agentEngine });
 
 module.exports = {
-  id, meta, streams: require('./streams.js'), modelConfig, DEFAULT_MODEL, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, streams: require('./streams.js'), modelConfig, runEnvInfo, harnessRunConfig, envOfArm, listModels, DEFAULT_MODEL, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

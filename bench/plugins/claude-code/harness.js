@@ -403,6 +403,19 @@ const keepPaths = (ctx) => [ctx.claude?.bin].filter(Boolean);
 // run-one records the startup MCP list as empty for this harness, because every command passes --strict-mcp-config.
 const strictMcp = true;
 
+const rc = () => require('../../runner/lib/runconfig.js');
+
+/** The environment facts a run records (run-harness.js envInfoOf): the claude version and region. */
+const runEnvInfo = ({ ctx, ccRegion }) => ({ kiroCliVersion: null, harnessVersion: ctx.claude.version, modelListSnapshotPath: null, region: ccRegion });
+
+/** The harness part of the run config (run-harness.js harnessRunConfig). */
+function harnessRunConfig({ ctx, config, ccRegion, runBudgetUsd, arms }) {
+  return { harnessVersion: ctx.claude.version, claudeCode: runConfigRecord({ ctx, config, region: ccRegion, runBudgetUsd, arms }), env: rc().envPolicy(process.env, []) };
+}
+
+/** The agent env env.json describes for a konductor or vanilla arm, with the credential names shown as set. */
+const envOfArm = ({ konductor, ctx }) => envSetup({ arm: { vanilla: !konductor }, ctx, home: '<run-home>', tmpdir: '<run>/tmp', baseEnv: { ...process.env, ...Object.fromEntries(CREDENTIAL_VARS.map((k) => [k, '<set>'])) } });
+
 /** The run's model config from --model and --effort (run-cmd.js): the Bedrock id, its canonical name, the effort word. */
 function modelConfig({ opts, defaultEffort }) {
   const model = opts.model || DEFAULT_MODEL;
@@ -410,7 +423,7 @@ function modelConfig({ opts, defaultEffort }) {
 }
 
 module.exports = {
-  id, meta, modelConfig, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, modelConfig, runEnvInfo, harnessRunConfig, envOfArm, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   listingMismatch: listing.listingMismatch, resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
