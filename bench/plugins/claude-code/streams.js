@@ -23,6 +23,40 @@ function loadOrderEvent(ev, at, { add, fail, write }) {
   }
 }
 
+/**
+ * The CLAUDE_SKILL_FIELDS of a Claude Code run. skillsPreloaded lists the frontmatter skills of every sub-agent the run
+ * spawned, with the number of spawns that had each in context; skillBytesPreloaded sums the bytes once per spawn.
+ * Both are null when the arm's startup record is missing. Loads are split by the session that made them, and a Skill
+ * call answered without its body message is counted in skillLoadsNoBody.
+ */
+function skillExtras(events, startup) {
+  const calls = parse.skillCalls(events);
+  const loaded = calls.filter((c) => c.status === 'ok' && c.input?.name);
+  const byScope = { main: 0, child: 0 };
+  for (const c of loaded) byScope[c.scope === 'child' ? 'child' : 'main']++;
+  let skillsPreloaded = null;
+  let skillBytesPreloaded = null;
+  if (startup?.preloads) {
+    const byName = new Map();
+    skillBytesPreloaded = 0;
+    for (const agent of parse.spawnedAgents(events)) {
+      for (const s of startup.preloads[agent] ?? []) {
+        const cur = byName.get(s.name) ?? { name: s.name, agents: [], spawns: 0, bytes: s.bytes };
+        if (!cur.agents.includes(agent)) cur.agents.push(agent);
+        cur.spawns++;
+        skillBytesPreloaded += s.bytes ?? 0;
+        byName.set(s.name, cur);
+      }
+    }
+    skillsPreloaded = [...byName.values()];
+  }
+  return {
+    skillsPreloaded, skillBytesPreloaded, skillLoadsByScope: byScope,
+    skillLoadsNoBody: loaded.filter((c) => c.via === 'skill-tool' && !c.bodySeen).length,
+    skillReferenceReads: parse.skillReferenceReads(events).filter((r) => r.ok).length,
+  };
+}
+
 const blank = (t) => typeof t !== 'string' || !t.trim();
 
 module.exports = {
@@ -37,6 +71,10 @@ module.exports = {
   skillCalls: parse.skillCalls,
   skillAnswer: 'text',
   loadOrderEvent,
+  // The Claude Code result fields (skills.js captureSkills), and no reachability filter: the Skill tool offers every
+  // installed skill (skills.js targetOutcome).
+  skillExtras,
+  skillReachable: () => null,
   /** The first capability call of a run: the Skill tool or a subagent tool. { kind: 'skill'|'subagent'|'none', name }. */
   firstDecision(events) {
     for (const ev of events ?? []) {

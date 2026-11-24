@@ -7,7 +7,6 @@
     "physical/controls/plant-control.js -> plugins/claude-code/parse.js",
     "report/plant-trace/stream-calls.js -> plugins/claude-code/parse.js",
     "runner/lib/introspect/scopes.js -> plugins/claude-code/parse.js",
-    "runner/lib/skills.js -> plugins/claude-code/parse.js",
     "runner/lib/trace.js -> plugins/claude-code/parse.js",
     "scripts/claude-code-smoke.js -> plugins/claude-code/harness.js"
   ],
@@ -36,7 +35,7 @@
     "runner/lib/run-one.js": 1,
     "runner/lib/runconfig.js": 2,
     "runner/lib/sandbox.js": 4,
-    "runner/lib/skills.js": 9,
+    "runner/lib/skills.js": 3,
     "runner/lib/trace.js": 1,
     "scripts/introspect-summary.js": 2,
     "scripts/lib/chain/context.js": 1,

@@ -39,11 +39,11 @@ test('preloads count the frontmatter skills of each spawned sub-agent, once per 
   try {
     const startup = skills.startupClaude(dir);
     const events = [use('a1', 'Agent', { subagent_type: 'k-dev', prompt: 'p' }), result('a1', 'done'), use('a2', 'Agent', { subagent_type: 'k-dev', prompt: 'p' }), result('a2', 'done')];
-    const x = skills.claudeSkillExtras(events, startup);
+    const x = require('../lib/harness/index.js').HARNESSES['claude-code'].streams.skillExtras(events, startup);
     assert.deepEqual(x.skillsPreloaded, [{ name: 'alpha', agents: ['k-dev'], spawns: 2, bytes: 100 }, { name: 'beta', agents: ['k-dev'], spawns: 2, bytes: 50 }]);
     assert.equal(x.skillBytesPreloaded, 300);
-    assert.deepEqual(skills.claudeSkillExtras([], startup).skillsPreloaded, []);
-    assert.equal(skills.claudeSkillExtras(events, null).skillsPreloaded, null);
+    assert.deepEqual(require('../lib/harness/index.js').HARNESSES['claude-code'].streams.skillExtras([], startup).skillsPreloaded, []);
+    assert.equal(require('../lib/harness/index.js').HARNESSES['claude-code'].streams.skillExtras(events, null).skillsPreloaded, null);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -52,7 +52,7 @@ test('a Skill call answered only with "Launching skill" is a load without a body
     use('s1', 'Skill', { skill: 'alpha' }), result('s1', 'Launching skill: alpha'), body('alpha'),
     use('s2', 'Skill', { skill: 'beta' }, 'a1'), result('s2', 'Launching skill: beta', 'a1'),
   ];
-  const x = skills.claudeSkillExtras(events, null);
+  const x = require('../lib/harness/index.js').HARNESSES['claude-code'].streams.skillExtras(events, null);
   assert.deepEqual(x.skillLoadsByScope, { main: 1, child: 1 });
   assert.equal(x.skillLoadsNoBody, 1);
   const calls = cc.skillCalls(events);
@@ -77,7 +77,7 @@ test('a shell read of a SKILL.md is a load; a references/ read is counted apart 
   ];
   const ex = skills.extractSkills(events, 'claude-code');
   assert.deepEqual(ex.skillsLoaded.map((s) => [s.name, s.via]), [['backend-review', 'shell-read-skill-md']]);
-  assert.equal(skills.claudeSkillExtras(events, null).skillReferenceReads, 1);
+  assert.equal(require('../lib/harness/index.js').HARNESSES['claude-code'].streams.skillExtras(events, null).skillReferenceReads, 1);
 });
 
 test('kiro: a read_file of a SKILL.md, in a sub-agent session, is a load via read-skill-md; a failed read is not a failed skill call', () => {
@@ -96,10 +96,22 @@ test('kiro: a read_file of a SKILL.md, in a sub-agent session, is a load via rea
 
 test('the Claude Code fields pass the result schema and stay off kiro-cli results', () => {
   const extraction = skills.extractSkills([use('s1', 'Read', { file_path: '/h/.claude/skills/alpha/SKILL.md' }), result('s1', '# alpha')], 'claude-code');
-  const extras = skills.claudeSkillExtras([], { preloads: {} });
+  const extras = require('../lib/harness/index.js').HARNESSES['claude-code'].streams.skillExtras([], { preloads: {} });
   const ccFields = skills.resultFields({ extraction, info: null, task: {}, arm: {}, extras });
   assert.deepEqual(validate(loadSchema('result').properties.skillsLoaded, ccFields.skillsLoaded), []);
   for (const k of skills.CLAUDE_SKILL_FIELDS) assert.deepEqual(validate(loadSchema('result').properties[k], ccFields[k]), [], k);
   const kiroFields = skills.resultFields({ extraction: skills.extractSkills([], 'kiro-cli'), info: null, task: {}, arm: {} });
   for (const k of skills.CLAUDE_SKILL_FIELDS) assert.equal(k in kiroFields, false, k);
+});
+
+test('targetReachable asks the harness: opencode reads its skill index, Claude Code has no filter, kiro-cli its server filter', () => {
+  const extraction = { skillsLoaded: [], requested: [] };
+  const catalog = skills.catalogFrom({ skills: ['alpha'], sops: ['beta'], agents: [] });
+  const reach = (target, startup) => skills.targetOutcome({ extraction, task: { target }, arm: {}, catalog, startup }).targetReachable;
+  assert.equal(reach('alpha', { runtime: 'opencode', skillNames: ['alpha'] }), true);
+  assert.equal(reach('beta', { runtime: 'opencode', skillNames: ['sop-beta'] }), true);
+  assert.equal(reach('alpha', { runtime: 'opencode', skillNames: [] }), false);
+  assert.equal(reach('alpha', { runtime: 'claude-code', preloads: {} }), null);
+  assert.equal(reach('alpha', { runtime: 'kiro-cli', skillFilter: ['al*'] }), true);
+  assert.equal(reach('beta', { runtime: 'kiro-cli', skillFilter: null }), false);
 });

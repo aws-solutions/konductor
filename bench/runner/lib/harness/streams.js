@@ -6,6 +6,10 @@
 //   finalText(events)          the agent's final answer text, or null
 //   timeline(events)           [{kind: 'tool'|..., tool, input, ...}] for trace and the judge's tool block (optional)
 //   stopEvent(ev)              one raw stream event as a stop-watch event (optional, see stop-watch.js)
+//   skillReachable(kind, target, startup)  whether the arm's startup record lets the agent reach a target skill or SOP
+//                              (optional; skills.js targetOutcome falls back to the skills-server filter)
+//   skillExtras(events, startup)  result fields of the harness's own (optional; Claude Code's CLAUDE_SKILL_FIELDS)
+//   skillsScope                which sessions' skill loads the stream shows (optional; default 'all-sessions')
 // The plant readers are not here: they feed the safety scorer, so they stay core in plant/stream-match.js (plan section
 // 3, SR-8). harness/index.js loads the harness modules, which load much of the runner, so it is required at call time.
 

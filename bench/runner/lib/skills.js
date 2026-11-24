@@ -8,7 +8,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf } = require('./stream.js');
 const { frontmatter, fmValue } = require('./frontmatter.js');
-const claudeParse = require('../../plugins/claude-code/parse.js');
 const { loadOrderOf, loadCheckOf } = require('./load-check.js');
 // The run's harness reads its own skill calls and first decision; loaded at call time through harness/streams.js.
 const { streamsOf } = require('./harness/streams.js');
@@ -175,7 +174,7 @@ function kiroFirstDecision(events) {
 }
 
 /**
- * What a run loaded, from its event stream. `runtime` is 'kiro-cli' or 'opencode'.
+ * What a run loaded, from its event stream. `runtime` is the run's harness id; its `streams` read the skill calls.
  * A load counts only when the call returned text; errors, empty results and calls with no answer are failures.
  * An empty find_skills result is an answer, counted in findSkillsEmpty, not a failure.
  * A v3 load_resource call with a skill:: id that the engine refused is a failed skill call too, and names the skill
@@ -337,12 +336,9 @@ function targetKind(target, cat, cls) {
 
 function reachable(kind, target, startup) {
   if (!startup) return null;
-  if (startup.runtime === 'opencode') {
-    if (!Array.isArray(startup.skillNames)) return null;
-    return has(startup.skillNames, target) || (kind === 'sop' && has(startup.skillNames, `sop-${target}`));
-  }
-  // Claude Code offers every installed skill through the Skill tool; there is no filter to check against.
-  if (startup.runtime === 'claude-code') return null;
+  // A harness with its own rule answers (streams.skillReachable: opencode's skill index, Claude Code's none).
+  const own = streamsOf({ runtime: startup.runtime }).skillReachable;
+  if (own) return own(kind, target, startup);
   // kiro serves SOPs as MCP prompts the user invokes; get_skill reads the skill index only.
   if (kind === 'sop') return false;
   return startup.skillFilter ? has(startup.skillFilter, target) : true;
@@ -500,45 +496,13 @@ function claudeSkillInfo(configDir, exportDir) {
   return safe(() => ({ catalog: catalogFrom(listCatalogDir(exportDir)), startup: safe(() => startupClaude(configDir)) }));
 }
 
-/**
- * The CLAUDE_SKILL_FIELDS of a Claude Code run. skillsPreloaded lists the frontmatter skills of every sub-agent the run
- * spawned, with the number of spawns that had each in context; skillBytesPreloaded sums the bytes once per spawn.
- * Both are null when the arm's startup record is missing. Loads are split by the session that made them, and a Skill
- * call answered without its body message is counted in skillLoadsNoBody.
- */
-function claudeSkillExtras(events, startup) {
-  const calls = claudeParse.skillCalls(events);
-  const loaded = calls.filter((c) => c.status === 'ok' && c.input?.name);
-  const byScope = { main: 0, child: 0 };
-  for (const c of loaded) byScope[c.scope === 'child' ? 'child' : 'main']++;
-  let skillsPreloaded = null;
-  let skillBytesPreloaded = null;
-  if (startup?.preloads) {
-    const byName = new Map();
-    skillBytesPreloaded = 0;
-    for (const agent of claudeParse.spawnedAgents(events)) {
-      for (const s of startup.preloads[agent] ?? []) {
-        const cur = byName.get(s.name) ?? { name: s.name, agents: [], spawns: 0, bytes: s.bytes };
-        if (!cur.agents.includes(agent)) cur.agents.push(agent);
-        cur.spawns++;
-        skillBytesPreloaded += s.bytes ?? 0;
-        byName.set(s.name, cur);
-      }
-    }
-    skillsPreloaded = [...byName.values()];
-  }
-  return {
-    skillsPreloaded, skillBytesPreloaded, skillLoadsByScope: byScope,
-    skillLoadsNoBody: loaded.filter((c) => c.via === 'skill-tool' && !c.bodySeen).length,
-    skillReferenceReads: claudeParse.skillReferenceReads(events).filter((r) => r.ok).length,
-  };
-}
-
 /** Called by a harness after the stream is parsed. Never throws: tracking must not affect a run. */
 function captureSkills({ runtime, events, arm, ctx }) {
   return safe(() => {
     const info = arm?.vanilla ? null : ctx?.skillInfo?.get(arm?.id) ?? null;
-    const extras = runtime === 'claude-code' ? safe(() => claudeSkillExtras(events, info?.startup ?? null)) : null;
+    // A harness with fields of its own reads them (streams.skillExtras: Claude Code's CLAUDE_SKILL_FIELDS).
+    const readExtras = streamsOf({ runtime }).skillExtras;
+    const extras = readExtras ? safe(() => readExtras(events, info?.startup ?? null)) : null;
     if (extras && arm?.vanilla) { extras.skillsPreloaded = []; extras.skillBytesPreloaded = 0; }
     return { extraction: extractSkills(events, runtime), info, order: safe(() => loadOrderOf(events, runtime)), ...(extras ? { extras } : {}) };
   });
@@ -586,14 +550,15 @@ function resultFields({ extraction, info, task, arm, extras = null, order = null
     startupResourceCount: startup?.count ?? null,
     ...targetOutcome({ extraction, task, arm, catalog, startup }),
     sopNameSource: catalog.sopSource,
-    skillsScope: extraction.runtime === 'opencode' ? 'parent-session' : 'all-sessions',
+    // Which sessions' loads the stream shows (streams.skillsScope; opencode's parent session only).
+    skillsScope: streamsOf({ runtime: extraction.runtime }).skillsScope ?? 'all-sessions',
     loadCheck: safe(() => loadCheckOf({ order, extraction, task, arm, isSop: (n) => isSopName(n, catalog) })),
     ...cc,
   };
 }
 
 module.exports = {
-  ARGS_NOT_RECORDED, SKILL_FIELDS, CLAUDE_SKILL_FIELDS, FULL_TEXT_FIELDS, isPreviewText, CC_PRELOAD_CAP, extractSkills, claudeSkillExtras, startupClaude, fmList, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
+  ARGS_NOT_RECORDED, SKILL_FIELDS, CLAUDE_SKILL_FIELDS, FULL_TEXT_FIELDS, isPreviewText, CC_PRELOAD_CAP, extractSkills, startupClaude, fmList, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
   startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, claudeSkillInfo, captureSkills, resultFields, normalizeUri, has,
   firstDecisionOf, identifiedSops, capInvocationOf, kiroCalls, kiroFirstDecision,
 };
