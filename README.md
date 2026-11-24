@@ -268,9 +268,23 @@ tools, AWS API calls included, without asking. On Claude Code,
 `KONDUCTOR_DISPATCH_PERMISSION_MODE` (or the plugin's `dispatch_permission_mode` option) decides:
 `interactive` (the default) asks you in the pane, `headless` runs without prompts and denies what
 your permission settings don't allow, and the opt-in `bypass` skips every permission check (see
-[What the Claude Code plugin runs](#what-the-claude-code-plugin-runs)). Use the multiplexer
-orchestrators only in a workspace and with AWS credentials you are willing to let an agent act on.
-With
+[What the Claude Code plugin runs](#what-the-claude-code-plugin-runs)). The exception on Claude Code
+is the three AWS MCP tools that act on AWS: `aws___run_script`, `aws___get_presigned_url` and
+`aws___get_tasks`. `konductor install --harness claude` puts an ask rule for each in the settings
+file it installs into. An ask rule holds in every mode, `bypass` included: an `interactive` pane
+asks you, and a `headless` or `bypass` pane cannot call them. That file applies to every pane for
+the default `$HOME` install (`~/.claude/settings.json`), but only to panes running in the target
+project for a `--target` install (`<target>/.claude/settings.json`). The rules, and the allow rules
+for the five read-only AWS MCP tools, apply to every Claude Code session using that settings file,
+not only Konductor's agents: Claude Code has no per-agent permission settings. `konductor uninstall`
+removes the entries install added and keeps yours. No ask rule is written for a Claude Code plugin
+install, when that settings file cannot be written (install still succeeds and ends by printing the
+rules to add by hand), or for a tool one of your own entries already covers. For a plugin install,
+add `mcp__plugin_konductor_aws-mcp__<tool>` for each of the three to `permissions.ask` yourself (see
+[Install from the Claude plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md)
+and [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine)).
+Use the multiplexer orchestrators only in a workspace and with AWS credentials you are willing to
+let an agent act on. With
 `konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
 `k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
 See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).

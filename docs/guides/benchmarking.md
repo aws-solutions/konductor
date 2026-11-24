@@ -85,8 +85,8 @@ runtime limitation is resolved upstream.
 
 ### MCP servers are not configured by this harness
 
-`tools:` is emitted verbatim from the agent spec, so a glob like
-`mcp__aws-mcp__*` appears there — but no `mcpServers:` block is written, and
+`tools:` is emitted verbatim from the agent spec, so a grant like
+`mcp__aws-mcp__aws___search_documentation` appears there, but no `mcpServers:` block is written, and
 `dependencies.mcpRegistry` is not read. Konductor does not bundle MCP servers;
 install any server a scenario needs yourself. `requiredMcpServer` in
 `tests/registry.json` records that expectation, it does not provision anything.

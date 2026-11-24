@@ -10,7 +10,7 @@ SOP = (
 
 
 def test_toolset_has_no_spawn_tool():
-    assert "`@builtin` and `@aws-mcp` only" in SOP
+    assert "`@builtin` and named `@aws-mcp` tools only" in SOP
 
 
 def test_stale_subagent_toolset_is_gone():
