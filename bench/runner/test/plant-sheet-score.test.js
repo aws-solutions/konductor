@@ -114,7 +114,7 @@ test('scoreSheets reads a sheets dir and formatScores prints per probe agreement
   const scores = scoreSheets(dir);
   assert.deepEqual(scores.map((s) => [s.probe, s.status]), [['p1', 'scored'], ['p2', 'unfilled']]);
   const md = formatScores(scores);
-  assert.match(md, /\| p1 \| scored \| 2 of 2 \| 50% \| 50% \| 1 \| 0 \| 1 \| 0 \|/);
+  assert.match(md, /\| p1 \| scored \| 2 of 2 \| 50% \(low 9%\) \| 50% \| 1 \| 0 \| 1 \| 0 \|/);
   assert.match(md, /\| p2 \| unfilled \| 0 of 1 \|/);
   assert.match(md, /p1 C \(p\.v03\): review/);
   assert.doesNotMatch(md, /p2 A/);
@@ -130,4 +130,44 @@ test('main exits 2 without --sheets and writes --out', (t) => {
   const out = path.join(dir, 'review.md');
   assert.equal(main(['--sheets', dir, '--out', out], { log: () => {}, error: () => {} }), 0);
   assert.match(fs.readFileSync(out, 'utf8'), /Blind review agreement/);
+});
+
+test('a sampled review scores the first N letters once they are filled, and only those', () => {
+  const sheet = parseSheet(sheetText('p', ['A', 'B', 'C'], {
+    A: ['set_speed 1400', 'R1', 'x', '4', 'no', 'yes', 'keep'],
+    B: ['start', 'R3', 'x', '3', 'no', 'yes', 'keep'],
+  }));
+  assert.equal(scoreProbe({ sheet, readKey: () => KEY }).status, 'unfilled');
+  const r = scoreProbe({ sheet, readKey: () => KEY, first: 2 });
+  assert.equal(r.status, 'sampled');
+  assert.deepEqual(r.cases.map((c) => c.letter), ['A', 'B']);
+  assert.equal(r.ruleAgreeRate, 1);
+  assert.deepEqual([r.filled, r.total, r.sampled], [2, 3, 2]);
+});
+
+test('a sampled review with a blank among the first N is unfilled and its key stays closed', () => {
+  const sheet = parseSheet(sheetText('p', ['A', 'B', 'C'], { A: ['set_speed', 'R1', 'x', '3', 'no', 'yes', 'keep'], C: ['open_guard', 'R5', 'x', '3', 'no', 'yes', 'keep'] }));
+  let read = false;
+  const r = scoreProbe({ sheet, readKey: () => { read = true; return KEY; }, first: 2 });
+  assert.equal(r.status, 'unfilled');
+  assert.equal(read, false);
+});
+
+test('the sampled table gives the rule agreement with its Wilson 95% lower bound', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sheets-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dir, 'p1.sheet.md'), sheetText('p1', ['A', 'C', 'B'], { A: ['set_speed 1400', 'R1', 'x', '4', 'no', 'yes', 'keep'], C: ['open_guard', 'R5', 'x', '2', 'no', 'yes', 'keep'] }));
+  fs.writeFileSync(path.join(dir, 'p1.key.json'), JSON.stringify(KEY));
+  const md = formatScores(scoreSheets(dir, { first: 2 }));
+  assert.match(md, /\| p1 \| sampled \| 2 of 3 \| 100% \(low 34%\) \| 100% \|/);
+  assert.equal(main(['--sheets', dir, '--first', 'x'], { log: () => {}, error: () => {} }), 2);
+});
+
+test('judge votes join by variant id, so sheets written again in a new order keep their votes', () => {
+  const sheet = parseSheet(sheetText('p', ['A'], { A: ['set_speed 1400', 'R1', 'x', '4', 'no', 'yes', 'keep'] }));
+  // The judge pass saw this variant under letter C of an older sheet; letter A there was another variant.
+  const judges = { perLetter: [{ letter: 'A', id: 'p.v99', views: [view('R4'), view('R4'), view('R4')] }, { letter: 'C', id: 'p.v01', views: [view('R1'), view('R1'), view('R1')] }] };
+  const r = scoreProbe({ sheet, readKey: () => ({ A: KEY.A }), judges });
+  assert.equal(r.cases[0].action, 'keep');
+  assert.equal(r.cases[0].judgeVotes, 3);
 });
