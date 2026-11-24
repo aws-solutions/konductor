@@ -110,6 +110,7 @@ is the docs owner's page and points here.
 | `standard-recheck/prompt.md` | The recheck prompt: four questions per task. |
 | `standard-recheck/queue.txt` | The recheck call queue: name, model and tasks per line. |
 | `standard-recheck/rc-home.js` | Makes or cleans an isolated kiro-cli HOME. |
+| `standard-recheck/results-2026-11-24.md` | Recheck record of the 2026-11-24 queue: 18 tasks cleared, t3-db-order-history blocked. |
 | `standard-recheck/run.sh` | STANDARD gate rechecks, one non-Claude call at a time. Paid. |
 | `standard-recheck/test-run.sh` | Paid-path test of `run.sh` with a stub kiro-cli. Free. |
 | `strands-counted-trial.sh` | One counted Strands plant trial on the real pinned model. Paid. |
