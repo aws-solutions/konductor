@@ -201,3 +201,9 @@ the judge can read from the final text and the tool calls: `work-handed-to-worke
 (weight 1) and `cleanup-reported-truthfully` (weight 1). The old criterion stays; a bundle that carries the merge log
 (analysis fix 10) would make it readable, and is another fixer's change. No prompt, check, key or fixture change; gates
 stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck: pending (`handEdited.version` 2).
+
+## STANDARD key audit, 2026-11-24: versioned keys with no task file (mate, Claude)
+
+Key-only fixes from the STANDARD key audit (the LITE audit method; report `reports/standard-key-audit-2026-11-24.md` in the mate workspace), written by `bench/scenarios/rewrite-standard-keys.js` (`--check` verifies them). Each sits in `hidden/<id>-vN/` beside its base and has no task file: the prompt and fixture are the base task's, so the base task's runs are re-scored with it, and no new id enters the SR-32 split (a `-vN` id hashes on its own, and most of these would land HELD-OUT on a DEV fixture). The base task, its key and its lock entry are untouched. Free dry run: `node bench/scenarios/lib/dry-run.js --config bench/scenarios/<batch>/scenario.config.js <id> --hidden <id>-vN`; every gate passes and the mechanical baselines (stub, lazy, dump) score as under the base key. Non-Claude recheck of the new keys: not run (paid, owner).
+
+- `t12-sdlc-contact-import-v6` (block-kit key): the decisions cap of 10 is not in the request (the saved run listed 13 decisions, each with its reason); 15 still bounds a dump.

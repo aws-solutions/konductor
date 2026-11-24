@@ -1,0 +1,116 @@
+{
+  "_v4": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "high",
+      "fix": [
+        "backup",
+        "retention",
+        "purge",
+        "restore",
+        "replay",
+        "snapshot",
+        "expire",
+        "expiry",
+        "shred",
+        "encryption key",
+        "90-day",
+        "90 day",
+        "backups"
+      ],
+      "finding": "The design calls the request complete while encrypted snapshots and object manifests remain under a 90-day policy, so account data can survive the deletion process in recovery copies."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "warehouse",
+        "data-control-events",
+        "delete",
+        "analytics",
+        "warehouse rows",
+        "verify deletion",
+        "deletion event"
+      ],
+      "finding": "The plan does not issue or verify deletion of the account's warehouse rows even though the inventory identifies the analytics warehouse as a retained account-level copy."
+    },
+    {
+      "id": "k3",
+      "section": "4.1",
+      "severity": "medium",
+      "fix": [
+        "completion check",
+        "terminal status",
+        "report",
+        "reconcil",
+        "end-to-end",
+        "every system",
+        "all systems",
+        "confirm each",
+        "verified complete",
+        "proof of completion",
+        "completion report",
+        "status per system"
+      ],
+      "finding": "The asynchronous flow can mark work complete after worker acknowledgement without an end-to-end completion check or a reliable report proving every system finished."
+    },
+    {
+      "id": "k4",
+      "section": "5.2",
+      "severity": "medium",
+      "fix": [
+        "remove email",
+        "omit name",
+        "account ID",
+        "minimum evidence",
+        "request reference",
+        "pseudonym",
+        "drop the email",
+        "drop email",
+        "strip",
+        "redact",
+        "no personal data"
+      ],
+      "finding": "The evidence record retains the deleted person's email address and display name even though the legal requirements call for minimum evidence using a request reference and account identifier."
+    },
+    {
+      "id": "k5",
+      "section": "3.4",
+      "severity": "high",
+      "fix": [
+        "notify vendor",
+        "removal endpoint",
+        "Notification",
+        "vendor",
+        "provider",
+        "removal contract",
+        "removal api",
+        "delete endpoint",
+        "erasure request"
+      ],
+      "finding": "The design leaves the notification provider's recipient and delivery data in place because the worker does not invoke the vendor removal contract."
+    },
+    {
+      "id": "k6",
+      "section": "2.2",
+      "severity": "critical",
+      "fix": [
+        "calendar days",
+        "30 calendar days",
+        "holiday",
+        "calendar-day",
+        "legal deadline",
+        "business days",
+        "do not pause",
+        "no pause"
+      ],
+      "finding": "The design promises 30 business days and pauses for holidays, which conflicts with the 30-calendar-day legal deadline and can make a request late."
+    }
+  ],
+  "decoys": []
+}

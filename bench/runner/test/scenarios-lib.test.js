@@ -133,6 +133,29 @@ test('the dry run scores reference, stub, lazy and alternative answers and recor
   }
 });
 
+// A versioned key with no task file of its own (a key-only fix: same prompt and fixture, so the base task's runs can be
+// re-scored with it): `hidden` names another dir under the batch's hidden/, and the dry run scores the base task with it.
+test('the dry run scores a task against another hidden dir and refuses to record that result', () => {
+  const root = tmp();
+  const was = process.env.TMPDIR;
+  process.env.TMPDIR = root;
+  try {
+    const cfg = batch(root);
+    const strict = path.join(path.dirname(cfg.hiddenDir(cfg.readTask('tx-a'))), 'tx-a-v2', 'hidden');
+    write(path.join(strict, 'a.test.js'), "const { test } = require('node:test');\ntest('never', () => { require('node:assert').ok(false); });\n");
+    const base = dryRun('tx-a', cfg, { repeat: 1 });
+    const other = dryRun('tx-a', cfg, { repeat: 1, hidden: 'tx-a-v2' });
+    assert.equal(base.scores.reference, 100);
+    assert.ok(other.scores.reference < 100, 'the other key scored the reference');
+    assert.equal(other.hidden, 'tx-a-v2');
+    assert.throws(() => record(cfg, other), /another hidden dir/);
+    assert.throws(() => dryRun('tx-a', cfg, { repeat: 1, hidden: 'no-such-dir' }), /no hidden dir/);
+  } finally {
+    process.env.TMPDIR = was;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // A versioned task (`<id>-vN`, a new key or prompt on the same fixture) has no solution or answer folder of its own:
 // it reads its base task's, so the dry run can score it (the vN files of 2026-11-22 could not be dry-run at all).
 test('a versioned task falls back to its base task for solutions and answers', () => {

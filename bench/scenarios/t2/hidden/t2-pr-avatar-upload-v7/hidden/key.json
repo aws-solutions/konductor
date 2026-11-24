@@ -1,0 +1,183 @@
+{
+  "_v7": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/forum/utils/image_helpers.py",
+      "line": 55,
+      "endLine": 55,
+      "severity": "critical",
+      "fix": [
+        "sanitize",
+        "filename",
+        "path",
+        "traversal",
+        "os.path.basename",
+        "basename",
+        "secure_filename",
+        "generated name",
+        "uuid",
+        "random name",
+        "realpath",
+        "inside upload"
+      ],
+      "finding": "Path traversal vulnerability: original_filename is used directly in os.path.join, allowing attackers to write files outside upload directory with filenames containing '../'."
+    },
+    {
+      "id": "k2",
+      "file": "src/forum/handlers/user_handler.py",
+      "line": 263,
+      "endLine": 263,
+      "severity": "high",
+      "fix": [
+        "max_size",
+        "parameter",
+        "MAX_UPLOAD_SIZE",
+        "config",
+        "size limit",
+        "2 mb",
+        "pass max_size",
+        "enforce limit"
+      ],
+      "finding": "Missing file size limit: process_image_upload is called without the max_size parameter, bypassing the 2MB limit defined in config.MAX_UPLOAD_SIZE.",
+      "also": [
+        {
+          "file": "src/forum/handlers/user_handler.py",
+          "line": 239
+        }
+      ]
+    },
+    {
+      "id": "k3",
+      "file": "src/forum/utils/image_helpers.py",
+      "line": 106,
+      "endLine": 107,
+      "severity": "medium",
+      "fix": [
+        "verify",
+        "actual",
+        "file",
+        "content",
+        "imghdr",
+        "magic",
+        "structural",
+        "signature",
+        "decode",
+        "pillow",
+        "re-encode",
+        "reencode",
+        "content-type",
+        "mime",
+        "whole file",
+        "open the image"
+      ],
+      "finding": "The image check trusts the client-supplied Content-Type and then only sniffs the leading bytes with imghdr, so a file that starts with an image header but carries other content (a polyglot) is accepted as an image.",
+      "also": [
+        {
+          "file": "src/forum/utils/image_helpers.py",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "id": "k4",
+      "file": "src/forum/utils/image_helpers.py",
+      "line": 77,
+      "endLine": 125,
+      "severity": "low",
+      "fix": [
+        "tempfile",
+        "cleanup",
+        "os.unlink",
+        "finally",
+        "delete",
+        "unlink",
+        "remove the temp",
+        "remove temp",
+        "try/finally",
+        "clean up"
+      ],
+      "finding": "Temporary file not cleaned up on error: The temporary file created with tempfile.mkstemp() is not deleted when validation fails, potentially filling disk space with orphaned files."
+    },
+    {
+      "id": "k5",
+      "file": "src/forum/handlers/user_handler.py",
+      "line": 275,
+      "endLine": 275,
+      "severity": "medium",
+      "fix": [
+        "user_id",
+        "hash",
+        "obfuscate",
+        "email",
+        "privacy",
+        "opaque id",
+        "random id",
+        "uuid",
+        "do not use email",
+        "not the email",
+        "without email",
+        "pii"
+      ],
+      "finding": "User email exposed in URL: Avatar URLs include the user's email address, exposing private information in logs, caches, and referrer headers."
+    },
+    {
+      "id": "k6",
+      "file": "src/forum/handlers/user_handler.py",
+      "line": 207,
+      "endLine": 209,
+      "severity": "medium",
+      "fix": [
+        "delete",
+        "old",
+        "file",
+        "cleanup",
+        "os.remove",
+        "remove old",
+        "previous file",
+        "previous avatar",
+        "old avatar",
+        "unlink"
+      ],
+      "finding": "Old avatar files not deleted: When users update their avatar URL, the old image file remains on disk, causing storage bloat and potential privacy issues."
+    },
+    {
+      "id": "k7",
+      "file": "docs/api.md",
+      "line": 105,
+      "endLine": 105,
+      "severity": "low",
+      "fix": [
+        "documentation",
+        "update",
+        "accurate",
+        "remove",
+        "claim",
+        "docs",
+        "delete the previous",
+        "doc says",
+        "fix the doc",
+        "correct the doc",
+        "api.md"
+      ],
+      "finding": "Documentation incorrectly claims old files are automatically deleted, but the implementation doesn't delete old avatar files when users update their avatar URL.",
+      "also": [
+        {
+          "file": "src/forum/handlers/user_handler.py",
+          "line": 278
+        }
+      ]
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/forum/utils/image_helpers.py",
+      "line": 64,
+      "endLine": 66,
+      "why": "The duplicate existence check is not a TOCTOU vulnerability here because it's only detecting a race condition that already occurred, not preventing one. The file naming scheme with counters makes races extremely unlikely."
+    }
+  ]
+}

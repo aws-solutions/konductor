@@ -1,0 +1,254 @@
+{
+  "_note": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): the folder never says monitor, watch or observe; the saved runs wrote the post-change window as \"Wait 60 seconds\" or \"client errors continue 30 seconds after the check\", in action or verify, so the item reads the whole step and takes wait, re-check and check-again wordings.",
+  "outputFile": "runbooks/orders-db-failover.md",
+  "items": [
+    {
+      "id": "step-count",
+      "type": "maxLen",
+      "path": "steps",
+      "min": 6,
+      "max": 16,
+      "weight": 1
+    },
+    {
+      "id": "all-required-steps-present",
+      "type": "every",
+      "path": "steps",
+      "min": 8,
+      "match": {
+        "field": "action",
+        "all": [
+          "\\S"
+        ]
+      },
+      "weight": 8
+    },
+    {
+      "id": "lag-before-promote",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "action",
+        "all": [
+          "lag|replay|caught.?up|behind",
+          "orders-db-b|candidate|replica"
+        ]
+      },
+      "then": {
+        "field": "command",
+        "all": [
+          "promote"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "fence-before-promote",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "command",
+        "all": [
+          "fence|stop|shutdown|isolate|power",
+          "orders-db-a"
+        ]
+      },
+      "then": {
+        "field": "command",
+        "all": [
+          "promote"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "promote-before-repoint",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "command",
+        "all": [
+          "promote"
+        ]
+      },
+      "then": {
+        "field": "command",
+        "all": [
+          "reconfigure|dns|endpoint|record|repoint"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "repoint-before-write-check",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "command",
+        "all": [
+          "reconfigure|dns|endpoint|record|repoint"
+        ]
+      },
+      "then": {
+        "field": "action",
+        "all": [
+          "write",
+          "verif|check|confirm|test|insert"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "never-promote-delayed-copy",
+      "type": "none",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "promote",
+          "orders-db-c"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "status-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+status",
+          "orders-prod"
+        ]
+      }
+    },
+    {
+      "id": "fence-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+fence",
+          "orders-db-a",
+          "--confirm"
+        ]
+      }
+    },
+    {
+      "id": "promote-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+promote",
+          "orders-db-b",
+          "--confirm"
+        ]
+      }
+    },
+    {
+      "id": "reconfigure-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+reconfigure",
+          "orders-api",
+          "orders-db-b"
+        ]
+      }
+    },
+    {
+      "id": "abort-metric-is-catalogued",
+      "type": "inSet",
+      "path": "abort",
+      "field": "metric",
+      "fromFile": "metrics/catalog.csv",
+      "pattern": "^([^,]+),"
+    },
+    {
+      "id": "abort-threshold-is-rpo",
+      "type": "number",
+      "path": "abort.threshold",
+      "value": 120,
+      "tol": 0,
+      "weight": 8
+    },
+    {
+      "id": "escalation-roles-are-on-rota",
+      "type": "inSet",
+      "path": "escalate",
+      "field": "",
+      "fromFile": "rota/paging.md",
+      "pattern": "^- (.+)$"
+    },
+    {
+      "id": "repoint-step-is-present",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+reconfigure",
+          "orders-api",
+          "orders-db-b"
+        ]
+      },
+      "weight": 8
+    },
+    {
+      "id": "write-readback-step-is-present",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "action",
+        "all": [
+          "write",
+          "read|verif|confirm|succe"
+        ]
+      },
+      "weight": 8
+    },
+    {
+      "id": "monitoring-window-is-present",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "monitor|watch|observe|wait|re-?check|re-?run|check again|keep checking|dashboard|console",
+          "\\d+\\s*(s|sec|secs|seconds?|min|mins|minutes?)\\b|\\b(five|ten|fifteen|thirty) (seconds|minutes)\\b"
+        ]
+      },
+      "weight": 4
+    },
+    {
+      "id": "old-primary-remains-isolated",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "action",
+        "all": [
+          "orders-db-a",
+          "fenced|isolated|stays? (stopped|down|out)|do not (rejoin|reconnect|restart|reuse)|keep (it|its|the)[^.]*(fenced|volume|stopped)|rebuild[^.]*replica"
+        ]
+      },
+      "weight": 4
+    },
+    {
+      "id": "dns-ttl-wait",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "reconfigure|endpoint|dns",
+          "\\bttl\\b|30.?s(ec(ond)?s?)?\\b|30-second|30 seconds"
+        ]
+      },
+      "weight": 4
+    }
+  ]
+}

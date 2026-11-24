@@ -1,0 +1,102 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "high",
+      "fix": [
+        "reweight criteria",
+        "priority order",
+        "weights",
+        "weighting",
+        "relevance first",
+        "match 2.3",
+        "reorder",
+        "rescore"
+      ],
+      "finding": "The scorecard gives latency and operating simplicity more weight than relevance and cost even though section 2.3 states the opposite priority order, so the recommendation is driven by undisclosed decision weights."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "staff time",
+        "fully loaded",
+        "engineering time",
+        "staffing",
+        "people cost",
+        "labour",
+        "labor",
+        "ops time",
+        "headcount"
+      ],
+      "finding": "The self-run cluster total excludes the engineering staff time that is counted for the other options, making its cost comparison and budget conclusion unreliable for a five-person team."
+    },
+    {
+      "id": "k3",
+      "section": "3.4",
+      "severity": "critical",
+      "fix": [
+        "representative dataset",
+        "40 million",
+        "benchmark at scale",
+        "own data",
+        "realistic",
+        "scale test",
+        "load test",
+        "108 million"
+      ],
+      "finding": "The managed service latency claim comes from a 2-million-document vendor benchmark while this catalogue is projected to reach 40 million products and 108 million localized rows, so the design has no evidence that the selected tier meets its target at operating scale."
+    },
+    {
+      "id": "k4",
+      "section": "3.5",
+      "severity": "high",
+      "fix": [
+        "multi-language",
+        "stemming",
+        "every locale",
+        "all languages",
+        "each language",
+        "locale",
+        "analyzer"
+      ],
+      "finding": "The relevance evaluation covers only English and French tokenization and never evaluates the required locale-specific stemming behavior for all storefront languages, so the chosen service may fail the stated search acceptance requirements."
+    },
+    {
+      "id": "k5",
+      "section": "3.6",
+      "severity": "medium",
+      "fix": [
+        "reindex",
+        "backfill",
+        "migration plan",
+        "cutover",
+        "validate",
+        "dual write",
+        "dual-write"
+      ],
+      "finding": "The low-effort migration plan does not describe how the 18.4-million-product catalogue will be reindexed or backfilled and validated before cutover, leaving the new read target incomplete or stale."
+    },
+    {
+      "id": "k6",
+      "section": "3.7",
+      "severity": "medium",
+      "fix": [
+        "prefix query",
+        "actual workload",
+        "prefix",
+        "real query",
+        "production query",
+        "same query",
+        "representative query"
+      ],
+      "finding": "The database baseline benchmarks an unanchored substring scan over title and description even though the storefront uses a locale-filtered title-prefix query, so its latency score does not measure the rejected option's actual workload."
+    }
+  ],
+  "decoys": []
+}

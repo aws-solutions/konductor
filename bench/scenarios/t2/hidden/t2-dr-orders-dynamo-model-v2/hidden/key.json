@@ -1,0 +1,113 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "critical",
+      "fix": [
+        "shard",
+        "write distribution",
+        "partition key",
+        "hot partition",
+        "write sharding",
+        "suffix",
+        "high-cardinality",
+        "high cardinality",
+        "spread writes",
+        "orderId as partition"
+      ],
+      "finding": "Using the UTC order date as the sole partition key concentrates the launch peak on one partition, exceeding the stated per-partition write baseline and making checkout latency vulnerable to a daily hot spot."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "customer index",
+        "query",
+        "GSI",
+        "index on customer",
+        "customerId as partition",
+        "query by customer",
+        "avoid scan",
+        "no scan",
+        "instead of scan",
+        "global secondary index"
+      ],
+      "finding": "Customer history is implemented as a filtered table scan even though the service must support 2,400 requests per second and customers with more than 100,000 orders, so the access pattern has no bounded key-based read."
+    },
+    {
+      "id": "k3",
+      "section": "4.1",
+      "severity": "medium",
+      "fix": [
+        "projection",
+        "KEYS_ONLY",
+        "attributes",
+        "INCLUDE",
+        "project only",
+        "projected attributes",
+        "smaller projection",
+        "only the fields"
+      ],
+      "finding": "GSI1 projects every order attribute while the fulfillment path reads only orderId, customerId, and updatedAt, unnecessarily duplicating large line-bearing items and roughly doubling index write and storage cost."
+    },
+    {
+      "id": "k4",
+      "section": "3.4",
+      "severity": "critical",
+      "fix": [
+        "split",
+        "line items",
+        "item size",
+        "400 KB",
+        "400kb",
+        "item limit",
+        "separate items",
+        "one item per line",
+        "line item items",
+        "object store",
+        "chunk"
+      ],
+      "finding": "The list representation cannot fit the observed 774 KB order or the planned 1,200-line bulk order within DynamoDB's 400 KB item limit, so valid orders will fail to write or read."
+    },
+    {
+      "id": "k5",
+      "section": "3.5",
+      "severity": "high",
+      "fix": [
+        "conditional update",
+        "atomic",
+        "idempotent",
+        "atomic add",
+        "atomic counter",
+        "condition expression",
+        "dedup",
+        "event id",
+        "transact"
+      ],
+      "finding": "Read-then-write counter updates can lose concurrent increments and count redelivered status events twice, making fulfillment workload counts unreliable despite the event contract requiring idempotency."
+    },
+    {
+      "id": "k6",
+      "section": "6.3",
+      "severity": "high",
+      "fix": [
+        "incremental",
+        "export",
+        "reporting table",
+        "export to s3",
+        "dynamodb streams",
+        "stream",
+        "change data capture",
+        "aggregate on write",
+        "incremental export"
+      ],
+      "finding": "Scanning the entire growing table every hour cannot stay within the 400 USD reporting allocation as the table grows from 250 GB toward 1.1 TB, and it does not provide a bounded incremental workload."
+    }
+  ],
+  "decoys": []
+}

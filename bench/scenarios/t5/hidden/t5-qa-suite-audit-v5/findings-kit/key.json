@@ -1,0 +1,180 @@
+{
+  "_note": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each risk's fix words widened to an alternative set; base words, locations, severities and fixMin kept.",
+  "lengthAllowance": null,
+  "outputFile": "docs/TEST-AUDIT.md",
+  "findingsKey": [
+    {
+      "id": "proration-self-comparison",
+      "location": "test/proration.test.js",
+      "severity": "critical",
+      "fix": [
+        "independent",
+        "expected",
+        "amount",
+        "boundary",
+        "specific",
+        "assertion",
+        "hard-coded",
+        "hardcoded",
+        "known value",
+        "worked example",
+        "literal",
+        "fixed number",
+        "oracle",
+        "tautolog",
+        "compares with itself",
+        "same function"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "invoice-output-recomputed",
+      "location": "test/invoice-contract.test.js",
+      "severity": "high",
+      "fix": [
+        "literal",
+        "expected",
+        "fields",
+        "contract",
+        "independent",
+        "fixture",
+        "hard-coded",
+        "hardcoded",
+        "golden",
+        "known value",
+        "tautolog",
+        "same code",
+        "recompute",
+        "schema"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "retry-unit-replaced",
+      "location": "test/retry.test.js",
+      "severity": "high",
+      "fix": [
+        "real",
+        "implementation",
+        "behavior",
+        "stub",
+        "dependency",
+        "integration",
+        "mock",
+        "mocked",
+        "fake",
+        "replaced",
+        "real retry",
+        "unit under test",
+        "actual code"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "webhook-error-ignored",
+      "location": "test/webhook-failure.test.js",
+      "severity": "high",
+      "fix": [
+        "assert",
+        "error",
+        "throws",
+        "invalid",
+        "rejection",
+        "failure",
+        "rejects",
+        "assert.rejects",
+        "assert.throws",
+        "expect an error",
+        "status code",
+        "swallow",
+        "catch"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "proration-shared-formula",
+      "location": "test/proration-preview.test.js",
+      "severity": "critical",
+      "fix": [
+        "independent",
+        "oracle",
+        "boundary",
+        "amount",
+        "fixture",
+        "example",
+        "hard-coded",
+        "hardcoded",
+        "known value",
+        "worked example",
+        "same formula",
+        "copied formula",
+        "tautolog",
+        "literal"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "api-body-unchecked",
+      "location": "test/api-routes.test.js",
+      "severity": "high",
+      "fix": [
+        "body",
+        "payload",
+        "response",
+        "error",
+        "content",
+        "assert",
+        "status only",
+        "json body",
+        "fields",
+        "deepEqual",
+        "deepStrictEqual",
+        "check the body",
+        "response body"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "empty-adjustment-loop",
+      "location": "test/discounts.test.js",
+      "severity": "medium",
+      "fix": [
+        "non-empty",
+        "case",
+        "iteration",
+        "fixture",
+        "assert",
+        "example",
+        "empty",
+        "never runs",
+        "no cases",
+        "zero iterations",
+        "vacuous",
+        "length",
+        "at least one"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "snapshot-overwritten",
+      "location": "test/invoice-snapshot.test.js",
+      "severity": "medium",
+      "fix": [
+        "committed",
+        "review",
+        "snapshot",
+        "independent",
+        "detect",
+        "compare",
+        "update flag",
+        "--update",
+        "regenerat",
+        "overwrit",
+        "stored snapshot",
+        "golden file",
+        "checked in"
+      ],
+      "fixMin": 2
+    }
+  ]
+}

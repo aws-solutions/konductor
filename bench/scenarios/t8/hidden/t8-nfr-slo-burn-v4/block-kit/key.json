@@ -1,0 +1,167 @@
+{
+  "_note": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): the alert-list cap of 4 is not in the request; the multi-window burn-rate pattern pages and tickets at up to four windows per objective, so two objectives need up to 8 (both saved pilot runs listed 7 and 8).",
+  "outputFile": "slo/payments-api-slo.md",
+  "items": [
+    {
+      "id": "slis-have-two",
+      "type": "maxLen",
+      "path": "slis",
+      "min": 2,
+      "max": 4
+    },
+    {
+      "id": "good-metrics-are-catalogued",
+      "type": "inSet",
+      "path": "slis",
+      "field": "good",
+      "fromFile": "metrics/catalogue.csv",
+      "pattern": "^([^,]+),",
+      "min": 2
+    },
+    {
+      "id": "valid-metrics-are-catalogued",
+      "type": "inSet",
+      "path": "slis",
+      "field": "valid",
+      "fromFile": "metrics/catalogue.csv",
+      "pattern": "^([^,]+),",
+      "min": 2
+    },
+    {
+      "id": "customer-availability-measurement",
+      "type": "number",
+      "path": "measured.availability28d",
+      "value": 99.97762185371705,
+      "tol": 0.009,
+      "weight": 2
+    },
+    {
+      "id": "customer-p99-measurement",
+      "type": "number",
+      "path": "measured.latencyP99Ms",
+      "value": 1200,
+      "tolPct": 5,
+      "weight": 2
+    },
+    {
+      "id": "availability-target-respects-cap",
+      "type": "some",
+      "path": "slos",
+      "match": {
+        "field": "target",
+        "num": {
+          "gte": 99.9,
+          "lte": 99.95
+        }
+      }
+    },
+    {
+      "id": "targets-do-not-exceed-measurement",
+      "type": "some",
+      "path": "slos",
+      "match": {
+        "field": "target",
+        "num": {
+          "lte": 99.97762185371705
+        }
+      }
+    },
+    {
+      "id": "slos-use-four-week-window",
+      "type": "every",
+      "path": "slos",
+      "match": {
+        "field": "windowDays",
+        "num": {
+          "gte": 28,
+          "lte": 30
+        }
+      },
+      "min": 2
+    },
+    {
+      "id": "alert-list-is-focused",
+      "type": "maxLen",
+      "path": "alerts",
+      "min": 2,
+      "max": 8
+    },
+    {
+      "id": "fast-burn-rate",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "field": "burnRate",
+        "num": {
+          "gte": 10
+        }
+      }
+    },
+    {
+      "id": "fast-burn-long-window",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "field": "longWindowMin",
+        "num": {
+          "lte": 60
+        }
+      }
+    },
+    {
+      "id": "fast-burn-pages",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "field": "action",
+        "all": [
+          "page"
+        ]
+      }
+    },
+    {
+      "id": "slow-burn-rate",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "field": "burnRate",
+        "num": {
+          "lte": 6
+        }
+      }
+    },
+    {
+      "id": "slow-burn-long-window",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "field": "longWindowMin",
+        "num": {
+          "gte": 360
+        }
+      }
+    },
+    {
+      "id": "slow-burn-tickets",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "field": "action",
+        "all": [
+          "ticket"
+        ]
+      }
+    },
+    {
+      "id": "no-host-resource-pages",
+      "type": "none",
+      "path": "alerts",
+      "match": {
+        "field": "name",
+        "all": [
+          "cpu|memory"
+        ]
+      }
+    }
+  ]
+}

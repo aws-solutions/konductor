@@ -224,3 +224,9 @@ risks, the precision test already bounds the list at 12, and the check still fai
 reference 100, stub 7.1, lazy 37 (was 15.5: the wider sets credit the mechanical half-copy more; under the 40 gate),
 alt 100. Re-score of the saved LITE runs: checkout 59 to 82 -> 83 to 89 per arm, sync 27 to 72 -> 31 to 83.
 Non-Claude recheck: pending (`handEdited.version`).
+
+## STANDARD key audit, 2026-11-24: versioned keys with no task file (mate, Claude)
+
+Key-only fixes from the STANDARD key audit (the LITE audit method; report `reports/standard-key-audit-2026-11-24.md` in the mate workspace), written by `bench/scenarios/rewrite-standard-keys.js` (`--check` verifies them). Each sits in `hidden/<id>-vN/` beside its base and has no task file: the prompt and fixture are the base task's, so the base task's runs are re-scored with it, and no new id enters the SR-32 split (a `-vN` id hashes on its own, and most of these would land HELD-OUT on a DEV fixture). The base task, its key and its lock entry are untouched. Free dry run: `node bench/scenarios/lib/dry-run.js --config bench/scenarios/<batch>/scenario.config.js <id> --hidden <id>-vN`; every gate passes and the mechanical baselines (stub, lazy, dump) score as under the base key. Non-Claude recheck of the new keys: not run (paid, owner).
+
+- `t5-qa-suite-audit-v5` (findings-kit key): `"lengthAllowance": null` and each risk's fix words widened (61 alternatives); locations, severities and fixMin 2 kept.

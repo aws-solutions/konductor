@@ -1,0 +1,158 @@
+{
+  "_v4": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/orders/migrations/migration_003_add_fulfilment_status.py",
+      "line": 8,
+      "endLine": 10,
+      "severity": "critical",
+      "fix": [
+        "nullable",
+        "default",
+        "temporary",
+        "constraint",
+        "expand",
+        "contract",
+        "two-step",
+        "two step",
+        "add nullable",
+        "backfill",
+        "rolling deploy",
+        "old code"
+      ],
+      "finding": "Column added as NOT NULL with a default, but during rolling deployment old code inserting without this column will fail because DEFAULT only works if column is explicitly omitted from INSERT."
+    },
+    {
+      "id": "k2",
+      "file": "src/orders/migrations/migration_003_add_fulfilment_status.py",
+      "line": 14,
+      "endLine": 19,
+      "severity": "high",
+      "fix": [
+        "batch",
+        "transaction",
+        "limit",
+        "chunk",
+        "batches",
+        "chunks",
+        "backfill",
+        "smaller transactions",
+        "locking"
+      ],
+      "finding": "UPDATE affects entire table in one transaction, which will lock the 2.5M row production table for too long and could cause timeouts."
+    },
+    {
+      "id": "k3",
+      "file": "src/orders/migrations/migration_003_add_fulfilment_status.py",
+      "line": 29,
+      "endLine": 29,
+      "severity": "medium",
+      "fix": [
+        "warning",
+        "backup",
+        "preserve",
+        "data loss",
+        "irreversible",
+        "export",
+        "copy the column",
+        "confirm"
+      ],
+      "finding": "Down migration drops column without warning about data loss, violating migration safety principles documented in deployment.md."
+    },
+    {
+      "id": "k4",
+      "file": "src/orders/report_repository.py",
+      "line": 23,
+      "endLine": 24,
+      "severity": "high",
+      "fix": [
+        "parameter",
+        "placeholder",
+        "prepared",
+        "query",
+        "parameterized",
+        "parameterised",
+        "bind",
+        "sql injection",
+        "escape"
+      ],
+      "finding": "SQL query built with string formatting from user parameter, creating SQL injection vulnerability in get_fulfilment_summary method."
+    },
+    {
+      "id": "k5",
+      "file": "src/orders/report_repository.py",
+      "line": 48,
+      "endLine": 63,
+      "severity": "medium",
+      "fix": [
+        "join",
+        "single query",
+        "batch",
+        "n+1",
+        "in clause",
+        "one query",
+        "eager",
+        "prefetch",
+        "n + 1"
+      ],
+      "finding": "get_customer_fulfilment_details runs N+1 queries (one per order), which will be extremely slow with many orders."
+    },
+    {
+      "id": "k6",
+      "file": "src/orders/report_repository.py",
+      "line": 74,
+      "endLine": 84,
+      "severity": "medium",
+      "fix": [
+        "index",
+        "composite",
+        "created_at",
+        "fulfilment_status",
+        "add an index",
+        "add index",
+        "covering index",
+        "multi-column",
+        "multicolumn"
+      ],
+      "finding": "find_orders_by_fulfilment_date_range filters by fulfilment_status and created_at range but lacks a composite index, causing full scans on large table."
+    },
+    {
+      "id": "k7",
+      "file": "src/orders/migrations/migration_003_add_fulfilment_status.py",
+      "line": 22,
+      "endLine": 24,
+      "severity": "low",
+      "fix": [
+        "concurrent",
+        "online",
+        "create index",
+        "concurrently",
+        "non-blocking",
+        "nonblocking",
+        "lock-free",
+        "without locking",
+        "online index"
+      ],
+      "finding": "Index created with standard CREATE INDEX which locks table during creation on large production dataset."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/orders/migrations/migration_003_add_fulfilment_status.py",
+      "line": 31,
+      "endLine": 31,
+      "why": "PRAGMA foreign_keys = OFF is required before table recreation in SQLite and is correctly re-enabled at the end."
+    },
+    {
+      "id": "d2",
+      "file": "src/orders/report_repository.py",
+      "line": 28,
+      "endLine": 30,
+      "why": "Empty params tuple is correct when building dynamic WHERE clause without additional parameters beyond the string interpolation."
+    }
+  ]
+}

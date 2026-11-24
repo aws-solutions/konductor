@@ -73,3 +73,9 @@ Commit 53cc33ad added eight `fixture_unchanged` checks, one per file in the fixt
 v4 (the id took the `-v4` suffix in f8431fc0). The edit was not logged here and `handEdited.version` stayed 3. The
 STANDARD gate worker set `handEdited.version` to 4 and wrote this entry on 2026-11-23. The checks are the only
 content change since the v3 recheck. Non-Claude recheck of v4: pending.
+
+## STANDARD key audit, 2026-11-24: versioned keys with no task file (mate, Claude)
+
+Key-only fixes from the STANDARD key audit (the LITE audit method; report `reports/standard-key-audit-2026-11-24.md` in the mate workspace), written by `bench/scenarios/rewrite-standard-keys.js` (`--check` verifies them). Each sits in `hidden/<id>-vN/` beside its base and has no task file: the prompt and fixture are the base task's, so the base task's runs are re-scored with it, and no new id enters the SR-32 split (a `-vN` id hashes on its own, and most of these would land HELD-OUT on a DEV fixture). The base task, its key and its lock entry are untouched. Free dry run: `node bench/scenarios/lib/dry-run.js --config bench/scenarios/<batch>/scenario.config.js <id> --hidden <id>-vN`; every gate passes and the mechanical baselines (stub, lazy, dump) score as under the base key. Non-Claude recheck of the new keys: not run (paid, owner).
+
+- `t10-arch-outbox-v4` (rollout-kit key): rollback-preserves wanted reconcile, retain or without deleting; the saved run wrote "Keep the data files and the statusEvents collection; do not edit or delete them", so keep, preserve and do-not-delete wordings count.

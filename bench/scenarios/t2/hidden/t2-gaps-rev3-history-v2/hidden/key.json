@@ -1,0 +1,128 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/routes-redeem.js",
+      "line": 8,
+      "endLine": 10,
+      "severity": "critical",
+      "fix": [
+        "compare-and-set",
+        "atomic",
+        "transaction",
+        "conditional update",
+        "row lock",
+        "locking",
+        "race condition",
+        "concurrent",
+        "single statement",
+        "where balance"
+      ],
+      "finding": "The redemption handler reads a balance and later writes the decremented value without an atomic guard, so two concurrent redemptions can both pass the check and overspend the customer."
+    },
+    {
+      "id": "k2",
+      "file": "src/expiry-job.js",
+      "line": 7,
+      "endLine": 8,
+      "severity": "high",
+      "fix": [
+        "utc",
+        "business date",
+        "timezone",
+        "business_date",
+        "utc date",
+        "configured timezone",
+        "local date"
+      ],
+      "finding": "Expiry compares against the server's local calendar date instead of the configured UTC business date, so customers east of the server can lose points a day early."
+    },
+    {
+      "id": "k3",
+      "file": "src/points-ledger.js",
+      "line": 9,
+      "endLine": 9,
+      "severity": "medium",
+      "fix": [
+        "round",
+        "decimal",
+        "fractional",
+        "two decimal",
+        "2 decimal",
+        "no floor",
+        "do not floor",
+        "remove floor",
+        "Math.round"
+      ],
+      "finding": "The earn calculation now floors every raw result, discarding fractional points even though the policy and API contract support two decimal places."
+    },
+    {
+      "id": "k4",
+      "file": "src/routes-admin.js",
+      "line": 11,
+      "endLine": 14,
+      "severity": "high",
+      "fix": [
+        "role check",
+        "admin role",
+        "authorize",
+        "admin",
+        "authorization",
+        "authorisation",
+        "auth check",
+        "require role",
+        "requireAdmin",
+        "permission"
+      ],
+      "finding": "The new balance-adjustment handler writes customer balances without the admin role check used by the existing staff route, allowing an unauthenticated caller to change points."
+    },
+    {
+      "id": "k5",
+      "file": "src/routes-earn.js",
+      "line": 10,
+      "endLine": 10,
+      "severity": "high",
+      "fix": [
+        "idempotency",
+        "dedupe",
+        "remove retry",
+        "idempotency key",
+        "idempotent",
+        "dedup",
+        "do not retry",
+        "no retry"
+      ],
+      "finding": "Retrying the non-idempotent credit operation can apply the same earn twice when the first attempt succeeds but its response times out."
+    },
+    {
+      "id": "k6",
+      "file": "src/validation.js",
+      "line": 10,
+      "endLine": 10,
+      "severity": "medium",
+      "fix": [
+        "maximum",
+        "limit",
+        "10000",
+        "10,000",
+        "max amount",
+        "upper bound",
+        "upper limit",
+        "validate the amount"
+      ],
+      "finding": "The redemption path still accepts any positive amount because its validator does not enforce the configured 10,000-point request maximum, leaving the open policy thread unresolved."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "docs/api.md",
+      "line": 29,
+      "endLine": 30,
+      "why": "The adjustment endpoint intentionally accepts negative corrections for support tooling, as the handler and its focused test demonstrate."
+    }
+  ]
+}

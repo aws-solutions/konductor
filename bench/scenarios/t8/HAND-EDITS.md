@@ -271,3 +271,11 @@ first batch). Two more faults in the same key: `constraint-capacity` wanted "40 
 item did not accept "CPU" (the v6 wording is kept). Same fixture and prompt as v6. Re-score of the 21 saved LITE runs:
 every arm's mean goes to 100 (`reports/task-key-fixes-2026-11-24.md` in the mate workspace). Gates: reference 100,
 stub 0, lazy 25, alt 100. Non-Claude recheck: pending (`handEdited.version` 7).
+
+## STANDARD key audit, 2026-11-24: versioned keys with no task file (mate, Claude)
+
+Key-only fixes from the STANDARD key audit (the LITE audit method; report `reports/standard-key-audit-2026-11-24.md` in the mate workspace), written by `bench/scenarios/rewrite-standard-keys.js` (`--check` verifies them). Each sits in `hidden/<id>-vN/` beside its base and has no task file: the prompt and fixture are the base task's, so the base task's runs are re-scored with it, and no new id enters the SR-32 split (a `-vN` id hashes on its own, and most of these would land HELD-OUT on a DEV fixture). The base task, its key and its lock entry are untouched. Free dry run: `node bench/scenarios/lib/dry-run.js --config bench/scenarios/<batch>/scenario.config.js <id> --hidden <id>-vN`; every gate passes and the mechanical baselines (stub, lazy, dump) score as under the base key. Non-Claude recheck of the new keys: not run (paid, owner).
+
+- `t8-nfr-slo-burn-v4` (block-kit key): the alert-list cap of 4 is not in the request; the multi-window burn-rate pattern pages and tickets at up to four windows per objective, so two objectives need up to 8 (both saved pilot runs listed 7 and 8).
+- `t8-inc-memory-leak-v5` (block-kit key): the action-item cap of 10 is not in the request (a saved run listed 11 owned actions); 15 matches the timeline cap.
+- `t8-runbook-db-failover-v5` (block-kit key): the folder never says monitor, watch or observe; the saved runs wrote the post-change window as "Wait 60 seconds" or "client errors continue 30 seconds after the check", in action or verify, so the item reads the whole step and takes wait, re-check and check-again wordings.

@@ -1,0 +1,96 @@
+{
+  "_note": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): rollback-preserves wanted reconcile, retain or without deleting; the saved run wrote \"Keep the data files and the statusEvents collection; do not edit or delete them\", so keep, preserve and do-not-delete wordings count.",
+  "outputFile": "docs/rollout/payment-status-events.md",
+  "items": [
+    {
+      "id": "catalogue-gates",
+      "type": "inSet",
+      "path": "phases",
+      "field": "gate.metric",
+      "fromFile": "ops/metrics.csv",
+      "pattern": "^([a-z_.]+),",
+      "min": 3,
+      "weight": 2
+    },
+    {
+      "id": "phase-order",
+      "type": "order",
+      "path": "phases",
+      "first": {
+        "field": "audience",
+        "all": [
+          "operations"
+        ]
+      },
+      "then": {
+        "field": "audience",
+        "all": [
+          "all|customers"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "disabled-before-enable",
+      "type": "some",
+      "path": "phases",
+      "match": {
+        "field": "action",
+        "all": [
+          "disabled|disable|ENABLED\\s*=\\s*false|=\\s*false|\\boff\\b|\\bdark\\b",
+          "enabl|turn(ed)? on|\\bon\\b"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "rollback-preserves",
+      "type": "text",
+      "path": "rollback",
+      "all": [
+        "disable|stop",
+        "status.?event|statusEvents",
+        "reconcile|retain|without deleting|keep|preserve|do not (edit or )?delete|don't delete|not delete|leave .{0,40}(in place|intact)"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "rollback-has-ordered-steps",
+      "type": "maxLen",
+      "path": "rollback.steps",
+      "min": 4,
+      "max": 8,
+      "weight": 1
+    },
+    {
+      "id": "rollout-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "file": "ops/metrics\\.csv",
+          "all": [
+            "status\\.lag"
+          ]
+        },
+        {
+          "file": "ops/deploy-rings\\.json",
+          "all": [
+            "canary",
+            "internal",
+            "general"
+          ]
+        },
+        {
+          "file": "ops/instance-deploy\\.json",
+          "all": [
+            "orders-a",
+            "orders-b"
+          ]
+        }
+      ],
+      "min": 3,
+      "weight": 1
+    }
+  ]
+}

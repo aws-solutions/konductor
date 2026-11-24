@@ -14,6 +14,7 @@
 // reference >= 95, stub <= 20, lazy and shallow <= 40, alt >= 80, deterministic; a batch config may add or replace gates.
 //
 //   node bench/scenarios/lib/dry-run.js --config bench/scenarios/tN/scenario.config.js [id ...] [--repeat N] [--json] [--record]
+//   node bench/scenarios/lib/dry-run.js --config ... ID --hidden DIR   score ID with hidden/DIR (a versioned key, no task file)
 //
 // No ids: every task of the batch. --record writes pilot.dryRun (reference, stub, lazy, alt, per-check checks, date) into each task file
 // that has all four scores. Scratch goes under $TMPDIR and is removed. Exit 1 when a task fails a gate.
@@ -111,15 +112,24 @@ function defaultGates(out) {
   };
 }
 
-/** Dry run of task `id` of the batch `cfg` (a loaded config, see config.js). */
-function dryRun(id, cfg, { repeat = 3 } = {}) {
+/**
+ * Dry run of task `id` of the batch `cfg` (a loaded config, see config.js). `hidden` names another dir beside the task's
+ * own hidden dir (a versioned key with no task file: a key-only fix on the same prompt and fixture); the result carries
+ * it and cannot be recorded into the task file.
+ */
+function dryRun(id, cfg, { repeat = 3, hidden = null } = {}) {
   const task = cfg.readTask(id);
+  let hiddenDir = cfg.hiddenDir(task);
+  if (hidden) {
+    hiddenDir = path.join(path.dirname(hiddenDir), hidden);
+    if (!fs.existsSync(hiddenDir)) throw new Error(`${id}: no hidden dir ${hiddenDir}`);
+  }
   const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), `dry-${id}-`));
   try {
-    const ctx = { root, fixtureDir: cfg.fixtureDir(task), hiddenDir: cfg.hiddenDir(task), scratchDir: path.join(root, 'scratch') };
+    const ctx = { root, fixtureDir: cfg.fixtureDir(task), hiddenDir, scratchDir: path.join(root, 'scratch') };
     const env = environment(root, cfg);
     const out = {
-      id, repeat, scores: {}, modes: {}, deterministic: true, canary: null,
+      id, ...(hidden ? { hidden } : {}), repeat, scores: {}, modes: {}, deterministic: true, canary: null,
       loadErrors: [...validate(loadSchema('task'), task), ...v3Errors(task)].map(String),
       timeouts: task.checks.filter((c) => c.type === 'tests').every((c) => /--test-timeout=\d+/.test(withPerTestTimeout(c.cmd))),
       errors: cfg.taskErrors ? cfg.taskErrors(task) : [],
@@ -163,6 +173,7 @@ function pilotWith(pilot, res, date) {
 
 /** Writes pilot.dryRun into the task file; returns the new pilot or null when the result is incomplete. */
 function record(cfg, res, date = new Date().toISOString().slice(0, 10)) {
+  if (res.hidden) throw new Error(`${res.id}: scored with another hidden dir (${res.hidden}); its pilot.dryRun is not this task's`);
   const file = cfg.taskFile(res.id);
   const task = JSON.parse(fs.readFileSync(file, 'utf8'));
   const pilot = pilotWith(task.pilot, res, date);
@@ -183,13 +194,16 @@ function line(res) {
 function main(argv) {
   const at = (flag) => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] : null);
   const cfgFile = at('--config');
-  if (!cfgFile) { console.error('usage: dry-run.js --config FILE [id ...] [--repeat N] [--json] [--record]'); return 2; }
+  if (!cfgFile) { console.error('usage: dry-run.js --config FILE [id ...] [--repeat N] [--hidden DIR] [--json] [--record]'); return 2; }
   const cfg = loadConfig(path.resolve(cfgFile));
   const repeat = at('--repeat') ? Number(at('--repeat')) : 3;
-  const ids = argv.filter((a, i) => !a.startsWith('--') && !['--config', '--repeat'].includes(argv[i - 1]));
+  const hidden = at('--hidden');
+  if (hidden && argv.includes('--record')) { console.error('--hidden scores another key; it cannot --record into the task file'); return 2; }
+  const ids = argv.filter((a, i) => !a.startsWith('--') && !['--config', '--repeat', '--hidden'].includes(argv[i - 1]));
+  if (hidden && ids.length !== 1) { console.error('--hidden takes exactly one task id'); return 2; }
   const rows = [];
   for (const id of ids.length ? ids : cfg.ids()) {
-    const res = dryRun(id, cfg, { repeat });
+    const res = dryRun(id, cfg, { repeat, hidden });
     if (argv.includes('--record')) res.recorded = record(cfg, res);
     rows.push(res);
     if (!argv.includes('--json')) console.log(line(res));

@@ -1,0 +1,127 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/rates.js",
+      "line": 7,
+      "endLine": 7,
+      "severity": "high",
+      "fix": [
+        "<=",
+        "upper bound",
+        "inclusive",
+        "less than or equal",
+        "boundary",
+        "off-by-one",
+        "off by one",
+        "inclusive bound"
+      ],
+      "finding": "The lookup now uses a strict less-than comparison even though the rate-table contract includes each band's upper bound, so a parcel exactly at 1, 5, 10, or 20 kg is priced from the next band or rejected."
+    },
+    {
+      "id": "k2",
+      "file": "src/quote.js",
+      "line": 52,
+      "endLine": 55,
+      "severity": "critical",
+      "fix": [
+        "rethrow",
+        "error",
+        "503",
+        "failure",
+        "throw",
+        "propagate",
+        "return an error",
+        "fail the quote",
+        "503 error",
+        "do not return zero",
+        "not zero"
+      ],
+      "finding": "Carrier failures are converted into a successful zero-total quote, which can undercharge customers and hides an unavailable carrier from the HTTP caller."
+    },
+    {
+      "id": "k3",
+      "file": "src/carrier.js",
+      "line": 40,
+      "endLine": 42,
+      "severity": "high",
+      "fix": [
+        "redact",
+        "account number",
+        "safe fields",
+        "mask",
+        "remove the account",
+        "strip",
+        "do not log",
+        "log only",
+        "allowlist fields"
+      ],
+      "finding": "The response logger receives the full carrier payload, which includes the account number and exposes it in normal service logs."
+    },
+    {
+      "id": "k4",
+      "file": "src/config.js",
+      "line": 11,
+      "endLine": 16,
+      "severity": "high",
+      "fix": [
+        "selected url",
+        "production",
+        "preserve",
+        "environment",
+        "sandbox",
+        "do not overwrite",
+        "keep the production",
+        "fallback only",
+        "default only when"
+      ],
+      "finding": "The new carrier settings helper overwrites the selected environment's URL with the sandbox URL whenever CARRIER_URL is absent, so production loads the sandbox endpoint."
+    },
+    {
+      "id": "k5",
+      "file": "src/quote.js",
+      "line": 8,
+      "endLine": 14,
+      "severity": "medium",
+      "fix": [
+        "destination country",
+        "country",
+        "cache key",
+        "country code",
+        "include country",
+        "key on country"
+      ],
+      "finding": "The cache key includes the destination postal code but not its country, allowing quotes for the same postal code in different countries to share a price."
+    },
+    {
+      "id": "k6",
+      "file": "tests/quote.test.js",
+      "line": 32,
+      "endLine": 40,
+      "severity": "low",
+      "fix": [
+        "assert result",
+        "second total",
+        "returned quote",
+        "assert the quote",
+        "check the returned",
+        "assert the total",
+        "returned total",
+        "service result"
+      ],
+      "finding": "The second-country test only asserts the amount left in its response fixture and never checks the quote returned by the service, so the cache collision can pass unnoticed."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "docs/rate-table.md",
+      "line": 16,
+      "endLine": 16,
+      "why": "The 0.5 kg and 1 kg examples both use the first price because the documented bands include their upper bound, and decimal weights are looked up without rounding."
+    }
+  ]
+}

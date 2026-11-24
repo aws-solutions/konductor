@@ -1,0 +1,143 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/serialization/order-view.js",
+      "line": 12,
+      "endLine": 13,
+      "severity": "high",
+      "fix": [
+        "alias",
+        "display total",
+        "backward compatibility",
+        "keep displayTotal",
+        "both fields",
+        "deprecat",
+        "old field",
+        "keep the old"
+      ],
+      "finding": "The response replaces displayTotal with total without an alias, so app versions 7 and 8 that read displayTotal will render an empty amount during the rollout."
+    },
+    {
+      "id": "k2",
+      "file": "src/routes/orders-route.js",
+      "line": 13,
+      "endLine": 14,
+      "severity": "high",
+      "fix": [
+        "optional",
+        "delivery note",
+        "omit",
+        "not required",
+        "make it optional",
+        "default empty",
+        "allow missing",
+        "nullable"
+      ],
+      "finding": "Updates now require deliveryNote even though the mobile contract says older clients omit it when there is no note, turning those established requests into 400 responses."
+    },
+    {
+      "id": "k3",
+      "file": "src/serialization/order-status.js",
+      "line": 3,
+      "endLine": 5,
+      "severity": "high",
+      "fix": [
+        "paused",
+        "legacy status",
+        "preserve",
+        "keep paused",
+        "add paused",
+        "stored status",
+        "map paused",
+        "tolerate"
+      ],
+      "finding": "Filtering paused out of the readable status set makes serialization throw for stored orders that still have the paused status."
+    },
+    {
+      "id": "k4",
+      "file": "src/events/order-events.js",
+      "line": 16,
+      "endLine": 18,
+      "severity": "high",
+      "fix": [
+        "integer",
+        "numeric",
+        "sequence",
+        "number",
+        "keep it numeric",
+        "do not stringify",
+        "not a string"
+      ],
+      "finding": "The published order.updated payload converts sequence to a string even though shipping compares that field as an integer, which can break ordering of updates."
+    },
+    {
+      "id": "k5",
+      "file": "src/validation/order-input.js",
+      "line": 8,
+      "endLine": 8,
+      "severity": "medium",
+      "fix": [
+        "three letters",
+        "currency code",
+        "validate",
+        "iso 4217",
+        "3-letter",
+        "three-letter",
+        "regex",
+        "allowlist",
+        "length 3"
+      ],
+      "finding": "Currency validation accepts every string while the store persists a three-letter code, allowing requests that later fail at the persistence boundary."
+    },
+    {
+      "id": "k6",
+      "file": "src/routes/orders-route.js",
+      "line": 24,
+      "endLine": 25,
+      "severity": "high",
+      "fix": [
+        "transaction",
+        "atomic",
+        "rollback",
+        "single transaction",
+        "same transaction",
+        "all-or-nothing",
+        "all or nothing"
+      ],
+      "finding": "The order row is saved before its items are replaced, so an item-write failure leaves the revision and its items out of sync."
+    },
+    {
+      "id": "k7",
+      "file": "src/routes/debug-route.js",
+      "line": 13,
+      "endLine": 15,
+      "severity": "critical",
+      "fix": [
+        "authentication",
+        "authorization",
+        "redact",
+        "email",
+        "authenticat",
+        "require admin",
+        "restrict",
+        "remove the route",
+        "internal only",
+        "pii"
+      ],
+      "finding": "The public diagnostic route returns the complete customer record, including email, without an authentication or authorization check."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/serialization/order-view.js",
+      "line": 37,
+      "endLine": 39,
+      "why": "The formatter deliberately emits a currency symbol with two fractional digits, matching the existing display contract and mobile snapshots."
+    }
+  ]
+}

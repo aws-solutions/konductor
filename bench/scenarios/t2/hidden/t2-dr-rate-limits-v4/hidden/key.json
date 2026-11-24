@@ -1,0 +1,164 @@
+{
+  "_v4": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.4",
+      "severity": "critical",
+      "fix": [
+        "fail",
+        "open",
+        "closed",
+        "policy",
+        "circuit",
+        "breaker",
+        "fail-open",
+        "fail open",
+        "fallback",
+        "degrade",
+        "local limit",
+        "local counter"
+      ],
+      "finding": "Failure handling strategy is undefined for counter store unavailability, and the incident shows failing closed blocks all traffic."
+    },
+    {
+      "id": "k2",
+      "section": "3.1",
+      "severity": "high",
+      "fix": [
+        "sliding",
+        "window",
+        "token",
+        "bucket",
+        "rolling",
+        "window",
+        "algorithm",
+        "sliding window",
+        "sliding log",
+        "boundary",
+        "double the limit",
+        "gcra"
+      ],
+      "finding": "Fixed window algorithm allows double the limit at window boundaries, violating contract wording about 'any rolling 60-second period'."
+    },
+    {
+      "id": "k3",
+      "section": "3.5",
+      "severity": "high",
+      "fix": [
+        "pipeline",
+        "single",
+        "roundtrip",
+        "lua",
+        "script",
+        "atomic",
+        "round trip",
+        "round-trip",
+        "one call",
+        "one command",
+        "incr",
+        "latency budget"
+      ],
+      "finding": "Two Redis round trips exceed the 5ms p99 latency budget given cross-AZ network latency and Redis operation times."
+    },
+    {
+      "id": "k4",
+      "section": "3.1",
+      "severity": "medium",
+      "fix": [
+        "synchronized",
+        "ntp",
+        "central",
+        "clock",
+        "window",
+        "key",
+        "clock skew",
+        "skew",
+        "redis time",
+        "server time",
+        "time from redis",
+        "single clock"
+      ],
+      "finding": "Using server clocks with known skew for window keys causes inconsistent rate limiting across servers."
+    },
+    {
+      "id": "k5",
+      "section": "3.3",
+      "severity": "medium",
+      "fix": [
+        "enterprise",
+        "custom",
+        "contract",
+        "configuration",
+        "dynamic",
+        "limits",
+        "per-customer",
+        "per customer",
+        "override",
+        "enterprise tier",
+        "peak-hour",
+        "burst allowance"
+      ],
+      "finding": "Design only covers standard tiers but not enterprise customers with contract-specific limits like peak-hour adjustments or burst allowances."
+    },
+    {
+      "id": "k6",
+      "section": "3.10",
+      "severity": "medium",
+      "fix": [
+        "headers",
+        "retry",
+        "after",
+        "rate",
+        "limit",
+        "x-ratelimit",
+        "retry-after",
+        "ratelimit-remaining",
+        "x-ratelimit-limit",
+        "response header"
+      ],
+      "finding": "Response format lacks required Retry-After and X-RateLimit headers that client SDK documentation states are mandatory."
+    },
+    {
+      "id": "k7",
+      "section": "3.2",
+      "severity": "low",
+      "fix": [
+        "replication",
+        "lag",
+        "consistency",
+        "read",
+        "replicas",
+        "quorum",
+        "primary",
+        "read from primary",
+        "failover",
+        "stale count",
+        "stale read"
+      ],
+      "finding": "Redis replication lag could cause inconsistent rate limiting if reads go to replicas during failover scenarios."
+    },
+    {
+      "id": "k8",
+      "section": "3.6",
+      "severity": "low",
+      "fix": [
+        "circuit",
+        "breaker",
+        "health",
+        "check",
+        "degraded",
+        "mode",
+        "alert",
+        "metric",
+        "dashboard",
+        "breaker state",
+        "degraded state"
+      ],
+      "finding": "Monitoring lacks circuit breaker state tracking and doesn't alert when rate limiting enters degraded operation mode."
+    }
+  ],
+  "decoys": []
+}

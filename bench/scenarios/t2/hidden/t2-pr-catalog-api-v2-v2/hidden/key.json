@@ -1,0 +1,140 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/catalog/product-service.js",
+      "line": 8,
+      "endLine": 9,
+      "severity": "high",
+      "fix": [
+        "keep old field",
+        "compatibility alias",
+        "display name",
+        "displayName",
+        "keep both",
+        "deprecat",
+        "alias",
+        "old field"
+      ],
+      "finding": "The response mapper replaces displayName with label without retaining the field used by the still-supported mobile clients, so older apps will render an empty product title."
+    },
+    {
+      "id": "k2",
+      "file": "schemas/product-create.json",
+      "line": 7,
+      "endLine": 7,
+      "severity": "high",
+      "fix": [
+        "remove subtitle",
+        "optional field",
+        "required list",
+        "optional",
+        "not required",
+        "remove from required",
+        "drop from required"
+      ],
+      "finding": "Adding subtitle to required makes previously valid create requests fail even though the service and client notes treat the field as optional."
+    },
+    {
+      "id": "k3",
+      "file": "src/catalog/normalizers.js",
+      "line": 1,
+      "endLine": 1,
+      "severity": "critical",
+      "fix": [
+        "restore archived",
+        "enum value",
+        "read stored",
+        "archived",
+        "keep archived",
+        "allow archived",
+        "stored rows",
+        "existing rows"
+      ],
+      "finding": "Removing archived from the accepted status values makes reads of existing archived rows throw before the API can return them."
+    },
+    {
+      "id": "k4",
+      "file": "src/events/product-changed.js",
+      "line": 15,
+      "endLine": 15,
+      "severity": "high",
+      "fix": [
+        "keep number",
+        "integer cents",
+        "event schema",
+        "number",
+        "numeric",
+        "integer",
+        "not a string",
+        "do not format"
+      ],
+      "finding": "The product.changed event now emits priceCents as a formatted string while the search indexer accepts only a finite number, so changed products will be rejected by indexing."
+    },
+    {
+      "id": "k5",
+      "file": "schemas/product-create.json",
+      "line": 13,
+      "endLine": 16,
+      "severity": "medium",
+      "fix": [
+        "max items",
+        "12 labels",
+        "array limit",
+        "maxItems",
+        "max 12",
+        "twelve",
+        "12 items",
+        "limit the array"
+      ],
+      "finding": "The labels array no longer has the twelve-item maximum documented by the store limits, allowing requests that cannot fit in the bounded column."
+    },
+    {
+      "id": "k6",
+      "file": "schemas/product-create.json",
+      "line": 18,
+      "endLine": 24,
+      "severity": "medium",
+      "fix": [
+        "additional properties false",
+        "reject unknown",
+        "nested schema",
+        "additionalProperties",
+        "reject unknown keys",
+        "unknown keys",
+        "strict schema"
+      ],
+      "finding": "The attributes object loses its additionalProperties restriction, so misspelled or unsupported nested keys are accepted and silently carried into stored products."
+    },
+    {
+      "id": "k7",
+      "file": "docs/api/catalog.yaml",
+      "line": 28,
+      "endLine": 34,
+      "severity": "medium",
+      "fix": [
+        "document subtitle",
+        "request example",
+        "required field",
+        "document",
+        "docs",
+        "openapi",
+        "catalog.yaml",
+        "mark required"
+      ],
+      "finding": "The API description was updated for the new payload wording but still does not tell request callers that subtitle is now required, leaving the published contract stale."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "schemas/product-create.json",
+      "line": 29,
+      "endLine": 29,
+      "why": "warehouseNote is optional and defaults to an empty string, matching the normalizer and giving callers a safe value when the note is absent."
+    }
+  ]
+}

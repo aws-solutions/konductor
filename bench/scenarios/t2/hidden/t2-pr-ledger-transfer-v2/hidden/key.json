@@ -1,0 +1,131 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/scheduled-transfers.js",
+      "line": 21,
+      "endLine": 24,
+      "severity": "critical",
+      "fix": [
+        "transaction",
+        "atomic",
+        "withTransaction",
+        "single transaction",
+        "all-or-nothing",
+        "all or nothing",
+        "one write",
+        "commit both",
+        "rollback"
+      ],
+      "finding": "The scheduled path appends the debit and credit through separate store calls and mutates balances between them, so a process failure can leave a persisted journal with only one side of the transfer."
+    },
+    {
+      "id": "k2",
+      "file": "src/scheduled-transfers.js",
+      "line": 25,
+      "endLine": 26,
+      "severity": "critical",
+      "fix": [
+        "idempotency check",
+        "before writing",
+        "unique client key",
+        "check the key first",
+        "check first",
+        "before posting",
+        "before the journal",
+        "unique constraint",
+        "idempotency key",
+        "dedup"
+      ],
+      "finding": "The client-key lookup happens after both journal lines and balance mutations, so a retried schedule posts the movement again before it is recognized as a duplicate."
+    },
+    {
+      "id": "k3",
+      "file": "src/scheduled-transfers.js",
+      "line": 5,
+      "endLine": 7,
+      "severity": "high",
+      "fix": [
+        "exact decimal",
+        "integer conversion",
+        "decimal parser",
+        "parseFloat",
+        "Math.round",
+        "rounding",
+        "integer minor",
+        "minor units",
+        "string parse",
+        "bigint",
+        "cents"
+      ],
+      "finding": "Converting the configured decimal with parseFloat and floor after multiplication can truncate values such as 0.29 to 28 minor units instead of the ledger's intended 29."
+    },
+    {
+      "id": "k4",
+      "file": "src/reconcile.js",
+      "line": 5,
+      "endLine": 7,
+      "severity": "medium",
+      "fix": [
+        "all accounts",
+        "remove filter",
+        "same-day",
+        "every account",
+        "include today",
+        "include new",
+        "remove the date filter",
+        "createdAt filter",
+        "no filter"
+      ],
+      "finding": "Reconciliation filters out accounts whose creation date is today even though the operations contract requires every account, allowing a new account's mismatch to go unreported."
+    },
+    {
+      "id": "k5",
+      "file": "src/scheduler.js",
+      "line": 17,
+      "endLine": 19,
+      "severity": "high",
+      "fix": [
+        "retry",
+        "failed",
+        "error status",
+        "mark failed",
+        "failed status",
+        "rethrow",
+        "propagate",
+        "do not mark done",
+        "not done"
+      ],
+      "finding": "The scheduler records a failed transfer as done and returns a done result, so the platform will not retry a transient account, balance, or store failure."
+    },
+    {
+      "id": "k6",
+      "file": "src/scheduler.js",
+      "line": 5,
+      "endLine": 6,
+      "severity": "medium",
+      "fix": [
+        "utc",
+        "timezone",
+        "offset",
+        "getUTCHours",
+        "getUTC",
+        "utc time",
+        "daylight"
+      ],
+      "finding": "Due-time matching uses the server's local hour and minute rather than the schedule's UTC contract, so the repeated local time during a daylight-saving fallback can run a daily transfer twice."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "docs/scheduled-transfers.md",
+      "line": 5,
+      "endLine": 5,
+      "why": "The disabled result avoids any journal mutation and the error result is an operator-facing record, matching the worker's documented outcomes rather than claiming a completed transfer."
+    }
+  ]
+}

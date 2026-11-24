@@ -1,0 +1,136 @@
+{
+  "_v2": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): no length term (the request sets no cap on findings) and each item's fix keywords widened to an alternative set; base keywords, sections, lines, severities and decoys kept.",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "critical",
+      "fix": [
+        "private address",
+        "egress allowlist",
+        "revalidate",
+        "ssrf",
+        "private ip",
+        "private range",
+        "rfc 1918",
+        "rfc1918",
+        "metadata",
+        "169.254",
+        "deny list",
+        "block internal",
+        "resolve and check",
+        "pin the ip",
+        "egress proxy"
+      ],
+      "finding": "The registry accepts arbitrary HTTPS destinations and the worker resolves them at send time without restricting private or infrastructure address ranges, allowing a partner-controlled URL to reach internal services or metadata endpoints."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "timestamp",
+        "replay window",
+        "nonce",
+        "freshness",
+        "signed timestamp",
+        "replay",
+        "tolerance",
+        "expiry",
+        "event id"
+      ],
+      "finding": "The HMAC covers only the body and the request has no freshness input, so anyone who captures a valid request can replay it for as long as the event remains useful."
+    },
+    {
+      "id": "k3",
+      "section": "3.4",
+      "severity": "high",
+      "fix": [
+        "per-partner key",
+        "credential scope",
+        "isolate secrets",
+        "per partner",
+        "per-tenant secret",
+        "separate secret",
+        "one secret per",
+        "unique secret",
+        "secret per partner"
+      ],
+      "finding": "A single environment secret authenticates every partner connection, so compromise of one partner credential permits forged requests to all partners and makes revocation non-selective."
+    },
+    {
+      "id": "k4",
+      "section": "3.5",
+      "severity": "critical",
+      "fix": [
+        "approved field set",
+        "remove customer",
+        "data policy",
+        "data minimi",
+        "minimum fields",
+        "standard profile",
+        "drop contact",
+        "exclude pii",
+        "pii",
+        "personal data"
+      ],
+      "finding": "The profile sends customer contact and shipping fields even though the approved standard profile and data policy exclude those personal-data fields, creating unauthorized disclosure to partners."
+    },
+    {
+      "id": "k5",
+      "section": "3.6",
+      "severity": "medium",
+      "fix": [
+        "key overlap",
+        "dual-key",
+        "without downtime",
+        "two keys",
+        "both keys",
+        "old and new",
+        "overlap",
+        "key id",
+        "rotation"
+      ],
+      "finding": "Changing the signing secret requires restarting the worker deployment and cannot select old and new keys during an overlap, leaving rotation dependent on a coordinated interruption and risking failed deliveries."
+    },
+    {
+      "id": "k6",
+      "section": "3.7",
+      "severity": "high",
+      "fix": [
+        "per-tenant queue",
+        "fair scheduling",
+        "isolate capacity",
+        "per-partner queue",
+        "per partner queue",
+        "isolation",
+        "noisy neighbour",
+        "noisy neighbor",
+        "bulkhead",
+        "fairness",
+        "concurrency limit"
+      ],
+      "finding": "All tenants share one FIFO delivery queue and worker claim path, so a slow or failing partner can consume retry capacity and violate the stated cross-tenant delay target for unrelated tenants."
+    },
+    {
+      "id": "k7",
+      "section": "3.8",
+      "severity": "high",
+      "fix": [
+        "14 days",
+        "redacted payload",
+        "metadata only",
+        "retention",
+        "30 days",
+        "digest",
+        "redact",
+        "shorter retention",
+        "delete payload"
+      ],
+      "finding": "The design retains complete request payloads in delivery records and logs for 365 days, conflicting with the 14-day default, 30-day maximum, and redacted-digest retention policy."
+    }
+  ],
+  "decoys": []
+}

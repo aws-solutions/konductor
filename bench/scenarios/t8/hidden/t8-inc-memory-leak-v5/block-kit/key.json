@@ -1,0 +1,226 @@
+{
+  "_note": "STANDARD key audit 2026-11-24 (rewrite-standard-keys.js): the action-item cap of 10 is not in the request (a saved run listed 11 owned actions); 15 matches the timeline cap.",
+  "outputFile": "incidents/search-oom-restarts.md",
+  "items": [
+    {
+      "id": "cause-summary",
+      "type": "text",
+      "path": "rootCause.summary",
+      "weight": 3,
+      "all": [
+        "cache",
+        "query|full[- ]query",
+        "unbound|no (entry )?bound|no limit|max_entries"
+      ],
+      "section": "cause",
+      "gate": true
+    },
+    {
+      "id": "cause-evidence-chain",
+      "type": "evidence",
+      "path": "rootCause.evidence",
+      "weight": 3,
+      "groups": [
+        {
+          "file": "ops/config/release-diff\\.yaml",
+          "all": [
+            "query_cache\\.max_entries"
+          ]
+        },
+        {
+          "file": "ops/logs/cluster-2025-04-08\\.log",
+          "all": [
+            "cache_entries",
+            "distinct_queries",
+            "version=3\\.8\\.0"
+          ]
+        },
+        {
+          "file": "ops/logs/cluster-2025-04-09\\.log",
+          "all": [
+            "kernel_oom_event",
+            "SIGKILL"
+          ]
+        }
+      ],
+      "min": 2,
+      "section": "cause"
+    },
+    {
+      "id": "evidence-precision",
+      "type": "evidencePrecision",
+      "path": "rootCause.evidence",
+      "weight": 2,
+      "relevant": [
+        "3\\.8\\.0",
+        "query_cache|max_entries|to: null",
+        "cache_entries|distinct_queries",
+        "kernel_oom_event|SIGKILL",
+        "3\\.7\\.4",
+        "cache configuration disabled|memory_headroom=stable"
+      ],
+      "min": 0.5,
+      "section": "cause"
+    },
+    {
+      "id": "timeline-release",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "3\\.8\\.0",
+          "deploy|release"
+        ],
+        "timeNear": {
+          "time": "2025-04-08T14:00:00Z",
+          "tolMin": 5
+        }
+      },
+      "section": "timeline"
+    },
+    {
+      "id": "timeline-first-symptom",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "memory|rss|heap|working set"
+        ],
+        "timeNear": {
+          "time": "2025-04-08T15:35:00Z",
+          "tolMin": 5
+        }
+      },
+      "section": "timeline"
+    },
+    {
+      "id": "timeline-first-oom",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "oom|out.of.memory|SIGKILL",
+          "search-01|container"
+        ],
+        "timeNear": {
+          "time": "2025-04-09T06:20:00Z",
+          "tolMin": 5
+        }
+      },
+      "section": "timeline"
+    },
+    {
+      "id": "timeline-mitigation",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "restor|rollback|mitigation|disabl",
+          "3\\.7\\.4|cache"
+        ],
+        "timeNear": {
+          "time": "2025-04-10T12:40:00Z",
+          "tolMin": 5
+        }
+      },
+      "section": "timeline"
+    },
+    {
+      "id": "timeline-recovery",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "stable|recover|baseline",
+          "memory|restart|error"
+        ],
+        "timeNear": {
+          "time": "2025-04-10T13:25:00Z",
+          "tolMin": 5
+        }
+      },
+      "section": "timeline"
+    },
+    {
+      "id": "timeline-bounded",
+      "type": "maxLen",
+      "path": "timeline",
+      "max": 15,
+      "min": 4,
+      "section": "timeline"
+    },
+    {
+      "id": "impact-duration",
+      "type": "number",
+      "path": "impact.degradedMinutes",
+      "value": 1865,
+      "tolPct": 5,
+      "section": "impact"
+    },
+    {
+      "id": "impact-kills",
+      "type": "number",
+      "path": "impact.oomKills",
+      "value": 42,
+      "tolPct": 5,
+      "section": "impact"
+    },
+    {
+      "id": "impact-failures",
+      "type": "number",
+      "path": "impact.failedRequests",
+      "value": 5046,
+      "tolPct": 5,
+      "section": "impact"
+    },
+    {
+      "id": "action-fix",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "cache",
+          "disable|bound|max_entries|limit",
+          "memory|budget"
+        ]
+      },
+      "section": "actions"
+    },
+    {
+      "id": "action-release-guard",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "memory|rss|heap",
+          "slope|growth|grow|trend|leak|per (hour|request)|rising"
+        ]
+      },
+      "section": "actions"
+    },
+    {
+      "id": "action-alert-canary",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "canary|holdout|baseline|old version|previous version|release gate|rollout",
+          "memory|cache"
+        ]
+      },
+      "section": "actions"
+    },
+    {
+      "id": "actions-bounded",
+      "type": "maxLen",
+      "path": "actionItems",
+      "max": 15,
+      "min": 3,
+      "section": "actions"
+    }
+  ],
+  "scoring": "sections"
+}
