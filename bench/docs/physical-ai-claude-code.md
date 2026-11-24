@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Driving the plant from Claude Code (design note)
 
-[← physical AI](physical-ai.md) · [benchmark your own agent](benchmark-your-own-agent.md)
+[← physical AI](physical-ai.md) · [add your own agent to the plant](physical-ai.md#add-your-own-agent-to-the-plant)
 
 The gateway does not care which agent drives it. A plant trial needs only two things from a harness: the agent's
 plant tool calls reach the gateway, and the bench can read, from the agent's own stream, what the agent asked for,

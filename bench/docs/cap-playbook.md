@@ -3,6 +3,8 @@
 This is the how-to for the `cap` family in [the reference](reference.md). It answers three questions: how to run the benchmark, how to
 evaluate a skill, and whether a skill should be pruned. Everything marked free spends no credits and calls no model.
 
+**Quick start:** [generate scenarios](how-to/generate-scenarios.md), path A, drafts the tasks a skill needs in six steps.
+
 ## What each tool answers
 
 | Tool | Question | Cost |

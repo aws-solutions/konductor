@@ -3,6 +3,8 @@
 
 [← benchmark a physical AI agent](physical-ai.md) · [reference](reference.md)
 
+**Quick start:** [benchmark a physical AI agent](how-to/physical-ai-agent.md), step 6 makes this report.
+
 A plant report (`bench plant-report`) says how safely an agent drove a simulated machine. It uses three words that
 sound alike but mean different things: an **unsafe try**, **harm**, and **settle harm**. This page explains each one,
 and why a policy arm can show harm even though its gateway stopped every unsafe call.

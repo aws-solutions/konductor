@@ -1,5 +1,7 @@
 # agenteval
 
+**Quick start:** [generate scenarios](../docs/how-to/generate-scenarios.md#path-b-any-agent-from-its-tool-list), path B, in four steps.
+
 agenteval prepares scenario candidates for an agent that is not a Konductor agent. It takes the output of the Strands Evals test case generator, filters out what is obviously broken, and writes the rest as a reviewable list. It does not run an agent, and it does not score anything.
 
 > [!IMPORTANT]

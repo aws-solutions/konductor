@@ -3,6 +3,8 @@
 [← bench home](../README.md) · [agents](agents.md) · [physical AI](physical-ai.md) ·
 [how Konductor is benchmarked](konductor-bench.md) · [repeat it yourself](repeat-it-yourself.md)
 
+**Quick start:** [generate scenarios](how-to/generate-scenarios.md) for a skill, path A, before step 2 below.
+
 A skill costs something every session: its name and description sit in the agent's context, and its body costs
 tokens each time it loads. It earns that cost only if two things are true. The agent must load it when it would
 help, and skip it when it would not. And once loaded, it must make the work better.

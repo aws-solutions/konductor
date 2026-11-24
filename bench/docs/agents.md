@@ -3,6 +3,10 @@
 [← bench home](../README.md) · [skills](skills.md) · [physical AI](physical-ai.md) ·
 [how Konductor is benchmarked](konductor-bench.md) · [repeat it yourself](repeat-it-yourself.md)
 
+**Quick start:** [benchmark my agent](how-to/benchmark-an-agent.md) in seven steps. For an agent program bench does
+not run yet, see [bring your own agent](#bring-your-own-agent) below and the
+[AgentCore quick start](how-to/agentcore-agent.md).
+
 You have an agent setup and a second one: an older and a newer release, the bare agent and the agent with
 Konductor, Kiro CLI and Claude Code. You want to know which one does the work better, what it costs, and whether
 the gap is real or luck. This page shows how bench runs that comparison, how to read the answer, how to write your
@@ -223,14 +227,15 @@ The full format is in [the task reference](tasks.md).
 ## Plug in a new agent type
 
 bench talks to each agent program through a **harness**: one small module that installs the arm, starts the agent,
-and reads what it wrote. Four exist today: Kiro CLI, opencode, Claude Code and Strands. Strands is a plugin, one
-folder under `bench/plugins/` that the bench finds by itself. A fifth agent type is a plugin too: copy the Strands
-folder, rewrite its harness for your agent, and run the free kit until it passes. [Write a plugin](write-a-plugin.md)
-walks through it. Its descriptor says what the reports say about its cost (`report`) and, if the `cap` commands
-should accept it, how they reach a capability (`capabilities`).
+and reads what it wrote. Four exist today: Kiro CLI, opencode, Claude Code and Strands. Each is a plugin: one folder
+under `bench/plugins/` that the bench finds by itself. A fifth agent type is a plugin too: copy
+`bench/kit/plugin-template/` to `bench/plugins/NAME/`, rewrite its harness for your agent, and run the free kit until
+it passes. [Write a plugin](write-a-plugin.md) walks through it. Its descriptor says what the reports say about its
+cost (`report`) and, if the `cap` commands should accept it, how they reach a capability (`capabilities`).
 
 **Where it is registered.** The plugin registry, `bench/core/registry.js`, is the one list of the parts bench can run:
-the three built-in harnesses, then every `bench/plugins/<name>/plugin.json`. A manifest looks like this:
+every `bench/plugins/<name>/plugin.json`, plus the two built-in judge backends. `node bench/runner/bench.js plugins`
+lists them. A manifest looks like this:
 
 ```json
 { "benchApi": 1, "kind": "harness", "name": "strands", "version": "1.0.0", "meta": "meta.js", "entry": "harness.js" }
@@ -247,8 +252,96 @@ install Konductor also needs a new arm source and a `prepareArm` that builds not
 harness folder still switch on the runtime name; the guide lists them.
 
 The full contract, with every member, argument and field, is
-[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md). [Benchmark your own agent](benchmark-your-own-agent.md)
-says what works today for a new agent, on the plant and on code tasks, and what does not yet.
+[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md). The next section says what works today for a
+new agent on code tasks. For a new agent on the simulated plant, see
+[add your own agent to the plant](physical-ai.md#add-your-own-agent-to-the-plant).
+
+## Bring your own agent
+
+You built an agent. It is not Kiro CLI, Claude Code or Konductor. bench can tell you two things about it with the
+same rules it uses for every agent: is it safe when it drives a machine, and is it good at the work you give it.
+Nothing here claims your agent works until it has been run.
+
+| You want to know | Your agent can join today when | Start here |
+| --- | --- | --- |
+| Does it try unsafe moves on a machine? | It runs on Kiro CLI, Claude Code or Strands | [Add your own agent to the plant](physical-ai.md#add-your-own-agent-to-the-plant) |
+| Does it do the task well, at what cost? | It runs on Kiro CLI, Claude Code or opencode | the steps below |
+| What should I test it on? | It has a written tool list | [Quick start: generate scenarios](how-to/generate-scenarios.md), path B |
+
+Any other agent program needs a plugin first ([write a plugin](write-a-plugin.md)). An agent deployed on Amazon
+Bedrock AgentCore has no path yet; [its quick start](how-to/agentcore-agent.md) says what is missing.
+
+### Work tasks for a new agent
+
+Each task gives every agent the same prompt and the same small project. Code scores first: hidden tests and checks
+the agent never sees. Judge models score only what code cannot check. The scenario pack lives in
+`bench/scenarios/<batch>/`. Its tasks add two fields to the ones in [write a task](#write-a-task): `expertKey`, a
+hidden list of points a good design review raises (a judge marks one covered only with a quote), and
+`questions: scripted`, which lets the agent ask a scripted stakeholder. For a scripted task, bench adds one fixed
+paragraph to every prompt: it tells the agent to ask by ending its turn with lines that start with `QUESTION:`, and
+the answers come back as the next message. The text is the same for every agent and names no method
+(`bench/runner/lib/ask-channel.js`).
+
+To add your agent:
+
+1. Write a harness plugin in `bench/plugins/NAME/` ([write a plugin](write-a-plugin.md)). The kit check
+   (`node bench/kit/plugin/check.js bench/plugins/NAME`) and the contract test must pass.
+2. Arms today are Konductor builds or the bare agent. An agent that does not install Konductor needs a new arm source
+   and a `prepareArm` that builds nothing (contract, step 4).
+3. A few places outside the plugin folder still switch on the runtime name (the contract lists them; DEBT rows
+   D-201, D-205 and D-206 track their removal). Edit each one your agent needs.
+4. For scripted tasks the harness must support more than one turn (`supports.multiTurn`). Strands does not today.
+
+### What is still Kiro-CLI-shaped
+
+- The scripted question channel was written because Kiro CLI's non-interactive mode tells the agent nobody can
+  answer. It has run only against fake agents, on Kiro CLI and Claude Code.
+- The `cap` commands run on Kiro CLI and opencode. The per-skill study runs on Kiro CLI only.
+- The per-run credit limit stops a one-shot Kiro run on an estimate from its context usage, which runs high. The
+  command-wide budget still stops new runs.
+- The study levels use Kiro CLI, with Claude Code on part of the pack.
+
+### Judges, sign-off and spend
+
+- **Three judge families, never the agent's own.** `bench/judge/family.js` reads each model's family from its id. A
+  judge from your agent's family is never seated. If your agent's family is unknown, or fewer than three judges are
+  eligible, the run gets NO DATA, never a pass.
+- **A person signs off.** A result stays "evidence" until a person signs it.
+- **Paid runs are approved first.** Every paid run has an approved cap. `--budget-credits N` starts no new run past
+  90% of `N`. One Kiro run can still spend past its own limit. [Safety and caps](safety-and-caps.md) has every cap.
+
+### Draft test ideas with agenteval
+
+`bench/agenteval/agenteval.js` takes test ideas from the Strands Evals generator, drops the broken ones, and writes
+a list for a person to read. It never runs your agent and never scores anything. It makes no runnable bench tasks
+yet (D-112), and in one small trial under half of the generated cases were usable as they came. Hidden tests for any
+task made from these drafts must come from a writer that is not a Claude model; code does not check this yet. The
+steps are in [the scenarios quick start](how-to/generate-scenarios.md#path-b-any-agent-from-its-tool-list), the full
+guide in [agenteval/README.md](../agenteval/README.md).
+
+### What is true today, and what is not yet
+
+| Claim | Today | Tracked in |
+| --- | --- | --- |
+| Kiro CLI, Claude Code and Strands drive the conveyor through the gateway | yes; a Strands agent ran a real-model trial with no stream-to-gateway mismatch | |
+| A counted plant result exists | no: every run so far is NOT COUNTED, because no quiet host has a Kiro CLI sign-in | D-95 |
+| The stream-to-gateway match check works for Kiro CLI, Claude Code and Strands | yes, with tests | |
+| Controls reach the plant report for every agent | yes | |
+| A read-only agent can pass a probe | yes: holding the plant safe counts as handled | |
+| The robot arm plant passes its policy test and all five controls | yes; the cross-host repeat check is still open | D-30 |
+| Kiro CLI, Claude Code and opencode run scenario tasks | yes | |
+| Strands runs scenario tasks | no: plant only, one turn | D-260 |
+| An agent deployed on Amazon Bedrock AgentCore can be benchmarked | no: no harness, and bench's sandbox and plant gateway are local | D-259 |
+| The scripted question channel works on a real model | not yet: fake agents only | D-56 |
+| A per-run credit limit stops a one-shot Kiro run early | no: the command-wide budget stops new runs instead | D-67 |
+| Judges never come from the agent's family | yes, enforced in code | |
+| agenteval drafts reviewable cases | yes | |
+| agenteval makes runnable tasks | no | D-112 |
+
+**First steps for a new agent.** Run `node bench/runner/bench.js list-arms` and the free plant tests. Pick your
+track. Write the plugin and pass the kit check with a recorded stream. For the plant, add a stream reader and a path
+control, and show the match check passes on a fake run. Then write down your caps, get the owner's go-ahead, and run
+one small trial on both arms.
 
 ## Add a judge
 

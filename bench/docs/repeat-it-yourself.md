@@ -1,7 +1,9 @@
 # Repeat it yourself
 
 [← bench home](../README.md) · [skills](skills.md) · [agents](agents.md) · [physical AI](physical-ai.md) ·
-[how Konductor is benchmarked](konductor-bench.md) · [your own agent](benchmark-your-own-agent.md)
+[how Konductor is benchmarked](konductor-bench.md) · [your own agent](agents.md#bring-your-own-agent)
+
+**Quick start:** [benchmark my agent](how-to/benchmark-an-agent.md), the same path in seven short steps.
 
 A benchmark result you cannot repeat is a claim, not evidence. This page takes you from a fresh clone to a result
 you can read: what you need, the free checks, a small paid run, and how to read what comes out. Every command runs
@@ -26,7 +28,7 @@ flowchart LR
 | --- | --- |
 | Host | Linux with user namespaces (`unshare -Urm true` works), or macOS. About 8 GB free memory for a run |
 | Tools | Node 22 or later, `git`, `tar`, `cargo` (to build Konductor arms), Python 3 for task tests |
-| Agent | `kiro-cli` on `PATH` and logged in (`kiro-cli whoami`). For Claude Code or opencode arms, their binaries too. Another agent: see [benchmark your own agent](benchmark-your-own-agent.md) |
+| Agent | `kiro-cli` on `PATH` and logged in (`kiro-cli whoami`). For Claude Code or opencode arms, their binaries too. Another agent: see [bring your own agent](agents.md#bring-your-own-agent) |
 | Judges | An AWS profile with Amazon Bedrock access. Use a least-privilege profile, never an admin one |
 | A budget | Decide what you may spend before you start. bench stops new runs at 90% of `--budget-credits` |
 

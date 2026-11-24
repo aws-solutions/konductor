@@ -1,7 +1,10 @@
 # Write a plugin
 
-[← bench home](../README.md) · [agents](agents.md) · [your own agent](benchmark-your-own-agent.md) ·
+[← bench home](../README.md) · [agents](agents.md) · [your own agent](agents.md#bring-your-own-agent) ·
 [harness contract](../runner/lib/harness/CONTRACT.md)
+
+**Quick start:** [a Strands agent](how-to/strands-agent.md) · [an agent on Amazon Bedrock AgentCore](how-to/agentcore-agent.md)
+(path 2 there is a new plugin, in five steps).
 
 Date: 2026-11-23. Covers plugin API 1, which has two kinds: `harness` and `judge-backend` (see "A judge backend" below).
 

@@ -36,7 +36,7 @@ bench stops early, before it spends, and says why. Find the message (or its star
 
 | You see | Why | What to do |
 | --- | --- | --- |
-| `gate 4, this step fits its cap: FAIL` on a resume of `run-pilot-rerun.sh` after a kill | a killed call kept its 15-credit reservation and must run again, so it is counted twice | with the owner's approval, raise the cap by 15 per killed call: `UNIT_CAP=<cap + 15> bash scripts/run-pilot-rerun.sh --unit --dry-run`, then the same without `--dry-run` ([paid steps](paid-steps.md)) |
+| `gate 4, this step fits its cap: FAIL` on a resume of `run-pilot-rerun.sh` after a kill | a killed call kept its 15-credit reservation and must run again, so it is counted twice | with the owner's approval, raise the cap by 15 per killed call: `UNIT_CAP=<cap + 15> bash scripts/run-pilot-rerun.sh --unit --dry-run`, then the same without `--dry-run` (owner only: run from the owner workspace's `scripts/` launchers; the script is `bench/ops/workspace/run-pilot-rerun.sh`; see [paid steps](paid-steps.md)) |
 | `refused before calling ...: spent X + worst 15 would pass the cap Y` | the ledger check before a paid call | the work so far is saved; rerun the same command with a larger approved cap to resume |
 | `... gave no finished reply ...; counted 15 credits` | the call ran but returned nothing usable (timeout, service error, expired sign-in) | rerun the same command; finished calls are read back free |
 | `the reply of ... could not be read` | a model replied without the JSON it was asked for | it was moved aside as `.bad-N.json`; a rerun asks again and counts again |

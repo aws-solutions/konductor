@@ -58,9 +58,12 @@ namespaces) skips and says why.
 | You want to | Read |
 | --- | --- |
 | Test a skill | [Benchmark a skill](skills.md) |
-| Test an agent, or compare two setups | [Benchmark an agent](agents.md) |
-| Test an agent that drives a machine | [Benchmark a physical AI agent](physical-ai.md) |
-| Bring an agent that is not Kiro CLI or Konductor | [Benchmark your own agent](benchmark-your-own-agent.md) |
+| Test an agent, or compare two setups | [Quick start](how-to/benchmark-an-agent.md), then [Benchmark an agent](agents.md) |
+| Test an agent that drives a machine | [Quick start](how-to/physical-ai-agent.md), then [Benchmark a physical AI agent](physical-ai.md) |
+| Test a Strands agent | [Quick start](how-to/strands-agent.md) |
+| Test an agent on Amazon Bedrock AgentCore | [Quick start](how-to/agentcore-agent.md): not supported yet, and what is missing |
+| Draft test tasks or cases for an agent | [Quick start](how-to/generate-scenarios.md) |
+| Bring an agent that is not Kiro CLI or Konductor | [Bring your own agent](agents.md#bring-your-own-agent) |
 | Run your first paid comparison | [Repeat it yourself](repeat-it-yourself.md), then [safety and caps](safety-and-caps.md) |
 | Understand the numbers | [How scoring works](scoring.md) |
 | Run a Konductor study (LITE, STANDARD, FULL) | [Run levels](run-levels.md) |

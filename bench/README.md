@@ -57,14 +57,17 @@ flowchart LR
 
 ## 🧭 Pick your question
 
-| You want to know | Read | Costs |
-| --- | --- | --- |
-| Does this **skill** load when it should, and does it help once loaded? | [Benchmark a skill](docs/skills.md) | many steps free |
-| How do I test **my agent**: Kiro CLI, Claude Code, Strands, or a new kind? | [Benchmark an agent](docs/agents.md) | runs cost credits or USD |
-| How do I test an agent that **drives a machine**, and count its unsafe moves? | [Benchmark a physical AI agent](docs/physical-ai.md) | tests free, runs paid |
-| How do I bring **my own agent**, not Kiro CLI or Konductor, and what works today? | [Benchmark your own agent](docs/benchmark-your-own-agent.md) | reading free, runs paid |
-| Is **Konductor itself** better than the bare agent? How do we know? | [How Konductor is benchmarked](docs/konductor-bench.md) | paid, approved first |
-| I want to **run it myself**, start to finish | [Repeat it yourself](docs/repeat-it-yourself.md) | free first, then a small run |
+| You want to know | Quick start | Detailed guide | Costs |
+| --- | --- | --- | --- |
+| Does this **skill** load when it should, and does it help once loaded? | [generate scenarios](docs/how-to/generate-scenarios.md) | [Benchmark a skill](docs/skills.md) | many steps free |
+| How do I test **my agent** on Kiro CLI, Claude Code or opencode? | [benchmark my agent](docs/how-to/benchmark-an-agent.md) | [Benchmark an agent](docs/agents.md) | runs cost credits or USD |
+| How do I draft **test scenarios** for my agent? | [generate scenarios](docs/how-to/generate-scenarios.md) | [Capability playbook](docs/cap-playbook.md) · [agenteval](agenteval/README.md) | drafting calls a model |
+| How do I test a **Strands** agent? | [a Strands agent](docs/how-to/strands-agent.md) | [Reference: Strands plant arms](docs/reference.md#strands-plant-arms-kind-b-phase-2) | fake model free, Bedrock paid |
+| How do I test an agent on **Amazon Bedrock AgentCore**? | [an AgentCore agent](docs/how-to/agentcore-agent.md) (not supported yet) | [Write a plugin](docs/write-a-plugin.md) | free checks only |
+| How do I test an agent that **drives a machine**, and count its unsafe moves? | [a physical AI agent](docs/how-to/physical-ai-agent.md) | [Benchmark a physical AI agent](docs/physical-ai.md) | tests free, runs paid |
+| How do I bring **my own agent**, not Kiro CLI or Konductor, and what works today? | | [Bring your own agent](docs/agents.md#bring-your-own-agent) | reading free, runs paid |
+| Is **Konductor itself** better than the bare agent? How do we know? | | [How Konductor is benchmarked](docs/konductor-bench.md) | paid, approved first |
+| I want to **run it myself**, start to finish | | [Repeat it yourself](docs/repeat-it-yourself.md) | free first, then a small run |
 
 New to bench and about to run something? Read [Benchmark an agent](docs/agents.md) first. It shows how one run
 works and how to read a report, and the other pages build on it.
@@ -169,8 +172,8 @@ node bench/agenteval/agenteval.js import-strands --experiment work/experiment.js
 
 Each case comes out `ok`, `needs-edit` or `reject`, with reasons, in `work/candidates/review.md`. A person reads
 every case before it becomes a test. It does not make runnable bench tasks yet. Read
-[agenteval/README.md](agenteval/README.md), and [Benchmark your own agent](docs/benchmark-your-own-agent.md) for
-where it fits.
+[agenteval/README.md](agenteval/README.md), and [Bring your own agent](docs/agents.md#bring-your-own-agent) for
+where it fits. The steps in short are in [the scenarios quick start](docs/how-to/generate-scenarios.md).
 
 ---
 
@@ -184,7 +187,8 @@ where it fits.
 | What can go wrong, and the fix | [Troubleshooting](docs/troubleshooting.md) |
 | The walls around a run and the limits on spend | [Safety and caps](docs/safety-and-caps.md) |
 | What each paid step costs, its cap, and where its results land | [Paid steps](docs/paid-steps.md) |
-| A skill, an agent, a machine agent, your own agent | [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) · [your own agent](docs/benchmark-your-own-agent.md) |
+| A skill, an agent, a machine agent, your own agent | [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) · [your own agent](docs/agents.md#bring-your-own-agent) |
+| A short walkthrough per question | quick starts: [my agent](docs/how-to/benchmark-an-agent.md) · [scenarios](docs/how-to/generate-scenarios.md) · [Strands](docs/how-to/strands-agent.md) · [AgentCore](docs/how-to/agentcore-agent.md) · [physical AI](docs/how-to/physical-ai-agent.md) |
 | Add an agent type as a plugin, and check it free | [Write a plugin](docs/write-a-plugin.md) |
 | Keep or prune agent files, SOPs and context | [Keep or prune, stages 2 to 4](docs/keep-prune-stages.md) |
 | The plant report, the counted test set, Claude Code on the plant | [reading the plant report](docs/physical-ai-report.md) · [the counted test set](docs/physical-ai-counted-set.md) · [Claude Code on the plant](docs/physical-ai-claude-code.md) |

@@ -488,8 +488,11 @@ konductor/
 ├── shared/        Shared Rust crates (telemetry)
 ├── docs/          User guide, integration guides, GitHub Pages site
 ├── scripts/       Install, release and plugin tooling
+├── bench/         konductor bench: benchmark agents, skills and machine agents (see bench/README.md)
 └── tests/         Benchmark scenarios and script tests
 ```
+
+To measure whether a change to an agent really helps, see [konductor bench](bench/README.md).
 
 ## Example prompts for the Claude Code plugin
 

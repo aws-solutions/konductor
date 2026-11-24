@@ -118,7 +118,9 @@ Run these from the repository root. Add `--budget-credits N` to any `run` to sto
 
 ## Try it without credits
 
-These commands call no model and spend nothing (see `--help`):
+These commands call no model and spend nothing (see `--help`). The `cap` commands refuse an `--out` folder under
+your home (exit 2, "under the real HOME; use a directory under TMPDIR"), so the examples write under `/tmp`. If your
+`TMPDIR` is under your home, pass an `--out` outside it, as here.
 
 ```bash
 node bench/runner/bench.js --help                                   # every command and flag

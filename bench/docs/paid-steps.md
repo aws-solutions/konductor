@@ -22,7 +22,9 @@ Run each from `<workspace>/scripts/` (launchers into [bench/ops](../ops/README.m
 **A resume after a killed call.** A call killed mid-flight (a restart, a closed host) keeps its 15-credit
 reservation, but its reply is lost, so the resume makes it again. That call is counted twice. So a resume needs the
 cap raised by 15 for each killed call, with the owner's approval: for example
-`UNIT_CAP=3390 bash scripts/run-pilot-rerun.sh --unit` (`CONTROLS_CAP` for the controls part). The dry run's gate 4
+`UNIT_CAP=3390 bash scripts/run-pilot-rerun.sh --unit` (`CONTROLS_CAP` for the controls part). This is an owner-only
+command: `scripts/` is the owner's workspace launcher folder (made by `bench/ops/make-launchers.sh`), and the script
+itself is `bench/ops/workspace/run-pilot-rerun.sh`. The dry run's gate 4
 shows whether it fits.
 | Keep-or-prune pilot baseline v2: the 5 BAD tasks written again | `run-pilot-v2-rewrite.sh` | at most 4 calls, about 1 real credit | 120 counted (at most 60 used) |
 | Keep-or-prune pilot baseline v2: one last try at t09 (no fix; a fail drops it) | `run-pilot-v2-rewrite.sh --redo t09` | 2 calls | inside the same 120 counted |
