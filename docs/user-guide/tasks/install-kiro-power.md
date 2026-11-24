@@ -159,7 +159,7 @@ configuration:
     "aws-mcp": {
       "command": "uvx",
       "args": [
-        "mcp-proxy-for-aws-cli==1.7.0",
+        "mcp-proxy-for-aws-cli==2.0.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
         "AWS_REGION=us-east-1",
@@ -170,7 +170,8 @@ configuration:
 }
 ```
 
-Install `uvx` and configure AWS credentials before using AWS API tools. The
+Install `uvx` and configure AWS credentials before using AWS API tools. The proxy
+needs Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed. The
 first start downloads the proxy through `uvx`, which can delay the agent's
 first reply. The proxy is pinned for repeatable client behavior; the managed
 endpoint supplies current AWS documentation and skills. `k-architect` and

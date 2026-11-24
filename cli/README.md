@@ -261,7 +261,7 @@ YAML) is skipped with a `konductor install: warning:` naming the file.
   `mcp__aws-mcp__aws___get_tasks`. Claude Code asks before every call to them. They act on
   AWS with your credentials (`aws___run_script` runs agent-written Python). Install takes the
   server's tools from a fixed list, not from a live call: the eight the server listed through
-  `mcp-proxy-for-aws-cli` 1.7.0 when the list was last checked. The proxy relays the hosted
+  `mcp-proxy-for-aws-cli` 2.0.0 when the list was last checked. The proxy relays the hosted
   server's list, so the server can add tools. `k-architect` and `k-developer` are granted only
   the listed tools by name, so a new one stays unavailable to them until it is classified.
   Claude Code checks ask rules before allow rules, so it still asks under a broad

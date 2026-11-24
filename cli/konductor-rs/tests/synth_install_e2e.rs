@@ -1404,7 +1404,7 @@ fn seed_agent_spec_with_aws_mcp_registry(repo_root: &Path) {
   },
   "dependencies": {
     "mcpRegistry": {
-      "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}
+      "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==2.0.0"]}
     }
   },
   "clientConfig": {
@@ -1448,7 +1448,7 @@ fn installed_kiro_agents_carry_the_bundled_aws_mcp_server() {
         .unwrap();
         assert_eq!(
             installed["mcpServers"]["aws-mcp"],
-            serde_json::json!({"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}),
+            serde_json::json!({"command": "uvx", "args": ["mcp-proxy-for-aws-cli==2.0.0"]}),
             "{harness}: {installed}"
         );
         std::fs::remove_dir_all(&target_dir).ok();

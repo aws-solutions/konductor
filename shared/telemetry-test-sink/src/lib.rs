@@ -271,7 +271,7 @@ fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 ///
 /// # Panics
 /// Panics if certificate generation fails.
-fn generate_self_signed_cert() -> rcgen::CertifiedKey {
+fn generate_self_signed_cert() -> rcgen::CertifiedKey<rcgen::KeyPair> {
     rcgen::generate_simple_self_signed(vec!["127.0.0.1".to_string()])
         .expect("failed to generate a throwaway self-signed certificate for this sink")
 }
@@ -279,9 +279,11 @@ fn generate_self_signed_cert() -> rcgen::CertifiedKey {
 /// Builds a `rustls::ServerConfig` directly from the DER bytes `rcgen`
 /// generated -- no PEM round-trip, no client-auth, no ALPN beyond
 /// rustls's defaults.
-fn build_server_config(certified_key: &rcgen::CertifiedKey) -> Arc<rustls::ServerConfig> {
+fn build_server_config(
+    certified_key: &rcgen::CertifiedKey<rcgen::KeyPair>,
+) -> Arc<rustls::ServerConfig> {
     let cert = certified_key.cert.der().clone();
-    let key_der = certified_key.key_pair.serialize_der();
+    let key_der = certified_key.signing_key.serialize_der();
     let key = rustls::pki_types::PrivateKeyDer::try_from(key_der)
         .expect("rcgen-generated key must parse as a valid PKCS#8 private key");
 

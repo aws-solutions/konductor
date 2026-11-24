@@ -456,6 +456,8 @@ not per individual commit.
 - `frontend-review` now checks the full `frontend-development` rule set, including `.refine()`
   over `.transform()` for cross-field validation, defensive checks on array index access, and
   TypeScript utility types.
+- Update the aws-mcp proxy to mcp-proxy-for-aws-cli 2.0.0. It needs Python 3.11 to 3.14; `uvx`
+  downloads a compatible one if none is installed.
 
 ### Removed
 
@@ -666,7 +668,7 @@ not per individual commit.
   `mcp__aws-mcp__aws___get_tasks`) when an installed agent uses the `aws-mcp` server, so
   Claude Code asks before every call to them. Install takes the server's eight tools from a
   fixed list, not a live call: the tools the server listed through `mcp-proxy-for-aws-cli`
-  1.7.0 when the list was last checked. The proxy relays the hosted server's list, so the server
+  2.0.0 when the list was last checked. The proxy relays the hosted server's list, so the server
   can add tools. `k-architect` and `k-developer` now grant those eight by name on both Claude
   Code (`mcp__aws-mcp__<tool>`) and Kiro CLI (`@aws-mcp/<tool>`) instead of the whole server
   (`mcp__aws-mcp__*`, `@aws-mcp`), so a tool the server adds later stays unavailable to them
@@ -690,6 +692,8 @@ not per individual commit.
   unwritable settings file, or a tool a user entry already covers. The Claude Code plugin cannot ship permission rules;
   plugin users add `mcp__plugin_konductor_aws-mcp__<tool>` for each of the three to
   `permissions.ask` themselves.
+- Update Rust dependencies, with fixes for RUSTSEC-2026-0381, -0382, -0386, -0457, -0462 and
+  -0486.
 
 ## [1.2.0] - 2026-10-26
 

@@ -2440,7 +2440,7 @@ mod tests {
         let skills_dir = dir.join("skills");
         let bin_dir = dir.join(".konductor").join("bin");
         let aws_mcp =
-            serde_json::json!({"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]});
+            serde_json::json!({"command": "uvx", "args": ["mcp-proxy-for-aws-cli==2.0.0"]});
         let mut value = serde_json::json!({
             "resources": ["skill://skills/constraints/SKILL.md"],
             "mcpServers": {"aws-mcp": aws_mcp.clone()}

@@ -222,14 +222,15 @@ below). `konductor` requests only five read-only tools:
 `aws___retrieve_skill`, `aws___search_documentation`, `aws___read_documentation`,
 `aws___list_regions` and `aws___get_regional_availability`. Each
 agent's rendered `.md` file carries an `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
-launched via `uvx mcp-proxy-for-aws-cli==1.7.0`), so this `konductor install --harness claude`
+launched via `uvx mcp-proxy-for-aws-cli==2.0.0`), so this `konductor install --harness claude`
 install launches the server itself. No separate MCP server configuration is needed. This is also
 true if you installed via the [Claude Code plugin marketplace](install-claude-plugin-marketplace.md)
 instead: the plugin ships a plugin-level `.mcp.json` for the same server, with the granted
 tool rewritten to its real plugin-scoped name Claude Code resolves for a plugin subagent. The
 server auto-starts as soon as the plugin (or standalone install) is enabled, launching
-`mcp-proxy-for-aws-cli==1.7.0`. The proxy is pinned for repeatable client behavior; AWS
+`mcp-proxy-for-aws-cli==2.0.0`. The proxy is pinned for repeatable client behavior; AWS
 service documentation and skills still come from the managed endpoint at request time. Install `uvx`.
+The proxy needs Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed.
 The server starts with `--skip-auth`, so documentation search and skills work without AWS
 credentials; configure credentials (`~/.aws/credentials` or environment variables) only for calls
 that act on an AWS account.
@@ -240,7 +241,7 @@ server's eight known tools by name: the five AWS knowledge/documentation tools
 `aws___list_regions`, `aws___get_regional_availability`) and the three AWS-API-acting tools
 (`aws___run_script`, which runs sandboxed Python with AWS API access; `aws___get_presigned_url`;
 `aws___get_tasks`). The list is the server's tools as of when it was last checked against
-`mcp-proxy-for-aws-cli` 1.7.0. The proxy relays the hosted server's tool list, so AWS can add
+`mcp-proxy-for-aws-cli` 2.0.0. The proxy relays the hosted server's tool list, so AWS can add
 tools; a new one stays unavailable to these agents until Konductor classifies it.
 `konductor` gets none of the AWS-API-acting tools on Claude Code.
 `konductor install --harness claude` puts an ask rule for each of the three AWS-API-acting tools

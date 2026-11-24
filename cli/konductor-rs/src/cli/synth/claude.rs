@@ -166,7 +166,7 @@ fn json_value_to_yaml_value(value: &serde_json::Value) -> serde_yaml::Value {
 /// of something like `1e400`) hits a stricter case: `serde_json`'s
 /// `as_f64()` internally filters to `is_finite()` results only, so it
 /// returns `None` here rather than a saturated infinity -- verified
-/// directly against the pinned `serde_json = "=1.0.150"`. `n.as_f64()
+/// directly against the pinned `serde_json = "=1.0.154"`. `n.as_f64()
 /// .unwrap_or(0.0)` would silently substitute `0.0` for such a value:
 /// a *qualitatively* worse outcome than the lossy-but-nonzero case
 /// above, since it reports "no timeout at all" for whatever enormous

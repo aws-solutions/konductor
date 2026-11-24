@@ -457,7 +457,7 @@ pub(super) fn apply_claude_settings_grant(
 pub(crate) const AWS_MCP_SERVER_NAME: &str = "aws-mcp";
 
 /// Every tool the `aws-mcp` server listed (`tools/list` through
-/// `mcp-proxy-for-aws-cli` 1.7.0) when this list was last checked. The proxy
+/// `mcp-proxy-for-aws-cli` 2.0.0) when this list was last checked. The proxy
 /// relays the hosted server's list, so the server can add tools. The agents
 /// are granted only these tools by name, so a new one stays unavailable to
 /// them until it is classified here. Fixed so install never depends on a live
