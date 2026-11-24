@@ -18,7 +18,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { validate, loadSchema } = require('../runner/lib/schema.js');
-const { LABEL_RULES, LABEL_RULES_DATE, VERDICT_RULES, VERDICT_RULES_DATE, LABELS, verdictFor } = require('./labels.js');
+const { LABEL_RULES, LABEL_RULES_DATE, BATCH_RULES, BATCH_RULES_DATE, VERDICT_RULES, VERDICT_RULES_DATE, LABELS, verdictFor } = require('./labels.js');
 const { PASS_RULES, PASS_RULES_DATE } = require('./passrules.js');
 const { DEEP_RULES, DEEP_RULES_DATE, PANEL_RULES, PANEL_RULES_DATE, DEPTHS, CLAIM } = require('./keepprune.js');
 const { familyOf } = require('../judge/family.js');
@@ -35,8 +35,8 @@ const NO_SELECTION = `no selection result (trigger precision and recall, observe
 const { sha256 } = require('../runner/lib/util.js');
 /** The rule set every record names: the dates and one hash over all five rule texts. */
 const RULES = Object.freeze({
-  labelRulesDate: LABEL_RULES_DATE, verdictRulesDate: VERDICT_RULES_DATE, passRulesDate: PASS_RULES_DATE, deepRulesDate: DEEP_RULES_DATE, panelRulesDate: PANEL_RULES_DATE,
-  sha256: sha256([LABEL_RULES, VERDICT_RULES, PASS_RULES, DEEP_RULES, PANEL_RULES].join('\n\u0000\n')),
+  labelRulesDate: LABEL_RULES_DATE, verdictRulesDate: VERDICT_RULES_DATE, passRulesDate: PASS_RULES_DATE, deepRulesDate: DEEP_RULES_DATE, panelRulesDate: PANEL_RULES_DATE, batchRulesDate: BATCH_RULES_DATE,
+  sha256: sha256([LABEL_RULES, VERDICT_RULES, PASS_RULES, DEEP_RULES, PANEL_RULES, BATCH_RULES].join('\n\u0000\n')),
 });
 
 // The inputs a verdict also rests on besides the rule texts (DEBT K-4): the judge prompts, the judge family map, the

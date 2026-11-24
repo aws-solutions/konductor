@@ -306,3 +306,19 @@ test('NO DATA when the skill could not be read at all', () => {
   assert.equal(entry.a_batches_agree, null);
   assert.throws(() => labelSkill({ summary: null }), TypeError);
 });
+
+// Ours, not copied (K-2's sibling K-3, owner yes 2026-11-24): the per-batch coverage rule beside his rules.
+test('batch coverage rule (2026-11-24): NO DATA when one batch counts under 12 of every 16 of its tasks', () => {
+  const { readingOf } = require('../../cap/keepprune.js');
+  const rows = (batch, n, counted) =>
+    Array.from({ length: n }, (_, i) => ({ batch, counted: i < counted, gap: 0.5 + (i % 3) * 0.1, stale: 0 }));
+  const all = [...rows('b1', 8, 8), ...rows('b2', 8, 5)];
+  const summary = { skill: 's', tasks: 16, A: readingOf(all), B_all: readingOf(all), exclusions: [] };
+  const entry = labelSkill({ summary, batches: BATCHES });
+  assert.equal(entry.label, LABELS.noData);
+  assert.ok(entry.no_data.includes('A counts 5 of batch b2\'s 8 tasks, below 6 (batch coverage rule, 12 of every 16 in each batch)'), entry.no_data.join('; '));
+  const fine = { ...summary, A: readingOf([...rows('b1', 8, 8), ...rows('b2', 8, 6)]), B_all: readingOf([...rows('b1', 8, 8), ...rows('b2', 8, 6)]) };
+  assert.ok(!labelSkill({ summary: fine, batches: BATCHES }).no_data.some((r) => /batch coverage rule/.test(r)));
+  assert.equal(labels.BATCH_RULES_DATE, '2026-11-24');
+  assert.match(labels.BATCH_RULES, /each batch/);
+});

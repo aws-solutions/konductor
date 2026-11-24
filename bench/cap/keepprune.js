@@ -46,13 +46,14 @@ const CLAIM = 'conditional effect after load';
 const JUDGE_PROMPT_VERSION = 'cap-keep-prune-judge/1';
 const DEFAULT_REPLICATES = 3;
 
-const DEEP_RULES_DATE = '2026-11-17';
+const DEEP_RULES_DATE = '2026-11-24';
 const DEEP_RULES = [
   'Deep check only, checked beside the copied label rules and written before any paid deep run. "A/A gap" is reading A\'s per-task gap between the with arm and its repeat (aa), pooled over the counted tasks like any gap. The A/A spread is the absolute mean A/A gap.',
   '',
   '1. The skill is `NO DATA` when the A/A gap has no interval (fewer than 2 counted tasks).',
   "2. The skill is `NO DATA` when the absolute mean of A is not above the A/A spread: the effect sits inside the run-to-run noise.",
-  '3. A change is a new dated rule; a record made under these rules is never read again under new ones.',
+  "3. The skill is `NO DATA` when A's interval and the A/A interval overlap (added 2026-11-24, owner yes on K-2): a noisy A/A interval can hold A's effect even when the A/A mean is small.",
+  '4. A change is a new dated rule; a record made under these rules is never read again under new ones.',
 ].join('\n');
 
 const PANEL_RULES_DATE = '2026-11-17';
@@ -281,6 +282,10 @@ function deepNoData(A, aa) {
   if (typeof A.mean_gap !== 'number') return null;
   const spread = Math.abs(aa.mean_gap);
   if (Math.abs(A.mean_gap) <= spread) return `A mean ${formatGap(A.mean_gap)} is inside the A/A spread ${formatGap(spread)} (deep rule 2)`;
+  const a = A.t_interval_exact;
+  const n = aa.t_interval_exact;
+  if (Array.isArray(a) && a[0] <= n[1] && n[0] <= a[1])
+    return `A's interval [${formatGap(a[0])}, ${formatGap(a[1])}] overlaps the A/A interval [${formatGap(n[0])}, ${formatGap(n[1])}] (deep rule 3)`;
   return null;
 }
 

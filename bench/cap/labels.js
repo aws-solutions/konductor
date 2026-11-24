@@ -50,6 +50,15 @@ const PER_TASKS = 16;
 const NO_GUARD_DATA = 'no guard data';
 
 const LABEL_RULES_DATE = '2026-11-10';
+// Ours, not copied: the per-batch coverage rule (owner yes on K-3, 2026-11-24). His rule 5 checks coverage over the
+// pooled tasks only, so one thin batch could hide behind a full one.
+const BATCH_RULES_DATE = '2026-11-24';
+const BATCH_RULES = [
+  'Beside the copied label rules, both depths: coverage is checked in each batch, not only over the pooled tasks.',
+  '',
+  '1. A skill is `NO DATA` when a reading counts fewer than 12 of every 16 tasks of any one batch it read (rounded up for another batch size), even when the pooled count passes.',
+  '2. A change is a new dated rule; a record made under these rules is never read again under new ones.',
+].join('\n');
 const LABEL_RULES = [
   'Notation: "A" is the `outcome` reading (a checklist written from the request alone) and "B" the `items` reading (the rules checklist). Both are read from the same stored answers of a skill, pooled over its batches. A gap is with minus without on the 1 to 5 scale, one number per task. "Lower" and "upper" are the ends of the 95% t interval over the pooled tasks (df = tasks - 1). "Above 0" means the lower end is above 0.',
   '',
@@ -257,6 +266,12 @@ function noDataReasons(
       reasons.push(
         `${name} counts ${reading.tasks_counted} of the skill's ${summary.tasks} tasks, below ${need} (12 of every 16)`,
       );
+  for (const [name, reading] of coverage)
+    for (const [batch, read] of Object.entries(reading.by_batch || {}))
+      if (read.tasks_counted < minCounted(read.tasks))
+        reasons.push(
+          `${name} counts ${read.tasks_counted} of batch ${batch}'s ${read.tasks} tasks, below ${minCounted(read.tasks)} (batch coverage rule, 12 of every 16 in each batch)`,
+        );
   for (const [name, reading] of [
     ['A', summary.A],
     ['B', summary.B_all],
@@ -402,6 +417,8 @@ module.exports = {
   LABELS,
   LABEL_RULES,
   LABEL_RULES_DATE,
+  BATCH_RULES,
+  BATCH_RULES_DATE,
   MIN_COUNTED,
   PER_TASKS,
   NO_GUARD_DATA,
