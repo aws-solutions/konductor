@@ -209,6 +209,7 @@ With a release, these are free (no model):
 
 ```bash
 node bench/runner/bench.js plant-policy-test --release DIR --python .venv/bin/python     # every policy cell
+node bench/runner/bench.js plant-host-check --release DIR --release-sha256 HEX         # can this host count a run?
 node bench/runner/bench.js plant-report --run OUT --release DIR --out REPORT              # the three numbers
 node bench/runner/bench.js plant-trace --run TRIAL_DIR --out trace.html                   # one run, call by call
 ```
@@ -271,6 +272,8 @@ hosts with the pinned wheels, then `--compare A B`: it names each case whose pos
 - Linux only, one run at a time, because runs share the host network.
 - A run counts only in the sandbox on a quiet host (nothing else listening). A run without the sandbox is marked
   NOT COUNTED and kept apart in the report.
+  `plant-host-check` lists every host gate with its fix; [the quiet host](physical-ai-counted-set.md#the-quiet-host)
+  says how to get one.
 - Kiro CLI and Claude Code are each pinned to one exact build per release.
 - No counted run of either plant has been made: every run so far ran outside the sandbox or on a host that is not
   quiet, and is marked NOT COUNTED. Open items are in [DEBT.md](../DEBT.md).
