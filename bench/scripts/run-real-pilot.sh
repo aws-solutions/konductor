@@ -77,6 +77,8 @@ SCRIPT=$(readlink -f "${BASH_SOURCE[0]}")
 DEFAULT_REPO=$(cd "$(dirname "$SCRIPT")/../.." 2>/dev/null && pwd)
 REPO=${REPO:-$DEFAULT_REPO}
 . "$(dirname "$SCRIPT")/state-dir.sh"
+# set -e with an ERR trap that names the line (D-215)
+bench_strict
 BASE=$(bench_state_dir "${STATE_DIR:-}") || exit 1
 CLI_JS=${CLI_JS:-$REPO/bench/runner/bench.js}
 TASKS_FILE=${TASKS_FILE:-$(dirname "$SCRIPT")/real-pilot-tasks.txt}
@@ -253,7 +255,7 @@ cleanup_scratch() {
 on_term() {
   STOPPING=1
   say "signal received: stopping the runner (it flushes summary.json as interrupted)"
-  if [ -n "$CHILD_PIDFILE" ] && [ -s "$CHILD_PIDFILE" ]; then kill -TERM "$(cat "$CHILD_PIDFILE")" 2>/dev/null; fi
+  if [ -n "$CHILD_PIDFILE" ] && [ -s "$CHILD_PIDFILE" ]; then kill -TERM "$(cat "$CHILD_PIDFILE")" 2>/dev/null || true; fi   # it may have ended already
 }
 trap on_term TERM INT HUP
 trap cleanup_scratch EXIT
@@ -275,8 +277,8 @@ run_bench() {
     exit "${PIPESTATUS[0]}"
   ) &
   local pid=$! rc
-  wait "$pid"; rc=$?
-  while kill -0 "$pid" 2>/dev/null; do wait "$pid"; rc=$?; done
+  rc=0; wait "$pid" || rc=$?
+  while kill -0 "$pid" 2>/dev/null; do rc=0; wait "$pid" || rc=$?; done
   cleanup_scratch
   return "$rc"
 }
@@ -370,13 +372,13 @@ do_status() {
   local eta avg
   if [ "$avgn" -gt 0 ]; then avg=$((avgsum / avgn)); else avg=0; fi
   if [ "$avg" -gt 0 ]; then
-    eta=$((remaining * avg)); [ -n "$cur" ] && eta=$((eta + (avg > cur_el ? avg - cur_el : 0)))
+    eta=$((remaining * avg)); if [ -n "$cur" ]; then eta=$((eta + (avg > cur_el ? avg - cur_el : 0))); fi
     echo "ETA: $(fmt_dur "$eta") (observed mean $(fmt_dur "$avg") per completed task dir x remaining)"
   else
-    eta=$prior; [ -n "$cur" ] && eta=$((eta > cur_el ? eta - cur_el : 0))
+    eta=$prior; if [ -n "$cur" ]; then eta=$((eta > cur_el ? eta - cur_el : 0)); fi
     echo "ETA: about $(fmt_dur "$eta") (no completed task yet; prior estimate per task)"
   fi
-  echo "last 10 log lines:"; tail -n 10 "$LOG" 2>/dev/null | sed 's/^/  /'
+  echo "last 10 log lines:"; tail -n 10 "$LOG" 2>/dev/null | sed 's/^/  /' || true   # no log yet: nothing to show
 }
 
 # ---------------------------------------------------------------- the main loop
@@ -433,7 +435,7 @@ main_loop() {
     mapfile -d '' -t c < <(common_flags); args+=("${c[@]}")
     [ "$kind" = real ] && args+=(--real-cache "$REAL_CACHE")
     args+=(--out "$dir")
-    run_bench "$V/logs/$name.run.log" $((EXPECT_RUNS * tmo + 3600)) "${args[@]}"; rc=$?
+    rc=0; run_bench "$V/logs/$name.run.log" $((EXPECT_RUNS * tmo + 3600)) "${args[@]}" || rc=$?
     st=$(hj complete "$dir" "$N_ARMS" "$REPS" 2>/dev/null || echo no-summary)
     read -r creds runs nul < <(hj rpcredits "$V"/*/ 2>/dev/null || echo "0 0 0")
     say "[$i/$total_n] $name: runner exit $rc, dir state: $st, $(hj stats "$dir" 2>/dev/null)"
@@ -477,8 +479,8 @@ first_of_kind() { # <kind> -> "suite|task" of the first task of that kind in TAS
 }
 smoke_one() { # <name> <kind> <suite> <task> <extra bench.js args...>: one vanilla run, then the checks
   local name=$1 kind=$2 suite=$3 task=$4 rc; shift 4
-  run_bench "$S/logs/$name.run.log" 1800 run --suite "$suite" --tasks "$task" --arms vanilla --profile quick --replicates 1 \
-    "${c[@]}" "$@" --out "$S/$name"; rc=$?
+  rc=0; run_bench "$S/logs/$name.run.log" 1800 run --suite "$suite" --tasks "$task" --arms vanilla --profile quick --replicates 1 \
+    "${c[@]}" "$@" --out "$S/$name" || rc=$?
   say "runner exit $rc"
   hj rpsmoke "$S/$name" "$kind" | tee -a "$S/smoke-verify.txt"
 }
@@ -546,8 +548,8 @@ if [ "$MODE" = preflight ]; then
   say "prepare-only for the arm set (free: builds and trial-installs every arm, starts no agent)"
   [ "${#TASKS[@]}" -gt 0 ] || die "no tasks in $TASKS_FILE"
   mapfile -d '' -t PREP < <(prepare_args "$BASE/real-pilot-work/prepare-only-unused")
-  run_bench "$BASE/real-pilot-work/prepare-only.log" 3000 "${PREP[@]}"
-  rc=$?; say "prepare-only exit $rc (log $BASE/real-pilot-work/prepare-only.log)"; exit "$rc"
+  rc=0; run_bench "$BASE/real-pilot-work/prepare-only.log" 3000 "${PREP[@]}" || rc=$?
+  say "prepare-only exit $rc (log $BASE/real-pilot-work/prepare-only.log)"; exit "$rc"
 fi
 
 # real run: study dir, prepare-only gate, daemonize
@@ -564,9 +566,9 @@ if [ "${RP_CHILD:-0}" != 1 ]; then
   say "prepare-only for the arm set (free)"
   mkdir -p "$BASE/real-pilot-work"
   mapfile -d '' -t PREP < <(prepare_args "$V/prepare-only-unused")
-  run_bench "$V/logs/prepare-only.log" 3000 "${PREP[@]}"
-  rc=$?; [ "$rc" = 0 ] || die "prepare-only failed (exit $rc, $V/logs/prepare-only.log); nothing launched"
-  grep -E '^(arm |vanilla|orch-all|main-unreleased|prepare-only)' "$V/logs/prepare-only.log" | sed 's/^/    /'
+  rc=0; run_bench "$V/logs/prepare-only.log" 3000 "${PREP[@]}" || rc=$?
+  [ "$rc" = 0 ] || die "prepare-only failed (exit $rc, $V/logs/prepare-only.log); nothing launched"
+  grep -E '^(arm |vanilla|orch-all|main-unreleased|prepare-only)' "$V/logs/prepare-only.log" | sed 's/^/    /' || true
   # study record
   { echo "started: $(ts)"; echo "script: $SCRIPT"; echo "repo HEAD: $(git -C "$REPO" rev-parse HEAD)"; echo "ORCH_DIR HEAD: ${ORCH_DIR:+$(git -C "$ORCH_DIR" rev-parse HEAD)}"
     echo "origin/main: $(git -C "$REPO" rev-parse origin/main 2>/dev/null)"; echo "kiro-cli: $("$KIRO" --version 2>&1)"; echo "arms: $ARMS (+ A/A repeat of the first konductor arm)"; echo "engine/model/seed: $ENGINE $MODEL $SEED"

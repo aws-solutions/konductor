@@ -173,8 +173,7 @@ test('bench_strict: the first failing command stops the script and says where; $
   assert.equal(r.status, 1);
   assert.equal(r.stdout, 'f failed quietly\n');
   assert.equal(r.stderr, 'strict.sh: line 7: exit 1: false (stopped by set -e)\n');
-  // shortcut: run-real-pilot.sh gets bench_strict with FW-2 (another session owns its spend lines).
-  for (const s of ['monitor.sh', 'run-judging.sh', 'run-skill-bench.sh', 'run-after-capability.sh']) {
+  for (const s of ['monitor.sh', 'run-judging.sh', 'run-skill-bench.sh', 'run-after-capability.sh', 'run-real-pilot.sh']) {
     assert.match(fs.readFileSync(path.join(LIB, '..', s), 'utf8'), /state-dir\.sh"\n(?:#.*\n)*bench_strict\n/, `${s} calls bench_strict right after sourcing state-dir.sh`);
   }
 });
