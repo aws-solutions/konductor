@@ -5,7 +5,9 @@
 #   case 1: --plan makes no bench call and prints both stages: model, arm, runs, per-run cap, expected USD and cap
 #   case 2: --go --stage opus runs 8 tasks with cc-konductor only, the Opus model, USD 2 a run, task budget USD 4,
 #           cap USD 32 (all 16 runs fit at their cap), under its own ROOT
-#   case 3: --go --stage sonnet is refused when run-cc-compare.sh finished all 8 tasks (its cc-konductor runs are reused)
+#   case 3: --go --stage sonnet is refused when run-cc-team.sh finished all 8 tasks (its cc-konductor-team runs, the
+#           same team-mode bench as the Opus stage, are reused)
+#   case 3b: run-cc-compare.sh's study (before team mode, D-241) does not count as a reuse: the Sonnet stage runs
 #   case 4: --go without --stage is refused
 #   case 5: --summary with no runs says so for every source and exits 0
 set -eu
@@ -34,14 +36,14 @@ for (const arm of arms) for (let rep = 1; rep <= Number(val('--replicates')); re
 JS
 fail() { echo "FAIL: $*"; exit 1; }
 go() { local base=$1; shift; env WAIT_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK="$T/heavy.lock" CC_AWS_PROFILE=stub-profile \
-  STUB="node $STUBJS" CCM_ROOT="$base" CC_COMPARE_ROOT="$base/cc-compare" bash "$HERE0/run-cc-model-swap.sh" "$@"; }
+  STUB="node $STUBJS" CCM_ROOT="$base" CC_TEAM_ROOT="$base/cc-team" bash "$HERE0/run-cc-model-swap.sh" "$@"; }
 
 # case 1
 go "$T/a" --plan > "$T/a.log" 2>&1 || { cat "$T/a.log"; fail "case 1 exited non-zero"; }
 [ ! -e "$T/a/opus/runs/calls.log" ] && [ ! -e "$T/a/sonnet/runs/calls.log" ] || fail "case 1: a bench call"
 for want in 'stage sonnet: cc-konductor on us.anthropic.claude-sonnet-5-5, 16 runs, USD 1 a run, cap USD 16' \
   'stage opus: cc-konductor on us.anthropic.claude-opus-5-5, 16 runs, USD 2 a run, cap USD 32' \
-  'expected USD 10.72' 'expected USD 20.05' 'run-cc-compare.sh cc-konductor runs to reuse: 0 of 8 tasks'; do
+  'expected USD 10.72' 'expected USD 20.05' 'run-cc-team.sh cc-konductor-team runs to reuse: 0 of 8 tasks'; do
   grep -qF -- "$want" "$T/a.log" || { cat "$T/a.log"; fail "case 1: no '$want'"; }
 done
 echo "case 1 ok: plan only, both stages, expected USD and caps"
@@ -61,13 +63,21 @@ grep -q '| t1-nfr-report-queries | 2 | 28.00 |' "$T/a.log" || { cat "$T/a.log"; 
 echo "case 2 ok: Opus stage, cc-konductor only, USD 2 a run, cap 32"
 
 # case 3
-mkdir -p "$T/c/cc-compare/runs"
+mkdir -p "$T/c/cc-team/runs"
 for t in t8-dec-deploy-strategy t5-qa-checkout-strategy t5-qa-sync-strategy t6-req-field-inspections t2-dr-notify-fanout \
-  t2-arch-dr-split-checkout t7-program-brief t1-nfr-report-queries; do touch "$T/c/cc-compare/runs/$t.done"; done
+  t2-arch-dr-split-checkout t7-program-brief t1-nfr-report-queries; do touch "$T/c/cc-team/runs/$t.done"; done
 if go "$T/c" --go --stage sonnet > "$T/c.log" 2>&1; then fail "case 3 should stop"; fi
-grep -q 'reuse its cc-konductor runs' "$T/c.log" || { cat "$T/c.log"; fail "case 3: wrong stop"; }
+grep -q 'reuse its cc-konductor-team runs' "$T/c.log" || { cat "$T/c.log"; fail "case 3: wrong stop"; }
 [ ! -e "$T/c/sonnet/runs/calls.log" ] || fail "case 3: a bench call"
-echo "case 3 ok: Sonnet stage refused when run-cc-compare.sh runs exist"
+echo "case 3 ok: Sonnet stage refused when run-cc-team.sh runs exist"
+
+# case 3b
+mkdir -p "$T/f/cc-compare/runs"
+for t in t8-dec-deploy-strategy t5-qa-checkout-strategy t5-qa-sync-strategy t6-req-field-inspections t2-dr-notify-fanout \
+  t2-arch-dr-split-checkout t7-program-brief t1-nfr-report-queries; do touch "$T/f/cc-compare/runs/$t.done"; done
+CC_COMPARE_ROOT="$T/f/cc-compare" go "$T/f" --go --stage sonnet > "$T/f.log" 2>&1 || { cat "$T/f.log"; fail "case 3b exited non-zero"; }
+[ "$(wc -l < "$T/f/sonnet/runs/calls.log")" = 8 ] || { cat "$T/f.log"; fail "case 3b: not 8 Sonnet bench calls"; }
+echo "case 3b ok: the pre-team run-cc-compare.sh study is not reused"
 
 # case 4
 if go "$T/d" --go > "$T/d.log" 2>&1; then fail "case 4 should stop"; fi
