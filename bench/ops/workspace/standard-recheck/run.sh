@@ -7,9 +7,10 @@
 #                            the calls, families and the counted cap; no model call, no ledger line, no pin
 #   bash run.sh              the paid queue, one call at a time; rerun to resume (finished calls are skipped)
 #
-# Queue (queue.txt): 9 calls of 2 or 3 tasks, each by a non-Claude family (deepseek-3.2, qwen3-coder-next, glm-5,
+# Queue (queue.txt): 11 calls of 1 to 3 tasks, each by a non-Claude family (deepseek-3.2, qwen3-coder-next, glm-5,
 # gpt-5.6-luna; S4 is gpt-5.6-luna, the family whose v5 fails the t3 fix answers; S9 is t3-db-order-history v9 on
-# glm-5, a family that has not checked it). Every call counts as max(15, its real credits) against CAP (135 = 9 x 15).
+# glm-5, a family that has not checked it; S10 and S11 are the four T13 tasks S8 did not cover, on deepseek-3.2, not
+# their author family gpt-5.6-luna, DEBT D-254). Every call counts as max(15, its real credits) against CAP (165 = 11 x 15).
 # Before each call the ledger must leave room for one more counted call (spent + 15 <= CAP), else the queue stops; the counted figure is written after the call. No retry: a
 # call with no recheck.json is logged NOJSON and the queue stops. Touch $S/STOP to stop before the next call.
 # Each call runs kiro-cli in an empty HOME made by the bench's own sandbox helpers, on a bundle built from a detached
@@ -27,7 +28,7 @@ WS=$KONDUCTOR_WS
 S=${S:-/var/tmp/konductor-standard-recheck}
 PIN_REPO=${PIN_REPO:-$WS/worktrees/recheck-std}
 KIRO=${KIRO:-kiro-cli}
-CAP=${CAP:-135}
+CAP=${CAP:-165}
 COUNT_MIN=15
 LEDGER=${LEDGER:-$WS/reports/standard-recheck-2026-11-23.ledger}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}

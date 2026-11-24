@@ -7,3 +7,5 @@ S6 qwen3-coder-next t10-tpm-ring-rollout-v4 t12-mux-parallel-merge t2-dr-notify-
 S7 glm-5 t11-fresh-session-memory t11-merge-pricing-branches t11-twin-pricing-validation
 S8 deepseek-3.2 t13-doc-api-reference-drift t13-log-auth-credential-stuffing t7-program-rollup
 S9 glm-5 t3-db-order-history
+S10 deepseek-3.2 t13-doc-agents-onboarding t13-log-batch-slowdown
+S11 deepseek-3.2 t13-triage-crash-reports t13-triage-issue-queue
