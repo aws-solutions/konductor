@@ -97,13 +97,26 @@ EDITS = [
      "├── skills/                       79 skills (<name>/SKILL.md"),
     # ---- aws-mcp: pinned, and synth bundles it into Claude Code and Kiro CLI agents ----
     ('reference MCP registry note: synth bundles aws-mcp',
-     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==2.0.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
-     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
-     ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.',
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==2.0.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth. playwright-mcp (k-browser): args -y, @playwright/mcp@latest. konductor synth --claude-bundled-mcp-servers aws-mcp (what make synth and the release build run) writes the aws-mcp entry into the Claude Code and Kiro CLI agent files, so konductor, k-architect and k-developer launch it themselves. k-architect and k-developer request all its tools (mcp__aws-mcp__* in Claude Code, @aws-mcp in Kiro CLI). konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability. playwright-mcp is not bundled: k-browser requests its tools (mcp__playwright-mcp__* in Claude Code, @playwright-mcp in Kiro CLI) and you configure the server yourself.',
      'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==2.0.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. konductor synth --claude-bundled-mcp-servers aws-mcp (what make synth and the release build run) writes the aws-mcp entry into the Claude Code and Kiro CLI agent files, so konductor, k-architect and k-developer launch it themselves.'
-     ' k-architect and k-developer request all its tools (mcp__aws-mcp__* in Claude Code, @aws-mcp in Kiro CLI). konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'
+     ' k-architect and k-developer request the eight known aws-mcp tools by name (such as mcp__aws-mcp__aws___search_documentation in Claude Code and @aws-mcp/aws___search_documentation in Kiro CLI). konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'
      ' playwright-mcp is not bundled: k-browser requests its tools (mcp__playwright-mcp__* in Claude Code, @playwright-mcp in Kiro CLI) and you configure the server yourself.'),
+    # ---- k-architect and k-developer name the known aws-mcp tools -----------
+    ("concepts: k-architect per-runtime tool lists",
+     'lists tools as ' + _mono('["@builtin", "subagent", "@aws-mcp"]')
+     + ', while the Claude Code configuration lists '
+     + _mono('["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite", "mcp__aws-mcp__*"]')
+     + '.',
+     'lists tools as ' + _mono('@builtin') + ' plus the eight known aws-mcp tools by name (such as '
+     + _mono('@aws-mcp/aws___search_documentation') + '), while the Claude Code configuration lists '
+     + _mono('["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite", "Skill"]')
+     + ' plus the same eight (such as ' + _mono('mcp__aws-mcp__aws___search_documentation') + ').'),
+    ("install claude: aws-mcp tools by name",
+     ' via the glob ' + _mono('mcp__aws-mcp__*') + '.',
+     ' by name, the eight known ones, such as '
+     + _mono('mcp__aws-mcp__aws___search_documentation')
+     + ', so a tool the hosted server adds later is not granted until it is classified.'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',
@@ -341,10 +354,7 @@ EDITS = [
     # double-quoted JS string in the bundle's `data-dc-script` block, which
     # `dc-runtime` compiles with `new Function()`.
     ("ag-access intro para",
-     'paras: ["This is the table to check before you let an agent loose on a repository. '
-     '\\"Write\\" means the agent can create or modify files; \\"shell\\" means it can run '
-     'commands. Kiro CLI values come from clientConfig.kiroCli.allowedTools (fs_write, shell); '
-     'Claude Code values from clientConfig.claudeCli.tools (Write/Edit, Bash)."]',
+     'paras: ["This is the table to check before you let an agent loose on a repository. \\"Write\\" means the agent can create or modify files; \\"shell\\" means it can run commands.", "The two runtimes draw the line in different places. Kiro CLI has two lists: tools is what the agent may use, and reaching for it prompts you; allowedTools is the subset that is pre-approved and runs silently. Every agent here declares @builtin, which carries fs_write and shell, so no agent is incapable of either — the difference is whether it asks first.", "Claude Code has one list. clientConfig.claudeCli.tools is the ceiling: a tool absent from it cannot be used at all. Whether a granted tool prompts is decided by your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny.", "These rows describe agents started by konductor. konductor-mux-orchestrator and konductor-cmux-orchestrator start each specialist with permission checks off (--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under them every granted tool runs without asking, MCP tools included. On Claude Code, deny rules in your settings.json still block, and an ask rule denies the call, because each specialist runs with -p and can\'t prompt. Add deny rules for anything a dispatched agent must never do."]',
      'paras: ["This is the table to check before you let an agent loose on a repository. '
      '\\"Write\\" means the agent can create or modify files; \\"shell\\" means it can run '
      'commands.", "The two runtimes draw the line in different places. Kiro CLI has two lists: '
@@ -355,12 +365,27 @@ EDITS = [
      'tool absent from it cannot be used at all. Whether a granted tool prompts is decided by '
      'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny.", "These '
      'rows describe agents started by konductor. konductor-mux-orchestrator and '
-     'konductor-cmux-orchestrator start each specialist with permission checks off '
-     '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
-     'them every granted tool runs without asking, MCP tools included. On Claude Code, deny rules '
-     'in your settings.json still block, and an ask rule denies the call, because each specialist '
-     'runs with -p and can\'t prompt. Add deny rules for anything a dispatched agent must never '
-     'do."]'),
+     'konductor-cmux-orchestrator start each specialist in its own pane. On Kiro CLI it runs with '
+     '--trust-all-tools, so every granted tool runs without asking, MCP tools included. On Claude '
+     'Code, KONDUCTOR_DISPATCH_PERMISSION_MODE (or the plugin\'s dispatch_permission_mode option) '
+     'decides: interactive, the default, asks you in the pane; headless runs with -p, accepts file '
+     'edits and denies any other call that would prompt unless your permissions.allow allows it; '
+     'and the opt-in bypass runs with --dangerously-skip-permissions, for isolated environments '
+     'only. In headless and bypass, deny rules in your settings.json still block, and an ask rule '
+     'denies the call, because the child runs with -p and can\'t prompt. konductor install '
+     '--harness claude sets an ask rule for each AWS MCP tool that acts on AWS (aws___run_script, '
+     'aws___get_presigned_url and aws___get_tasks) in the settings file it installs into. An '
+     'interactive pane that file applies to asks you before each call, and a headless or bypass '
+     'pane cannot call them: every pane for the default $HOME install, and only panes running in '
+     'the target project for a --target install. These rules apply to every Claude Code '
+     'session using that settings file, not only Konductor\'s agents, because Claude Code has no '
+     'per-agent permission settings. No ask rule is written for a Claude '
+     'Code plugin install (add them yourself), when the settings file cannot be written (install '
+     'still succeeds and ends by printing the rules to add by hand), or for a tool one of your own '
+     'deny rules covers or one of your allow entries names exactly (a broad allow such as '
+     'mcp__aws-mcp__* does not count). Calls to these tools need a person to approve them; '
+     'run that work from konductor or an interactive pane. Add deny rules for anything a '
+     'dispatched agent must never do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'

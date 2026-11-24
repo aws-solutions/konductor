@@ -38,9 +38,16 @@ mod telemetry_hook_pass;
 pub(super) use claude_settings::apply_claude_settings_grant_and_hooks;
 pub(super) use claude_settings::apply_claude_settings_hooks_only;
 pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
+pub(super) use claude_settings::{
+    apply_claude_settings_mcp_rules, aws_mcp_ask_tools, mcp_tool_rule, AppliedMcpRules,
+    McpPermissionRules,
+};
 pub(crate) use claude_settings::{
     claude_hooks_settings_relative_path, hook_command_exe, hook_command_install_root,
     is_claude_settings_path, remove_claude_konductor_hooks, ORCHESTRATION_HOOK_MARKER,
+};
+pub(crate) use claude_settings::{
+    remove_claude_settings_mcp_rules, AWS_MCP_READ_ONLY_TOOLS, AWS_MCP_SERVER_NAME,
 };
 pub(crate) use hook_locator::{orchestration_hook_wirings, HookWiring};
 pub(super) use mcp_server::{
