@@ -148,5 +148,20 @@ mkdir -p "$T/R/kitcopy" && cp -a -- "$SELF/." "$T/R/kitcopy/"
 rm -r -- "$T/R/kitcopy"
 [ "$rc" = 1 ] && [ ! -s "$T/calls" ] && grep -q 'runs from inside R' "$T/log" && ok "kit inside R refused" || bad "inside R: rc $rc; $(cat "$T/log")"
 
+# M. --cargo-online reaches every cap variant call and every bench run (prepare-only, and the paid path through the
+#    frozen kit copy); without it no call carries it; an unknown argument is refused
+: > "$T/calls"; run M --prepare-only --cargo-online; rc=$?
+[ "$rc" = 0 ] && [ "$(grep -c '^cap variant' "$T/calls")" = 2 ] && [ "$(grep '^cap variant' "$T/calls" | grep -vc -- '--cargo-online')" = 0 ] \
+  && ok "prepare-only --cargo-online: both cap variant calls get --cargo-online" || bad "cargo-online cap: rc $rc; $(cat "$T/calls")"
+grep -q '^run .*--prepare-only' "$T/calls" && [ "$(grep '^run ' "$T/calls" | grep -vc -- '--cargo-online')" = 0 ] \
+  && ok "prepare-only --cargo-online: the bench prepare gets --cargo-online" || bad "cargo-online run: $(grep '^run' "$T/calls")"
+: > "$T/calls"; run M2 --foreground --cargo-online; rc=$?
+[ "$rc" = 0 ] && grep -q "kit $T/M2/kit" "$T/log" && [ "$(runs)" = 4 ] && [ "$(grep -vc -- '--cargo-online' < <(grep -E '^(run|cap variant) ' "$T/calls"))" = 0 ] \
+  && ok "paid --cargo-online: the frozen kit copy passes it to every cap variant and bench run" || bad "paid cargo-online: rc $rc; $(cat "$T/calls")"
+: > "$T/calls"; run M3 --prepare-only; rc=$?
+[ "$rc" = 0 ] && ! grep -q -- '--cargo-online' "$T/calls" && ok "without --cargo-online no call carries it" || bad "no flag: rc $rc; $(grep -- --cargo-online "$T/calls")"
+: > "$T/calls"; run M4 --prepare-only --bogus; rc=$?
+[ "$rc" = 64 ] && [ ! -s "$T/calls" ] && ok "unknown argument refused (exit 64)" || bad "bogus: rc $rc; $(cat "$T/log")"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

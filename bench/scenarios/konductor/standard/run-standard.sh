@@ -7,6 +7,8 @@
 #   S=<study dir> R=<worktree> KBIN=<kiro-cli> bash run-standard.sh --foreground     the same, in this terminal
 #   S=<study dir> R=<worktree> KBIN=<kiro-cli> bash run-standard.sh --prepare-only   free: task gate, plan preview, the
 #       konductor-noskills and konductor-list arms built and trial-installed, all four arms prepared by bench; no agent runs
+#   Add --cargo-online to any of these when the crates are not in the offline cargo cache: every cap variant build and
+#   bench run (and a resumed or background copy of the kit) then builds with network access.
 #
 # Tasks: bench `--level standard` over suites/pack.json (every DEV task), then the LITE gate rules (ready, no lock
 # blocker, a passing non-Claude recheck at the current version); `helper.js plan` lists the rest as skipped.
@@ -53,6 +55,7 @@ SEED=20261121
 PLAN=$ROOT/plan.json
 STOPPED=""
 ARMS=""; NOSKILLS=""; LIST=""; BENCH_SHA=""; BATCHES=""
+CARGO=() # (--cargo-online) when given: passed to every cap variant and bench run, and to the re-exec'd kit
 
 say() { echo "[$(date -u +%H:%M)] $*"; }
 stop() { say "STOP: $*"; exit 1; }
@@ -138,7 +141,7 @@ base_args() { # base_args BATCH
   local b=$1
   printf '%s\n' run --suite pack --tasks "$(q "p.batches['$b'].tasks.join(',')")" --arms "$ARMS" --parallel 1 \
     --repo-root "$R" --hide "$R" --isolate unshare --seed "$SEED" \
-    --model claude-sonnet-5.5 --effort high --agent-engine v3 --kiro-bin "$KBIN" --python "$PY312" --cache "$CACHE"
+    --model claude-sonnet-5.5 --effort high --agent-engine v3 --kiro-bin "$KBIN" --python "$PY312" --cache "$CACHE" "${CARGO[@]}"
 }
 # variant_arm SHA VERIFY FLAG VALUE: builds (or finds) one cap variant of konductor at SHA (FLAG VALUE: --preset noskills
 # or --hook list); prints "<armSpec> <variantHash>".
@@ -148,8 +151,9 @@ variant_arm() {
   [ "$verify" = 1 ] && V=(--verify)
   mkdir -p "$SCRATCH"
   out=$(nice -n 10 node "$R/bench/runner/bench.js" cap variant --scratch "$SCRATCH" --base "$sha" "$flag" "$value" \
-    --agent-engine v3 --cache "$CACHE" --repo-root "$R" --json "${V[@]}" 2> "$SCRATCH/variant-$value.log") || rc=$?
-  [ "$rc" = 0 ] || { say "cap variant $flag $value failed (exit $rc), see $SCRATCH/variant-$value.log"; return 1; }
+    --agent-engine v3 --cache "$CACHE" --repo-root "$R" --json "${V[@]}" "${CARGO[@]}" 2> "$SCRATCH/variant-$value.log") || rc=$?
+  # stderr: stdout is read as "<armSpec> <variantHash>"; the JSON's verify.problems has the reason.
+  [ "$rc" = 0 ] || { say "cap variant $flag $value failed (exit $rc), see $SCRATCH/variant-$value.log" >&2; return 1; }
   printf '%s' "$out" | node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8")); console.log(j.armSpec, j.meta.variantHash)'
 }
 # check_arm NAME SPEC HASH: the variant must be a dir: arm of that name outside HOME.
@@ -163,16 +167,23 @@ check_arm() {
 [ "${STANDARD_LIB:-0}" = 1 ] && return 0 2>/dev/null
 
 main() {
-  local mode=${1:-} prep=0 rep b spec vhash lspec lhash rc=0 po d
+  local mode="" prep=0 rep b spec vhash lspec lhash rc=0 po d a
   local -a dirs=()
-  case "$mode" in ''|--foreground|--prepare-only) ;; *) echo "usage: S=DIR R=WORKTREE KBIN=FILE bash $0 [--foreground|--prepare-only]"; exit 64 ;; esac
+  local usage="usage: S=DIR R=WORKTREE KBIN=FILE bash $0 [--foreground|--prepare-only] [--cargo-online]"
+  for a in "$@"; do
+    case "$a" in
+      --foreground|--prepare-only) [ -z "$mode" ] || { echo "$usage"; exit 64; }; mode=$a ;;
+      --cargo-online) CARGO=(--cargo-online) ;;
+      *) echo "$usage"; exit 64 ;;
+    esac
+  done
   [ -n "$S" ] || stop "set S, the study dir (outside HOME, for example /var/tmp/konductor-standard-v1)"
   [ -n "$R" ] || stop "set R, a dedicated konductor worktree (the kit moves its pin)"
   for d in "$ROOT" "$CACHE" "$SCRATCH"; do under_home "$d" && stop "$d is under HOME ($HOME); work dirs go outside it, for example under /var/tmp"; done
   case "$KIT/" in "$(realpath -m -- "$R")"/*) stop "the kit runs from inside R ($R), whose pin it moves: run a copy outside R" ;; esac
   mkdir -p "$ROOT"
   if [ -z "$mode" ]; then
-    setsid nohup bash "$KIT/run-standard.sh" --foreground >> "$ROOT/run.log" 2>&1 < /dev/null &
+    setsid nohup bash "$KIT/run-standard.sh" --foreground "${CARGO[@]}" >> "$ROOT/run.log" 2>&1 < /dev/null &
     echo "STANDARD run started in the background (pid $!). Watch: tail -f $ROOT/run.log"
     exit 0
   fi
@@ -183,7 +194,7 @@ main() {
     elif ! diff -rq -- "$KIT" "$ROOT/kit" >/dev/null; then
       stop "$ROOT/kit is the frozen kit of this study and differs from $KIT: run $ROOT/kit/run-standard.sh, or move $ROOT/kit away to start over with this kit"
     fi
-    exec bash "$ROOT/kit/run-standard.sh" "$mode"
+    exec bash "$ROOT/kit/run-standard.sh" "$mode" "${CARGO[@]}"
   fi
   export TMPDIR=/tmp
   say "run-standard.sh $mode (kit $KIT)"
@@ -255,7 +266,7 @@ main() {
     nice -n 10 node "$R/bench/runner/bench.js" run --suite pack --tasks "$(q 'p.run.map(t=>t.id).join(",")')" --arms "$ARMS" \
       --replicates 1 --parallel 1 --repo-root "$R" --hide "$R" --isolate unshare --seed "$SEED" \
       --model claude-sonnet-5.5 --effort high --agent-engine v3 --kiro-bin "$KBIN" --python "$PY312" --cache "$CACHE" \
-      --budget-credits "$STAGE_CAP" --run-credit-limit 68 --out "$po" --prepare-only || rc=$?
+      --budget-credits "$STAGE_CAP" --run-credit-limit 68 --out "$po" --prepare-only "${CARGO[@]}" || rc=$?
     rmdir -- "$po" 2>/dev/null
     if [ "$rc" = 0 ]; then say "prepare-only passed. Paid run: the same command without --prepare-only"; else say "prepare-only FAILED (exit $rc)"; fi
     exit "$rc"
