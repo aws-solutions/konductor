@@ -109,5 +109,17 @@ mkdir -p "$T/E/prepare"; printf '{"benchSha":"%s","konductorSha":"kon9","noskill
 : > "$T/calls"; CC_AWS_PROFILE=stub run E; rc=$?
 [ "$rc" = 1 ] && [ "$(runs)" = 0 ] && grep -q 'no .*plan.json: run run-standard.sh first' "$T/log" && ok "paid step refuses a preview plan" || bad "paid on preview: rc $rc; $(tail -n 2 "$T/log")"
 
+# M. --cargo-online reaches every bench run (prepare-only and paid: bench builds cc-konductor=<sha>); without it no
+#    call carries it; an unknown argument is refused before any bench call
+mk_root M
+: > "$T/calls"; run M --prepare-only --cargo-online; rc=$?
+[ "$rc" = 0 ] && [ "$(runs)" = 1 ] && nth_run 1 | grep -q -- '--prepare-only' && nth_run 1 | grep -q -- '--cargo-online' && ok "prepare-only --cargo-online: the bench prepare gets --cargo-online" || bad "cargo prep: rc $rc; $(cat "$T/calls")"
+: > "$T/calls"; CC_AWS_PROFILE=stub run M --cargo-online; rc=$?
+[ "$rc" = 0 ] && [ "$(runs)" = 4 ] && [ "$(grep '^run ' "$T/calls" | grep -vc -- '--cargo-online')" = 0 ] && ok "paid --cargo-online: every bench run gets it" || bad "cargo paid: rc $rc; $(cat "$T/calls")"
+: > "$T/calls"; run M --prepare-only; rc=$?
+[ "$rc" = 0 ] && ! grep -q -- '--cargo-online' "$T/calls" && ok "without --cargo-online no call carries it" || bad "no flag: rc $rc; $(cat "$T/calls")"
+: > "$T/calls"; run M --prepare-only --bogus; rc=$?
+[ "$rc" = 64 ] && [ ! -s "$T/calls" ] && ok "unknown argument refused (exit 64)" || bad "bogus: rc $rc; $(cat "$T/log")"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

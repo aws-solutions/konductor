@@ -9,6 +9,7 @@
 #   S=<study dir> R=<worktree> bash claude-standard.sh --prepare-only   free: every arm prepared by bench (a
 #                                                                       konductor build and a trial install); no agent
 #   S=<study dir> R=<worktree> CC_AWS_PROFILE=<profile> bash claude-standard.sh   the paid stages; rerun to resume
+#   Add --cargo-online to --prepare-only or the paid step when the crates are not in the offline cargo cache.
 #
 # Arms (helper.js cc-plan): cc-vanilla (plain Claude Code), cc-konductor=<the plan's konductor sha>,
 # cc-konductor-noskills=dir:<the plan's noskills tree> and cc-konductor-list=dir:<the plan's list tree>, the same
@@ -49,6 +50,7 @@ CCPLAN=$CC/cc-plan.json
 CLAUDE=""
 STOPPED=""
 ARMS=""; ARM_IDS=""; BATCHES=""; PLAN=""
+CARGO=() # (--cargo-online) when given: passed to every bench run (bench builds cc-konductor=<sha> with cargo)
 say() { echo "[$(date -u +%H:%M)] $*"; }
 stop() { say "STOP: $*"; exit 1; }
 q() { node -p "const p=require('$CCPLAN'); $1"; }
@@ -73,7 +75,7 @@ wait_quiet() {
 usd_stage() { node "$SH" usd-spent "$R" "$CC/runs/r$1"; }
 base_args() { # base_args TASKS
   printf '%s\n' run --suite pack --tasks "$1" --arms "$ARMS" --parallel 1 --repo-root "$R" --hide "$R" --isolate "$ISOLATE" \
-    --seed "$SEED" --claude-bin "$CLAUDE" --model "$MODEL" --effort high --run-budget-usd "$RUN_CAP_USD"
+    --seed "$SEED" --claude-bin "$CLAUDE" --model "$MODEL" --effort high --run-budget-usd "$RUN_CAP_USD" "${CARGO[@]}"
 }
 # run_batch REP B: one batch of one stage. Sets STOPPED to stop the step.
 run_batch() {
@@ -102,9 +104,17 @@ run_batch() {
 }
 
 main() {
-  local mode=${1:-} prep=0 plan_only=0 bench_sha po rc=0 rep b
+  local mode="" prep=0 plan_only=0 bench_sha po rc=0 rep b a
   local -a dirs=()
-  case "$mode" in '') ;; --prepare-only) prep=1 ;; --plan) plan_only=1 ;; *) echo "usage: S=DIR R=WORKTREE bash $0 [--plan|--prepare-only]"; exit 64 ;; esac
+  local usage="usage: S=DIR R=WORKTREE bash $0 [--plan|--prepare-only] [--cargo-online]"
+  for a in "$@"; do
+    case "$a" in
+      --plan|--prepare-only) [ -z "$mode" ] || { echo "$usage"; exit 64; }; mode=$a ;;
+      --cargo-online) CARGO=(--cargo-online) ;;
+      *) echo "$usage"; exit 64 ;;
+    esac
+  done
+  case "$mode" in --prepare-only) prep=1 ;; --plan) plan_only=1 ;; esac
   [ -n "$ROOT" ] && [ -n "$R" ] || stop "set S (the study dir) and R (the STANDARD worktree)"
   case "$(realpath -m -- "$ROOT")/" in "$(realpath -m -- "$HOME")"/*) stop "$ROOT is under HOME; work dirs go outside it, for example under /var/tmp" ;; esac
   PLAN=$ROOT/plan.json
