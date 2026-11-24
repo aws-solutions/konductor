@@ -123,7 +123,35 @@
         "verdict": "pass",
         "note": "All key values can be derived from the fixture: defaults from src/index.js DEFAULTS object, function statuses from exports and deprecation comments, example code from existing examples. Tolerance is 0 and patterns are reasonable."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt specifies examining src/ and JSDoc but doesn't prescribe specific method or framework. No misleading hints pointing away from real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains outdated documentation with version 1 examples/signatures that don't match actual code in src/. Correct answer must be derived from reading src/ exports and defaults."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check examples run and JSON block structure. Fixture has src/ with actual exports, defaults, JSDoc. Rubric matches scriptedUser facts about Node version, deprecation, bug reporting."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can read src/index.js for exports, defaults, JSDoc; run examples; create updated docs. Different implementation (different prose/order) would still pass if examples run and JSON block has required structure."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

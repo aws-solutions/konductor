@@ -154,29 +154,30 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 6,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for executive status without prescribing a method; COVE-354 Harbor ticket is correctly excluded (absent assertions), not a decoy—it is blocked work outside the Relay scope."
+          "note": "Prompt asks for executive status from folder material and specifies JSON format, but doesn't prescribe specific project management methodology. No decoy."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains team exports and status updates; it does not state the overall red status, the critical path chain, or that reported colors differ from actual."
+          "note": "Fixture contains roadmap.md and CSV exports with team data. Answer (program status, critical path, forecast) must be derived from analyzing the data."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The key's assertions (ARC-117, BEAM-224, COVE-331, COVE-342 critical path; amber/red actuals; 88/83/83 remaining points; ARC-143 duplicate) follow from the CSV exports and status docs."
+          "note": "Checks test for specific ticket IDs and status colors. Hidden key.json asserts expected values (overall red, team colors, points). Fixture has data files to derive these values."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A TPM can reconcile team status claims against export data, count remaining Relay points, identify the cross-team dependency chain, and derive the red status from blockers and capacity."
+          "note": "Developer can analyze CSV exports, calculate remaining points, identify critical path, determine status colors. Different analysis could still produce correct JSON structure and pass checks."
         }
       ]
     }
