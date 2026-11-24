@@ -1,0 +1,12 @@
+{
+  "collector": {
+    "batchSize": 50,
+    "retentionDays": 30
+  },
+  "symbolizer": {
+    "timeoutMs": 1200
+  },
+  "alerts": {
+    "latencyMs": 800
+  }
+}

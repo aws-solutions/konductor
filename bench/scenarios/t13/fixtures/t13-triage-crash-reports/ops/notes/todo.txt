@@ -1,0 +1,3 @@
+- reconcile collector batches after the Friday export
+- remove obsolete dashboard bookmark
+- ask support whether any customers saw repeated prompts

@@ -1,0 +1,14 @@
+groups:
+  - name: edge
+    rules:
+      - alert: Gateway5xxBurst
+        expr: rate(gateway_requests_total{status=~"5.."}[5m]) > 0.04
+      - alert: SlowExportQueue
+        expr: histogram_quantile(0.95, export_queue_seconds) > 12
+  - name: billing
+    rules:
+      - alert: InvoiceReadDenied
+        expr: rate(invoice_access_denied_total[10m]) > 0.02
+owners:
+  edge: sre
+  billing: billing

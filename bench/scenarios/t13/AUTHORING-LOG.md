@@ -12,3 +12,14 @@ Public repo: no internal names, host paths or secrets. Credits are what each kir
 | t13-doc-agents-onboarding | author | gpt-5.6-luna | 10.58 |  |
 | t13-doc-agents-onboarding | map | glm-5 | 0.22 |  |
 | t13-doc-agents-onboarding | review | glm-5 | 4.39 |  |
+| t13-triage-issue-queue | author | gpt-5.6-luna | 4.88 |  |
+| t13-triage-issue-queue | map | glm-5 | 0.22 |  |
+| t13-triage-issue-queue | review | qwen3-coder-next | 0.83 |  |
+| t13-triage-crash-reports | author | gpt-5.6-luna | 4.03 |  |
+| t13-triage-crash-reports | map | glm-5 | 0.22 |  |
+| t13-triage-crash-reports | review | glm-5 | 8.21 |  |
+| t13-log-auth-credential-stuffing | author | gpt-5.6-luna | 3.45 |  |
+| t13-log-auth-credential-stuffing | map | glm-5 | 0.22 |  |
+| t13-log-auth-credential-stuffing | review | qwen3-coder-next | 1.82 |  |
+| t13-log-batch-slowdown | author | gpt-5.6-luna | 4.76 |  |
+| t13-log-batch-slowdown | map | glm-5 | 0.22 |  |

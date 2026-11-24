@@ -1,0 +1,10 @@
+alerts:
+  - name: crash-ingest-delay
+    threshold_seconds: 90
+    severity: warning
+  - name: symbolizer-errors
+    threshold_percent: 3
+    severity: warning
+  - name: collector-disk
+    threshold_percent: 80
+    severity: page

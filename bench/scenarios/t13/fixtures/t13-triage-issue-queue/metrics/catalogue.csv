@@ -1,0 +1,23 @@
+metric,unit,description
+gateway_requests_total,count,requests accepted at the edge
+gateway_5xx_ratio,ratio,share of gateway responses with 5xx
+export_queue_depth,count,queued export jobs
+export_request_latency_ms,milliseconds,export request duration
+invoice_access_denied_total,count,invoice reads denied by policy
+upload_bytes_total,bytes,accepted upload payload bytes
+session_redirect_total,count,session redirects
+routine_metric_1,count,retained catalogue metric
+routine_metric_2,count,retained catalogue metric
+routine_metric_3,count,retained catalogue metric
+routine_metric_4,count,retained catalogue metric
+routine_metric_5,count,retained catalogue metric
+routine_metric_6,count,retained catalogue metric
+routine_metric_7,count,retained catalogue metric
+routine_metric_8,count,retained catalogue metric
+routine_metric_9,count,retained catalogue metric
+routine_metric_10,count,retained catalogue metric
+routine_metric_11,count,retained catalogue metric
+routine_metric_12,count,retained catalogue metric
+routine_metric_13,count,retained catalogue metric
+routine_metric_14,count,retained catalogue metric
+routine_metric_15,count,retained catalogue metric

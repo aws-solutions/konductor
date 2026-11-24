@@ -1,0 +1,10 @@
+# Egress addresses approved for interactive authentication
+office:
+  cidrs:
+    - 203.0.113.0/26
+  owner: workplace-network
+vpn:
+  cidrs:
+    - 198.51.100.8/29
+  owner: remote-access
+reviewed: 2026-04-28

@@ -1,0 +1,8 @@
+name: auth-gateway-failure-rate
+owner: security-oncall
+window: overnight
+condition: rejected-login-rate above baseline
+for: 5m
+notifications:
+  - pager
+  - security-mailbox

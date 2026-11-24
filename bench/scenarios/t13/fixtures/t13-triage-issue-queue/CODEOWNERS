@@ -1,0 +1,6 @@
+# Path ownership for the Northstar monorepo
+/src/api/       @platform-api
+/src/web/       @web
+/src/billing/   @billing
+/infra/         @sre
+/docs/          @docs

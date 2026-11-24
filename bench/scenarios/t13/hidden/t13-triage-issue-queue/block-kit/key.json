@@ -1,0 +1,211 @@
+{
+  "outputFile": "triage/2026-04-week-16.md",
+  "items": [
+    {
+      "id": "all-issues-present",
+      "type": "maxLen",
+      "path": "issues",
+      "max": 24,
+      "min": 24,
+      "weight": 2
+    },
+    {
+      "id": "release-freeze-fact",
+      "type": "some",
+      "path": "facts",
+      "match": {
+        "all": [
+          "1\\.9",
+          "freez|frozen|release|S1 only|only S1"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "security-sla-fact",
+      "type": "some",
+      "path": "facts",
+      "match": {
+        "all": [
+          "4 ?h(ours)?|four hours",
+          "S1|security",
+          "private|owner"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "web-capacity-fact",
+      "type": "some",
+      "path": "facts",
+      "match": {
+        "all": [
+          "web",
+          "conference|away|no capacity|out this week|unavailable|no bandwidth",
+          "schedule|wait|S1|fix-now"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "security-reason",
+      "type": "some",
+      "path": "issues",
+      "match": {
+        "field": "reason",
+        "all": [
+          "tenant|another (customer|user|account)|cross",
+          "private"
+        ]
+      },
+      "weight": 3
+    },
+    {
+      "id": "unsupported-browser-reason",
+      "type": "some",
+      "path": "issues",
+      "match": {
+        "field": "reason",
+        "all": [
+          "browser|unsupported"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "evidence-citations",
+      "type": "evidence",
+      "path": "summary.evidence",
+      "groups": [
+        {
+          "file": "^issues/",
+          "all": [
+            "export"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "narrow|filter"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "Safari|sign-in"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "10 MB"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "1\\.8\\.2|fixed"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "footer|spelling"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "someone else's|changed the id"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "iOS|every file"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "unsupported|Internet Explorer"
+          ]
+        },
+        {
+          "file": "^issues/",
+          "all": [
+            "schedule|Monday"
+          ]
+        }
+      ],
+      "min": 10,
+      "weight": 2
+    },
+    {
+      "id": "evidence-is-precise",
+      "type": "evidencePrecision",
+      "path": "summary.evidence",
+      "relevant": [
+        "export|filter|Safari|10 MB|1\\.8\\.2|footer|someone else's|iOS|unsupported|scheduled|Monday",
+        "ISSUE-|reaction|version|browser|iOS|Safari|export|invoice|upload|crash|login|sign-in|refund|feature|request|steps|reproduc|screenshot|billing|platform-api|web|sre|docs"
+      ],
+      "min": 0.5,
+      "weight": 1
+    },
+    {
+      "id": "needs-info-summary",
+      "type": "maxLen",
+      "path": "summary.needsInfo",
+      "max": 6,
+      "min": 4,
+      "weight": 1
+    },
+    {
+      "id": "export-duplicates-linked",
+      "type": "some",
+      "path": "issues",
+      "match": {
+        "field": "duplicateOf",
+        "all": [
+          "401"
+        ]
+      },
+      "min": 2,
+      "weight": 2
+    },
+    {
+      "id": "owners-come-from-codeowners",
+      "type": "inSet",
+      "path": "issues",
+      "field": "owner",
+      "fromFile": "CODEOWNERS",
+      "pattern": "^\\S+\\s+@?([a-z-]+)",
+      "min": 24,
+      "weight": 2
+    },
+    {
+      "id": "security-action-word",
+      "type": "some",
+      "path": "issues",
+      "match": {
+        "field": "action",
+        "all": [
+          "escalate"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "feature-label",
+      "type": "some",
+      "path": "issues",
+      "match": {
+        "field": "labels",
+        "all": [
+          "enhancement|feature|request"
+        ]
+      },
+      "weight": 1
+    }
+  ]
+}

@@ -1,0 +1,200 @@
+{
+  "id": "t13-triage-crash-reports",
+  "class": "hard",
+  "version": 1,
+  "phase": "triage",
+  "role": "developer",
+  "questions": "scripted",
+  "prompt": "4.2.0 went out Monday and support is seeing a burst of desktop crashes. Please triage the material in crashes/ against the release packet and tell me what we should do before Friday. I need the number of distinct defects, each group’s report count, distinct-user count, platform report counts, regression status, and the most likely release-diff suspect for the largest group. Apply docs/hotfix-policy.md and give a hotfix or next-release decision for every group. Create one clearly identified ticket per defect in the report. Write the result to triage/4.2.0-crash-triage.md. Cite evidence as folder-relative path:line with 1-based lines. The document must end with a fenced ```json block containing one object with defects (a list of objects with id, signature, reports, users, platforms, regression, suspectChange, action, and sampleReports), excluded (a list of what and why), and method. Use integer counts, platform-to-report-count objects, action hotfix/next-release/monitor, sample report filenames, and ISO 8601 UTC timestamps where you include times. State how you grouped and counted the reports.",
+  "fixture": "t13-triage-crash-reports",
+  "hidden": "t13-triage-crash-reports",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 27,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'),t=fs.readFileSync('triage/4.2.0-crash-triage.md','utf8'),f=String.fromCharCode(96).repeat(3),i=t.lastIndexOf(f+'json'),j=JSON.parse(t.slice(i+7).split(f)[0]);if(!Array.isArray(j.defects)||j.defects.length<3||j.defects.some(x=>!x.signature||typeof x.reports!=='number'||typeof x.users!=='number'||!x.action)||!Array.isArray(j.excluded)||typeof j.method!=='string')process.exit(1)\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "triage/4.2.0-crash-triage.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "crashes/crash-0001.json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "release/4.2.0-diff.txt",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "asked-for-facts",
+      "criterion": "The agent asked for what the folder does not say (the weekly active user count behind the 1% rule, whether a hotfix may ship one platform alone, whether the new feature has a flag) instead of assuming. Fail: applies the 1% rule with an invented user count, or decides the platform question without asking. Partial: asked for some, or asked and then used another value. Pass: asked for each, used the answers (the 1% rule computed on the given count, the all-platform rule, the flag named as the quick mitigation), and the report says where they came from. (code cannot check this because the asking is a conversation, not a file.)",
+      "weight": 2
+    },
+    {
+      "id": "honest-verification",
+      "criterion": "The report says how the reports were grouped and counted. Fail: counts with no method, or a method that could not give those counts. Partial: a method stated but not what it did with the two frame spellings or the old-build reports. Pass: the grouping rule, the user-count rule, how the two Windows frame spellings were merged, and how old-build reports were set aside, with the script or commands used. (code cannot check this because it cannot read what the agent ran.)",
+      "weight": 1
+    },
+    {
+      "id": "policy-over-counts",
+      "criterion": "Hotfix decisions follow the policy, not the report count. Fail: ranks by report count and misses the small data-loss defect, or hotfixes the one-user crash loop. Partial: the data-loss defect is a hotfix but the reason does not name the rule, or the 1% rule is applied with no number. Pass: each hotfix decision names the policy rule and the number that triggers it, and the three-user group is called out as small despite its report count. (code cannot check this because the reasoning is free text.)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-24",
+    "source": {
+      "url": "https://crash-stats.mozilla.org/documentation/",
+      "licence": "MPL-2.0 (Socorro); idea only (crash-report grouping), no text used",
+      "licenceCheckedAt": "2026-11-24",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-24",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not state the answers to the three scripted facts (9,000 WAU, platform shipping rule, feature flag). The ASKS.json questions naturally elicit these facts without revealing them. The request's reference to 'colleague's confirmed details' does not appear in task-draft.json."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request specifies the output format (fenced JSON block with specific fields), path format (folder-relative path:line with 1-based lines), and action values (hotfix/next-release/monitor). Key items have appropriate tolerances (153-187 reports, 108-132 users for sync group)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture does not reveal the three scripted facts (weekly active user count, platform hotfix rule, feature flag availability). The release diff shows normalizePath and isRemovable changes but does not confirm they are the cause. The ops log at line 253 shows 'SyncRoot::resolve removable-volume path lookup' but requires agent analysis to connect to root.cpp changes."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer (blaming scheduler change, counting reports as users, or treating all crashes as one defect) would fail multiple key tests: sync-report-count (requires 153-187), sync-user-count (requires 108-132, rejecting report-count as user-count), no-scheduler-suspect (rejects scheduler blame), defect-count-bounded (requires 3-5 defects), and tray-not-regression (requires checking 4.1.3 presence)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from the fixture: SyncRoot has exactly 170 reports/120 users (within 153-187/108-132 tolerances), TrayIcon has 15 reports in 4.1.3 (proving non-regression), LocalDatabase has 3 distinct users (within 2-4 tolerance), ThumbnailCache has 20 reports/20 users with 'dropping pending uploads' at log:320 indicating data loss. Evidence tests cite actual file:line references present in fixture."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 37,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-24"
+    },
+    "decision": "keep",
+    "date": "2026-11-24"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T13 worker session)",
+    "log": "HAND-EDITS.md"
+  },
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "weekly active",
+          "active users",
+          "wau",
+          "how many users",
+          "user base",
+          "1 percent",
+          "one percent"
+        ],
+        "answer": "About 9,000 weekly active users. Use that for the 1% rule in the hotfix policy."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "linux only",
+          "one platform",
+          "single platform",
+          "per platform",
+          "platform-specific hotfix",
+          "can we ship just"
+        ],
+        "answer": "No. A hotfix ships on all platforms at once; we never ship one platform alone."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "feature flag",
+          "kill switch",
+          "turn off",
+          "disable the feature",
+          "server-side flag",
+          "toggle",
+          "removable drive feature"
+        ],
+        "answer": "Yes, the removable-drive feature has a server-side flag. We can turn it off for everyone within an hour."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  }
+}

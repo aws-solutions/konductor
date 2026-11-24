@@ -1,0 +1,215 @@
+{
+  "id": "t13-triage-issue-queue",
+  "class": "hard",
+  "version": 1,
+  "phase": "triage",
+  "role": "developer",
+  "questions": "scripted",
+  "prompt": "You own this week's triage pass for Northstar. Review the 24 open reports in issues/ISSUE-401.md through issues/ISSUE-424.md and produce triage/2026-04-week-16.md. For every issue, record severity (S1-S4), labels (a list), owner (a team named by CODEOWNERS), duplicateOf (an issue id or null), action (one of fix-now, schedule, needs-info, close, or escalate), and a short reason grounded in evidence. Preserve useful distinctions between similar reports, follow the local severity and triage documents, and use the source files and operational records when they clarify an issue. Include a summary object with fixNow, escalate, needsInfo, and closed lists of issue ids, plus evidence as a list of path:line citations. Include a `facts` list of short strings for anything your decisions relied on that this folder does not say, and say in the prose where each came from. End the document with one fenced json block containing the object. Cite evidence as path:line, with paths relative to this folder root and 1-based line numbers. Do not edit the issue export or supporting input files.",
+  "fixture": "t13-triage-issue-queue",
+  "hidden": "t13-triage-issue-queue",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 23,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 issues.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'),t=fs.readFileSync('triage/2026-04-week-16.md','utf8'),f=String.fromCharCode(96).repeat(3),i=t.lastIndexOf(f+'json'),j=JSON.parse(t.slice(i+7).split(f)[0]);if(!Array.isArray(j.issues)||j.issues.length<20||j.issues.some(x=>!x.id||!x.severity||!x.action||!x.owner)||!j.summary||!Array.isArray(j.facts))process.exit(1)\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "triage/2026-04-week-16.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "CODEOWNERS",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "issues/ISSUE-413.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "asked-for-facts",
+      "criterion": "The agent asked for what the folder does not say (which release is frozen, the S1 security response time, whether the web team has capacity this week) instead of assuming. Fail: decides fix-now or the release scope with no question asked, or invents a policy. Partial: asked for some, or asked and then ignored the answer. Pass: asked for each, applied the answers (S1 only into the frozen release, web work scheduled, the security issue owned within the stated time), and the document says where they came from. (code cannot check this because the asking is a conversation, not a file.)",
+      "weight": 2
+    },
+    {
+      "id": "honest-verification",
+      "criterion": "The final report says what was read and how the counts were made. Fail: claims every issue was read when the reasons show otherwise, or gives no account. Partial: an account with no mention of what was skipped or uncertain. Pass: says which files were read, how duplicates were matched, and which severities are a judgement call. (code cannot check this because it cannot read what the agent did.)",
+      "weight": 1
+    },
+    {
+      "id": "severity-by-ladder",
+      "criterion": "Severity follows the local ladder, not tone or votes. Fail: severity follows reaction counts, or the loud unsupported-browser report is S1. Partial: the ladder is applied but two or more ordinary issues are one step off with no reason. Pass: every severity is explained by a ladder rule and a cited line, and disagreements with the reporter are stated. (code cannot check this because the ordinary issues allow more than one defensible severity.)",
+      "weight": 1
+    },
+    {
+      "id": "triage-writing",
+      "criterion": "The per-issue notes help planning. Fail: the note repeats the title. Partial: reasons given but no top summary of what goes into the release and what waits. Pass: a short top section lists the escalations, the fix-now set, the needs-info set with what is missing, and the closed duplicates. (code cannot check this because the summary is free text.)",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-24",
+    "source": {
+      "url": "https://github.com/kubernetes/community/blob/master/contributors/guide/issue-triage.md",
+      "licence": "Apache-2.0 (repository LICENSE); idea only (open-source triage practice), no text used",
+      "licenceCheckedAt": "2026-11-24",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-24",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not state, hint at, or repeat any of the three scriptedUser facts (F1 release freeze, F2 security SLA, F3 web capacity). The prompt says to 'include a facts object' and 'say who supplied them in the prose' but does not tell the agent to ask a colleague or mention any specific answers."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is clear: review 24 issues, produce a triage document with severity/labels/owner/duplicateOf/action/reason for each, plus summary lists and facts object. The severity guide, action types, CODEOWNERS, and output format are all provided."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file names, notes, docs, or comments reveal the release freeze, security SLA, or web capacity facts. The deploy history.jsonl shows 1.9.2 was deployed but does not indicate a release freeze. No hidden clues exist in file names or comments."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task is not too easy: a quick wrong answer would be to blame the latest deploy (1.16.1), assume all export issues are duplicates, or list every possible action. Tests catch these by requiring correct duplicate linking (401/409/417, 404/420, 411/423), proper severity for 419 (unsupported browser), and correct identification of 4 needs-info issues."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is fair: all required facts (releaseFreeze, securitySla, webCapacity) must be obtained from the scriptedUser since they're not in the fixture. All evidence citations have corresponding support in the issues (export, Safari, 10 MB, etc.). The CODEOWNERS provides 5 teams that cover all 24 issues."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 16.8,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-24"
+    },
+    "decision": "keep",
+    "date": "2026-11-24"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T13 worker session)",
+    "log": "HAND-EDITS.md"
+  },
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "release freeze",
+          "frozen",
+          "code freeze",
+          "which release",
+          "friday release",
+          "what goes in",
+          "cut-off"
+        ],
+        "answer": "1.9 is frozen for the Friday release. Only S1 fixes go into it; everything else waits for 1.10."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "security sla",
+          "how fast",
+          "response time",
+          "within hours",
+          "sla for s1",
+          "escalation time",
+          "how quickly"
+        ],
+        "answer": "An S1 security issue must have an owner within 4 hours and goes to the private tracker, not the public one."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "web team",
+          "capacity",
+          "who is available",
+          "bandwidth",
+          "conference",
+          "out this week",
+          "can the web team"
+        ],
+        "answer": "The web team is at a conference all week with no capacity. Schedule their work; only an S1 gets fix-now."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  }
+}

@@ -1,0 +1,225 @@
+diff --git a/src/ui/status.cpp b/src/ui/status.cpp
+index 81ab..92cd 100644
+--- a/src/ui/status.cpp
++++ b/src/ui/status.cpp
+ context status maintenance line 1: preserve existing status rendering
+ context status maintenance line 2: preserve existing status rendering
+ context status maintenance line 3: preserve existing status rendering
+ context status maintenance line 4: preserve existing status rendering
+ context status maintenance line 5: preserve existing status rendering
+ context status maintenance line 6: preserve existing status rendering
+ context status maintenance line 7: preserve existing status rendering
+ context status maintenance line 8: preserve existing status rendering
+ context status maintenance line 9: preserve existing status rendering
+ context status maintenance line 10: preserve existing status rendering
+ context status maintenance line 11: preserve existing status rendering
+ context status maintenance line 12: preserve existing status rendering
+ context status maintenance line 13: preserve existing status rendering
+ context status maintenance line 14: preserve existing status rendering
+ context status maintenance line 15: preserve existing status rendering
+ context status maintenance line 16: preserve existing status rendering
+ context status maintenance line 17: preserve existing status rendering
+ context status maintenance line 18: preserve existing status rendering
+ context status maintenance line 19: preserve existing status rendering
+ context status maintenance line 20: preserve existing status rendering
+ context status maintenance line 21: preserve existing status rendering
+ context status maintenance line 22: preserve existing status rendering
+ context status maintenance line 23: preserve existing status rendering
+ context status maintenance line 24: preserve existing status rendering
+ context status maintenance line 25: preserve existing status rendering
+ context status maintenance line 26: preserve existing status rendering
+ context status maintenance line 27: preserve existing status rendering
+ context status maintenance line 28: preserve existing status rendering
+ context status maintenance line 29: preserve existing status rendering
+ context status maintenance line 30: preserve existing status rendering
+ context status maintenance line 31: preserve existing status rendering
+ context status maintenance line 32: preserve existing status rendering
+ context status maintenance line 33: preserve existing status rendering
+ context status maintenance line 34: preserve existing status rendering
+ context status maintenance line 35: preserve existing status rendering
+ context status maintenance line 36: preserve existing status rendering
+ context status maintenance line 37: preserve existing status rendering
+ context status maintenance line 38: preserve existing status rendering
+ context status maintenance line 39: preserve existing status rendering
+ context status maintenance line 40: preserve existing status rendering
+ context status maintenance line 41: preserve existing status rendering
+ context status maintenance line 42: preserve existing status rendering
+@@ -44,6 +44,9 @@ void Status::refresh()
++    cache.setLastRefresh(clock.now());
++    notifyObservers();
++    return;
+
+diff --git a/src/transfer/queue.cpp b/src/transfer/queue.cpp
+index 11aa..22bb 100644
+--- a/src/transfer/queue.cpp
++++ b/src/transfer/queue.cpp
+ context queue maintenance line 43: retain transfer ordering
+ context queue maintenance line 44: retain transfer ordering
+ context queue maintenance line 45: retain transfer ordering
+ context queue maintenance line 46: retain transfer ordering
+ context queue maintenance line 47: retain transfer ordering
+ context queue maintenance line 48: retain transfer ordering
+ context queue maintenance line 49: retain transfer ordering
+ context queue maintenance line 50: retain transfer ordering
+ context queue maintenance line 51: retain transfer ordering
+ context queue maintenance line 52: retain transfer ordering
+ context queue maintenance line 53: retain transfer ordering
+ context queue maintenance line 54: retain transfer ordering
+ context queue maintenance line 55: retain transfer ordering
+ context queue maintenance line 56: retain transfer ordering
+ context queue maintenance line 57: retain transfer ordering
+ context queue maintenance line 58: retain transfer ordering
+ context queue maintenance line 59: retain transfer ordering
+ context queue maintenance line 60: retain transfer ordering
+ context queue maintenance line 61: retain transfer ordering
+ context queue maintenance line 62: retain transfer ordering
+ context queue maintenance line 63: retain transfer ordering
+ context queue maintenance line 64: retain transfer ordering
+ context queue maintenance line 65: retain transfer ordering
+ context queue maintenance line 66: retain transfer ordering
+ context queue maintenance line 67: retain transfer ordering
+ context queue maintenance line 68: retain transfer ordering
+ context queue maintenance line 69: retain transfer ordering
+ context queue maintenance line 70: retain transfer ordering
+ context queue maintenance line 71: retain transfer ordering
+ context queue maintenance line 72: retain transfer ordering
+ context queue maintenance line 73: retain transfer ordering
+ context queue maintenance line 74: retain transfer ordering
+ context queue maintenance line 75: retain transfer ordering
+ context queue maintenance line 76: retain transfer ordering
+ context queue maintenance line 77: retain transfer ordering
+@@ -78,7 +78,11 @@ void Queue::resume()
++    metrics.record("resume");
++    wakeWorkers();
++    return;
+
+diff --git a/src/sync/root.cpp b/src/sync/root.cpp
+index 44cd..55ef 100644
+--- a/src/sync/root.cpp
++++ b/src/sync/root.cpp
+ context sync root maintenance line 78: retain volume bookkeeping
+ context sync root maintenance line 79: retain volume bookkeeping
+ context sync root maintenance line 80: retain volume bookkeeping
+ context sync root maintenance line 81: retain volume bookkeeping
+ context sync root maintenance line 82: retain volume bookkeeping
+ context sync root maintenance line 83: retain volume bookkeeping
+ context sync root maintenance line 84: retain volume bookkeeping
+ context sync root maintenance line 85: retain volume bookkeeping
+ context sync root maintenance line 86: retain volume bookkeeping
+ context sync root maintenance line 87: retain volume bookkeeping
+ context sync root maintenance line 88: retain volume bookkeeping
+ context sync root maintenance line 89: retain volume bookkeeping
+ context sync root maintenance line 90: retain volume bookkeeping
+@@ -91,8 +91,16 @@ Path SyncRoot::resolve(const Volume& volume)
+-    auto root = volume.syncPath();
++    auto root = volume.isRemovable() ? volume.attachedSyncPath() : volume.syncPath();
++    if (volume.isRemovable()) {
++        root = normalizePath(root);
++    }
++    return root;
+
+diff --git a/src/sync/scheduler.cpp b/src/sync/scheduler.cpp
+index 66de..77fa 100644
+--- a/src/sync/scheduler.cpp
++++ b/src/sync/scheduler.cpp
+ context scheduler maintenance line 92: preserve worker fairness
+ context scheduler maintenance line 93: preserve worker fairness
+ context scheduler maintenance line 94: preserve worker fairness
+ context scheduler maintenance line 95: preserve worker fairness
+ context scheduler maintenance line 96: preserve worker fairness
+ context scheduler maintenance line 97: preserve worker fairness
+ context scheduler maintenance line 98: preserve worker fairness
+ context scheduler maintenance line 99: preserve worker fairness
+ context scheduler maintenance line 100: preserve worker fairness
+ context scheduler maintenance line 101: preserve worker fairness
+ context scheduler maintenance line 102: preserve worker fairness
+ context scheduler maintenance line 103: preserve worker fairness
+ context scheduler maintenance line 104: preserve worker fairness
+ context scheduler maintenance line 105: preserve worker fairness
+ context scheduler maintenance line 106: preserve worker fairness
+ context scheduler maintenance line 107: preserve worker fairness
+ context scheduler maintenance line 108: preserve worker fairness
+ context scheduler maintenance line 109: preserve worker fairness
+ context scheduler maintenance line 110: preserve worker fairness
+ context scheduler maintenance line 111: preserve worker fairness
+ context scheduler maintenance line 112: preserve worker fairness
+ context scheduler maintenance line 113: preserve worker fairness
+ context scheduler maintenance line 114: preserve worker fairness
+@@ -115,5 +115,7 @@ void Scheduler::scheduleRetry(Job& job)
+-    timer.after(milliseconds(1000));
++    timer.after(milliseconds(1500));
++    metrics.record("retry scheduled");
+
+diff --git a/src/thumb/cache.cpp b/src/thumb/cache.cpp
+index 88ab..99bc 100644
+--- a/src/thumb/cache.cpp
++++ b/src/thumb/cache.cpp
+ context thumbnail maintenance line 116: preserve cache accounting
+ context thumbnail maintenance line 117: preserve cache accounting
+ context thumbnail maintenance line 118: preserve cache accounting
+ context thumbnail maintenance line 119: preserve cache accounting
+ context thumbnail maintenance line 120: preserve cache accounting
+ context thumbnail maintenance line 121: preserve cache accounting
+ context thumbnail maintenance line 122: preserve cache accounting
+ context thumbnail maintenance line 123: preserve cache accounting
+ context thumbnail maintenance line 124: preserve cache accounting
+ context thumbnail maintenance line 125: preserve cache accounting
+ context thumbnail maintenance line 126: preserve cache accounting
+ context thumbnail maintenance line 127: preserve cache accounting
+ context thumbnail maintenance line 128: preserve cache accounting
+ context thumbnail maintenance line 129: preserve cache accounting
+ context thumbnail maintenance line 130: preserve cache accounting
+ context thumbnail maintenance line 131: preserve cache accounting
+ context thumbnail maintenance line 132: preserve cache accounting
+ context thumbnail maintenance line 133: preserve cache accounting
+ context thumbnail maintenance line 134: preserve cache accounting
+ context thumbnail maintenance line 135: preserve cache accounting
+ context thumbnail maintenance line 136: preserve cache accounting
+ context thumbnail maintenance line 137: preserve cache accounting
+ context thumbnail maintenance line 138: preserve cache accounting
+ context thumbnail maintenance line 139: preserve cache accounting
+@@ -140,4 +140,6 @@ void ThumbnailCache::put(Item item)
++    trimExpired();
++    notifyMemorySampler();
+diff --git a/src/ui/menu.cpp b/src/ui/menu.cpp
+index 01aa..01bb 100644
+--- a/src/ui/menu.cpp
++++ b/src/ui/menu.cpp
+@@ -10,2 +10,11 @@ routine maintenance
++    metrics.record("component refreshed");
+diff --git a/src/storage/index.cpp b/src/storage/index.cpp
+index 02aa..02bb 100644
+--- a/src/storage/index.cpp
++++ b/src/storage/index.cpp
+@@ -20,2 +20,21 @@ routine maintenance
++    metrics.record("component refreshed");
+diff --git a/src/net/probe.cpp b/src/net/probe.cpp
+index 03aa..03bb 100644
+--- a/src/net/probe.cpp
++++ b/src/net/probe.cpp
+@@ -30,2 +30,31 @@ routine maintenance
++    metrics.record("component refreshed");
+diff --git a/src/auth/session.cpp b/src/auth/session.cpp
+index 04aa..04bb 100644
+--- a/src/auth/session.cpp
++++ b/src/auth/session.cpp
+@@ -40,2 +40,41 @@ routine maintenance
++    metrics.record("component refreshed");
+diff --git a/src/settings/profile.cpp b/src/settings/profile.cpp
+index 05aa..05bb 100644
+--- a/src/settings/profile.cpp
++++ b/src/settings/profile.cpp
+@@ -50,2 +50,51 @@ routine maintenance
++    metrics.record("component refreshed");
+diff --git a/src/telemetry/events.cpp b/src/telemetry/events.cpp
+index 06aa..06bb 100644
+--- a/src/telemetry/events.cpp
++++ b/src/telemetry/events.cpp
+@@ -60,2 +60,61 @@ routine maintenance
++    metrics.record("component refreshed");
+diff --git a/src/platform/clipboard.cpp b/src/platform/clipboard.cpp
+index 07aa..07bb 100644
+--- a/src/platform/clipboard.cpp
++++ b/src/platform/clipboard.cpp
+@@ -70,2 +70,71 @@ routine maintenance
++    metrics.record("component refreshed");

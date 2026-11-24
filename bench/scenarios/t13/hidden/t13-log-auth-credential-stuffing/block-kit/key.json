@@ -1,0 +1,232 @@
+{
+  "outputFile": "analysis/2026-05-02-auth-spike.md",
+  "items": [
+    {
+      "id": "attack-true",
+      "type": "text",
+      "path": "attack",
+      "all": [
+        "^true$"
+      ]
+    },
+    {
+      "id": "window-start",
+      "type": "some",
+      "path": "window",
+      "match": {
+        "field": "start",
+        "timeNear": {
+          "time": "2026-05-02T01:10:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "window-end",
+      "type": "some",
+      "path": "window",
+      "match": {
+        "field": "end",
+        "timeNear": {
+          "time": "2026-05-02T02:35:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "range-source-volume",
+      "type": "some",
+      "path": "sources",
+      "match": {
+        "field": "cidrOrIp",
+        "all": [
+          "192\\.0\\.2\\."
+        ]
+      }
+    },
+    {
+      "id": "range-source-count",
+      "type": "some",
+      "path": "sources",
+      "match": {
+        "field": "attempts",
+        "num": {
+          "gte": 1710,
+          "lte": 1890
+        }
+      }
+    },
+    {
+      "id": "single-source-volume",
+      "type": "some",
+      "path": "sources",
+      "match": {
+        "field": "cidrOrIp",
+        "all": [
+          "203\\.0\\.113\\.77"
+        ]
+      }
+    },
+    {
+      "id": "single-source-count",
+      "type": "some",
+      "path": "sources",
+      "match": {
+        "field": "attempts",
+        "num": {
+          "gte": 380,
+          "lte": 420
+        }
+      }
+    },
+    {
+      "id": "attempted-not-compromised",
+      "type": "number",
+      "path": "attemptedNotCompromised",
+      "value": 640,
+      "tolPct": 5
+    },
+    {
+      "id": "qa-excluded",
+      "type": "some",
+      "path": "legitimateExcluded",
+      "match": {
+        "field": "source",
+        "all": [
+          "198\\.51\\.100\\.10"
+        ]
+      }
+    },
+    {
+      "id": "clock-normalized",
+      "type": "text",
+      "path": "notes",
+      "all": [
+        "gw-b|gw b|node b|second (node|gateway)",
+        "UTC-5|UTC−5|five hours|5 ?h|local time|clock|offset|skew"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "single-address-not-approved",
+      "type": "text",
+      "path": "notes",
+      "all": [
+        "203\\.0\\.113\\.77",
+        "not (ours|on the allowlist|allowlisted|in the allowlist|approved)|outside|beyond|past \\.63|ends at \\.63"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "range-block",
+      "type": "some",
+      "path": "actions",
+      "match": {
+        "field": "text",
+        "all": [
+          "block|deny",
+          "192\\.0\\.2\\.0/24"
+        ]
+      }
+    },
+    {
+      "id": "reset-or-revoke",
+      "type": "some",
+      "path": "actions",
+      "match": {
+        "field": "text",
+        "all": [
+          "reset|revoke|invalidate|rotate",
+          "password|token|session|credential"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "notify-within-24h",
+      "type": "some",
+      "path": "actions",
+      "match": {
+        "field": "text",
+        "all": [
+          "24 ?h(ours)?|one day|a day",
+          "email|notify|owner|inform|tell"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "step-up-control",
+      "type": "some",
+      "path": "actions",
+      "match": {
+        "field": "text",
+        "all": [
+          "MFA|multi-?factor|2FA"
+        ]
+      }
+    },
+    {
+      "id": "evidence-groups",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "file": "logs/gw-.*\\.jsonl",
+          "all": [
+            "login_fail",
+            "192\\.0\\.2\\.|203\\.0\\.113\\.77"
+          ]
+        },
+        {
+          "file": "logs/gw-.*\\.jsonl",
+          "all": [
+            "token_issued",
+            "acct-0017|acct-0042|acct-0108|acct-0231|acct-0414|acct-0599"
+          ]
+        },
+        {
+          "file": "logs/gw-.*\\.jsonl",
+          "all": [
+            "qa-",
+            "198\\.51\\.100\\.10",
+            "login_fail"
+          ]
+        },
+        {
+          "file": "config/allowlist\\.yaml",
+          "all": [
+            "203\\.0\\.113\\.0/26|198\\.51\\.100\\.8/29"
+          ]
+        }
+      ],
+      "min": 4
+    },
+    {
+      "id": "evidence-precision",
+      "type": "evidencePrecision",
+      "path": "evidence",
+      "relevant": [
+        "login_fail",
+        "token_issued",
+        "qa-",
+        "203\\.0\\.113\\.0/26",
+        "198\\.51\\.100\\.8/29"
+      ],
+      "min": 0.5
+    },
+    {
+      "id": "fact-block-range",
+      "type": "some",
+      "path": "actions",
+      "match": {
+        "field": "text",
+        "all": [
+          "192\\.0\\.2\\.0/24|192\\.0\\.2\\.",
+          "block|deny|drop"
+        ]
+      },
+      "weight": 1
+    }
+  ]
+}
