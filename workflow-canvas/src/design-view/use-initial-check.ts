@@ -37,8 +37,8 @@ function messageOf(error: unknown): string {
  * the check in flight is aborted, and so is the one of an unmounted view,
  * after which no state is set. One check is in flight at a time. A check
  * that could not be made is asked again by `checkAgain`, because without it
- * one lost read leaves every loaded stage refused by the save guard until
- * the page is reloaded.
+ * one lost read leaves the form without the keys a stage has in the file
+ * until the page is reloaded.
  */
 export function useInitialCheck({
   text,

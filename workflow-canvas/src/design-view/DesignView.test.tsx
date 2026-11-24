@@ -108,8 +108,8 @@ stages:
     agent: k-quality-assurance
 `);
 
-// A comment in front of a later stage, which the writer reads as part of
-// that stage and drops when it writes it again.
+// A comment in front of a later stage, which the writer keeps with that
+// stage when it saves it.
 const COMMENT_BEFORE = withText(`format: konductor/1
 name: hello
 version: 0.1.0
@@ -145,8 +145,7 @@ stages:
 };
 
 // A file the stage writer cannot edit in place: its stages are a list in the
-// flow form, so a save would write the whole file in the plain layout and
-// drop its params, its comments and its version.
+// flow form, so the writer refuses the save and the file is not written.
 const FLOW_STAGES = withText(`# The greeting workflow.
 format: konductor/1
 name: hello
