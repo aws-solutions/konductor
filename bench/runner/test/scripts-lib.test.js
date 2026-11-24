@@ -126,11 +126,31 @@ test('sh.js skipped and retry print what pilot-wave.sh reads', (t) => {
   assert.match(r.stdout, /^\d+\|$/, r.stderr);
 });
 
+test('real pilot reads (run-real-pilot.sh): labels, stats, dur, started, rpcredits and the rpsmoke checks', (t) => {
+  const d = tmp(t);
+  const ok = { armId: 'vanilla', taskId: 't1', armLabel: 'vanilla', status: 'success', agentEngine: 'v3', model: 'm', credits: 2.5, wallClockMs: 900, skillsLoaded: [], orch: null, sopsLoaded: [], capInvocation: null };
+  put(path.join(d, 'summary.json'), { startedAt: '2026-11-23T00:00:00Z', finishedAt: '2026-11-23T00:01:40Z', agentEngine: 'v3', isolationGate: { ok: true }, counts: { success: 1 }, results: [ok] });
+  put(path.join(d, 'run-config.json'), { startedAt: '2026-11-23T00:00:00Z' });
+  put(path.join(d, 'credit-ledger.jsonl'), `${JSON.stringify({ kind: 'run', credits: 2.5, charged: 2.5 })}\n${JSON.stringify({ kind: 'run', credits: null })}\ntorn\n${JSON.stringify({ kind: 'judge', credits: 9 })}\n`);
+  assert.equal(run('labels', [d]), 'vanilla');
+  assert.equal(run('stats', [d]), '{"success":1} nullCredits=0 censored=0 infra=0');
+  assert.equal(run('stats', [path.join(d, 'none')]), '-');
+  assert.equal(run('dur', [d]), '100');
+  assert.equal(run('started', [d]), String(Date.parse('2026-11-23T00:00:00Z') / 1000));
+  assert.equal(run('rpcredits', [d, path.join(d, 'none')]), '2.50 2 1');
+  const env = { ...process.env, ENGINE: 'v3', MODEL: 'm' };
+  const good = spawnSync(process.execPath, [path.join(LIB, 'sh.js'), 'rpsmoke', d, 'kiro'], { encoding: 'utf8', env });
+  assert.equal(good.status, 1, 'the ledger has two run lines, so one check fails');
+  assert.match(good.stdout, /^ok {3}one run recorded \(1\)$/m);
+  assert.match(good.stdout, /^FAIL ledger line has credits/m);
+  assert.match(good.stdout, /^RESULT \{"status":"success","credits":2.5/m);
+});
+
 test('every lib/sh.js command a script calls exists, and no script under bench/scripts keeps inline node -e outside the waiting list', () => {
   const dir = path.join(LIB, '..');
   const { COMMANDS } = require(path.join(LIB, 'sh.js'));
-  // shortcut: run-real-pilot.sh keeps its helper until FW-2 (the spend guard, another session's files) lands.
-  const waiting = new Set(['run-real-pilot.sh']);
+  // Empty since run-real-pilot.sh moved its helper to lib/real-pilot.js (D-213, after FW-2 landed).
+  const waiting = new Set();
   let calls = 0;
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.sh'))) {
     const text = fs.readFileSync(path.join(dir, f), 'utf8');

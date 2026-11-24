@@ -143,87 +143,8 @@ ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 say() { printf '[%s] %s\n' "$(ts)" "$*"; }
 die() { say "FAILED: $*"; exit 1; }
 
-# ---------------------------------------------------------------- helper (node) for JSON work
-HELPER_JS=$(cat <<'JS'
-const fs = require('fs'), path = require('path');
-const [cmd, ...a] = process.argv.slice(1);
-const rd = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-const ledger = (dir) => {
-  let t = ''; try { t = fs.readFileSync(path.join(dir, 'credit-ledger.jsonl'), 'utf8'); } catch { return []; }
-  return t.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
-};
-if (cmd === 'complete') {            // dir nArms reps
-  const [dir, nArms, reps] = a; const s = rd(path.join(dir, 'summary.json'));
-  const out = (m) => { console.log(m); process.exit(0); };
-  if (!s) out('no-summary');
-  if (s.interrupted) out('interrupted:' + s.interrupted);
-  if (!s.isolationGate || s.isolationGate.ok !== true) out('isolation-gate-not-ok');
-  if ((s.armIds || []).length !== +nArms || s.replicates !== +reps || (s.taskIds || []).length !== 1) out('config-mismatch');
-  const exp = s.armIds.length * s.replicates;
-  if (!Array.isArray(s.results) || s.results.length !== exp) out('runs:' + (s.results || []).length + '/' + exp);
-  if (s.results.some((r) => r.status === 'budget_skipped')) out('budget-skipped');
-  out('complete');
-} else if (cmd === 'labels') {       // dir -> sorted unique arm labels
-  const s = rd(path.join(a[0], 'summary.json')); if (!s) process.exit(1);
-  console.log([...new Set(s.results.map((r) => r.armLabel))].sort().join(','));
-} else if (cmd === 'stats') {        // dir -> counts and censored/null-credit info
-  const s = rd(path.join(a[0], 'summary.json')); if (!s) { console.log('-'); process.exit(0); }
-  const nullCr = s.results.filter((r) => r.credits == null && !r.creditsCensored).length;
-  const cens = s.results.filter((r) => r.creditsCensored).length;
-  const infra = s.results.filter((r) => r.infraError).length;
-  console.log(JSON.stringify(s.counts) + ' nullCredits=' + nullCr + ' censored=' + cens + ' infra=' + infra);
-} else if (cmd === 'dur') {          // dir -> seconds startedAt..finishedAt
-  const s = rd(path.join(a[0], 'summary.json')); if (!s) process.exit(1);
-  console.log(Math.round((Date.parse(s.finishedAt) - Date.parse(s.startedAt)) / 1000));
-} else if (cmd === 'credits') {      // dirs... -> "total runs nullCredits"
-  let tot = 0, runs = 0, nul = 0;
-  for (const d of a) for (const e of ledger(d)) {
-    if (e.kind !== 'run') continue;
-    runs++; if (e.credits == null && !e.censored) nul++;
-    tot += Number(e.charged ?? e.credits ?? 0) || 0;
-  }
-  console.log(tot.toFixed(2) + ' ' + runs + ' ' + nul);
-} else if (cmd === 'started') {      // dir -> epoch seconds of run-config startedAt
-  const c = rd(path.join(a[0], 'run-config.json')); if (!c) process.exit(1);
-  console.log(Math.round(Date.parse(c.startedAt) / 1000));
-} else if (cmd === 'smoke') {        // dir kind -> pass/fail lines for the smoke checks
-  const [dir, kind] = a; const s = rd(path.join(dir, 'summary.json')); const fails = [];
-  const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails.push(m); };
-  if (!s) { console.log('FAIL no summary.json'); process.exit(1); }
-  const r = s.results[0] || {};
-  ok(s.results.length === 1, 'one run recorded (' + s.results.length + ')');
-  ok(!s.interrupted, 'summary not interrupted');
-  ok(s.isolationGate && s.isolationGate.ok === true, 'isolation gate ok (installs unchanged)');
-  ok(r.agentEngine === process.env.ENGINE && s.agentEngine === process.env.ENGINE, 'engine ' + process.env.ENGINE + ' (' + r.agentEngine + ')');
-  ok(r.sessionModel === process.env.MODEL || r.model === process.env.MODEL, 'model pinned ' + process.env.MODEL + ' (session ' + r.sessionModel + ')');
-  ok(!r.infraError && !(r.flags || []).includes('modelMismatch'), 'no infra error / model mismatch (status ' + r.status + ', flags ' + JSON.stringify(r.flags) + ')');
-  ok(typeof r.credits === 'number' && r.credits > 0, 'credits captured: ' + r.credits + ' (censored ' + r.creditsCensored + ')');
-  const led = ledger(dir).filter((e) => e.kind === 'run');
-  ok(led.length === 1 && typeof led[0].credits === 'number', 'ledger line has credits: ' + JSON.stringify(led[0] && led[0].credits));
-  ok(r.wallClockMs > 0, 'wall clock ' + r.wallClockMs + ' ms');
-  ok(Object.hasOwn(r, 'skillsLoaded') && Object.hasOwn(r, 'orch') && Object.hasOwn(r, 'sopsLoaded') && Object.hasOwn(r, 'capInvocation'), 'skill/orch metric fields present (skillsLoaded=' + JSON.stringify(r.skillsLoaded) + ', orch=' + (r.orch ? 'record' : r.orch) + ')');
-  if (kind === 'real') {
-    ok(r.hiddenTests && r.hiddenTests.total > 0, 'target (FAIL_TO_PASS) tests ran: ' + JSON.stringify(r.hiddenTests));
-    ok(r.regressionTests && r.regressionTests.total > 0, 'regression (PASS_TO_PASS) tests ran: ' + JSON.stringify(r.regressionTests));
-    ok(r.contamination && Object.hasOwn(r.contamination, 'externalFetch') && Object.hasOwn(r.contamination, 'fixRecallChars'), 'contamination check ran: ' + JSON.stringify(r.contamination));
-    ok(Array.isArray(r.checks) && r.checks.length > 0, 'checks recorded: ' + (r.checks || []).map((c) => c.type + ':' + (c.ok ?? c.passed)).join(','));
-    const rc = rd(path.join(dir, 'run-config.json')); ok(rc && rc.real && rc.real.cache, 'real cache used offline: ' + (rc && rc.real && rc.real.cache));
-  }
-  if (kind === 'auton' || kind === 'probe') {
-    ok(Object.hasOwn(r, 'turns') && Object.hasOwn(r, 'interjections') && Object.hasOwn(r, 'questions'), 'autonomy fields present');
-  }
-  if (kind === 'probe') {
-    ok(r.turns === 2 && r.interjections === 1, 'resume exercised: turns=' + r.turns + ' interjections=' + r.interjections + ' sessionId=' + r.sessionId);
-    ok(Array.isArray(r.checks) && r.checks.length > 0 && r.checks.every((c) => c.passed === true), 'resumed turn kept context (hello.txt check passed)');
-    const sid = new Set(); for (const n of [1, 2]) { try { for (const l of fs.readFileSync(path.join(dir, r.armId || 'vanilla', r.taskId, '1', 'stream-' + n + '.jsonl'), 'utf8').split('\n')) { const m = l.match(/"sessionId":"(sess_[^"]+)"/); if (m) sid.add(m[1]); } } catch {} }
-    ok(sid.size === 1, 'same session id on both turns (' + [...sid].join(',') + ')');
-  }
-  console.log('RESULT ' + JSON.stringify({ status: r.status, credits: r.credits, wallClockMs: r.wallClockMs, hiddenTests: r.hiddenTests, regressionTests: r.regressionTests, askedUser: r.askedUser, turns: r.turns, interjections: r.interjections, questionsAsked: r.questionsAsked, unmatchedQuestions: r.unmatchedQuestions, autonomous: r.autonomous, completedWithoutHelp: r.completedWithoutHelp, intendedTests: r.intendedTests, invariantTests: r.invariantTests, contamination: r.contamination, flags: r.flags }));
-  process.exit(fails.length ? 1 : 0);
-}
-JS
-)
-hj() { ENGINE="$ENGINE" MODEL="$MODEL" node -e "$HELPER_JS" "$@"; }
+# ---------------------------------------------------------------- JSON reads (bench/scripts/lib/real-pilot.js)
+hj() { ENGINE="$ENGINE" MODEL="$MODEL" node "$(dirname "$SCRIPT")/lib/sh.js" "$@"; }
 
 # ---------------------------------------------------------------- small utilities
 fmt_dur() { # seconds -> 1h23m
@@ -444,7 +365,7 @@ do_status() {
   printf '%s\n' "${lines[@]}"
   [ -n "$(skipped_auton)" ] && echo "skipped (autonomy tier unsupported on engine $ENGINE):$(skipped_auton)"
   # shellcheck disable=SC2046
-  read -r creds runs nul < <(hj credits "$V"/*/ 2>/dev/null || echo "0 0 0")
+  read -r creds runs nul < <(hj rpcredits "$V"/*/ 2>/dev/null || echo "0 0 0")
   echo "runs logged: ${runs:-0}  credits so far: ${creds:-0}  (runs with null credits: ${nul:-0})"
   local eta avg
   if [ "$avgn" -gt 0 ]; then avg=$((avgsum / avgn)); else avg=0; fi
@@ -514,7 +435,7 @@ main_loop() {
     args+=(--out "$dir")
     run_bench "$V/logs/$name.run.log" $((EXPECT_RUNS * tmo + 3600)) "${args[@]}"; rc=$?
     st=$(hj complete "$dir" "$N_ARMS" "$REPS" 2>/dev/null || echo no-summary)
-    read -r creds runs nul < <(hj credits "$V"/*/ 2>/dev/null || echo "0 0 0")
+    read -r creds runs nul < <(hj rpcredits "$V"/*/ 2>/dev/null || echo "0 0 0")
     say "[$i/$total_n] $name: runner exit $rc, dir state: $st, $(hj stats "$dir" 2>/dev/null)"
     say "credits: study total ${creds} over ${runs} runs (cap $BUDGET_CREDITS per task dir); runs with null credits so far: ${nul}"
     if [ "$rc" = 4 ] || grep -q 'ISOLATION FAILURE' "$V/logs/$name.run.log" 2>/dev/null; then
@@ -559,7 +480,7 @@ smoke_one() { # <name> <kind> <suite> <task> <extra bench.js args...>: one vanil
   run_bench "$S/logs/$name.run.log" 1800 run --suite "$suite" --tasks "$task" --arms vanilla --profile quick --replicates 1 \
     "${c[@]}" "$@" --out "$S/$name"; rc=$?
   say "runner exit $rc"
-  hj smoke "$S/$name" "$kind" | tee -a "$S/smoke-verify.txt"
+  hj rpsmoke "$S/$name" "$kind" | tee -a "$S/smoke-verify.txt"
 }
 run_smoke() {
   local fail=0 sel suite task

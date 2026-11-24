@@ -13,6 +13,9 @@ const ledger = require('./ledger.js');
 const report = require('./chain-report.js');
 const judging = require('./judging.js');
 const { writeFields } = require('./plant-seeds.js');
+const realPilot = require('./real-pilot.js');
+// A read that found nothing exits 1 and prints nothing, as the inline helpers it replaces did (callers test the status).
+const orFail = (v) => (v === null ? { text: '', code: 1 } : String(v));
 
 const COMMANDS = {
   // <dir> <nArms> <reps>: 'complete' or why not
@@ -71,6 +74,21 @@ const COMMANDS = {
       if (h) return h.marker;
     }
     return null;
+  },
+  // run-real-pilot.sh (D-213). <dir>: sorted arm labels; exit 1 with no summary
+  labels: ([dir]) => orFail(realPilot.labels(dir)),
+  // <dir>: status counts and null-credit, censored and infra counts, or '-'
+  stats: ([dir]) => realPilot.stats(dir),
+  // <dir>: seconds from startedAt to finishedAt; exit 1 with no summary
+  dur: ([dir]) => orFail(realPilot.duration(dir)),
+  // <dir>: epoch seconds of run-config startedAt; exit 1 with no run config
+  started: ([dir]) => orFail(realPilot.started(dir)),
+  // <dirs...>: 'total runs nullCredits' of each dir's own ledger
+  rpcredits: (dirs) => realPilot.credits(dirs),
+  // <dir> <kind>: the smoke checks (ENGINE and MODEL from the env); exit 1 on a failed check
+  rpsmoke: ([dir, kind]) => {
+    const v = realPilot.smoke(dir, kind, process.env.ENGINE, process.env.MODEL);
+    return { text: v.lines.join('\n'), code: v.ok ? 0 : 1 };
   },
 };
 
