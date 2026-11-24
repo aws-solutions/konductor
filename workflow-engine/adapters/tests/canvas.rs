@@ -1620,6 +1620,7 @@ fn dead_run(project: &Path) -> String {
         run_id: run_id.clone(),
         workflow: "hello".to_string(),
         harness: "fake".to_string(),
+        goal: "Say hello".to_string(),
         status: RunStatus::Running,
         started_at: 1_700_000_000_000,
         finished_at: None,

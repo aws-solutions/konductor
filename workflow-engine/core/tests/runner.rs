@@ -965,6 +965,7 @@ fn the_state_document_has_the_contract_fields_and_reads_back() {
   }},
   "exit_code": 1,
   "finished_at": "2026-11-05T12:30:01Z",
+  "goal": "Ship it.",
   "harness": "fake",
   "order": [
     "plan",
@@ -998,6 +999,20 @@ fn the_state_document_has_the_contract_fields_and_reads_back() {
     );
     assert_eq!(text, expected);
     assert_eq!(Run::from_text(&text), Some(run));
+}
+
+#[test]
+fn a_state_document_from_before_the_goal_was_recorded_reads_with_an_empty_goal() {
+    let (run, _, _) = run_through(&["plan"], &[("plan", reply(SUCCESS))]);
+    assert_eq!(run.goal, "Ship it.");
+    let old = run.to_text().replace("  \"goal\": \"Ship it.\",\n", "");
+    assert!(!old.contains("goal"), "{old}");
+    let read = Run::from_text(&old).expect("an old document reads");
+    assert_eq!(read.goal, "");
+    assert_eq!(
+        Run::from_text(&old.replace("\"harness\"", "\"goal\": 7,\n  \"harness\"")),
+        None
+    );
 }
 
 #[test]
