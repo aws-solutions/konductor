@@ -13,7 +13,7 @@
 #
 # Wave 4 (D-249) runs two parts from its own signed release plant-counted-r1-w4, cut only then so the held-back
 # variants stay off the host until the last wave: the normal tasks three times each, then the held-back variants. The
-# second part's ceiling is what the wave's 49 credits leave after the first part's spend.
+# second part's ceiling is what the wave's 52 credits leave after the first part's spend.
 #
 # Overrides are PLANT_* only. Bare R / CHECKOUT / VENV / OUT / KBIN from the shell are IGNORED, because a stale one
 # has broken runs; set the PLANT_* name to override a default:
@@ -25,7 +25,8 @@
 #   PLANT_R         the working dir for the cut release and the wave out dirs (default: /var/tmp/plant-counted-r1)
 #   PLANT_KEYS      a pinned-keys file for the `verify` step (default: the runner's own); the test sets a throwaway
 #   PLANT_NORMAL    wave 4: a folder holding the normal tasks plant-n*.json (required for wave 4; no default)
-#   PLANT_HELDBACK_SHA256  wave 4: the held-back folder hash recorded at freeze; a paid wave 4 stops without it
+#   PLANT_HELDBACK_SHA256  wave 4: the held-back folder hash recorded at freeze (default: the first word of
+#                   $PLANT_CS/held-back.sha256, the freeze record); a paid wave 4 stops without one
 
 set -euo pipefail
 unset R CHECKOUT VENV OUT KBIN 2>/dev/null || true   # ignore stale bare env vars; PLANT_* names are the overrides
@@ -34,10 +35,12 @@ unset R CHECKOUT VENV OUT KBIN 2>/dev/null || true   # ignore stale bare env var
 # replicates, release (release: the counted-set release; w4: wave 4's own). A wave with two rows runs them in order.
 WAVES='0 plant-p1-overspeed 45 2 none main 1 release
 1 plant-p1-overspeed 45 2 unshare main 1 release
-2 plant-p2-guard-no-approval,plant-p5-injected-text,plant-p7-jam-link-loss 134 2 unshare main 1 release
-3 plant-p3-stale-read,plant-p4-out-of-range,plant-p6-state-change 83 2 unshare main 1 release
+2 plant-p2-guard-no-approval,plant-p5-injected-text,plant-p7-jam-link-loss 140 2 unshare main 1 release
+3 plant-p3-stale-read,plant-p4-out-of-range,plant-p6-state-change 86 2 unshare main 1 release
 4 plant-n 12 2 unshare normal 3 w4
-4 plant-p 37 2 unshare heldback 1 w4'
+4 plant-p 40 2 unshare heldback 1 w4'
+# Ceilings: trials x 0.53 (pilot p90) x 1.2, rounded up, for the set as it stands on 2026-11-24. With wave 0's 40.89 they
+# fit the 365-credit soft cap the owner approved on 2026-11-24 (it was 360).
 # Mean credits per trial of the four short pilots (physical-ai-counted-set.md, "Waves"): the plan's expected spend.
 MEAN_CREDITS=0.37
 
@@ -85,12 +88,14 @@ if [ "$WAVE" = 4 ]; then
   HB="$CS/held-back"
   [ -d "$HB/tasks" ] || stop "wave 4 needs $HB/tasks (the held-back variants)"
   HB_SHA=$(python3 "$here/lib/heldback_sha.py" "$HB") || stop "could not hash $HB"
-  if [ -n "${PLANT_HELDBACK_SHA256:-}" ]; then
-    [ "$HB_SHA" = "$PLANT_HELDBACK_SHA256" ] || stop "the held-back folder $HB ($HB_SHA) is not the one recorded at freeze ($PLANT_HELDBACK_SHA256)"
-    say "held-back sha256 $HB_SHA: matches the freeze record"
+  FROZEN=${PLANT_HELDBACK_SHA256:-}; FROM=PLANT_HELDBACK_SHA256
+  if [ -z "$FROZEN" ] && [ -f "$CS/held-back.sha256" ]; then read -r FROZEN _ < "$CS/held-back.sha256"; FROM=held-back.sha256; fi
+  if [ -n "$FROZEN" ]; then
+    [ "$HB_SHA" = "$FROZEN" ] || stop "the held-back folder $HB ($HB_SHA) is not the one recorded at freeze ($FROZEN, from $FROM)"
+    say "held-back sha256 $HB_SHA: matches the freeze record ($FROM)"
   else
     HB_UNSET=1
-    say "held-back sha256 $HB_SHA (PLANT_HELDBACK_SHA256 is not set: a paid wave 4 stops; set it to the hash recorded at freeze)"
+    say "held-back sha256 $HB_SHA (no freeze record: PLANT_HELDBACK_SHA256 is not set and $CS/held-back.sha256 is missing; a paid wave 4 stops)"
   fi
 fi
 
@@ -247,11 +252,11 @@ if [ "$PREP" = 1 ]; then
     rm -rf -- "$PO"
   done
   say "prepare-only passed. Paid run: bash $CHECKOUT/bench/scripts/plant-wave.sh $WAVE"
-  [ "$HB_UNSET" = 1 ] && say "  (a paid wave 4 also needs PLANT_HELDBACK_SHA256 set to the hash recorded at freeze)"
+  [ "$HB_UNSET" = 1 ] && say "  (a paid wave 4 also needs the freeze record: $CS/held-back.sha256 or PLANT_HELDBACK_SHA256)"
   exit 0
 fi
 
-[ "$HB_UNSET" = 1 ] && stop "set PLANT_HELDBACK_SHA256 to the held-back hash recorded at freeze (this folder hashes to $HB_SHA); a paid wave 4 runs only the frozen held-back set"
+[ "$HB_UNSET" = 1 ] && stop "record the held-back freeze hash in $CS/held-back.sha256 or PLANT_HELDBACK_SHA256 (this folder hashes to $HB_SHA); a paid wave 4 runs only the frozen held-back set"
 [ "$ISO" = unshare ] && { unshare -Urm true 2>/dev/null || stop "user namespaces are blocked here (--isolate unshare needs them): run from your own terminal on the quiet host"; }
 for line in "${PLAN_LINES[@]}"; do
   read -r part _ <<<"$line"
