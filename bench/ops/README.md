@@ -148,6 +148,7 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-nudge-judge.sh` | Judge pass of the nudge-arm run. Paid (USD). `--fill` judges only the fill-stage tasks (cap USD 0.5). |
 | `run-nudge.sh` | The nudge-arm run. Paid. `--fill` runs only the 3 cells the 450 cap left budget skipped (cap 60 counted credits); `--fill --plan` is free. |
 | `nudge-fill.js` | Fill sets (cells, cells still to run, counted spend at the larger of 15 and each call's credits) for `run-nudge.sh --fill` (set nudge) and `run-model-swap.sh --fill` (set model-swap). Free. |
+| `rescore-cc.sh` | Re-scores the Claude Code study's saved runs with the newest task keys (hidden tests and checks only, before and after), into `cc-scores-newest-keys.tsv`. Free. |
 | `lib.sh` | The spend and host helpers the paid run scripts here source (`budget_for`, `worst_case`, `wait_host`, `ledger_spent`; D-242). Sourced, never run. |
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, of `cc-skill-loads.js` on a made-up stream, and of `cc-team-mode.patch` on the frozen bench. Free. |
