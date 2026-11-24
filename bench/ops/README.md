@@ -55,6 +55,7 @@ is the docs owner's page and points here.
 | `debt-paid/prompts/D-159-W1.md` | The D-159 writer brief: `t3-db-order-history` without the composite hint, and a key inside the fixture limits. |
 | `debt-paid/run.sh` | The engine of the five paid debt jobs: one kiro-cli call at a time in an empty HOME on a pinned checkout; `--plan` (the default) is free; `--go` is paid, counts each call at the larger of 15 and its real credits against the job's hard cap, refuses while another paid job runs, resumes on a rerun. |
 | `debt-paid/test-run.sh` | Test of `debt-paid/run.sh` and the five `run-debt-*.sh` wrappers with a stub kiro-cli (plans, map and write results, resume, counted credits, the cap, busy and lock refusals, no result, families). Free. |
+| `junk-audit-2026-11-24.md` | Read-only audit of workspace worktrees, recheck scratch in `/var/tmp` and duplicate reports, grouped SAFE, CHECK and KEEP for the owner's review. Nothing removed. |
 | `kp-pilot-lib.sh` | Shared steps of the keep-or-prune pilot wrappers. Sourced, not run. |
 | `lite-fill.js` | Free helper for `run-lite-konductor-v2.sh`: reads results and moves `.done` markers. |
 | `lite-helper.js` | Free helper for the LITE run and judge scripts. Reads files only. |
