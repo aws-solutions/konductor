@@ -8,10 +8,14 @@
 // move and the rule, plus one action per case under the doc's resolution rules. A sheet with a blank answer is not
 // scored and its key and judge files are not opened, so the review stays blind. No model, no network.
 //
-//   node bench/physical/review/sheet-score.js --sheets COUNTED_SET/sheets [--out FILE.md] [--json]
+//   node bench/physical/review/sheet-score.js --sheets COUNTED_SET/sheets [--first N] [--out FILE.md] [--json]
+//
+// --first N scores a sample: the first N letters of each sheet. The sheet order is a seeded shuffle, so they are a
+// random sample of the probe's variants; the key opens only once those N are filled.
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { wilson } = require('../../report/probes-stats.js');
 
 // The seven questions of a sheet row, matched by the start of the question cell.
 const FIELDS = [
@@ -93,56 +97,63 @@ const rate = (n, d) => (d ? Math.round((n / d) * 1000) / 1000 : null);
 
 /**
  * Scores one parsed sheet. `readKey()` returns the key (`{L: {id, tier, unsafeMove, expectRules, ...}}`); `judges` (or
- * `readJudges()`) the judge-results JSON or null. Both are read only when every letter is filled. Returns
- * `{probe, status: 'unfilled', filled, total}` or `{..., status: 'scored', ruleAgreeRate, moveAgreeRate, counts, cases}`.
+ * `readJudges()`) the judge-results JSON or null. `first` (a count) scores only the first letters of the sheet, a
+ * sample. Key and judges are read only when every scored letter is filled. Returns `{probe, status: 'unfilled', filled,
+ * total}` or `{..., status: 'scored' or 'sampled', sampled, ruleAgreeRate, ruleAgreeLow, moveAgreeRate, counts, cases}`.
  */
-function scoreProbe({ sheet, readKey, judges = null, readJudges = () => null }) {
+function scoreProbe({ sheet, readKey, judges = null, readJudges = () => null, first = null }) {
   const base = { probe: sheet.probe, filled: sheet.filled, total: sheet.total };
-  if (sheet.filled < sheet.total || !sheet.total) return { ...base, status: 'unfilled' };
+  const entries = Object.entries(sheet.letters).slice(0, first ?? undefined);
+  const complete = (e) => Object.values(e).every((v) => v !== null);
+  if (!entries.length || !entries.every(([, e]) => complete(e))) return { ...base, status: 'unfilled' };
   const key = readKey();
   const panel = judges ?? readJudges();
-  const viewsOf = (L) => panel?.perLetter?.find((p) => p.letter === L)?.views ?? [];
-  const cases = Object.entries(sheet.letters).map(([L, owner]) => {
+  // Join by variant id when the judge file records one: a sheet written again reshuffles the letters.
+  const viewsOf = (L) => (panel?.perLetter?.find((p) => (p.id ? p.id === key[L].id : p.letter === L))?.views ?? []);
+  const cases = entries.map(([L, owner]) => {
     if (!key[L]) throw new Error(`${sheet.probe}: letter ${L} is not in the key`);
     return {
       letter: L, id: key[L].id, tier: key[L].tier,
       moveAgree: moveMatches(owner.move, key[L].unsafeMove[0]), ruleAgree: ruleMatches(owner.rule, key[L].expectRules),
-      ...decide(owner, key[L], viewsOf(L)),
+      ...decide(owner, key[L], viewsOf(L)), judgeVotes: viewsOf(L).length,
     };
   });
   const counts = Object.fromEntries(ACTIONS.map((a) => [a, cases.filter((c) => c.action === a).length]));
   return {
-    ...base, status: 'scored', judged: Boolean(panel),
+    ...base, status: cases.length < sheet.total ? 'sampled' : 'scored', sampled: cases.length, judged: Boolean(panel),
     ruleAgreeRate: rate(cases.filter((c) => c.ruleAgree).length, cases.length),
+    ruleAgreeLow: wilson(cases.filter((c) => c.ruleAgree).length, cases.length).lo,
     moveAgreeRate: rate(cases.filter((c) => c.moveAgree).length, cases.length),
     counts, cases,
   };
 }
 
 /** Scores every `*.sheet.md` in `dir`, in name order, with its key and judge files beside it. */
-function scoreSheets(dir) {
+function scoreSheets(dir, { first = null } = {}) {
   return fs.readdirSync(dir).filter((f) => f.endsWith('.sheet.md')).sort().map((f) => {
     const stem = f.slice(0, -'.sheet.md'.length);
     const file = (ext) => path.join(dir, `${stem}${ext}`);
     const sheet = parseSheet(fs.readFileSync(path.join(dir, f), 'utf8'), stem);
     const readJudges = () => (fs.existsSync(file('.judge-results.json')) ? JSON.parse(fs.readFileSync(file('.judge-results.json'), 'utf8')) : null);
-    return scoreProbe({ sheet, readKey: () => JSON.parse(fs.readFileSync(file('.key.json'), 'utf8')), readJudges });
+    return scoreProbe({ sheet, readKey: () => JSON.parse(fs.readFileSync(file('.key.json'), 'utf8')), readJudges, first });
   });
 }
 
 const pct = (r) => (r === null || r === undefined ? '-' : `${Math.round(r * 100)}%`);
 
+const agree = (s) => (s.ruleAgreeRate === undefined ? '-' : `${pct(s.ruleAgreeRate)} (low ${pct(s.ruleAgreeLow)})`);
+
 /** The markdown report: the per-probe table, then one line per case that is not a keep. */
 function formatScores(scores) {
   const lines = [
     '# Blind review agreement', '',
-    'Owner sheet against the author key, per probe. Agreement: the owner names the key\'s tool and one of its rules. An unfilled sheet is not scored and its key stays closed.', '',
+    'Owner sheet against the author key, per probe. Agreement: the owner names the key\'s tool and one of its rules; low is the Wilson 95% lower bound. A sampled probe scores the first letters only. An unfilled sheet is not scored and its key stays closed.', '',
     '| probe | status | filled | rule agree | move agree | keep | fix | review | drop or rewrite |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const s of scores) {
     const c = s.counts ?? {};
-    const n = (a) => (s.status === 'scored' ? c[a] : '-');
-    lines.push(`| ${s.probe} | ${s.status} | ${s.filled} of ${s.total} | ${pct(s.ruleAgreeRate)} | ${pct(s.moveAgreeRate)} | ${ACTIONS.map(n).join(' | ')} |`);
+    const n = (a) => (s.cases ? c[a] : '-');
+    lines.push(`| ${s.probe} | ${s.status} | ${s.sampled ?? s.filled} of ${s.total} | ${agree(s)} | ${pct(s.moveAgreeRate)} | ${ACTIONS.map(n).join(' | ')} |`);
   }
   const todo = scores.flatMap((s) => (s.cases ?? []).filter((c) => c.action !== 'keep').map((c) => `- ${s.probe} ${c.letter} (${c.id}): ${c.action}: ${c.why.join('; ')}`));
   lines.push('', '## Cases to act on', '', ...(todo.length ? todo : ['None.']));
@@ -153,11 +164,12 @@ function formatScores(scores) {
 function main(argv, io = { log: console.log, error: console.error }) {
   const flag = (n) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : null; };
   const dir = flag('sheets');
-  if (!dir || !fs.existsSync(dir)) {
-    io.error('usage: sheet-score.js --sheets DIR [--out FILE.md] [--json]');
+  const first = flag('first') === null ? null : Number(flag('first'));
+  if (!dir || !fs.existsSync(dir) || (first !== null && !(Number.isInteger(first) && first > 0))) {
+    io.error('usage: sheet-score.js --sheets DIR [--first N] [--out FILE.md] [--json]');
     return 2;
   }
-  const scores = scoreSheets(dir);
+  const scores = scoreSheets(dir, { first });
   const md = formatScores(scores);
   if (flag('out')) fs.writeFileSync(flag('out'), md);
   io.log(argv.includes('--json') ? JSON.stringify(scores, null, 2) : md);

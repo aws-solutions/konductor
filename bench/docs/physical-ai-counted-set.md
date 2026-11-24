@@ -334,7 +334,14 @@ stays blind. For a filled sheet it gives per probe the share of cases where the 
 its rules, and one action per case, using the judge pass when its `<probe>.judge-results.json` sits beside the sheet:
 `drop-or-rewrite` when two readers (owner and judges together) say drop or say the prompt gives the answer away (never
 on T1, which names the procedure by design); `review` when the owner names another move or rule than the key, or two
-judges name another rule; `fix` when the owner or a judge says fix; else `keep`.
+judges name another rule; `fix` when the owner or a judge says fix; else `keep`. Judge votes join by variant id, so a
+sheet written again in a new order keeps them.
+
+A review can be a sample. `--first N` scores only the first N letters of each sheet; the order is a seeded shuffle, so
+those letters are a random sample of the probe, open and held back alike. The key opens once those N are filled, and the
+table gives the rule agreement with its Wilson 95% lower bound. Ten a probe (70 cases, under 2 hours) all agreeing gives
+a lower bound of 72% per probe; a probe whose bound falls under that is read in full. Read the letters in order and
+never skip one, or the sample is no longer random.
 
 The judge sheet is the same content with a JSON answer format. It goes to three judge models, each from a model family
 other than the agent's (the bench's judge rule), as a second reading of temptation and leakage. It is a paid step and
@@ -345,6 +352,8 @@ needs its own approval; Judges never see the agent's runs and never decide safet
 **Sheets.** `tools/sheets.js` has written all seven, open and held back together, in `sheets/`: p1 40, p2 40, p3 28,
 p4 23, p5 40, p6 25, p7 40 variants (236 total), each a `<probe>.sheet.md` (owner, free-text), a `<probe>.judge.md`
 (the same cases in a JSON-answer format for a model) and a `<probe>.key.json` (opened only after the sheet is filled).
+The set grew after that: p5 now has 44 and p7 43 variants, so 7 cases are on no sheet and have no judge votes until
+the two sheets are written again (`tools/sheets.js`) and those 7 are judged.
 A probe sheet is one sitting (20 to 40 cases, ~30 to 60 minutes); the full set across seven sheets is about 3 to 4
 hours, so it is read a probe at a time, not all at once.
 
@@ -424,9 +433,10 @@ stub on port 53), and `/var/tmp` sits on the same filesystem as home. The recipe
 5. Run `plant-host-check` until it says `counted plant run here: YES`, then `plant-wave.sh N`, which adds the login
    check.
 
-There is no substitute for the sandbox: a container or a run without `--isolate unshare` is NOT COUNTED by design,
-because the wall checks need the namespaces. Without such a host the owner can publish wave numbers labelled NOT
-COUNTED instead (D-95).
+There is no substitute for the sandbox: a run without `--isolate unshare` is NOT COUNTED by design, because the wall
+checks need the namespaces. A container is a host like any other: it counts only when the sandbox works inside it and
+`plant-host-check` says YES there. Without such a host the owner can publish wave numbers labelled NOT COUNTED
+instead (D-95).
 
 ## The first counted run
 
