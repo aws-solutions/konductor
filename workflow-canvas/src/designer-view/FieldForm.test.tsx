@@ -307,3 +307,66 @@ describe('FieldForm', () => {
     ]);
   });
 });
+
+describe('FieldForm, a key that cannot be changed yet', () => {
+  const start: FieldValues = {
+    name: 'draft',
+    agent: 'k-developer',
+    prompt: 'Write the greeting.',
+  };
+
+  function renderWithReadOnly() {
+    const changes: FieldFormChange[] = [];
+    render(
+      <FieldForm
+        stageName="draft"
+        rules={RULES}
+        agents={AGENTS}
+        values={start}
+        readOnlyKeys={['prompt', 'prompt_file']}
+        onChange={(change) => changes.push(change)}
+      />,
+    );
+    return changes;
+  }
+
+  it('shows its value and does not take a change', () => {
+    renderWithReadOnly();
+
+    expect(textbox('prompt').value).toBe('Write the greeting.');
+    expect(textbox('prompt').readOnly).toBe(true);
+  });
+
+  it('says that it is edited in a later step', () => {
+    renderWithReadOnly();
+
+    expect(field('prompt').findConstraint()?.getElement().textContent).toBe(
+      'Shown as it is in the file; edited in a later step.',
+    );
+  });
+
+  it('keeps the keys that can be changed as they are', () => {
+    const changes = renderWithReadOnly();
+
+    expect(textbox('name').readOnly).toBe(false);
+    type('name', 'drafting');
+
+    expect(changes).toHaveLength(1);
+  });
+
+  it('shows no error under a key it does not take changes for', () => {
+    const changes: FieldFormChange[] = [];
+    render(
+      <FieldForm
+        stageName="draft"
+        rules={RULES}
+        agents={AGENTS}
+        values={{ name: 'draft', agent: 'k-developer', prompt: '' }}
+        readOnlyKeys={['prompt']}
+        onChange={(change) => changes.push(change)}
+      />,
+    );
+
+    expect(errorOf('prompt')).toBeUndefined();
+  });
+});

@@ -24,10 +24,13 @@ export interface FieldFormChange {
 
 const AGENT_KEY = 'agent';
 
+const READ_ONLY_HINT = 'Shown as it is in the file; edited in a later step.';
+
 function Control({
   rule,
   value,
   invalid,
+  readOnly,
   agents,
   originalAgent,
   onText,
@@ -35,6 +38,7 @@ function Control({
   rule: StageFieldRule;
   value: string | undefined;
   invalid: boolean;
+  readOnly: boolean;
   agents: readonly AgentOption[];
   originalAgent: string | undefined;
   onText: (text: string) => void;
@@ -60,6 +64,7 @@ function Control({
           description: summary,
         }))}
         invalid={invalid}
+        disabled={readOnly}
         onChange={({ detail }) => onText(detail.selectedOption.value ?? '')}
       />
     );
@@ -69,6 +74,7 @@ function Control({
       <Textarea
         value={value ?? ''}
         invalid={invalid}
+        readOnly={readOnly}
         spellcheck
         onChange={({ detail }) => onText(detail.value)}
       />
@@ -78,6 +84,7 @@ function Control({
     <Input
       value={value ?? ''}
       invalid={invalid}
+      readOnly={readOnly}
       spellcheck={false}
       autoComplete={false}
       onChange={({ detail }) => onText(detail.value)}
@@ -91,9 +98,10 @@ function Control({
  * shows the new stage at once. Each change is checked against the rules of
  * the keys, each error is shown under its key, and `onChange` gets the
  * edited values, made from the current `values`. It never writes YAML: a key
- * the rules do not name is passed on as it came. `originalAgent` stays on
- * offer for as long as the form shows that stage, even when `GET /api/agents`
- * does not list it.
+ * the rules do not name is passed on as it came. A key in `readOnlyKeys` is
+ * shown with its value and cannot be changed, and says so under itself.
+ * `originalAgent` stays on offer for as long as the form shows that stage,
+ * even when `GET /api/agents` does not list it.
  */
 export function FieldForm({
   stageName,
@@ -101,6 +109,7 @@ export function FieldForm({
   agents,
   originalAgent,
   values,
+  readOnlyKeys = [],
   onChange,
 }: {
   /** Names the form for a screen reader. */
@@ -112,6 +121,8 @@ export function FieldForm({
   originalAgent?: string;
   /** The keys of the stage now, which the parent owns. */
   values: FieldValues;
+  /** The keys that cannot be changed yet; they are shown as they are. */
+  readOnlyKeys?: readonly string[];
   onChange: (change: FieldFormChange) => void;
 }) {
   const errors = fieldErrors(rules, values);
@@ -127,17 +138,19 @@ export function FieldForm({
       <SpaceBetween size="m">
         {rules.map((rule) => {
           const error = textOf(errors, rule.key);
+          const readOnly = readOnlyKeys.includes(rule.key);
           return (
             <FormField
               key={rule.key}
               label={rule.key}
-              constraintText={fieldHint(rule)}
-              errorText={error}
+              constraintText={readOnly ? READ_ONLY_HINT : fieldHint(rule)}
+              errorText={readOnly ? undefined : error}
             >
               <Control
                 rule={rule}
                 value={textOf(values, rule.key)}
-                invalid={error !== undefined}
+                invalid={!readOnly && error !== undefined}
+                readOnly={readOnly}
                 agents={agents}
                 originalAgent={originalAgent}
                 onText={(text) => edit(rule.key, text)}
