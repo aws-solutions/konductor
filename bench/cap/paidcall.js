@@ -93,7 +93,7 @@ const countedOf = (real, finished) => (finished && Number.isFinite(real) ? Math.
  * @param {string} [o.label] a name for the ledger line
  * Throws PaidCallRefused on the cap, and Error when the call ran (and was counted) but gave no finished reply.
  */
-function paidCall({ model, prompt, out, ledger, cap, workDir, bin = 'kiro-cli', authDb = sb.defaultAuthDb(), label = path.basename(out), timeoutMs = TIMEOUT_MS }) {
+function paidCall({ model, prompt, out, ledger, cap, workDir, bin = sb.KIRO_BIN, authDb = sb.defaultAuthDb(), label = path.basename(out), timeoutMs = TIMEOUT_MS }) {
   const done = `${out}.json`;
   if (fs.existsSync(done)) return { ...JSON.parse(fs.readFileSync(done, 'utf8')), resumed: true };
   if (!(cap > 0)) throw new Error('a paid call needs a cap in credits (--cap N)');

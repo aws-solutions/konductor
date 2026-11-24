@@ -146,7 +146,7 @@ function buildArms({ base = DEFAULT_BASE, repo = REPO, sha = PINNED_SHA, log = (
   const stripped = stripSkills(noneSrc);
   log(`canary tree: ${canarySrc}; none tree: ${noneSrc} (${stripped.length} agent specs without skill or SOP names)`);
 
-  const prefixText = forcedPrefix({ name: 'constraints', harness: 'kiro-cli' });
+  const prefixText = forcedPrefix({ name: 'constraints' });
   const prefixFile = path.join(base, 'prefix', 'constraints-kiro-cli.txt');
   writeFile(prefixFile, prefixText + '\n');
   const manifest = loadManifest();

@@ -10,7 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { copyPlainFile } = require('../safe-copy.js');
-const { sha256File, versionOf, SHARED_LAUNCHER } = require('../sandbox.js');
+const { sha256File, versionOf, SHARED_LAUNCHER, KIRO_BIN } = require('../sandbox.js');
 const { isComparableMode, realHomes, tmpOutsideHome } = require('../isolate.js');
 const { checkManifest, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SIGNATURE_FILE } = require('./manifest.js');
 const { DEADLINES, gatewayCommand } = require('./gateway-proc.js');
@@ -150,7 +150,7 @@ function refuseLauncher(kiroBin) {
   const real = fs.realpathSync(kiroBin);
   const fix = 'pass the real binary with --kiro-bin, for example <launcher-dir>/tools/kiro-cli/<version>/kiro-cli';
   if (path.basename(real) === SHARED_LAUNCHER) throw new ReleaseRefused(`${kiroBin} is a launcher shim (it resolves to ${real}), not the Kiro CLI binary; ${fix}`);
-  const sibling = path.join(path.dirname(real), '..', 'kiro-cli');
+  const sibling = path.join(path.dirname(real), '..', KIRO_BIN);
   if (path.basename(path.dirname(real)) === 'sandbox' && fs.existsSync(sibling)) {
     throw new ReleaseRefused(`${kiroBin} is the sandbox wrapper ${real}, not the Kiro CLI binary; pass --kiro-bin ${fs.realpathSync(sibling)}`);
   }

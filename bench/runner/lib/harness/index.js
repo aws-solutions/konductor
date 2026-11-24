@@ -23,12 +23,15 @@
  * @property {(removed: any, tmpdir: string) => object} [describeCleanup] required when cleanupRun is defined
  */
 
-const { runtimeOf } = require('./runtime.js');
+const { runtimeOf, DEFAULT_RUNTIME } = require('./runtime.js');
 const { REGISTRY } = require('./descriptors.js');
 
 // Every harness in registry order: each one's plugin entry module (core/registry.js, bench/plugins/<name>/).
 const HARNESSES = Object.fromEntries(REGISTRY.parts('harness').map((p) => [p.name, require(p.plugin.entry)]));
-const { opencode, strands, 'claude-code': claudeCode, 'kiro-cli': kiro } = HARNESSES;
+// Each harness also by its camel-case id (opencode, claudeCode, strands), and the default runtime's as `kiro`.
+const byCamel = Object.fromEntries(Object.entries(HARNESSES).map(([id, h]) => [id.replace(/-(\w)/g, (_, c) => c.toUpperCase()), h]));
+const { opencode, strands, claudeCode } = byCamel;
+const kiro = HARNESSES[DEFAULT_RUNTIME];
 
 // id -> descriptor (id, label, armPrefix, costUnit, supports), read from each harness module. runtime.js and arms.js
 // read the same descriptors through descriptors.js because they cannot load the harness modules (require cycle).

@@ -10,6 +10,7 @@ const { execFileSync } = require('node:child_process');
 const sandbox = require('./sandbox.js');
 const { ALLOW, KIRO_KEEP, NEVER_PASS } = require('./env.js');
 const { builtinStartup } = require('./skills.js');
+const { DEFAULT_RUNTIME } = require('./harness/runtime.js');
 
 function git(repo, args) {
   try {
@@ -34,7 +35,7 @@ function hashTree(root, dirs) {
   return h.digest('hex');
 }
 
-function availableEngines(kiroBin = 'kiro-cli') {
+function availableEngines(kiroBin = sandbox.KIRO_BIN) {
   let help;
   try {
     help = execFileSync(kiroBin, ['chat', '--help'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -94,7 +95,7 @@ function armRecords(arms, prepared, errors, listings = new Map()) {
     armPrefix: a.prefixInfo ?? null,
     armAgent: a.agentOverride ?? null,
     armConfig: a.armConfig ?? null,
-    startupResources: a.vanilla ? builtinStartup(a.runtime ?? 'kiro-cli') : prepared.get(a.id)?.skillInfo?.startup ?? null,
+    startupResources: a.vanilla ? builtinStartup(a.runtime ?? DEFAULT_RUNTIME) : prepared.get(a.id)?.skillInfo?.startup ?? null,
     sopNameSource: prepared.get(a.id)?.skillInfo?.catalog?.sopSource ?? null,
     skillListing: listings.get(a.id)?.listing ?? null,
     skillListingError: listings.get(a.id)?.error ?? null,

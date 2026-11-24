@@ -122,7 +122,7 @@ function buildArms({ base = DEFAULT_BASE, repo = REPO, freeze = false, manifest 
   }
   const prefixes = {};
   for (const skill of new Set(manifest.groups.map((g) => g.prefixSkill).filter(Boolean))) {
-    const text = forcedPrefix({ name: skill, harness: 'kiro-cli' });
+    const text = forcedPrefix({ name: skill });
     const file = path.join(base, 'prefix', `${skill}.txt`);
     writeFile(file, text + '\n');
     prefixes[skill] = { file, text, sha256: sha256(text + '\n') };

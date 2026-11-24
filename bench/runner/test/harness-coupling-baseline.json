@@ -11,33 +11,22 @@
     "scripts/claude-code-smoke.js -> plugins/claude-code/harness.js"
   ],
   "names": {
-    "cap/paidcall.js": 1,
     "judge/backends.js": 1,
     "judge/config.js": 1,
     "judge/model.js": 1,
     "judge/opencode.js": 3,
     "judge/run.js": 1,
-    "physical/demo/first-demo.js": 1,
     "runner/eval-commands.js": 1,
-    "runner/lib/arms.js": 3,
-    "runner/lib/backfill-skills.js": 1,
-    "runner/lib/backfill.js": 1,
-    "runner/lib/contamination.js": 1,
+    "runner/lib/arms.js": 2,
     "runner/lib/harness/descriptors.js": 3,
-    "runner/lib/harness/index.js": 2,
-    "runner/lib/plant/intake.js": 4,
+    "runner/lib/plant/intake.js": 3,
     "runner/lib/plant/strands-adapter.js": 1,
     "runner/lib/plant/stream-match.js": 2,
-    "runner/lib/profiles.js": 2,
-    "runner/lib/run-one.js": 1,
-    "runner/lib/runconfig.js": 2,
-    "runner/lib/sandbox.js": 4,
+    "runner/lib/sandbox.js": 1,
     "runner/lib/skills.js": 3,
     "runner/lib/trace.js": 1,
     "scripts/introspect-summary.js": 2,
     "scripts/lib/chain/context.js": 1,
-    "scripts/lib/chain/phases.js": 2,
-    "scripts/probe-study.js": 1,
-    "scripts/refs-study.js": 1
+    "scripts/lib/chain/phases.js": 2
   }
 }

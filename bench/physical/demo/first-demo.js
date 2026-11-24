@@ -134,7 +134,7 @@ function section(title, view, extra) {
 
 async function main() {
   const out = path.resolve(process.argv[2] ?? 'plant-demo');
-  const kiroBin = process.argv[3] ?? 'kiro-cli';
+  const kiroBin = process.argv[3] ?? sandbox.KIRO_BIN;
   const engine = process.argv[4] ?? 'v2';
   if (!['v2', 'v3'].includes(engine)) throw new Error('engine must be v2 or v3');
   fs.mkdirSync(out, { recursive: true });

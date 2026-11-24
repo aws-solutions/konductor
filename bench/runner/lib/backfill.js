@@ -8,8 +8,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadRun } = require('./load-run.js');
-const { aggregateRunDir } = require('./harness/index.js').kiro;
-const { runtimeOf } = require('./harness/runtime.js');
+const { harnessFor, kiro } = require('./harness/index.js');
+const { aggregateRunDir } = kiro;
 const { orchMetricsOfRunDir } = require('./orch-metrics.js');
 const { streamFields, validateResult } = require('./result.js');
 const { openLedger, readLedger } = require('./credit-ledger.js');
@@ -36,7 +36,7 @@ function staleOrchNote(dir, result) {
 
 // What the backfill would do with one run: { status, reason?, note?, next? }.
 function assess({ dir, result, now }) {
-  if (runtimeOf(result) !== 'kiro-cli') return { status: 'skipped', reason: 'not a kiro-cli run' };
+  if (harnessFor(result) !== kiro) return { status: 'skipped', reason: 'not a kiro-cli run' };
   if (result.status === 'budget_skipped') return { status: 'skipped', reason: 'budget-skipped run' };
   if (result.credits != null) return { status: 'complete' };
   if (result.status === 'timeout' || result.creditsCensored) {

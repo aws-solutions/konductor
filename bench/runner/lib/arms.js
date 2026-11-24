@@ -181,7 +181,7 @@ function withProvenance(base, repo) {
 }
 
 // An arm is a ref plus a condition. Vanilla has no ref: the agent CLI with nothing installed. An `oc-` arm is
-// the same condition run through opencode instead of kiro-cli (runtime 'opencode').
+// the same condition run through opencode instead of kiro-cli (its descriptor's armPrefix).
 function resolveArm(spec, repo) {
   const d = prefixedRuntime(spec);
   if (d) refusePrefixedPlant(spec, d);

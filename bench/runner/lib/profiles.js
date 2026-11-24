@@ -8,6 +8,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { BENCH_DIR } = require('./tasks.js');
+const { descriptorOf } = require('./harness/runtime.js');
 const { drawSample } = require('../../judge/calibrate.js');
 
 const PROFILE_NAMES = ['quick', 'detailed'];
@@ -95,7 +96,7 @@ function aaArmFor(arms) {
   }
   const twin = real[0];
   const taken = new Set(arms.map((a) => a.id));
-  const prefix = twin.runtime === 'opencode' ? 'oc-' : twin.runtime === 'claude-code' ? 'cc-' : '';
+  const prefix = descriptorOf(twin.runtime).armPrefix;
   const stem = unprefixed(twin.id);
   let name = null;
   for (const suffix of 'bcdefgh') {

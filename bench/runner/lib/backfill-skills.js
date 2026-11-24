@@ -11,8 +11,8 @@ const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
 const { loadRun } = require('./load-run.js');
 const { collectRows } = require('../../report/skills.js');
-const { aggregateRunDir } = require('./harness/index.js').kiro;
-const { runtimeOf } = require('./harness/runtime.js');
+const { harnessFor, kiro } = require('./harness/index.js');
+const { aggregateRunDir } = kiro;
 const { SKILL_FIELDS, capInvocationOf } = require('./skills.js');
 const { validateResult } = require('./result.js');
 const { writeAtomic, keepCopy } = require('./backfill.js');
@@ -31,7 +31,7 @@ const NO_FAILURES = { get_skill: 0, load_resource: 0, find_skills: 0 };
 const withImpliedSplit = (f) => (f.skillCallsFailedByTool == null && f.skillCallsFailed === 0 ? { ...f, skillCallsFailedByTool: NO_FAILURES } : f);
 
 function assess({ result, row, dir, tasks, now }) {
-  if (runtimeOf(result) !== 'kiro-cli') return { status: 'skipped', reason: 'not a kiro-cli run' };
+  if (harnessFor(result) !== kiro) return { status: 'skipped', reason: 'not a kiro-cli run' };
   if (result.status === 'budget_skipped') return { status: 'skipped', reason: 'budget-skipped run' };
   if (!row) return { status: 'skipped', reason: 'no stream.jsonl' };
   if (!tasks.has(result.taskId)) return { status: 'skipped', reason: `task ${result.taskId} is not in the bench dir, so its target cannot be read` };

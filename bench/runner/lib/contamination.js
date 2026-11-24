@@ -17,11 +17,12 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { isTestPath } = require('../../real/lib.js');
 const { toolNameOf, mcpToolNameOf, mcpInputOf } = require('./stream.js');
+const { DESCRIPTORS } = require('./harness/descriptors.js');
 
-// Runtimes whose stream scanStream understands. A literal list until the harness descriptors carry this fact;
-// see the registry work in harness/CONTRACT.md. A new runtime is unchecked until it is added here with a parser.
-const FETCH_AUDIT_RUNTIMES = new Set(['kiro-cli']);
-const canAuditFetches = (runtime) => FETCH_AUDIT_RUNTIMES.has(runtime);
+// The stream formats (descriptor `streamFormat`) scanStream understands: kiro-cli's. A runtime with another format is
+// unchecked until its format is added here with a parser.
+const FETCH_AUDIT_FORMATS = new Set(['kiro-acp']);
+const canAuditFetches = (runtime) => FETCH_AUDIT_FORMATS.has(DESCRIPTORS.find((d) => d.id === runtime)?.streamFormat);
 const FETCH_UNCHECKED = 'not checked for this runtime';
 // A recorded audit that could not read the runtime's stream. Results written before the field existed read as checked.
 const fetchUnchecked = (contamination) => contamination?.externalFetchChecked === false;

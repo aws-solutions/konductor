@@ -256,8 +256,11 @@ function versionOf(cmd, args = ['--version']) {
   }
 }
 
+// The kiro-cli executable's file name, looked up on PATH and inside the launcher's records.
+const KIRO_BIN = 'kiro-cli';
+
 /** The `--version` line of the kiro-cli at `bin` (default: the one on PATH). */
-const kiroCliVersion = (bin = 'kiro-cli') => versionOf(bin);
+const kiroCliVersion = (bin = KIRO_BIN) => versionOf(bin);
 
 // A launcher shim: <launcher-dir>/bin/<tool> links to one launcher executable shared by every tool it installs, which
 // picks the tool's current version and runs that version's executable. The launcher can refuse to run under the bench.
@@ -284,7 +287,7 @@ function isNativeBinary(file) {
  * <launcher-dir>/tools/<name>/info.json names the current version and tools/<name>/<version>.json its executable.
  * Null when the layout is not there.
  */
-function launcherExecutable(candidate, name = 'kiro-cli') {
+function launcherExecutable(candidate, name = KIRO_BIN) {
   const roots = [path.dirname(path.dirname(candidate))];
   try { roots.push(path.dirname(path.dirname(path.dirname(path.dirname(fs.realpathSync(candidate)))))); } catch { /* not resolvable */ }
   for (const root of roots) {
@@ -307,7 +310,7 @@ function launcherExecutable(candidate, name = 'kiro-cli') {
  */
 function resolveKiroCli(pathEnv = process.env.PATH) {
   for (const dir of (pathEnv || '').split(path.delimiter).filter(Boolean)) {
-    const candidate = path.join(dir, 'kiro-cli');
+    const candidate = path.join(dir, KIRO_BIN);
     let real;
     try { real = fs.realpathSync(candidate); fs.accessSync(real, fs.constants.X_OK); } catch { continue; }
     const shims = [];
@@ -317,7 +320,7 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
       shims.push(real);
       real = fs.realpathSync(exe);
     }
-    const sibling = path.join(path.dirname(real), '..', 'kiro-cli');
+    const sibling = path.join(path.dirname(real), '..', KIRO_BIN);
     if (path.basename(path.dirname(real)) === 'sandbox' && fs.existsSync(sibling)) {
       shims.push(real);
       real = fs.realpathSync(sibling);
@@ -330,6 +333,7 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
 }
 
 module.exports = {
+  KIRO_BIN,
   prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, kiroDataDir, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
   exportRef, exportArm, readyMatches, buildDirOf, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, isNativeBinary, launcherExecutable, SHARED_LAUNCHER, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };

@@ -1,6 +1,4 @@
 {
   "$comment": "Quoted runtime ids left in bench/report and bench/cap (non-test .js), per file. Only shrinks. runtime-names-lint.test.js checks it; DEBT D-206 holds the plan.",
-  "files": {
-    "cap/paidcall.js": 1
-  }
+  "files": {}
 }
