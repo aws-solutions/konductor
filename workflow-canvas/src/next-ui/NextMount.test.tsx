@@ -84,7 +84,7 @@ async function openPage({
 const runTab = () => screen.getByRole('tab', { name: 'Run' });
 
 describe('the page with ?ui=classic', () => {
-  it('draws the Designer that the page has today', async () => {
+  it('draws the Designer it replaced', async () => {
     await openPage({ nextUi: false });
 
     expect(screen.getByTestId('node-end')).toBeTruthy();
@@ -104,7 +104,7 @@ describe('the page with ?ui=classic', () => {
     expect(ports.listAgents).not.toHaveBeenCalled();
   });
 
-  it('keeps the Run tab it has today', async () => {
+  it('keeps the Run tab it replaced', async () => {
     await openPage({ nextUi: false });
 
     await act(async () => {
@@ -322,7 +322,7 @@ describe('the run lifecycle as the page opens', () => {
     );
   });
 
-  it('keeps the live regions of the page it had without the query', async () => {
+  it('keeps the live regions of the views it replaced', async () => {
     await openPage({ nextUi: false });
 
     expect(screen.getAllByTestId('run-live-status')).toHaveLength(1);

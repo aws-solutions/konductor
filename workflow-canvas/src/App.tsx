@@ -139,8 +139,8 @@ export function App({
     [nextPorts, opened],
   );
   // The editor of the newer views checks through that one call. Without
-  // the query it is the load as it came, so the page as it is today is left
-  // alone.
+  // `checks`, which only `nextUi` builds, the load is the one that came, so
+  // the views this page replaced are left alone.
   const loaded = useMemo(
     () =>
       opened && checks
