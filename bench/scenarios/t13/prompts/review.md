@@ -1,0 +1,11 @@
+You are reviewing one benchmark task written by another model. The current directory holds it: `fixture/` (the folder the agent starts in), `hidden/` (the hidden scorer, copied over the folder root before the tests run; for document tasks `block-kit/key.json` is the key and `block-kit/block-key.js` the grader), `solution/` (the reference overlay on the fixture), `task-draft.json` (the request, checks, rubric, notes) and `kit/selfcheck.js`. Work only inside the current directory; do not change any of these files. You have no network.
+
+Check, with evidence, each of these:
+- leak: does the request name a method, process or tool the agent should use, tell it how to work, or list the causes or constraints it should find? This task has a scripted user (`scriptedUser` in task-draft.json: three facts the agent must ask for): the request must not state, hint at or repeat any fact's answer, and must not tell the agent to ask or mention a colleague's confirmed details; `solution/ASKS.json` must hold natural questions that reach every fact. Count a breach of either as a leak.
+- ambiguity: could two competent readers disagree on what the request asks for, or does the key rely on a path, field name, unit or format the request does not state?
+- hidden-answer: does anything in `fixture/` (notes, docs, comments, file names) give away the root cause, the numbers or the hidden key?
+- ceiling: is the task too easy? Think of a quick, wrong answer (blame the decoy, the newest deploy, or the loudest error; give round numbers; list every possible action) and say which key items or tests would catch it.
+- floor: is it unfair or impossible (a key value that cannot be derived from the fixture, a tolerance too tight, a text pattern that rejects a correct phrasing, a test that fails for a correct alternative)? Read the key items one by one against the fixture.
+- reference: run `node kit/selfcheck.js` and report how many tests pass on the reference and on the plain fixture.
+
+Write `review.json` in the current directory: {"verdicts": [{"check": "leak|ambiguity|hidden-answer|ceiling|floor", "verdict": "pass|fail", "note": "one or two sentences with evidence"}], "reference": {"hiddenPass": "n/m", "fixtureHiddenPass": "n/m", "failingChecks": [..]}, "fixes": ["concrete changes that would repair each failure"]}. Use "fail" only for a real defect. Then stop.

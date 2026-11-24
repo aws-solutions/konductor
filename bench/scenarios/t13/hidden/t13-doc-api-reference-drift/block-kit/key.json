@@ -1,0 +1,205 @@
+{
+  "outputFile": "docs/api.md",
+  "items": [
+    {
+      "id": "current-createQueue",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"createQueue\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"current\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "current-enqueue",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"enqueue\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"current\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "current-drain",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"drain\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"current\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "current-onFailure",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"onFailure\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"current\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "current-pause",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"pause\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"current\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "current-resume",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"resume\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"current\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "deprecated-retryNow",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"retryNow\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"deprecated\\\""
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "retryNow-replacement",
+      "type": "text",
+      "path": "notes",
+      "all": [
+        "retryNow|retry now",
+        "drain|use drain|replaced by drain"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "no-current-flush",
+      "type": "none",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"flush\\\"",
+          "\\\"status\\\"\\s*:\\s*\\\"current\\\""
+        ],
+        "none": [
+          "removed|deprecated|no longer|gone"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "node-support-confirmed",
+      "type": "text",
+      "path": "notes",
+      "all": [
+        "18.*20|20.*18",
+        "16.*(drop|remov|no longer)|(drop|remov|no longer).*16",
+        "colleague|maintainer|confirmed|told|asked|owner|user|team"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "retry-removal-confirmed",
+      "type": "text",
+      "path": "notes",
+      "all": [
+        "retryNow|retry now",
+        "3(?:\\.0|\\.x)?\\b|next major",
+        "drain",
+        "colleague|maintainer|confirmed|told|asked|owner|user|team"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "bug-route-confirmed",
+      "type": "text",
+      "path": "notes",
+      "all": [
+        "github|issues?|issue tracker|tracker",
+        "not\\s+(by\\s+)?e-?mail|no\\s+e-?mail|instead of e-?mail|rather than e-?mail|without\\s+e-?mail",
+        "colleague|maintainer|confirmed|told|asked|owner|user|team"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "default-maxAttempts",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"createQueue\\\"",
+          "\\\"maxAttempts\\\"\\s*:\\s*5\\b"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "default-baseDelayMs",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"createQueue\\\"",
+          "\\\"baseDelayMs\\\"\\s*:\\s*200\\b"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "default-jitter",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"createQueue\\\"",
+          "\\\"jitter\\\"\\s*:\\s*true\\b"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "default-concurrency",
+      "type": "some",
+      "path": "functions",
+      "match": {
+        "all": [
+          "\\\"name\\\"\\s*:\\s*\\\"createQueue\\\"",
+          "\\\"concurrency\\\"\\s*:\\s*4\\b"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "examples-count",
+      "type": "text",
+      "path": "examplesChecked",
+      "all": [
+        "^(?:[4-9]|[1-9]\\d+)$"
+      ],
+      "weight": 1
+    }
+  ]
+}

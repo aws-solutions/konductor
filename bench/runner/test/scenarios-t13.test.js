@@ -74,6 +74,13 @@ test('the author prompt is T8 doc prompt plus the scripted section with the exac
   }
 });
 
+test('the review prompt (read by stage.js review from this batch directory) exists and names the scripted-user leak check', () => {
+  const p = fs.readFileSync(path.join(T13, 'prompts', 'review.md'), 'utf8');
+  assert.ok(p.includes('review.json'));
+  assert.ok(p.includes('scripted user'));
+  assert.ok(p.includes('ASKS.json'));
+});
+
 test('taskErrors: a scripted task needs ASKS.json that unlocks every fact, and a prompt that repeats no answer', () => {
   const b = brief(briefIds[0]);
   const noAsks = cfg.taskErrors(fakeTask(b));
@@ -112,6 +119,11 @@ test('buildTask keeps T8 shape and adds the scripted user from the draft, or fro
     assert.strictEqual(t1.class, 'hard');
     assert.strictEqual(t1.authorship.model, b.author);
     assert.strictEqual(t1.limits.softSec, 600, 'the T8 floor of 600 s applies');
+    // handEdited comes from this batch's HAND-EDITS.md (t13- ids), never from T8's.
+    const kept = fs.readFileSync(path.join(T13, 'HAND-EDITS.md'), 'utf8').split('## Dropped')[0];
+    const listed = /^\| (t13-[a-z0-9-]+)/m.test(kept) && kept.includes(`| ${id} |`);
+    assert.strictEqual(Boolean(t1.handEdited), listed);
+    if (listed) assert.match(t1.handEdited.editor, /T13/);
     const own = { facts: [{ id: 'F1', topics: ['x'], answer: 'y' }], defaultReply: 'd' };
     fs.writeFileSync(path.join(root, 'work', id, 'task-draft.json'), JSON.stringify({ ...draft, scriptedUser: own }));
     assert.deepStrictEqual(cfg.stage.buildTask(s, id).scriptedUser, own);

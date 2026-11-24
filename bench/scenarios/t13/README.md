@@ -28,7 +28,7 @@ T13 runs on T8's document pipeline: the same author prompts (`t8/prompts/`, read
 | --- | --- |
 | `briefs/<id>.json` | the brief: phase, role, models, stack, size, source licence, the JSON block fields, the key shape, the three facts, the prose brief |
 | `prompts/scripted.md` | the scripted-user section added to T8's author prompt |
-| `prompts/answer.md` | the answerer's prompt (same as T8's) |
+| `prompts/answer.md`, `prompts/review.md` | the answerer's and the reviewer's prompts: T8's text, the review one with a scripted-user leak check added (`stage.js review` reads it from the batch directory) |
 | `scenario.config.js` | this batch's config: T8's with the scripted user, `T13_AUTH` and T13's own prompt lookup |
 | `run.sh` | the stage's run script with the owner's spend check: every call counted at 15 or its real cost against `CAP` (300) in `$T13_AUTH/ledger.tsv`, refused when it would pass the cap, when the model is Claude, or when a paid owner job runs or the load is 4 or more; one `kiro-cli chat` in an isolated HOME |
 | `<id>.json`, `fixtures/`, `hidden/`, `solutions/`, `answers/`, `authoring/`, `AUTHORING-LOG.md` | written by the authoring step (not yet) |
