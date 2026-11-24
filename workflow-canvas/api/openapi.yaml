@@ -366,15 +366,24 @@ info:
     goal is a param of every run whether the file declares it or not.
     `{<stage>.<output>}` is an output of that stage or of an earlier one, and
     it renders as the output's path, not the content of the file, so what an
-    earlier stage wrote stays out of the prompt. A reference to a param or an
-    output the file does not declare, to a stage that is not in the file, or
-    to a stage that runs later, is `INVALID_VALUE` at the reference. Any other
-    brace is plain text, so a JSON shape such as `{severity, file, line}` and
-    a number such as `{1.5}` are left as they are: an output name starts with
-    a letter so that a number stays literal. The escape for literal text that
-    does match the pattern is still to come, so such text cannot be written
-    yet. A server that reads a `prompt_file` applies the same rules to the
-    text of the file, reporting at the `prompt_file` value.
+    earlier stage wrote stays out of the prompt. `INVALID_VALUE` at the reference covers
+    the references that point at the wrong thing: `{run.<name>}` where the
+    file declares no such param, and `{<stage>.<output>}` where that stage
+    declares no such output or where the stage runs later.
+
+    Text in the shape of a reference whose first part is neither `run` nor a
+    stage of the file names no input at all, so it is literal text that
+    matches the pattern. The escape for writing such text is still to come,
+    so there is no way to write it yet, and it is
+    `NOT_SUPPORTED_BY_THIS_BUILD` at the text. The two answers differ on
+    purpose: one says a reference points at the wrong thing, the other that
+    the text cannot be written at all until the escape arrives.
+
+    Any other brace is plain text, so a JSON shape such as
+    `{severity, file, line}` and a number such as `{1.5}` are left as they
+    are: an output name starts with a letter so that a number stays literal.
+    A server that reads a `prompt_file` applies the same rules to the text of
+    the file, reporting at the `prompt_file` value.
 
     A stage has exactly one key that names its kind. This version knows one,
     `agent`. A stage with no such key, including one with no `agent`, is
@@ -456,11 +465,11 @@ info:
     | `RESERVED_NAME`               | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`. |
     | `DUPLICATE_STAGE`             | the later stage's `name`     | A stage name is already used by an earlier stage. |
     | `NAME_MISMATCH`               | `name`                       | `name` is not the name of the file. |
-    | `INVALID_VALUE`               | the value                    | `version` is a string that is not a semantic version, such as `'1.1'` (`suggestion` is `0.1.0`). `intent.outcome` is empty, has a line break or is over 300 characters. `stages` has no entry or more than 40. A `prompt` is empty or over 32768 characters. A path breaks the path rules. A check id is used twice. A check has neither or both of `file` and `run`. A `prompt` and a `prompt_file` are both set. A reference in a `prompt` names a param or an output the file does not declare, a stage the file does not have, or a stage that runs later. |
+    | `INVALID_VALUE`               | the value                    | `version` is a string that is not a semantic version, such as `'1.1'` (`suggestion` is `0.1.0`). `intent.outcome` is empty, has a line break or is over 300 characters. `stages` has no entry or more than 40. A `prompt` is empty or over 32768 characters. A path breaks the path rules. A check id is used twice. A check has neither or both of `file` and `run`. A `prompt` and a `prompt_file` are both set. A reference in a `prompt` names a param the file does not declare, an output the named stage does not declare, or a stage that runs later. A param's `default` is over 65536 characters. |
     | `UNSUPPORTED_FORMAT`          | the value                    | `format` is a string other than `konductor/1`. |
     | `STAGE_KIND_MISSING`          | the stage                    | A stage has no key that names its kind. |
     | `STAGE_KIND_AMBIGUOUS`        | the stage                    | A stage has more than one key that names its kind. |
-    | `NOT_SUPPORTED_BY_THIS_BUILD` | the key, or the value        | A key of a later slice, the string form of `intent`, or a param `type` other than `string`. The message names the slice. |
+    | `NOT_SUPPORTED_BY_THIS_BUILD` | the key, or the value        | A key of a later slice, the string form of `intent`, a param `type` other than `string`, or text in the shape of a reference whose first part is neither `run` nor a stage of the file, which needs the escape that is still to come. The message names the slice, or says the escape is not defined. |
 servers:
   - url: http://127.0.0.1:{port}
     description: |
@@ -1970,6 +1979,11 @@ components:
           type: string
         default:
           type: string
+          maxLength: 65536
+          description: |
+            The value a run takes when it sends none, at most 65536
+            characters (64 KiB), the same limit as a value sent with the run.
+            A longer one is `INVALID_VALUE` at the value.
         required:
           type: boolean
     Stage:

@@ -1041,11 +1041,11 @@ describe('references in a prompt', () => {
     expect(found?.message).toContain('runs later');
   });
 
-  it('refuses a param the file does not declare, and a stage it does not have', () => {
+  it('tells a param the file does not declare from a scope that is no stage', () => {
     const text = stageWith('prompt: Read {run.nope} and {other.x}.');
     expect(codesOf(text)).toEqual([
       ['INVALID_VALUE', 'stages.write.prompt', 9, 18],
-      ['INVALID_VALUE', 'stages.write.prompt', 9, 33],
+      ['NOT_SUPPORTED_BY_THIS_BUILD', 'stages.write.prompt', 9, 33],
     ]);
   });
 
@@ -1133,5 +1133,77 @@ describe('a param or output name that may be a secret', () => {
     const text = `${HEAD}params:\n  topic: x\n${STAGES}`;
     const [found] = checkWorkflowText(text, 'hello').diagnostics;
     expect(found?.message).toContain('`topic`');
+  });
+});
+
+describe("a param's default", () => {
+  const withDefault = (value: string) =>
+    `${HEAD}params:\n  topic:\n    default: ${value}\n${STAGES}`;
+
+  it('takes 65536 code points', () => {
+    expect(codesOf(withDefault('\u{1f600}'.repeat(65_536)))).toEqual([]);
+  });
+
+  it('is INVALID_VALUE at 65537 code points', () => {
+    const [found] = checkWorkflowText(
+      withDefault('y'.repeat(65_537)),
+      'hello',
+    ).diagnostics;
+    expect(found).toMatchObject({
+      code: 'INVALID_VALUE',
+      path: 'params.topic.default',
+      line: 8,
+    });
+    expect(found?.message).toContain('65536');
+  });
+
+  it('holds the goal to the same limit', () => {
+    const text = `${HEAD}params:\n  goal:\n    default: ${'y'.repeat(65_537)}\n${STAGES}`;
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'params.goal.default', 8, 14],
+    ]);
+  });
+});
+
+describe('text in the shape of a reference that names no input', () => {
+  it('is NOT_SUPPORTED_BY_THIS_BUILD, since the escape is not defined yet', () => {
+    const text = stageWith('prompt: Send {content.type} with it.');
+    const [found, ...rest] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(rest).toEqual([]);
+    expect(found).toMatchObject({
+      code: 'NOT_SUPPORTED_BY_THIS_BUILD',
+      path: 'stages.write.prompt',
+      line: 9,
+      column: 18,
+    });
+    expect(found?.message).toContain('escape for it is not defined');
+  });
+
+  it('is the answer for a scope that matches no stage, early or late', () => {
+    const text = `${HEAD}stages:\n  - name: plan\n    agent: k-architect\n    prompt: Read {other.thing}.\n  - name: build\n    agent: k-developer\n`;
+    expect(codesOf(text)).toEqual([
+      ['NOT_SUPPORTED_BY_THIS_BUILD', 'stages.plan.prompt', 9, 18],
+    ]);
+  });
+
+  it('stays INVALID_VALUE for a param the file does not declare', () => {
+    const text = stageWith('prompt: Read {run.nope}.');
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'stages.write.prompt', 9, 18],
+    ]);
+  });
+
+  it('stays INVALID_VALUE for an output the stage does not declare', () => {
+    const text = stageWith('prompt: Read {write.gone}.', 'outputs: {}');
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'stages.write.prompt', 9, 18],
+    ]);
+  });
+
+  it('stays INVALID_VALUE for an output of a stage that runs later', () => {
+    const text = `${HEAD}stages:\n  - name: plan\n    agent: k-architect\n    prompt: Read {build.out}.\n  - name: build\n    agent: k-developer\n    outputs:\n      out: O.md\n`;
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'stages.plan.prompt', 9, 18],
+    ]);
   });
 });

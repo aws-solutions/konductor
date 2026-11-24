@@ -9,6 +9,7 @@ import {
   isShowable,
   isUsableStageName,
   MAX_INTENT_CHARS,
+  MAX_PARAM_CHARS,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_YAML_DEPTH,
@@ -70,6 +71,11 @@ const OUTPUT_NAME_RULE =
   'must be lower-case letters, digits and hyphens, start with a letter, and have at most 64 characters';
 const PARAM_NAME_RULE =
   'must be lower-case letters, digits and underscores, start with a letter, and have at most 64 characters';
+// The escape for literal text that matches the reference pattern has no
+// syntax yet, so there is no way to write such text. The public rules keep
+// this interim answer until one arrives.
+const ESCAPE_RULE =
+  'There is no way to write that text yet: the escape for it is not defined.';
 
 interface Context {
   reporter: Reporter;
@@ -522,6 +528,7 @@ function readGoal(entry: MapEntry, ctx: Context): Param {
     const text = found && readString(found, [...path, key], ctx);
     if (text !== undefined) param[key] = text;
   }
+  checkDefaultLength(entries.get('default'), path, ctx);
   return param;
 }
 
@@ -545,6 +552,7 @@ function readParam(entry: MapEntry, name: string, ctx: Context): Param {
     const text = found && readString(found, [...path, key], ctx);
     if (text !== undefined) param[key] = text;
   }
+  checkDefaultLength(entries.get('default'), path, ctx);
   const required = entries.get('required');
   if (required) {
     const read = readBoolean(required, [...path, 'required'], ctx);
@@ -566,6 +574,22 @@ function readParamType(
   const span = valueSpanOf(entry);
   ctx.reporter.report('NOT_SUPPORTED_BY_THIS_BUILD', path, span, message);
   return undefined;
+}
+
+// A param's `default` is a value the run takes, so it is held to the same
+// limit as a value sent with the run.
+function checkDefaultLength(
+  entry: MapEntry | undefined,
+  path: Segment[],
+  ctx: Context,
+): void {
+  if (!entry || !isScalar(entry.value)) return;
+  const text = entry.value.value;
+  if (typeof text !== 'string') return;
+  if (codePointLength(text) <= MAX_PARAM_CHARS) return;
+  const message = `\`default\` must have at most ${MAX_PARAM_CHARS} characters.`;
+  const span = valueSpanOf(entry);
+  ctx.reporter.report('INVALID_VALUE', [...path, 'default'], span, message);
 }
 
 function readStages(
@@ -819,38 +843,63 @@ function checkReferences(
       );
       if (problem === undefined) continue;
       const span = spanOfReference(prompt, reference, skip, ctx);
-      ctx.reporter.report('INVALID_VALUE', path, span, problem);
+      ctx.reporter.report(problem.code, path, span, problem.message);
     }
   }
 }
 
-// What is wrong with a reference, or `undefined` when it resolves.
+/** Why a reference cannot be read, and the code that says so. */
+interface ReferenceProblem {
+  code: 'INVALID_VALUE' | 'NOT_SUPPORTED_BY_THIS_BUILD';
+  message: string;
+}
+
+/**
+ * What is wrong with a reference, or `undefined` when it resolves.
+ *
+ * A scope that is neither `run` nor a stage of the file names no input at
+ * all, so the text is literal text that happens to match the reference
+ * pattern. There is no way to write that yet, since the escape for it is
+ * still open, so it is `NOT_SUPPORTED_BY_THIS_BUILD` rather than a reference
+ * that points at the wrong thing.
+ */
 function referenceProblem(
   reference: Reference,
   params: Record<string, Param> | undefined,
   outputsBefore: ReadonlyMap<string, ReadonlySet<string>>,
   stagesAhead: ReadonlySet<string>,
-): string | undefined {
+): ReferenceProblem | undefined {
   const { scope, name } = reference;
   const shown = quoteReference(reference);
+  const wrong = (message: string): ReferenceProblem => ({
+    code: 'INVALID_VALUE',
+    message,
+  });
   if (isRunReference(reference)) {
     // The goal is a param of every run, declared or not. An own-key check, so
     // an inherited name such as `constructor` is not taken as declared.
     const declared = name === 'goal' || Object.hasOwn(params ?? {}, name);
     return declared
       ? undefined
-      : `${shown} names a param that the file does not declare.`;
+      : wrong(`${shown} names a param that the file does not declare.`);
   }
   if (stagesAhead.has(scope)) {
-    return `${shown} names a stage that runs later. A stage can name only its own outputs and those of an earlier stage.`;
+    return wrong(
+      `${shown} names a stage that runs later. A stage can name only its own outputs and those of an earlier stage.`,
+    );
   }
   const outputs = outputsBefore.get(scope);
   if (!outputs) {
-    return `${shown} names a stage that the file does not have.`;
+    return {
+      code: 'NOT_SUPPORTED_BY_THIS_BUILD',
+      message: `${shown} is neither a param of the run nor an output of a stage of this workflow, so it is text that matches the reference pattern. ${ESCAPE_RULE}`,
+    };
   }
   return outputs.has(name)
     ? undefined
-    : `${shown} names an output that the stage ${quoteValue(scope)} does not declare.`;
+    : wrong(
+        `${shown} names an output that the stage ${quoteValue(scope)} does not declare.`,
+      );
 }
 
 // A reference is echoed only when both of its names are plain, since a

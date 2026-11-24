@@ -145,7 +145,10 @@ describe('the stub and api/openapi.yaml', () => {
     // The stub reads the one type, and names the slice for any other.
     expect(type.enum).toEqual(['string']);
     expect(property(param, 'description').type).toBe('string');
-    expect(property(param, 'default').type).toBe('string');
+    const fallback = property(param, 'default');
+    expect(fallback.type).toBe('string');
+    // A default is a value the run takes, so it shares the value limit.
+    expect(fallback.maxLength).toBe(MAX_PARAM_CHARS);
     expect(property(param, 'required').type).toBe('boolean');
   });
 
