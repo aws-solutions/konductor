@@ -354,3 +354,79 @@ test('run-2x2.sh report 1 builds the DEV tables from the frozen worktree and lab
     assert.match(fs.readFileSync(path.join(s.env.S, d, 'BUILD.txt'), 'utf8'), new RegExp(`konductor commit ${s.main}`), d);
   }
 });
+
+// D-50: one stage against fakes. The kit is sourced (its own sourced mode), so `stage` runs with the frozen worktree,
+// a fake bench that writes a result per cell, a fake kiro-cli and a fake aws; `quiet` and `take_lock` stay out (they
+// need the sandbox and a quiet host, which a test host is not). Every batch's budget is the stage cap less the spend
+// already in its dirs, a rerun resumes, and the cap stops the stage before a batch it cannot cover.
+const FAKE_RUN = [
+  "const fs = require('fs'); const path = require('path'); const a = process.argv.slice(2);",
+  "fs.appendFileSync(process.env.CALLS, JSON.stringify(a) + '\\n');",
+  "const v = (f) => a[a.indexOf(f) + 1];",
+  "const out = v('--out'); if (out) fs.mkdirSync(out, { recursive: true });",
+  "if (a[0] === 'run' && !a.includes('--prepare-only')) {",
+  "  fs.writeFileSync(path.join(out, 'run-config.json'), '{}');",
+  "  const rep = Number(v('--replicate-offset')) + 1; const cc = a.includes('--claude-bin');",
+  "  for (const arm of v('--arms').split(',').map((s) => s.split('=')[0])) for (const t of v('--tasks').split(',')) {",
+  "    const d = path.join(out, arm, t, String(rep)); fs.mkdirSync(d, { recursive: true });",
+  "    fs.writeFileSync(path.join(d, 'result.json'), JSON.stringify(cc ? { status: 'success', costUsd: 0.5 } : { status: 'success', credits: 2 }));",
+  "  }",
+  "}",
+].join('\n');
+
+function stageStudy(envOver = {}) {
+  const s = fakeStudy();
+  fs.writeFileSync(path.join(s.repo, 'bench/runner/bench.js'), FAKE_RUN); // committed and pushed, so freeze pins it
+  git(s.repo, 'add', '-A');
+  git(s.repo, '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fake run');
+  git(s.repo, 'push', '-q', 'origin', 'HEAD:feat/bench-pilot-nk');
+  const bin = path.join(s.root, 'bin');
+  write(path.join(bin, 'kiro-cli'), '#!/bin/sh\nexit 0\n');
+  write(path.join(bin, 'aws'), `#!/bin/sh\necho '{"Expiration":"${new Date(Date.now() + 5 * 3600e3).toISOString()}"}'\n`);
+  fs.chmodSync(path.join(bin, 'kiro-cli'), 0o755);
+  fs.chmodSync(path.join(bin, 'aws'), 0o755);
+  const env = { ...s.env, KBIN: path.join(bin, 'kiro-cli'), AWSP: 'stub-profile', PATH: `${bin}:${process.env.PATH}`, ...envOver };
+  assert.equal(sh('run-2x2.sh', ['freeze'], env).status, 0);
+  return { ...s, env };
+}
+const runStage = (env, set, which) => spawnSync('bash', ['-c', `set -euo pipefail; source "$KIT"; load_frozen; stage ${set} ${which}`], {
+  encoding: 'utf8', timeout: 60000, env: cleanEnv({ ...env, KIT: path.join(KIT, 'run-2x2.sh') }),
+});
+const budgets = (calls, flag) => calls.map((c) => Number(c[c.indexOf(flag) + 1]));
+
+test('run-2x2.sh stage 1 kiro: every DEV batch runs with the cap less the spend so far, and a rerun resumes', () => {
+  const s = stageStudy();
+  const r = runStage(s.env, 1, 'kiro');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const calls = callsOf(s.env.CALLS).filter((c) => c[0] === 'run');
+  // 2 DEV batches x 2 replicates, then the added DEV task once: 5 calls; each 2-task batch writes 4 results at 2 credits.
+  assert.deepEqual(calls.map((c) => c[c.indexOf('--replicate-offset') + 1]), ['0', '0', '1', '1', '0']);
+  assert.deepEqual(budgets(calls, '--budget-credits'), [80, 72, 64, 56, 48]);
+  assert.ok(!calls[0].includes('--resume') && calls.slice(1).every((c) => c.includes('--resume')), 'every batch after the first resumes');
+  assert.ok(calls.every((c) => c.includes('--isolate') && c[c.indexOf('--isolate') + 1] === 'unshare' && c[c.indexOf('--effort') + 1] === 'high'));
+  assert.match(r.stdout, /stage 1 \(dev\) kiro done: Kiro 36\.0000 credits/);
+  // A rerun of the stage: every batch resumes, and the budget counts the spend already on disk.
+  const again = runStage(s.env, 1, 'kiro');
+  assert.equal(again.status, 0, again.stderr);
+  const second = callsOf(s.env.CALLS).filter((c) => c[0] === 'run').slice(5);
+  assert.ok(second.length === 5 && second.every((c) => c.includes('--resume')));
+  assert.equal(budgets(second, '--budget-credits')[0], 44);
+});
+
+test('run-2x2.sh stage 1: the Kiro cap stops before a batch it cannot cover; Claude Code checks the credentials and its USD cap', () => {
+  const env = fs.readFileSync(path.join(KIT, 'study-2x2.env'), 'utf8').replace('CAP1_CR=80', 'CAP1_CR=12').replace('CAP1_CC=13', 'CAP1_CC=2');
+  const s = stageStudy();
+  const file = path.join(s.root, 'study.env');
+  fs.writeFileSync(file, env);
+  const k = runStage({ ...s.env, STUDY_ENV: file }, 1, 'kiro');
+  assert.equal(k.status, 2);
+  assert.match(k.stderr, /Kiro cap of 12 credits reached \(4\.00 left\)/);
+  assert.equal(callsOf(s.env.CALLS).filter((c) => c[0] === 'run').length, 1, 'no batch starts past the cap');
+  const c = runStage({ ...s.env, STUDY_ENV: file }, 1, 'cc');
+  assert.equal(c.status, 2);
+  assert.match(c.stdout, /AWS credentials last \d+ more minutes/);
+  assert.match(c.stderr, /Claude Code cap of \$2 reached \(\$0\.00 left\)/);
+  const cc = callsOf(s.env.CALLS).filter((x) => x[0] === 'run' && x.includes('--claude-bin'));
+  assert.deepEqual(budgets(cc, '--budget-usd'), [2]);
+  assert.ok(cc[0].includes('--aws-profile') && cc[0][cc[0].indexOf('--run-budget-usd') + 1] === '3');
+});
