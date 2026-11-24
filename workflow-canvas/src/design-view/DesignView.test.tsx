@@ -3,7 +3,7 @@ import createWrapper from '@cloudscape-design/components/test-utils/dom';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useMemo } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { WorkflowDocument } from '../api/types';
+import type { StageView, WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
@@ -140,7 +140,7 @@ stages:
   view: {
     ...HELLO_DOCUMENT.view!,
     name: 'ship',
-    stages: [{ name: 'package', agent: 'k-developer' }],
+    stages: [savedStage('package', 'k-developer')],
   },
 };
 
@@ -176,11 +176,23 @@ stages:
   view: {
     ...HELLO_DOCUMENT.view!,
     stages: [
-      { name: 'draft', agent: 'k-legacy' },
-      { name: 'review', agent: 'k-quality-assurance' },
+      savedStage('draft', 'k-legacy'),
+      savedStage('review', 'k-quality-assurance', 1),
     ],
   },
 };
+
+// A stage of a saved view. The contract gives every stage a kind and the
+// lines it takes up; a fixture that only cares about the name and the agent
+// takes the kind of this release and a range past the head of the file.
+function savedStage(name: string, agent: string, at = 0): StageView {
+  return {
+    name,
+    kind: 'agent',
+    agent,
+    range: { line: 7 + at * 2, end_line: 8 + at * 2 },
+  };
+}
 
 // The stages of a text, as the sample lays them out, with the lines they
 // take up and a prompt when the text has one, which a real check works out
@@ -605,16 +617,18 @@ describe('DesignView, the Properties tab', () => {
     expect(screen.getByTestId('reading-keys')).toBeTruthy();
   });
 
-  it('says so when the keys could not be read, and that a save is refused', async () => {
+  it('says so when the keys could not be read, and how to read them again', async () => {
     drawn({ document: WITH_PROMPT, openedFails: 'The server said no.' });
     await settle();
     const said = screen.getByTestId('reading-keys-failed').textContent ?? '';
 
     expect(said).toContain('The server said no.');
-    expect(said).toContain('a save of a stage that was loaded is refused');
+    expect(said).toContain('Only the name and the agent of a stage are shown');
   });
 
-  it('refuses a save after a failed first check, and says how to get out', async () => {
+  // The writer reads the file's own bytes, not the check, so a check that
+  // could not be made costs the keys on show and nothing else.
+  it('saves after a failed first check, keeping the keys it could not read', async () => {
     const { edits } = drawn({
       document: WITH_PROMPT,
       openedFails: 'The server said no.',
@@ -627,10 +641,11 @@ describe('DesignView, the Properties tab', () => {
       fireEvent.click(button('Save'));
     });
 
-    expect(edits.save).not.toHaveBeenCalled();
-    const said = screen.getByTestId('save-refused').textContent ?? '';
-    expect(said).toContain('not known');
-    expect(said).toContain('Check the file again, or reload the page.');
+    expect(screen.queryByTestId('save-refused')).toBeNull();
+    expect(edits.save).toHaveBeenCalledTimes(1);
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('name: drafting');
+    expect(written).toContain('prompt: Write the greeting to README.md.');
   });
 
   it('reads the keys again on Check again, which lets the save go ahead', async () => {
@@ -763,7 +778,7 @@ describe('DesignView, undo and redo', () => {
 
     // The workflow opened next holds the very text that save sent, which is
     // no reason to keep the history of the one it replaced.
-    await open({ ...HELLO_DOCUMENT, text: sent, hash: 'e'.repeat(64) });
+    await open({ ...HELLO_DOCUMENT, text: sent ?? null, hash: 'e'.repeat(64) });
     await settle();
 
     expect(isOff(button('Undo'))).toBe(true);
@@ -816,12 +831,10 @@ describe('DesignView, saving', () => {
     expect(edits.save.mock.calls[0]?.[0]).toContain('name: drafting');
   });
 
-  it('says nothing until an edit, then refuses a save that would drop the prompt of the stage it changed', async () => {
+  it('says nothing until an edit, then keeps the prompt of the stage it changed', async () => {
     const { edits } = drawn({ document: WITH_PROMPT });
     await settle();
 
-    // Nothing is refused while nothing is changed: the file is only a problem
-    // once a save of it is on the table.
     expect(screen.queryByTestId('save-refused')).toBeNull();
     await openProperties();
     await typeInto(nameInput(), 'drafting');
@@ -830,13 +843,15 @@ describe('DesignView, saving', () => {
       fireEvent.click(button('Save'));
     });
 
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'would drop the prompt of drafting',
-    );
+    // The writer replaces the bytes of the value it was asked to change and
+    // leaves every other byte of the item, the prompt among them.
+    expect(screen.queryByTestId('save-refused')).toBeNull();
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('name: drafting');
+    expect(written).toContain('prompt: Write the greeting to README.md.');
   });
 
-  it('refuses a save that would drop a prompt file', async () => {
+  it('keeps a prompt file through a save', async () => {
     const { edits } = drawn({ document: WITH_PROMPT_FILE });
     await settle();
     await openProperties();
@@ -846,13 +861,12 @@ describe('DesignView, saving', () => {
       fireEvent.click(button('Save'));
     });
 
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'prompt_file',
-    );
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('name: drafting');
+    expect(written).toContain('prompt_file: review.md');
   });
 
-  it('refuses a save of a stage changed before the keys of the file are read', async () => {
+  it('saves a stage changed before the keys of the file are read', async () => {
     const { edits } = drawn({ document: WITH_PROMPT, openedHeld: true });
     await settle();
     await openProperties();
@@ -862,33 +876,14 @@ describe('DesignView, saving', () => {
       fireEvent.click(button('Save'));
     });
 
-    // The keys of the file are unknown, so the prompt it may hold is too.
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'are not known',
-    );
+    // The keys on show are unknown while that check is out, but the writer
+    // works from the file, so the prompt it holds is kept all the same.
+    expect(screen.queryByTestId('save-refused')).toBeNull();
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('prompt: Write the greeting to README.md.');
   });
 
-  it('refuses a save of a stage changed when the keys could not be read', async () => {
-    const { edits } = drawn({
-      document: WITH_PROMPT,
-      openedFails: 'The server said no.',
-    });
-    await settle();
-    await openProperties();
-    await typeInto(nameInput(), 'drafting');
-
-    await act(async () => {
-      fireEvent.click(button('Save'));
-    });
-
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'are not known',
-    );
-  });
-
-  it('refuses a save of the stage it renamed after another was added', async () => {
+  it('keeps the prompt of a stage renamed after another was added', async () => {
     const { edits } = drawn({ document: WITH_PROMPT });
     await settle();
     await act(async () => {
@@ -907,12 +902,13 @@ describe('DesignView, saving', () => {
       fireEvent.click(button('Save'));
     });
 
-    // Neither the count of the stages nor the name finds the stage the file
-    // holds the prompt for; where it was loaded from does.
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'would drop the prompt of drafting',
-    );
+    // Neither the count of the stages nor the name finds the item the file
+    // holds the prompt in; the place the stage was loaded from does.
+    expect(screen.queryByTestId('save-refused')).toBeNull();
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('name: drafting');
+    expect(written).toContain('prompt: Write the greeting to README.md.');
+    expect(written).toContain('name: agent-1');
   });
 
   it('lets a save of another stage with no other key go ahead', async () => {
@@ -931,7 +927,7 @@ describe('DesignView, saving', () => {
     expect(edits.save).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses every save of a file the writer would rewrite whole', async () => {
+  it('refuses every save of a file whose stages the writer cannot edit in place', async () => {
     const { edits } = drawn({ document: FLOW_STAGES });
     await settle();
     await openProperties();
@@ -941,39 +937,40 @@ describe('DesignView, saving', () => {
       fireEvent.click(button('Save'));
     });
 
-    // The params, the comments and the version of such a file would go.
+    // A list in the flow form has no item the writer can edit, so it says so
+    // rather than writing the file again and losing its params and comments.
     expect(edits.save).not.toHaveBeenCalled();
     const said = screen.getByTestId('save-refused').textContent ?? '';
-    expect(said).toContain('write this whole file in the plain layout');
-    expect(said).toContain('version');
+    expect(said).toContain('written in brackets');
+    expect(said).toContain('text editor');
   });
 
-  it('says so before anything is edited in a file it would rewrite whole', async () => {
+  it('says so before anything is edited in such a file', async () => {
     drawn({ document: FLOW_STAGES });
     await settle();
 
     expect(screen.getByTestId('save-refused').textContent).toContain(
-      'not a list under stages:',
+      'written in brackets',
     );
   });
 
-  it('refuses a save of a stage whose file holds a comment inside it', async () => {
+  it('keeps a comment inside the stage it changed', async () => {
     const { edits } = drawn({ document: COMMENT_INSIDE });
     await settle();
     await openProperties();
     await typeInto(nameInput(), 'drafting');
 
+    expect(screen.queryByTestId('save-refused')).toBeNull();
     await act(async () => {
       fireEvent.click(button('Save'));
     });
 
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'the lines the file holds for it say more than that',
-    );
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('name: drafting');
+    expect(written).toContain('# The one that writes it.');
   });
 
-  it('refuses a save of a stage whose file holds a comment in front of it', async () => {
+  it('keeps a comment in front of the stage it changed', async () => {
     const { edits } = drawn({ document: COMMENT_BEFORE });
     await settle();
     await act(async () => {
@@ -986,11 +983,12 @@ describe('DesignView, saving', () => {
       fireEvent.click(button('Save'));
     });
 
-    // The writer reads that comment as part of the stage that follows it.
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'a comment or a blank line in front of it',
-    );
+    // The writer reads that comment as part of the stage that follows it and
+    // moves it with that stage, so it is still in the file.
+    expect(screen.queryByTestId('save-refused')).toBeNull();
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('name: reviewing');
+    expect(written).toContain('# The one that checks it.');
   });
   it('lets a save go ahead for the stage the comment is not part of', async () => {
     const { edits } = drawn({ document: COMMENT_BEFORE });
@@ -1044,10 +1042,13 @@ describe('DesignView, saving', () => {
       fireEvent.click(button('Save'));
     });
 
-    expect(edits.save).not.toHaveBeenCalled();
-    expect(screen.getByTestId('save-refused').textContent).toContain(
-      'would drop the prompt of reviewing',
-    );
+    // The stage with the prompt is the one left, and its place in the file
+    // that was written is the first, not the one the deleted stage left
+    // behind, so the writer edits that item and the prompt stays with it.
+    expect(edits.save).toHaveBeenCalledTimes(1);
+    const written = edits.save.mock.calls[0]?.[0] ?? '';
+    expect(written).toContain('name: reviewing');
+    expect(written).toContain('prompt: Check the greeting.');
   });
 });
 
@@ -1318,6 +1319,7 @@ describe('DesignView, a stage renamed to the name of another one', () => {
     await checkNow(scheduler);
     await openYaml();
 
-    expect(panelOf('YAML').textContent).toContain('Lines 7 to 8 are stage');
+    // The contract's range covers every line of the item, the prompt included.
+    expect(panelOf('YAML').textContent).toContain('Lines 7 to 9 are stage');
   });
 });

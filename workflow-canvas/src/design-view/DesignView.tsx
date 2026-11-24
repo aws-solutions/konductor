@@ -32,11 +32,12 @@ import type {
 } from '../designer-view/yaml-draft';
 import {
   canAddStage,
+  fileBlocker,
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
   textOf,
-  willRewriteWhole,
+  writeBlocker,
 } from '../designer/core';
 import { EditAlerts } from '../designer/EditAlerts';
 import { SaveControls } from '../designer/SaveControls';
@@ -50,64 +51,21 @@ import {
   SAVABLE_KEYS,
   fieldValuesOf,
   markedStageOf,
-  saveRefusal,
   sourceStageOf,
 } from './view-stage';
-import { stageRefusal } from './stage-item';
 import { useInitialCheck } from './use-initial-check';
-import { useStageSources, type StageSources } from './use-stage-sources';
+import { useStageSources } from './use-stage-sources';
 
 /** The editable keys of a stage, by kind, as `stage_fields` gives them. */
 export type StageFieldsByKind = Readonly<
   Record<string, readonly StageFieldRule[]>
 >;
 
-// The stages of the draft that differ from the stage of the file they were
-// loaded from, by id. A stage the person added has no stage in the file, and
-// counts as changed.
-function changedStageIds(
-  state: Editor['state'],
-  sources: StageSources,
-): ReadonlySet<string> {
-  const saved = state.saved.view.stages;
-  return new Set(
-    state.draft.stages
-      .filter((stage) => {
-        const source = sources.of(stage.id);
-        if (source.kind === 'added') return true;
-        const was = saved[source.index];
-        return (
-          was === undefined ||
-          was.name !== stage.name ||
-          was.agent !== stage.agent
-        );
-      })
-      .map((stage) => stage.id),
-  );
-}
-
 const RAW_EDIT_NOTE =
   'The text under YAML is checked as the stages change, and it cannot be typed into here yet. Change a stage under Properties and press Save.';
 
 const EARLIER_TEXT_NOTE =
   'YAML shows an earlier text. The drawing and Properties show the workflow as it is now, and a save writes that; press Redo to come back.';
-
-// A file whose stages are not a list of items under a top-level `stages:`
-// key is written whole by the stage writer, in the plain layout: its params,
-// its comments and its `version` would go. That is more than a stage edit may
-// cost, so no save of such a file is made from this view yet.
-const REWRITE_REFUSAL =
-  'A save would write this whole file in the plain layout, because its stages are not a list under stages:, and its other keys, its comments and its version would be lost. So it is refused. Edit the file by hand until a save can keep them.';
-
-// The writer builds a stage it changed from its name and its agent alone, so
-// anything else the file wrote in or in front of that stage goes with the
-// save: a comment, a blank line, a quoted value, the keys the other way
-// round, a line break of another kind, the missing one at the end of a file.
-// None of it is in the parsed stage, so only the lines of the file say what a
-// save would lose, and the message names that one thing rather than the list
-// of what it could have been.
-const itemRefusal = (name: string, reason: string) =>
-  `A save would write ${name} as its name and its agent alone, and the lines the file holds for it say more than that, so it is refused: ${reason}. Edit the file by hand until a save can keep them.`;
 
 const STATUS_WORDS: Readonly<Record<DraftStatus, string>> = {
   unchecked: 'Not checked yet',
@@ -243,7 +201,11 @@ export function DesignView({
   const { state } = editor;
   const headingId = useId();
   const savedText = state.saved.text;
-  const text = useMemo(() => textOf(state), [state]);
+  // The text a save would write. A draft the writer cannot write in place has
+  // none: `refusal` then says why, Save is shut, and the pane shows the file
+  // as it stands rather than a text no save could produce.
+  const written = useMemo(() => textOf(state), [state]);
+  const text = written ?? savedText;
   // The text the save in flight sent, kept so a later edit does not change
   // what the places of the stages are read for.
   const [sent, setSent] = useState<string>();
@@ -290,8 +252,12 @@ export function DesignView({
       : {}),
   });
   // A change of the stages makes a text; the text shown is the one the
-  // history points at, and that is the text the check reads.
-  useEffect(() => record(text), [record, text]);
+  // history points at, and that is the text the check reads. A draft with no
+  // text a save could write records nothing: the history holds texts a save
+  // can write, so undo always lands on one.
+  useEffect(() => {
+    if (written !== undefined) record(written);
+  }, [record, written]);
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
@@ -366,30 +332,11 @@ export function DesignView({
       typeof viewStage?.agent === 'string' ? viewStage.agent : picked.agent,
     readOnlyKeys,
   };
-  // A save of a changed stage that has other keys in the file would drop
-  // them, so it is refused until the writer keeps them. A stage whose keys
-  // are not known yet is refused too, rather than saved in the dark. A file
-  // the writer cannot edit in place is refused whatever its stages hold.
-  const changed = changedStageIds(state, sources);
-  const guarded = state.draft.stages.map((one) => ({
-    draft: one,
-    source: sources.of(one.id),
-    changed: changed.has(one.id),
-  }));
-  // The changed stage whose lines the writer would not write back as the file
-  // has them, and what it is that would be lost. Read from the file itself,
-  // because none of it, a comment least of all, is in the parsed stage.
-  const rewritten = guarded.flatMap((one) => {
-    if (!one.changed || one.source.kind !== 'loaded' || fileView === null) {
-      return [];
-    }
-    const reason = stageRefusal(savedText, fileView.stages, one.source.index);
-    return reason === undefined ? [] : [{ name: one.draft.name, reason }];
-  })[0];
-  const refusal = willRewriteWhole(savedText)
-    ? REWRITE_REFUSAL
-    : (saveRefusal(guarded, fileView) ??
-      (rewritten ? itemRefusal(rewritten.name, rewritten.reason) : undefined));
+  // A file the writer cannot edit in place at all is refused before any
+  // change is made; a draft it cannot write is refused as it stands. Both
+  // reasons come from the writer itself, through the editor's own state, so
+  // the view never carries a second model of what a save would keep.
+  const refusal = fileBlocker(state) ?? writeBlocker(state);
 
   const onKeyDown = (event: KeyboardEvent) => {
     const asked = undoShortcut(shortcutKeyOf(event));
@@ -402,7 +349,7 @@ export function DesignView({
   const marked = pickedPlace
     ? markedStageOf(checked?.view, pickedPlace, {
         stale: ofNow === undefined,
-        sources: guarded.map((one) => one.source),
+        sources: state.draft.stages.map((one) => sources.of(one.id)),
       })
     : undefined;
   const showingEarlier = history.text !== text;
@@ -473,8 +420,8 @@ export function DesignView({
             <SaveControls
               state={state}
               onSave={() => {
-                if (refusal !== undefined) return;
-                setSent(text);
+                if (refusal !== undefined || written === undefined) return;
+                setSent(written);
                 editor.save();
               }}
             />
