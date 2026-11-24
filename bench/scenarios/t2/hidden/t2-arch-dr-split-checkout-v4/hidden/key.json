@@ -1,0 +1,170 @@
+{
+  "_v4": "v4: no length term (the request sets no cap on findings; v3 scaled any list past 21 by 21 / reported) and each item's fix keywords widened to the wordings a correct finding used in the saved LITE runs of every arm (owning team, single writer, void, release, compensation, observed p99, shadow or sticky routing, Customer Foundations, per caller).",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "critical",
+      "fix": [
+        "service-owned schema",
+        "stop direct writes",
+        "separate database",
+        "owning team",
+        "owning teams",
+        "owners",
+        "owner",
+        "single writer",
+        "own tables",
+        "ownership",
+        "through the api",
+        "through their api",
+        "write access",
+        "direct write",
+        "service-owned",
+        "written approval",
+        "written agreement"
+      ],
+      "finding": "The extracted service still writes the monolith's Order Platform, Payments, and Fulfillment tables directly, so the proposed boundary leaves shared storage ownership and coupling unchanged."
+    },
+    {
+      "id": "k2",
+      "section": "3.4",
+      "severity": "critical",
+      "fix": [
+        "saga",
+        "compensating action",
+        "durable workflow",
+        "compensat",
+        "void authorization",
+        "void the authorization",
+        "void and release",
+        "void step",
+        "explicit void",
+        "idempotent void",
+        "void or cancel",
+        "release the reservation",
+        "release reservation",
+        "release partial",
+        "reserve before",
+        "reserve first",
+        "reserving before",
+        "failure path",
+        "failure table",
+        "partial failure",
+        "reconcil"
+      ],
+      "finding": "Payment authorization, inventory reservation, and order creation are separate operations without a defined compensation or recovery contract when a later step fails, leaving partial charges or reservations possible."
+    },
+    {
+      "id": "k3",
+      "section": "4.2",
+      "severity": "high",
+      "fix": [
+        "latency budget",
+        "parallelize",
+        "remove hop",
+        "measured p99",
+        "observed",
+        "measure",
+        "measured",
+        "load test",
+        "load-test",
+        "prototype",
+        "parallel",
+        "concurrently",
+        "the sum",
+        "sum plus",
+        "sums",
+        "timeouts",
+        "budget",
+        "p99",
+        "700 ms",
+        "450 ms"
+      ],
+      "finding": "The stated 440 ms total ignores the context's p99 timings for the three serial network hops and exceeds the 450 ms checkout budget once those measurements are used."
+    },
+    {
+      "id": "k4",
+      "section": "5.1",
+      "severity": "high",
+      "fix": [
+        "shadow traffic",
+        "dual-run",
+        "compare responses",
+        "shadow",
+        "replay",
+        "dual run",
+        "compare",
+        "comparison",
+        "sticky",
+        "hash of the checkout token",
+        "hash",
+        "exit criteria",
+        "duplicate authoriz",
+        "both implementations",
+        "same requests"
+      ],
+      "finding": "The rollout changes the primary path by percentage but never runs both implementations on the same requests and compares their outcomes before increasing customer traffic."
+    },
+    {
+      "id": "k5",
+      "section": "3.3",
+      "severity": "medium",
+      "fix": [
+        "assign owner",
+        "customer table",
+        "ownership decision",
+        "customer foundations",
+        "owner",
+        "ownership",
+        "agree",
+        "agreement",
+        "boundary",
+        "access path",
+        "api only",
+        "field list"
+      ],
+      "finding": "Customer table ownership and the permitted writer remain undecided even though the service caches and reads legacy profile data, so launch authority and future schema changes are unclear."
+    },
+    {
+      "id": "k6",
+      "section": "2.3",
+      "severity": "high",
+      "fix": [
+        "migration plan",
+        "caller inventory",
+        "adapter owner",
+        "caller",
+        "callers",
+        "per caller",
+        "each caller",
+        "retirement",
+        "contract",
+        "adapter",
+        "allow-list",
+        "allow list"
+      ],
+      "finding": "The listed subscription, returns, support, partner, and worker callers have only a vague promise of an adapter and later migration, with no per-caller contract, owner, or retirement path for the monolith interface."
+    },
+    {
+      "id": "k7",
+      "section": "6.3",
+      "severity": "medium",
+      "fix": [
+        "provider idempotency key",
+        "deduplicate",
+        "durable retry record",
+        "idempotency key",
+        "idempotency",
+        "dedup",
+        "durable",
+        "record the request",
+        "before retrying"
+      ],
+      "finding": "The retry design reuses a local payment attempt ID but does not send the provider idempotency key or durably record the provider request before retrying, repeating the duplicate-authorization failure described in the incident."
+    }
+  ],
+  "decoys": []
+}

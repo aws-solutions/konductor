@@ -1,0 +1,122 @@
+{
+  "_v6": "v6: the v5 key (no length term, v4 keywords) with each item's fix keywords widened to the wordings a correct finding used in the saved LITE runs (ledger, claim, collapse key, dedupe; DLQ, cap attempts; quota).",
+  "lengthAllowance": null,
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "5.3.3",
+      "severity": "high",
+      "fix": [
+        "deduplication",
+        "idempotency",
+        "duplicate detection",
+        "dedup",
+        "dedupe",
+        "ledger",
+        "claim",
+        "collapse",
+        "once per",
+        "mark it sent",
+        "mark sent",
+        "exactly once",
+        "send-time"
+      ],
+      "finding": "Consumers lack deduplication mechanism, which combined with at-least-once delivery will cause duplicate notifications as documented in the January incident report."
+    },
+    {
+      "id": "k2",
+      "section": "5.3.2",
+      "severity": "medium",
+      "fix": [
+        "retry limit",
+        "dead letter queue",
+        "max retries",
+        "circuit breaker",
+        "dlq",
+        "dead letter",
+        "dead-letter",
+        "cap attempts",
+        "cap total attempts",
+        "retry budget",
+        "bounded",
+        "attempt count",
+        "exhausted",
+        "attempts"
+      ],
+      "finding": "Retry logic has no cap and no dead-letter queue, meaning vendor outages could create infinite retry storms that overwhelm the system."
+    },
+    {
+      "id": "k3",
+      "section": "5.5",
+      "severity": "medium",
+      "fix": [
+        "capacity planning",
+        "traffic analysis",
+        "peak load",
+        "design capacity",
+        "observed peak",
+        "over provision",
+        "overprovision",
+        "right size"
+      ],
+      "finding": "Design capacity of 10,000 notifications/sec is 20x the current peak of 500/sec shown in traffic-by-hour.csv, with no justification for such over-provisioning."
+    },
+    {
+      "id": "k4",
+      "section": "5.4.2",
+      "severity": "high",
+      "fix": [
+        "throttl",
+        "rate limit",
+        "token bucket",
+        "sendgrid limit",
+        "quota",
+        "quotas",
+        "per-second limit",
+        "sendgrid"
+      ],
+      "finding": "SendGrid limit is 100 emails/sec per vendor-limits.yaml, but the design doesn't include throttling mechanisms to prevent exceeding this limit."
+    },
+    {
+      "id": "k5",
+      "section": "5.7.1",
+      "severity": "critical",
+      "fix": [
+        "encryption",
+        "pii",
+        "contact data",
+        "data protection"
+      ],
+      "finding": "User contact data (device tokens, email addresses) is included in each queued event and stored for 30 days without encryption, violating data protection requirements in service-targets.md."
+    },
+    {
+      "id": "k6",
+      "section": "5.6",
+      "severity": "medium",
+      "fix": [
+        "multi-zone",
+        "availability zone",
+        "high availability",
+        "multi az",
+        "two az",
+        "across az",
+        "cross az",
+        "single az"
+      ],
+      "finding": "99.95% availability target requires multi-zone deployment, but the design specifies single availability zone in us-east-1."
+    },
+    {
+      "id": "k7",
+      "section": "5.8",
+      "severity": "low",
+      "fix": [
+        "timezone",
+        "user preference",
+        "quiet hours"
+      ],
+      "finding": "Quiet hours implementation uses hardcoded US/Eastern timezone instead of respecting individual user time zones and preferences."
+    }
+  ],
+  "decoys": []
+}
