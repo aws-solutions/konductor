@@ -1,8 +1,9 @@
 S1 deepseek-3.2 t1-twin-booking-export t6-req-clinic-reminders t9-e2e-no-approval-control
 S2 qwen3-coder-next t2-dr-doc-ready-for-review t2-dr-plan-start-monday t2-dr-search-options
 S3 glm-5 t2-gaps-rev3-history t2-pr-catalog-api-v2 t2-pr-precheck-uncommitted
-S4 gpt-5.6-luna t3-db-audit-retention t3-db-order-history
+S4 gpt-5.6-luna t3-db-audit-retention
 S5 deepseek-3.2 t5-qa-scheduler-gaps t5-qa-suite-audit
 S6 qwen3-coder-next t10-tpm-ring-rollout-v4 t12-mux-parallel-merge t2-dr-notify-fanout-v6
 S7 glm-5 t11-fresh-session-memory t11-merge-pricing-branches t11-twin-pricing-validation
 S8 deepseek-3.2 t13-doc-api-reference-drift t13-log-auth-credential-stuffing t7-program-rollup
+S9 glm-5 t3-db-order-history

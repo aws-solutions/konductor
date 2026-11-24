@@ -408,4 +408,6 @@ The owner reopened t3-db-order-history (an exception to the one-fix rule above) 
 - no-method-or-decoy: not changed, because the owner kept the prompt fixed. The note's premise is partly false: the
   prompt does not name EXPLAIN QUERY PLAN. It does say SQLite, which `constraints.txt:16` makes a hard requirement,
   and asks to avoid full table scans, which `constraints.txt:13` requires. Listed for the owner and Fable to rule.
-- Rubric and prompt unchanged. Gates: reference 100, stub 0, lazy 6, alt 100. Non-Claude recheck of v9: pending.
+- Rubric and prompt unchanged. Gates: reference 100, stub 0, lazy 6, alt 100. Non-Claude recheck of v9: pending. Queued 2026-11-24 as call S9 (glm-5, a family
+  that has not checked this task) in `bench/ops/workspace/standard-recheck/queue.txt`; no version bump, since v9 is the
+  hand-edited version the lock and the recheck both name.
