@@ -4,6 +4,10 @@
 #
 #   bash run-nudge-judge.sh --plan    free: judge calls and estimated USD per task; no model call
 #   bash run-nudge-judge.sh           judge every finished task, then write the report (konductor-list against konductor-filler)
+#   bash run-nudge-judge.sh --fill [--plan]   judge only the fill-stage tasks (run-nudge.sh --fill): t1-nfr-report-queries
+#                                     and t2-dr-notify-fanout, cap USD 0.5 counted on their judge copies alone (approved
+#                                     2026-11-23); each needs its runs-nudge/<task>.done. The report then covers every
+#                                     judged task.
 #
 # Panel: gpt-5.6-luna, deepseek-3.2, qwen3-coder-next: three families, none Claude (the agent is claude-sonnet-5.5).
 # Same judge bench (the LITE judge worktree at the frozen bench commit 69149846), mode, backend and settings as the
@@ -28,12 +32,16 @@ PROFILE=${AWS_PROFILE_NAME:-default}
 PANEL=gpt-5.6-luna,deepseek-3.2,qwen3-coder-next
 say() { echo "[$(date -u +%H:%M)] $*"; }
 stop() { say "STOP: $*"; exit 1; }
+FILL=0; [ "${1:-}" = --fill ] && { FILL=1; shift; }
 PLAN_ONLY=0; [ "${1:-}" = --plan ] && PLAN_ONLY=1
+FILL_TASKS='t1-nfr-report-queries t2-dr-notify-fanout'
+APPROVED=2
+if [ "$FILL" = 1 ]; then APPROVED=0.5; CAP_USD=${CAP_USD_FILL:-0.5}; fi
 
 # Never a Claude judge for a Claude agent.
 case ",$PANEL," in *claude*|*sonnet*|*opus*|*haiku*) stop "the panel holds a Claude model: $PANEL" ;; esac
-CAP_OK=$(awk -v c="$CAP_USD" 'BEGIN { print (c > 0 && c <= 2) ? "yes" : "no" }')
-[ "$CAP_OK" = yes ] || stop "CAP_USD $CAP_USD is outside the approved USD 2"
+CAP_OK=$(awk -v c="$CAP_USD" -v a="$APPROVED" 'BEGIN { print (c > 0 && c <= a) ? "yes" : "no" }')
+[ "$CAP_OK" = yes ] || stop "CAP_USD $CAP_USD is outside the approved USD $APPROVED"
 [ -d "$B" ] || stop "$B is missing (the LITE judge worktree)"
 [ "$(git -C "$B" rev-parse HEAD)" = "$BENCH_SHA" ] || stop "$B is not at $BENCH_SHA"
 [ -z "$(git -C "$B" status --porcelain)" ] || stop "$B has local changes"
@@ -41,6 +49,17 @@ mkdir -p "$J/packs" "$J/runs"
 
 TASKS=$(ls "$OUT" 2>/dev/null | sed -n 's/[.]done$//p' | sort)
 [ -n "$TASKS" ] || stop "no finished task under $OUT: run run-nudge.sh --go first"
+if [ "$FILL" = 1 ]; then
+  TASKS=$FILL_TASKS
+  for t in $TASKS; do
+    [ -e "$OUT/$t.done" ] || [ "$PLAN_ONLY" = 1 ] || stop "$OUT/$t.done is missing: run run-nudge.sh --fill --go first"
+  done
+fi
+# USD spent so far against this pass's cap: every judge copy, or with --fill only the fill tasks' copies.
+judge_spent() {
+  [ "$FILL" = 1 ] || { node "$H" judge-spent "$J/runs"; return; }
+  for t in $FILL_TASKS; do node "$H" judge-spent "$J/runs/$t"; done | awk '{ s += $1 } END { printf "%.4f", s }'
+}
 cd "$B" || exit 1
 JUDGED=()
 PACKS=()
@@ -67,7 +86,7 @@ for t in $TASKS; do
     done
   fi
   aws sts get-caller-identity --profile "$PROFILE" > /dev/null 2>&1 || stop "AWS credentials for profile $PROFILE expired before $t"
-  spent=$(node "$H" judge-spent "$J/runs")
+  spent=$(judge_spent)
   left=$(awk -v s="$spent" -v c="$CAP_USD" -v w="$PER_RUN_WORST" 'BEGIN { if (s + w > c) print "STOP"; else printf "%.4f", c - s }')
   [ "$left" = STOP ] && stop "spent USD $spent of the USD $CAP_USD cap before $t"
   say "$t: judging, spent USD $spent, guard USD $left"
@@ -79,10 +98,15 @@ for t in $TASKS; do
   touch "$C.done"
 done
 [ "$PLAN_ONLY" = 1 ] && exit 0
+# With --fill the report still covers every judged task, not only the two judged now.
+if [ "$FILL" = 1 ]; then
+  JUDGED=(); PACKS=()
+  for d in "$J"/runs/*.done; do t=$(basename "$d" .done); JUDGED+=("$J/runs/$t"); PACKS+=("$J/packs/${t%%-*}"); done
+fi
 
 EXTRA=$(printf '%s\n' "${PACKS[@]}" | sort -u | paste -sd, -)
 RUNS=$(printf '%s,' "${JUDGED[@]}"); RUNS=${RUNS%,}
 node bench/runner/bench.js report --run "$RUNS" --baseline konductor-filler --extra-tasks "$EXTRA" --out "$J/report" > "$J/report.log" 2>&1 \
   || say "report failed: see $J/report.log"
-say "judge spend USD $(node "$H" judge-spent "$J/runs") of $CAP_USD"
+say "judge spend USD $(judge_spent) of $CAP_USD (whole pass: USD $(node "$H" judge-spent "$J/runs"))"
 say "report: $J/report (konductor-list minus konductor-filler with its 95% range); log $J/report.log"

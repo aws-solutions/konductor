@@ -8,6 +8,8 @@
 #   case 5: runner exit 5 with an agent self-kill is a run result: no stop, all 8 tasks done
 #   case 6: runner exit 5 with a plain error stops
 #   case 7: a task folder with all 6 results and no .done is closed with no bench call (the owner's restart state)
+#   cases 8 to 12, --fill: the free plan (no call, worst case against 60); only the 3 stage cells run, each counted at
+#   15; the 60 cap stops a call that would pass it; a missing cell outside the stage stops; a done task is skipped
 set -eu
 HERE0=$(cd "$(dirname "$0")" && pwd)
 # The copied script cannot find its checkout from its own path, so name it: this test's checkout.
@@ -29,14 +31,19 @@ for (const arm of arms) for (const rep of [1, 2, 3]) {
   const res = path.join(d, 'result.json');
   // --resume, as the frozen runner: only cells with no result or a budget_skipped one run again.
   if (resume && fs.existsSync(res) && JSON.parse(fs.readFileSync(res, 'utf8')).status !== 'budget_skipped') continue;
-  // STUB_SKIP=<task>: the list arm's replicate 3 is budget skipped, as the runner writes it (a result.json alone).
-  if (!resume && process.env.STUB_SKIP === task && arm.includes('list') && rep === 3) {
+  // STUB_SKIP=<entry>,...: a budget-skipped cell, as the runner writes it (a result.json alone). An entry <task> is
+  // that task's list-arm replicate 3; <task>/<arm>/<rep> names the cell.
+  const skip = String(process.env.STUB_SKIP || '').split(',');
+  if (!resume && (skip.includes(task) && arm.includes('list') && rep === 3 || skip.includes(`${task}/${arm}/${rep}`))) {
     fs.mkdirSync(d, { recursive: true });
     fs.writeFileSync(res, JSON.stringify({ armId: arm, taskId: task, replicate: rep, status: 'budget_skipped', credits: null }));
     continue;
   }
+  // STUB_CREDITS=<n>: what each run spends (default 1), in result.json and the task's credit ledger, as the runner does.
+  const credits = Number(process.env.STUB_CREDITS || 1);
   fs.mkdirSync(path.join(d, 'session', 'sess_1'), { recursive: true });
-  fs.writeFileSync(path.join(d, 'result.json'), JSON.stringify({ armId: arm, taskId: task, replicate: rep, status: 'success', credits: 1, finalText: 'ok' }));
+  fs.writeFileSync(path.join(d, 'result.json'), JSON.stringify({ armId: arm, taskId: task, replicate: rep, status: 'success', credits, finalText: 'ok' }));
+  fs.appendFileSync(path.join(out, 'credit-ledger.jsonl'), JSON.stringify({ kind: 'run', unit: 'credits', arm, task, replicate: rep, status: 'success', credits, charged: credits }) + '\n');
   fs.writeFileSync(path.join(d, 'stream.jsonl'), '');
   const header = arm.includes('filler') ? 'Notes for this request (no action needed):' : 'Your skills (load one with get_skill; each one\'s trigger line is under "## Your skills" in your instructions):';
   fs.writeFileSync(path.join(d, 'session', 'sess_1', 'messages.jsonl'), JSON.stringify({ payload: { type: 'user', content: (hint ?? header + '\n  x') } }) + '\n');
@@ -111,4 +118,54 @@ grep -q 'all 6 cells have a result, no bench call' "$T/h.log" || fail "case 7: b
 [ "$(wc -l < "$T/f/runs-nudge/calls.log")" = 8 ] || fail "case 7: a bench call was made"
 [ -e "$T/f/runs-nudge/t5-qa-sync-strategy.done" ] || fail "case 7: task not marked done"
 echo "case 7 ok: a full task folder is closed with no bench call"
+
+# Fill stage (--fill): the owner's state after the 450 cap, t1 with 2 budget-skipped cells and t2-dr with 1, no .done.
+copy "$T/i"
+FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB_CREDITS=9 \
+  STUB_SKIP=t1-nfr-report-queries/konductor-list/3,t1-nfr-report-queries/konductor-filler/3,t2-dr-notify-fanout \
+  STUB="node $STUBJS" HERE="$T/i" sh "$T/i/run-nudge.sh" --go > "$T/i.log" 2>&1 || { cat "$T/i.log"; fail "fill fixture exited non-zero"; }
+[ "$(ls "$T/i/runs-nudge" | grep -c '\.done$')" = 6 ] || fail "fill fixture: not 6 .done files"
+for x in j k l; do cp -a "$T/i" "$T/$x"; done
+
+# case 8: the free plan makes no call; t1 (2 cells) gets budget 46, and at worst case t2-dr does not fit the 60 cap.
+FORCED_PAT=no-such-process-x9 HERE="$T/i" sh "$T/i/run-nudge.sh" --fill --plan > "$T/p.log" 2>&1 || { cat "$T/p.log"; fail "case 8 plan exited non-zero"; }
+[ "$(wc -l < "$T/i/runs-nudge/calls.log")" = 8 ] || fail "case 8: the plan made a bench call"
+grep -q '^| t1-nfr-report-queries | 2 | 23 | 46 | 0.00 | 46.00 |' "$T/p.log" || { cat "$T/p.log"; fail "case 8: t1 row"; }
+grep -q '^| t2-dr-notify-fanout | 1 | 23 | cut |' "$T/p.log" || { cat "$T/p.log"; fail "case 8: t2-dr row"; }
+grep -q 'expected: 45.00 of 60' "$T/p.log" || { cat "$T/p.log"; fail "case 8: expected line"; }
+echo "case 8 ok: the fill plan is free and shows the worst case against 60"
+
+# case 9: --fill --go runs only the 3 stage cells, t1 first with --resume and budget 46, then t2-dr with 23; all 8 done.
+FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB_CREDITS=9 STUB="node $STUBJS" HERE="$T/i" \
+  sh "$T/i/run-nudge.sh" --fill --go > "$T/q.log" 2>&1 || { cat "$T/q.log"; fail "case 9 exited non-zero"; }
+[ "$(wc -l < "$T/i/runs-nudge/calls.log")" = 10 ] || fail "case 9: not 2 more bench calls"
+tail -n 2 "$T/i/runs-nudge/calls.log" | head -n 1 | grep -q -- '--tasks t1-nfr-report-queries .*--budget-credits 46 --run-credit-limit 23 .*--resume' || fail "case 9: t1 call"
+tail -n 1 "$T/i/runs-nudge/calls.log" | grep -q -- '--tasks t2-dr-notify-fanout .*--budget-credits 23 --run-credit-limit 23 .*--resume' || fail "case 9: t2-dr call"
+[ "$(ls "$T/i/runs-nudge" | grep -c '\.done$')" = 8 ] || fail "case 9: not 8 .done files"
+grep -q 'fill stage done, counted 45.00 of 60' "$T/q.log" || { cat "$T/q.log"; fail "case 9: counted spend (3 runs at 15)"; }
+echo "case 9 ok: only the 3 missing cells ran, each counted at 15"
+
+# case 10: t1's runs count 40 (20 each), so t2-dr (worst 23) would pass 60: stop before its call, t1 done.
+if FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB_CREDITS=20 STUB="node $STUBJS" HERE="$T/j" \
+  sh "$T/j/run-nudge.sh" --fill --go > "$T/r.log" 2>&1; then fail "case 10 should stop"; fi
+grep -q 'counted 40.00 of 60: t2-dr-notify-fanout does not fit' "$T/r.log" || { cat "$T/r.log"; fail "case 10: wrong stop"; }
+[ "$(wc -l < "$T/j/runs-nudge/calls.log")" = 9 ] || fail "case 10: t2-dr was called"
+[ -e "$T/j/runs-nudge/t1-nfr-report-queries.done" ] && [ ! -e "$T/j/runs-nudge/t2-dr-notify-fanout.done" ] || fail "case 10: .done files"
+echo "case 10 ok: the 60 cap stops a call that would pass it"
+
+# case 11: a missing cell outside the stage (t1 filler #2) stops before any call.
+rm "$T/k/runs-nudge/t1-nfr-report-queries/konductor-filler/t1-nfr-report-queries/2/result.json"
+if FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB="node $STUBJS" HERE="$T/k" \
+  sh "$T/k/run-nudge.sh" --fill --go > "$T/s.log" 2>&1; then fail "case 11 should stop"; fi
+grep -q 'not a fill-stage cell' "$T/s.log" || { cat "$T/s.log"; fail "case 11: wrong stop"; }
+[ "$(wc -l < "$T/k/runs-nudge/calls.log")" = 8 ] || fail "case 11: a bench call was made"
+echo "case 11 ok: a cell outside the stage is never run"
+
+# case 12: a finished task folder is never touched: with t1 done, the fill runs t2-dr only.
+touch "$T/l/runs-nudge/t1-nfr-report-queries.done"
+FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB="node $STUBJS" HERE="$T/l" \
+  sh "$T/l/run-nudge.sh" --fill --go > "$T/u.log" 2>&1 || { cat "$T/u.log"; fail "case 12 exited non-zero"; }
+[ "$(wc -l < "$T/l/runs-nudge/calls.log")" = 9 ] && tail -n 1 "$T/l/runs-nudge/calls.log" | grep -q -- '--tasks t2-dr-notify-fanout' || fail "case 12: calls"
+grep -q 't1-nfr-report-queries: done, skipped' "$T/u.log" || fail "case 12: t1 not skipped"
+echo "case 12 ok: a done task is skipped"
 echo "all stub cases passed (scratch $T)"

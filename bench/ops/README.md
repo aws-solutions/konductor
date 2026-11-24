@@ -70,6 +70,7 @@ is the docs owner's page and points here.
 | `run-morning.sh` | Third unattended command of one night (2026-11-21). |
 | `run-namespace-test-v2.sh` | DEBT D-165 second try: the namespace case with a Python that has pytest. |
 | `run-namespace-test.sh` | DEBT D-165: only the namespace case of `real-run.test.js` on the origin head. |
+| `run-nudge-fill.sh` | The nudge study's fill stage in one command: `--plan` (free), `--go` (the 3 budget-skipped cells, cap 60 counted credits), `--judge-plan` (free), `--judge` (those two tasks, cap USD 0.5, then the 8-task report). |
 | `run-physical-ai-wave0.sh` | Physical AI wave 0 in one command. |
 | `run-pilot-author.sh` | Keep-or-prune pilot step 1: writes the tasks. Paid. |
 | `run-pilot-freeze.sh` | Keep-or-prune pilot step 2: freezes the read draft. Free. |
@@ -135,15 +136,17 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-forced-judge.sh` | Judge pass of the forced-skills run. Paid (USD). |
 | `run-forced-small-judge.sh` | Judge pass of the focused forced run. Paid (USD). |
 | `run-forced-small.sh` | Focused follow-up of the forced run. Paid. |
-| `run-nudge-judge.sh` | Judge pass of the nudge-arm run. Paid (USD). |
-| `run-nudge.sh` | The nudge-arm run. Paid. |
+| `run-nudge-judge.sh` | Judge pass of the nudge-arm run. Paid (USD). `--fill` judges only the fill-stage tasks (cap USD 0.5). |
+| `run-nudge.sh` | The nudge-arm run. Paid. `--fill` runs only the 3 cells the 450 cap left budget skipped (cap 60 counted credits); `--fill --plan` is free. |
+| `nudge-fill.js` | The fill stage's cells and counted spend (each call at the larger of 15 and its credits) for `run-nudge.sh --fill`. Free. |
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, and of `cc-skill-loads.js` on a made-up stream. Free. |
 | `test-run-cc-model-swap-stub.sh` | Test of `run-cc-model-swap.sh` and the `CC_*` overrides of `run-cc-compare.sh` (plan, Opus stage, Sonnet reuse refusal, summary) with a stub bench. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
 | `test-run-model-swap-stub.sh` | Test of `run-model-swap.sh` (plan, paid path, resume, hook miss, counted-credit guard) and of `model-swap-summary.js` with a stub bench. Free. |
 | `test-run-model-swap-judge-stub.sh` | Test of `run-model-swap-judge.sh` and `model-swap-judge.js` (plan, paid path, arm rename, resume, USD gate, cap refusal) with a stub bench. Free. |
-| `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench. Free. |
+| `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench, and of its `--fill` stage (plan, the 3 cells only, 60 cap, cells outside the stage, done tasks). Free. |
+| `test-run-nudge-judge-fill.sh` | Test of `run-nudge-judge.sh --fill`'s guards (no .done, cap over USD 0.5). Free. |
 
 ## Refactor regression net (`bench/ops/refactor-regression/`)
 

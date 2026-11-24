@@ -12,6 +12,16 @@
 #
 #   sh run-nudge.sh          dry run: arm and host checks, then each task's budget assuming every task spends its worst case
 #   sh run-nudge.sh --go     PAID run (approved: cap 450 credits). Waits for run-forced-aa*.sh to finish first.
+#   sh run-nudge.sh --fill [--plan]   free plan of the fill stage (below): cells, budgets, worst case against its cap
+#   sh run-nudge.sh --fill --go       PAID fill stage (approved 2026-11-23: cap 60 counted credits)
+#
+# Fill stage: the 450 cap left 3 cells budget skipped (t1-nfr-report-queries list and filler #3, t2-dr-notify-fanout
+# list #3; nudge-fill.js names them). --fill resumes only those two task folders, t1 first, and never runs a cell that
+# has a result. Its cap is 60 counted credits: each call of a stage cell counts at the larger of 15 and its credits,
+# read from the task ledgers. Before each task the script refuses the call unless counted spend plus that task's worst
+# case fits. One cell: budget = run limit, worst case one limit. Two cells: the frozen runner starts the second only
+# when charged + largest run <= budget, so with budget B the first counts at most max(15, B/2) when the second starts;
+# B = min(2 x limit, 2 x (cap - spent - limit)), worst case spent + max(15, B/2) + limit.
 #
 # The two arms are `cap variant --hook` trees built from git archive of the konductor ref (never a worktree), pinned
 # by variant hash and hook command sha256 below. A missing arm is rebuilt with the same command (reproducible).
@@ -46,11 +56,16 @@ KBIN_PIN=e1bf38eb89e06d90ffb872565f3f191590e148c2da0b68e5d5ac31b7ca49a70e
 CACHE=/var/tmp/lite-konductor-cache
 PY312=$(ls -d "$HOME"/.local/share/mise/installs/python/3.12.*/bin/python3.12 2>/dev/null | sort -V | tail -1)
 GO=${1:-}
+FILL=0
+if [ "$GO" = --fill ]; then FILL=1; GO=${2:-}; fi
+[ "$GO" = --plan ] && GO=''
 STUB=${STUB:-}
 FORCED_PAT=${FORCED_PAT:-run-forced-aa}
 LOAD_MAX=${LOAD_MAX:-4}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 CAP=450
+FILL_JS=$CHECK_BENCH/bench/ops/next-experiment-2026-11-22/nudge-fill.js
+FILL_MIN=15
 stop() { echo "stop: $*" >&2; exit 1; }
 
 # task batch runLimit budget: the forced run's table (6 runs per task: 3 list + 3 filler, as there 3 forced + 3 vanilla)
@@ -62,6 +77,12 @@ t2-dr-notify-fanout t2 23 55
 t2-arch-dr-split-checkout t2 23 55
 t7-program-brief t7 15 55
 t1-nfr-report-queries t1 23 55'
+# The fill stage's tasks, in run order (t1 first: at worst case its 2 cells fit and close a whole task).
+if [ "$FILL" = 1 ]; then
+  CAP=60
+  TASKS='t1-nfr-report-queries t1 23 23
+t2-dr-notify-fanout t2 23 23'
+fi
 
 # Builds a missing arm (--go only), then checks it: variant hash, hook command sha, and the tree still hashing to it.
 # Args: dir kind variantHash commandSha.
@@ -116,6 +137,16 @@ budget_for() {
 }
 worst_case() { awk -v s="$1" -v b="$2" -v l="$3" 'BEGIN { printf "%.2f", s + 0.9 * b + l }'; }
 
+# Fill stage: counted spend of the stage cells, and one task's "budget worstCaseAfter" (STOP when it does not fit).
+# Args of fill_budget: counted spend, cells to run, run limit. See the top of this file for the rule.
+fill_spent() { node "$FILL_JS" spent "$OUT" 23; }
+fill_budget() {
+  awk -v s="$1" -v n="$2" -v l="$3" -v c="$CAP" -v m="$FILL_MIN" 'BEGIN { w = (l > m) ? l : m;
+    if (n == 1) { if (s + w > c) print "STOP"; else printf "%d %.2f", l, s + w; exit }
+    left = c - s - w; if (n != 2 || left < m) { print "STOP"; exit }
+    b = 2 * left; if (b > 2 * l) b = 2 * l; b = int(b); h = (b / 2 > m) ? b / 2 : m; printf "%d %.2f", b, s + h + w }'
+}
+
 # The forced run shares the host and the cache: wait (up to 24 h) until no run-forced-aa*.sh is running.
 wait_forced() {
   i=0; pids=''
@@ -156,16 +187,38 @@ run_task() {
       echo "$task: all 6 cells have a result, no bench call"; rc=5; nocall=1
     fi
   fi
-  if [ "$GO" = --go ]; then wait_host; s=$(spent_all); else s=$DRY_SPENT; fi
-  budget=$(budget_for "$s" "$limit" "$budget")
+  # Fill stage: only an existing task folder, and only its stage cells (nudge-fill.js stops on any other missing cell).
+  n=0
+  if [ "$FILL" = 1 ]; then
+    [ -n "$resume" ] || stop "$OUT/$task is missing: the fill stage only resumes a task folder"
+    cells=$(node "$FILL_JS" missing "$OUT" "$task") || stop "$task: a cell outside the fill stage has no result"
+    n=$(printf '%s\n' "$cells" | grep -c . || true)
+    echo "$task: $n fill cell(s) to run: $(printf '%s' "$cells" | tr '\n' ',' )"
+  fi
+  if [ "$GO" = --go ]; then
+    wait_host
+    if [ "$FILL" = 1 ]; then s=$(fill_spent); else s=$(spent_all); fi
+  else s=$DRY_SPENT; fi
+  if [ "$FILL" = 1 ]; then
+    fb=$(fill_budget "$s" "$n" "$limit"); budget=${fb%% *}; after=${fb#* }
+    [ "$n" = 0 ] && { budget=$limit; after=$s; }
+  else budget=$(budget_for "$s" "$limit" "$budget"); fi
   if [ "$budget" = STOP ]; then
+    [ "$GO" = --go ] && [ "$FILL" = 1 ] && stop "counted $s of $CAP: $task does not fit ($n cell(s), worst case $limit each); it stays without .done"
     [ "$GO" = --go ] && stop "spent $s of $CAP: $task cannot fit one run of $limit"
     # Dry run: this task runs only if the tasks before it spend less than their worst case, which they do in practice.
-    printf '| %s | %s | cut | %s | not reached at worst case | %s |\n' "$task" "$limit" "$s" "$(forced_spent "$task")"
+    if [ "$FILL" = 1 ]; then
+      printf '| %s | %s | %s | cut | %s | not reached at worst case |\n' "$task" "$n" "$limit" "$s"
+      DRY_CUT="$DRY_CUT $task (runs only if counted spend before it is at most $(awk -v c="$CAP" -v l="$limit" -v m="$FILL_MIN" 'BEGIN { print c - (l > m ? l : m) }'))"
+      DRY_EXPECTED=$((DRY_EXPECTED + n * FILL_MIN))
+    else printf '| %s | %s | cut | %s | not reached at worst case | %s |\n' "$task" "$limit" "$s" "$(forced_spent "$task")"; fi
     return 0
   fi
-  after=$(worst_case "$s" "$budget" "$limit")
+  [ "$FILL" = 1 ] || after=$(worst_case "$s" "$budget" "$limit")
   if [ "$GO" = --go ]; then echo "[$(date -u +%H:%M)] $task: spent $s of $CAP, budget $budget, limit $limit, worst case after $after"
+  elif [ "$FILL" = 1 ]; then
+    printf '| %s | %s | %s | %s | %s | %s |\n' "$task" "$n" "$limit" "$budget" "$s" "$after"
+    DRY_EXPECTED=$((DRY_EXPECTED + n * FILL_MIN))
   else printf '| %s | %s | %s | %s | %s | %s |\n' "$task" "$limit" "$budget" "$s" "$after" "$(forced_spent "$task")"; fi
   set -- node "$R/bench/runner/bench.js" run --suite pilot --tasks "$task" \
     --arms "konductor-list=dir:$LIST/tree,konductor-filler=dir:$FILLER/tree" \
@@ -204,12 +257,28 @@ run_task() {
 }
 
 wait_forced
-DRY_SPENT=$(spent_all)
+if [ "$FILL" = 1 ]; then DRY_SPENT=$(fill_spent); else DRY_SPENT=$(spent_all); fi
 DRY_LAST=''
-[ "$GO" = --go ] || { echo; echo '| task | run limit | budget | spent before (worst case) | worst case after | forced run spent |'; echo '| --- | --- | --- | --- | --- | --- |'; }
+DRY_CUT=''
+DRY_EXPECTED=0
+if [ "$GO" != --go ] && [ "$FILL" = 1 ]; then
+  echo; echo "fill stage, cap $CAP counted credits (each call at the larger of $FILL_MIN and its credits)"
+  echo '| task | cells | run limit | budget | counted before (worst case) | worst case after |'; echo '| --- | --- | --- | --- | --- | --- |'
+elif [ "$GO" != --go ]; then
+  echo; echo '| task | run limit | budget | spent before (worst case) | worst case after | forced run spent |'; echo '| --- | --- | --- | --- | --- | --- |'
+fi
 # Not a pipe: the loop must run in this shell so DRY_SPENT carries from task to task.
 while read -r t b l bud; do run_task "$t" "$b" "$l" "$bud"; done <<EOF
 $TASKS
 EOF
-if [ "$GO" = --go ]; then echo "[$(date -u +%H:%M)] all tasks done, spent $(spent_all) of $CAP"
-else echo; echo "worst case total: $DRY_SPENT of $CAP credits"; echo "last command: $DRY_LAST"; fi
+if [ "$GO" = --go ] && [ "$FILL" = 1 ]; then echo "[$(date -u +%H:%M)] fill stage done, counted $(fill_spent) of $CAP"
+elif [ "$GO" = --go ]; then echo "[$(date -u +%H:%M)] all tasks done, spent $(spent_all) of $CAP"
+else
+  echo; echo "worst case total: $DRY_SPENT of $CAP credits"
+  if [ "$FILL" = 1 ]; then
+    echo "cut at worst case:${DRY_CUT:- none}"
+    echo "expected: $DRY_EXPECTED.00 of $CAP counted credits (every run at $FILL_MIN; the 9 runs of these two tasks so far cost 6.8 to 14.8)"
+    echo "not in the worst case: a throttle retry (at most one per cell, each counted at least $FILL_MIN) and a run that overshoots its limit"
+  fi
+  echo "last command: $DRY_LAST"
+fi
