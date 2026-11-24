@@ -16,7 +16,7 @@ cat > "$T/kiro" <<'SH'
 [ "$1" = whoami ] && exit 0
 printf '%s %s\n' "$HOME" "$5" >> "$CALLS"
 [ -n "${STUB_NOJSON:-}" ] && exit 1
-echo '{"tasks":{}}' > recheck.json
+if [ -n "${STUB_SUBDIR:-}" ]; then mkdir -p tasks; echo '{"tasks":{}}' > tasks/recheck.json; else echo '{"tasks":{}}' > recheck.json; fi
 echo '{"type":"result"}'
 SH
 chmod +x "$T/kiro"
@@ -62,6 +62,11 @@ grep -qv "^$HOME " "$T/calls" && ! grep -q "^$HOME " "$T/calls" && ok "every cal
 run E; rc=$?
 pkill -P "$HOLDER" 2>/dev/null; kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
 [ "$rc" = 1 ] && [ "$(calls)" = 0 ] && grep -q 'STOP: the heavy lock' "$T/log" && ok "held heavy lock: stops, no call" || bad "heavy: rc $rc; $(tail -2 "$T/log")"
+
+# the model may write recheck.json under tasks/; the call moves it to work/recheck.json and counts it
+: > "$T/calls"; STUB_SUBDIR=1 run F; rc=$?
+[ "$rc" = 0 ] && [ "$(calls)" = 7 ] && [ "$(ls "$T/F/results" | wc -l)" = 7 ] && ! grep -q NOJSON "$T/log" && [ -f "$T/F/calls/S1/work/recheck.json" ] && [ ! -e "$T/F/calls/S1/work/tasks/recheck.json" ] && ok "tasks/recheck.json is moved and read" || { bad "subdir: rc $rc"; tail -3 "$T/log"; }
+grep -q 'recheck.json' "$HERE/prompt.md" && grep -q 'top level' "$HERE/prompt.md" && ok "prompt names the output path" || bad "prompt does not name recheck.json"
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

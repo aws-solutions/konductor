@@ -69,6 +69,8 @@ call() {
   real=$(BENCH_REPO=$PIN_REPO node -e 'const s=require(process.env.BENCH_REPO+"/bench/scenarios/lib/stage.js");try{console.log(s.streamInfo(process.argv[1]).credits.toFixed(3))}catch(e){console.log("NaN")}' "$w/call.out")
   counted=$(awk -v r="$real" -v m="$COUNT_MIN" 'BEGIN { if (r == "NaN" || r + 0 < m) print m; else print r }')
   echo "$name $model $counted real=$real rc=$rc $(date -u +%FT%TZ)" >> "$LEDGER"
+  # the model sometimes writes it under tasks/; a misplaced file still counts
+  [ -f "$w/work/recheck.json" ] || [ ! -f "$w/work/tasks/recheck.json" ] || mv -- "$w/work/tasks/recheck.json" "$w/work/recheck.json"
   if [ -f "$w/work/recheck.json" ]; then cp -- "$w/work/recheck.json" "$S/results/$name.json"; say "ok $name: counted $counted (real $real)"
   else say "NOJSON $name (exit $rc, see $w/call.err); the queue stops, no retry"; return 3; fi
   return 0
