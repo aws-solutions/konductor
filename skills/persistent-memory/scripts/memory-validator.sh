@@ -256,8 +256,9 @@ HOST_TAIL = re.compile(CLOSING + "+$")
 MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
 # A URL parser removes every ASCII tab, CR and LF before it parses, so
-# https:<TAB>//evil.test opens https://evil.test.
-URL_STRIPPED = re.compile(r"[\t\r\n]")
+# https:<TAB>//evil.test opens https://evil.test. An entry is one line, so
+# only tab and CR can occur here; a link split across lines is not joined.
+URL_STRIPPED = re.compile(r"[\t\r]")
 
 # The entry as written plus each way a renderer or URL parser can decode it.
 # A link that any of them shows must pass.
