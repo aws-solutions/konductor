@@ -277,17 +277,36 @@ TRANSFORMS = _DECODINGS + [_strip(f) for f in _DECODINGS]
 def renderings(text):
     return dict.fromkeys(f(text) for f in TRANSFORMS)
 
+# Inside a quoted URL attribute or a <...> link destination a space does not
+# end the URL: a URL parser percent-encodes it, and before an @ it is only
+# userinfo. Such a link runs to the closing quote or >, or to the end of the
+# text. Other attributes (title, alt) and bare text still end at whitespace.
+ENCLOSED = re.compile(
+    r"""(?i)(?:\b(?:href|src|action|formaction|cite|poster|background|data|xlink:href)\s*=\s*(["'])|\]\(\s*(<))\s*$"""
+)
+
+def link_end(text, m):
+    opener = ENCLOSED.search(text, 0, m.start())
+    if not opener:
+        return m.end()
+    close = text.find(">" if opener.group(2) else opener.group(1), m.start(3))
+    end = len(text) if close < 0 else close
+    # A tab or CR is removed before parsing; the rendering without them
+    # reads this link whole, so this one stops where it used to.
+    return m.end() if URL_STRIPPED.search(text, m.start(), end) else end
+
 def links(text):
     pos = 0
     while (m := SCHEME.search(text, pos)):
-        scheme, slashes, rest = m.group(1).lower(), m.group(2), m.group(3)
+        end = link_end(text, m)
+        scheme, slashes, rest = m.group(1).lower(), m.group(2), text[m.start(3):end]
         pos = m.start(3)
         if scheme in SPECIAL:
             is_link = (rest and (slashes or not PROSE_TAIL.fullmatch(rest))) or len(slashes) > 2
         else:
             is_link = len(slashes) >= 2 and (rest or len(slashes) > 2)
         if is_link:
-            yield scheme, m.group(0)[: m.start(3) - m.start()], rest, m.start(), m.end()
+            yield scheme, m.group(0)[: m.start(3) - m.start()], rest, m.start(), end
 
 # How an ordinary entry line begins: a list, quote or heading marker, or a
 # date or origin tag, each followed by whitespace. When a link seems to run

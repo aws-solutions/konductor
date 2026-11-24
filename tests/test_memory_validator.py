@@ -1793,6 +1793,52 @@ def test_lines_already_in_the_file_are_not_joined(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Inside a quoted URL attribute or a <...> link destination, a space
+        # does not end the URL: before an @ it is userinfo, and the host is
+        # what follows.
+        '<a href="https://docs.example.com @evil.test/">x</a>',
+        "<a href='https://docs.example.com @evil.test/'>x</a>",
+        '<A HREF = "https://docs.example.com @evil.test/">x</a>',
+        '<img src="https://docs.example.com @evil.test/x.png">',
+        '<a href=" https://docs.example.com @evil.test/">x</a>',
+        "[a](<https://docs.example.com @evil.test/>)",
+        '<a href="https://docs.example.com @evil\t.test/">x</a>',
+        '<a href="https://docs.example.com/ok">x</a> <a href="https://docs.example.com @evil.test/">y</a>',
+    ],
+)
+def test_space_inside_a_quoted_url_attribute_does_not_end_the_link(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '<a href="https://docs.example.com/a b">x</a>',
+        '<a href="https://docs.example.com/">x y</a>',
+        "[a](<https://docs.example.com/a b>)",
+        # A non-URL attribute is prose: its spaces still end a link.
+        '<abbr title="see https://docs.example.com for more">x</abbr>',
+        '[a](https://docs.example.com "title with spaces")',
+    ],
+)
+def test_allowed_link_inside_a_quoted_url_attribute_is_accepted(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
+def test_space_before_an_at_on_the_next_line_of_a_split_href_is_checked(tmp_path):
+    for second in ("[origin:agent] @evil.test/\">x</a>", "- [origin:agent] @evil.test/\">x</a>"):
+        proposed = f'- [2026-11-24] [origin:agent] See <a href="https://\n{second}\n'
+        result = _write_verdict(tmp_path, proposed)
+        assert result.returncode == 1, f"{second!r} was accepted: {result.stderr}"
+        assert "blocked external URL" in result.stderr, result.stderr
+
+
 def test_non_https_urls_pass_without_an_allowlist(tmp_path):
     # No allowlist means every URL is allowed, whatever its scheme.
     write_config(tmp_path / ".konductor" / "memory-config.json", [])
