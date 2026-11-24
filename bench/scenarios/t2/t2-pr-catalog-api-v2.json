@@ -148,7 +148,35 @@
         "verdict": "pass",
         "note": "No obvious comments or file names pointing to problems. Test 'event schema keeps cents numeric' contrasts with code but is checking schema file, not highlighting bug."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a review as the API owner without prescribing a method; no misleading hints divert from real issues."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture provides schemas, client notes, consumer contracts, and the diff that reveal issues when cross-referenced, but no file lists the findings directly."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 7 key items reference existing fixture files/lines (product-service.js:8-9, product-create.json:7, normalizers.js:1, product-changed.js:15, product-create.json:13-16 and 18-24, catalog.yaml:28-34); rubric correctly rewards concrete, contract-grounded findings."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Each issue is discoverable by comparing the diff against client notes (displayName->label breaks mobile), event schema (priceCents must be integer), and stored data (archived status exists in products.json but removed from normalizers)."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

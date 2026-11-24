@@ -260,32 +260,32 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-21",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-24",
+      "version": 4,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request prescribes specific implementation details: exact file names (src/ring-rollout.js, src/go-no-go.js, scripts/receipt-go-no-go.js), exact function signatures, exports, error codes, and JSON block formats. (disposition: independent review reports/review-probe-disposals-fable.md (claude-fable-5.1, 2026-11-22, mate workspace, t10-tpm-ring-rollout v3): by design, checklist misread; the request names the interface the hidden tests import, not a way of working)"
+          "note": "The request specifies exact files, functions, and behaviors (createRingRollout, evaluate, etc.), but names no method for how to work and holds no decoy."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides context (ring definitions, thresholds, freezes, error policy, partner info) but doesn't list answer or describe finished behavior hidden tests check."
+          "note": "The fixture has source, config, tests, but nothing in it describes the finished ring rollout behaviour the hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests reference fixture elements: ring order from ops/rings.json, thresholds from ops/budget-policy.json, freeze dates from ops/freeze-calendar.csv, error policy from docs/error-budget-policy.md, Ledger Lantern from docs/partners.md."
+          "note": "The hidden key files (block-kit/key.json, rollout-kit/key.json) specify what the design and rollout plan must contain; the rubric anchors match budget-policy.json and rings.json in the fixture."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer could implement prescribed solution from fixture context (ring definitions, thresholds, freezes, error policy, partner requirements) and detailed request."
+          "note": "A competent developer could implement the ring rollout from the fixture and request alone, knowing what the tests expect."
         }
-      ],
-      "version": 3
+      ]
     }
   },
   "pilot": {

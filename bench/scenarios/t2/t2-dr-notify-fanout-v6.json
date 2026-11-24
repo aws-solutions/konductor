@@ -198,29 +198,30 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-24",
+      "version": 6,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric aligns with request for 'things that could break in production, cost surprises, or compliance gaps' - no extra method. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt asks to 'review it and write up what you find' without naming a method, checklist, or process. References incident report for context but doesn't point at planted problems or decoys.)."
+          "note": "The request asks for a design review with specific topics (duplicates, costs, compliance) but names no method or process for how to work and holds no misleading hint."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Judge-only rubric with quality anchors; no answer content in criterion text. Earlier minimax-m2.5 check of the request, fixture and key: pass (Design doc describes features positively (e.g., 'no notification is ever dropped', 'Protected by TLS between services'). Supporting files (incident report, vendor-limits, traffic data, service-targets) provide context but don't state what is wrong.)."
+          "note": "The fixture contains the design doc and supporting context but nothing in it lists the answer or describes the finished behaviour the hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Verified: vendor-limits.yaml has sendgrid per_second:100, traffic-by-hour.csv shows ~500/sec peak, matching findingsKey. Earlier minimax-m2.5 check of the request, fixture and key: pass (k1:5.3.3 (at-least-once without deduplication), k2:5.3.2 (retry requeues forever), k3:5.5 (10k vs 500 peak), k4:5.4.2 (100/sec limit without throttling), k5:5.7.1 (TLS only, no at-rest encryption per service-targets), k6:5.6 (single AZ vs 99.95% SLA), k7:5.8 (hardcoded US/Eastern). All match document sections and severities are defensible.)."
+          "note": "The hidden key items (k1-k7) match sections in the design doc; the rubric's Pass/Fail anchors ask for actionable findings grounded in the document, which matches the request."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different correctly-grounded findings can Pass; rubric judges consequence explanation and fix actionability. Earlier minimax-m2.5 check of the request, fixture and key: pass (Each finding requires cross-referencing: 5.3.3 + incident report (deduplication), 5.3.2 (no DLQ), 5.5 + traffic-by-hour.csv (over-provisioning), 5.4.2 + vendor-limits.yaml (throttling), 5.7.1 + service-targets.md (encryption), 5.6 (single AZ), 5.8 (timezone). All items findable from fixture alone.)."
+          "note": "A competent reviewer can find the issues in the design from the fixture and request alone, without seeing the hidden key."
         }
       ]
     }

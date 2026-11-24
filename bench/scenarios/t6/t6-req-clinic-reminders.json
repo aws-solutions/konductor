@@ -227,27 +227,28 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-24",
+      "version": 6,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to read working folder and create requirements, no specific method prescribed."
+          "note": "Request asks for requirements document from working folder, no prescribed method or misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains clinic profiles, booking process, exports but not synthesized requirements."
+          "note": "Fixture contains clinic documents but no finished requirements; README states files are not clean specification."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check patterns matching scripted facts; rubric aligns with prompt and fixture content."
+          "note": "Rubric criteria align with request; edits show rubric anchors added/tested; matches fixture concepts."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM could create requirements from fixture; different structure would pass if captures essentials."
+          "note": "Competent PM can extract requirements from fixture; different wording capturing same info would pass."
         }
       ]
     }

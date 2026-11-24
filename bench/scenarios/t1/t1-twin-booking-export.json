@@ -106,7 +106,35 @@
         "verdict": "pass",
         "note": "The reference passes all 12 existing fixture tests and all 14 hidden tests without timing or environment failures. The request is implementable within the existing synchronous Node HTTP architecture, and the hidden tests do not reject the stated behavior or existing endpoints."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request specifies CSV endpoint behavior without naming implementation framework or tools, no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture has booking routes/handlers but no CSV export implementation; solution not present in fixture."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check CSV generation, date filtering, error handling matching request; references exist in fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can implement export from existing handler patterns; alternative approaches would pass."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

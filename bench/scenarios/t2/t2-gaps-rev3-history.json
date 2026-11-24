@@ -144,7 +144,35 @@
         "verdict": "pass",
         "note": "No obvious pointers in comments, tests, or file names; code appears normal with subtle issues."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt requests a review without mandating a specific method, process, or tool; no decoys mislead away from real issues."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains the diff, review history, and code that expose the bugs upon analysis, but nothing explicitly lists the findings as answers."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 6 key items reference fixture files at correct lines (routes-redeem.js:8-10, expiry-job.js:7-8, points-ledger.js:9, routes-admin.js:11-14, routes-earn.js:10, validation.js:10); rubric appropriately rewards grounded, actionable findings."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Each bug is evident from the diff and context (e.g., routes-admin.js adjustBalance lacks role check that inspectBalance has; validation.js positivePoints does not enforce maxRedeemPoints from config/points-policy.json)."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

@@ -252,29 +252,30 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 4,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric item explanation asks for why each test can pass while behavior is wrong and the exact assertion to replace, which matches the request to explain false confidence and what to check instead. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks for a test audit without naming specific techniques, tools, or decoys. It describes the goal (identify tests that give false confidence), constraints (don't change files), and expected output format.)."
+          "note": "Prompt asks for test suite audit without naming specific method; no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: The anchors (names test, shows how it passes while wrong, names exact replacement assertion) are judge-only; the fixture has tests but not the audit. Earlier glm-5 check of the request, fixture and key: pass (No fixture file lists the audit findings. The test files contain flawed tests (e.g., proration.test.js line 10 self-comparison, invoice-contract.test.js line 9 comparing result to itself), but no document explicitly states these are defects.)."
+          "note": "Fixture has source and test files but doesn't provide audit findings or reveal answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: The rubric references billing calculation bug which is the context in the prompt; test files like proration.test.js, invoice-contract.test.js exist in the fixture. Earlier glm-5 check of the request, fixture and key: pass (All findingsKey locations exist in fixture: test/proration.test.js, test/invoice-contract.test.js, test/retry.test.js, test/webhook-failure.test.js, test/proration-preview.test.js, test/api-routes.test.js, test/discounts.test.js, test/invoice-snapshot.test.js. Each test has a verifiable defect matching its key description.)."
+          "note": "Hidden tests check findings match key; rubric items align with prompt's audit requirements."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different correct audits can reach Pass as long as each finding names a test, explains the weakness, and gives a concrete fix; specific findings can vary. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify all 8 defects from the fixture: self-comparison in proration.test.js:10, stability check without expected values in invoice-contract.test.js:9, stubbed dependency in retry.test.js:6, swallowed error in webhook-failure.test.js:9, shared formula bug in proration-preview.test.js:11, unchecked response body in api-routes.test.js:6, empty iteration in discounts.test.js:9)."
+          "note": "Competent QA can examine tests and proration.js to identify weaknesses and write audit report."
         }
       ]
     }

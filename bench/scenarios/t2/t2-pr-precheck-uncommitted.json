@@ -143,7 +143,35 @@
         "verdict": "pass",
         "note": "No planted hints in comments, tests, or file names; documentation states contract but does not point to specific bug."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a code review without prescribing a method, tool, or framework; no misleading hints are present."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture provides the diff, docs, and tests that reveal the bugs when analyzed, but no file explicitly lists the findings or describes the finished behavior as expected answers."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 6 key items reference existing fixture files and lines (rates.js:7, quote.js:52-55, carrier.js:40-42, config.js:11-16, quote.js:8-14, tests/quote.test.js:32-40); the rubric correctly rewards concrete, grounded, actionable findings."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Each bug is discoverable from the diff and surrounding code/docs (e.g., docs/rate-table.md says bands include upper bound but code uses strict less-than; carrier.js logs full payload with account number visible)."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

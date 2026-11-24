@@ -109,7 +109,35 @@
         "verdict": "pass",
         "note": "All test requirements can be derived from reading docs/checkout.md and observing the checkout code behavior. The tests check for realistic journey coverage matching documented checkout rules. No test relies on hidden class names, IDs, or undocumented behavior."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks for e2e test plan/journeys, explicitly states scope/branch not decided, no prescribed framework."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture has checkout docs and e2e setup but not the specific test plan being requested."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Checks verify plan file with bullet points, no tests created; rubric checks agent asks before writing tests."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent frontend developer can create test journeys from checkout behavior/docs; different phrasing would pass."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

@@ -186,7 +186,35 @@
         "verdict": "pass",
         "note": "No comments, test names, or file names point at planted problems; issues emerge from content analysis."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a design review of product-search-options.md. It does not prescribe a specific method, process, framework or tool for how to work, and holds no misleading hint pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains design documents comparing search options (PostgreSQL, managed service, self-run cluster). Nothing in the fixture (comments, docs, tests, names) lists the answers the hidden tests check for."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The findingsKey items reference specific sections (3.2-3.7) that exist in docs/design/product-search-options.md. The rubric's Fail/Partial/Pass anchors reward identifying packet-specific risks with concrete consequences and actionable fixes, which the request asks for."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent reviewer can read the design document and the request, identify the seeded issues using section numbers and the fixture's scoring logic, and write a passing REVIEW.md without seeing the hidden tests or solution."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

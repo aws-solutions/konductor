@@ -117,29 +117,30 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-24",
+      "version": 4,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt names components (calendar rule parser, next-run calculation, priority queue, limiter, retry, persistence) with no prescribed method; no decoy hints."
+          "note": "Prompt asks to strengthen tests without naming specific method/framework; no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture tests cover basic scheduling; no comments or docs reveal the edge cases mutants test (ranged step overflow, month boundary, timezone drop, retry cap)."
+          "note": "Fixture shows code structure and existing tests but not the correct strengthened tests solution."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Mutant files (schedulerlib/scheduler.py, retry.py, priority_queue.py, rate_limiter.py, persistence.py) all exist in fixture; rubric anchors match stated outcomes."
+          "note": "Hidden tests check mutant killing; rubric aligns with prompt; mutants cover scheduler components mentioned."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can examine schedulerlib modules and write tests for calendar rules, retry delays, queue ordering, limiter windows and persistence without hidden tests."
+          "note": "Competent developer can write better tests examining existing tests and scheduler components."
         }
       ]
     }

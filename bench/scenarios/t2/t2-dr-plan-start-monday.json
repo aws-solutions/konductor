@@ -185,7 +185,35 @@
         "verdict": "pass",
         "note": "No comments, test names, or obvious clues point to planted problems; issues require analysis of document relationships."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a plan review to determine if the team can start the work on Monday. It does not prescribe a specific method, process, framework or tool for how to work, and holds no misleading hint."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains docs/plans/search-reindex-plan.md with specific sections. Nothing in the fixture lists the answers the hidden tests check for (e.g., section 3.6 assigns Priya during her leave)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The findingsKey items reference specific sections (3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.1) that exist in the fixture plan document. The rubric asks for grounded go/no-go decisions with concrete consequences and actionable fixes."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent reviewer can read the plan and supporting files (roster.yaml showing Priya's leave, config/index-settings.yaml showing reserved index names) and identify the seeded issues without seeing the hidden tests."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

@@ -106,6 +106,34 @@
         "verdict": "pass",
         "note": "Tests derive directly from ticket requirements: MUX-1 expects onHand <= reorderPoint (ticket says 'less than or equal'), MUX-2 accepts zero quantity (ticket specifies), MUX-3 expects exact format shown in ticket. No timing dependencies or external requirements."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request specifies using tmux windows and git worktrees for parallel workers, but this is the actual method for the task, not a decoy."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture has tickets and source files, but nothing in them describes the finished behaviour the hidden tests check (separate workers, merge commits, cleanup)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden tests check that workers are on separate branches, merge with commit messages naming tickets, pass tests, and clean up - all matching the request and fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer could solve the task from the fixture and request alone, knowing they need parallel workers with proper isolation."
+        }
+      ]
+    }
   }
 }

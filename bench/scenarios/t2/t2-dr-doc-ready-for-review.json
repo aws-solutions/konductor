@@ -185,7 +185,35 @@
         "verdict": "pass",
         "note": "No comments, TODOs, test names, or obvious hints point directly at planted problems; issues require reading and comparing documents"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a design review of notification-preferences.md. It does not prescribe a specific method, process, framework or tool for how to work, and holds no misleading hint or decoy."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains docs/design/notification-preferences.md. Nothing in the fixture (comments, docs, tests, names) lists the answers the hidden tests check for (e.g., section 2.1 lacks 60-second/99% targets)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The findingsKey items reference specific sections (2.1, 4.3, 5.1, 6.2, 7.1, 8.3) that exist in the fixture document. The rubric's anchors reward accurate identification of document issues with concrete consequences and actionable fixes."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent reviewer can read the design document and identify the seeded issues (e.g., customer outcome lacks measurable targets, section 4.3 adds policy layer outside scope) without seeing the hidden tests."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

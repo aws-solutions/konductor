@@ -110,7 +110,35 @@
         "verdict": "pass",
         "note": "No tests fail for correct alternatives. All rules are derivable from the request and config/holidays.json. The tests are deterministic and use fixed dates."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-24",
+      "version": 1,
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request gives the settled billing rules (business days, holidays.json, rate 0.1%, cap 10%) and explicitly says not to start on reminders; no misleading hints point away from the late-fee change."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture's latefees.js uses calendar days; docs/billing-notes.md describes September rules (calendar days, 5-day reminders) that the request overrides; nothing shows the business-day implementation."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests use src/latefees.js, bin/tally.js fees, config/holidays.json; reminders test uses src/reminders.js, tally reminders command; all paths and the isBusinessDay helper in src/dates.js exist in the fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The request specifies business days from config/holidays.json, rate 0.1% rounded down, cap 10%; the fixture has dates.js with isBusinessDay, holidays.json, and existing latefees.js to modify; session 2 prompt gives complete reminder rules."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

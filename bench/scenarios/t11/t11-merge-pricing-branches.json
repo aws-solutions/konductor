@@ -120,32 +120,32 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-21",
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-24",
+      "version": 5,
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks to merge feature branches into main without prescribing specific methods. No misleading hints or decoys present."
+          "note": "The request describes what to achieve (merge branches, add tests) without prescribing a specific git workflow or testing framework, and names no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains starting main branch and two feature branches with separate implementations. No combined solution or answer shown."
+          "note": "The fixture contains main with 8 test cases across 5 test files and two feature branches; nothing lists the merged config structure, the 14+ test case requirement, or the specific quote values the hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check for combined functionality using promo codes and regions from feature branches. Rubric rewards readable history and proper documentation as requested."
+          "note": "Hidden tests use calculateOrder, loadConfig from src/index.js, regions harbor/ridge/meadow with rate/taxShipping fields, promos WELCOME10/BASKET5 as specified; check 4 counts tests via git grep (14 needed, fixture has 8); rubric rewards merge history and documentation of both features."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can examine feature branches, merge them, resolve conflicts, implement combined functionality, and add tests. Different solutions (test names, merge strategy) could still pass."
+          "note": "The request tells the agent to merge two feature branches into main, follow docs/pricing.md, and add focused tests; the fixture has the branches, the pricing doc, and existing test patterns to follow."
         }
-      ],
-      "version": 4
+      ]
     }
   },
   "handEdited": {
