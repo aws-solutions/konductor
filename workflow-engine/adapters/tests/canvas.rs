@@ -241,6 +241,7 @@ fn fixture_with(hold: Option<PathBuf>, live: Option<Live>) -> Fixture {
         scope: Scope::Project,
         project_root: project.path().to_path_buf(),
         harness: "fake".to_string(),
+        konductor_version: "1.2.3-test".to_string(),
         page_dir: page.path().to_path_buf(),
         launch_code: CODE.to_string(),
         entry: entry.clone(),
@@ -738,11 +739,10 @@ fn the_server_listens_on_the_loopback_address_only() {
 // ---------------------------------------------------------------------------------------------------------------
 // Session
 
-/// The session reply has these four fields and no list of capabilities yet. The stub suite skips the operations that
-/// this server does not serve (`listAgents`, `getRunEvents`, `listRuns`), each with its reason. When the server gains
-/// capabilities, this test changes with them, so the list and the served operations cannot drift apart.
+/// The session reply has the fields of the contract's `SessionResponse` and no other. A field that a later contract
+/// adds is added here with the code that fills it.
 #[test]
-fn the_session_reply_holds_only_the_fields_the_server_has() {
+fn the_session_reply_holds_only_the_fields_the_contract_names() {
     let _serial = one_at_a_time();
     let f = fixture(None);
     let body = format!("{{\"code\":\"{CODE}\"}}");
@@ -751,7 +751,18 @@ fn the_session_reply_holds_only_the_fields_the_server_has() {
         panic!("the session reply is not an object");
     };
     let names: Vec<&str> = fields.keys().map(String::as_str).collect();
-    assert_eq!(names, ["api_version", "harness", "root", "token"]);
+    assert_eq!(
+        names,
+        [
+            "api_version",
+            "capabilities",
+            "harness",
+            "konductor_version",
+            "limits",
+            "root",
+            "token"
+        ]
+    );
 }
 
 #[test]
@@ -783,6 +794,77 @@ fn the_launch_code_works_once_and_a_wrong_one_does_not() {
         )
         .code(),
         "bad_request"
+    );
+}
+
+/// The session of a fresh server, and a fixture that holds its token.
+fn session_of(f: &mut Fixture) -> Json {
+    let session = call(
+        f,
+        "POST",
+        "/api/session",
+        Some(&format!("{{\"code\":\"{CODE}\"}}")),
+    );
+    assert_eq!(session.status, 200, "{}", session.body);
+    let json = session.json();
+    f.token = json.get("token").and_then(Json::as_str).map(str::to_string);
+    json
+}
+
+#[test]
+fn the_session_says_which_server_it_is_what_it_serves_and_its_limits() {
+    let _serial = one_at_a_time();
+    let mut f = fixture(None);
+    let json = session_of(&mut f);
+    assert_eq!(
+        json.get("konductor_version").and_then(Json::as_str),
+        Some("1.2.3-test")
+    );
+    let limits = json.get("limits").expect("limits");
+    let limit = |key: &str| limits.get(key).and_then(Json::as_u64);
+    assert_eq!(limit("text_bytes"), Some(262_144));
+    assert_eq!(limit("stages"), Some(40));
+    assert_eq!(limit("outcome_chars"), Some(300));
+    assert_eq!(limit("prompt_chars"), Some(32_768));
+    assert_eq!(limit("goal_chars"), Some(2048));
+}
+
+/// What the server answers on each operation of the contract that it serves, with the method and path.
+const SERVED: [(&str, &str, &str); 6] = [
+    ("createSession", "POST", "/api/session"),
+    ("getWorkflow", "GET", "/api/workflow"),
+    ("saveWorkflow", "PUT", "/api/workflow"),
+    ("checkWorkflow", "POST", "/api/validate"),
+    ("startRun", "POST", "/api/run"),
+    ("getRun", "GET", "/api/runs/20261024-0412-a7b3c"),
+];
+
+#[test]
+fn the_capabilities_are_the_operations_that_the_server_answers_and_no_others() {
+    let _serial = one_at_a_time();
+    let mut f = fixture(None);
+    let json = session_of(&mut f);
+    let mut listed: Vec<&str> = json
+        .get("capabilities")
+        .and_then(Json::as_array)
+        .expect("capabilities")
+        .iter()
+        .map(|id| id.as_str().expect("an operationId"))
+        .collect();
+    listed.sort_unstable();
+    let mut served: Vec<&str> = SERVED.iter().map(|(id, _, _)| *id).collect();
+    served.sort_unstable();
+    assert_eq!(listed, served);
+    for (id, method, path) in SERVED {
+        let answer = call(&f, method, path, Some("{}"));
+        // A run id that no run has is a 404 `not_found` of the operation itself, as is the reply to no body.
+        assert_ne!(answer.status, 405, "{id} takes {method}");
+        assert_ne!(answer.status, 401, "{id} is behind the token it was given");
+    }
+    // An operation that is not listed is not answered.
+    assert_eq!(
+        call(&f, "GET", "/api/runs/20261024-0412-a7b3c/events", None).code(),
+        "not_found"
     );
 }
 

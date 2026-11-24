@@ -243,6 +243,7 @@ pub(super) fn view(
         scope: found.scope,
         project_root: cwd.to_path_buf(),
         harness: choice.name().to_string(),
+        konductor_version: env!("CARGO_PKG_VERSION").to_string(),
         page_dir,
         launch_code,
         entry: Arc::new(entry),

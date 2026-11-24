@@ -55,6 +55,17 @@ pub(super) fn accept_loop(shared: Arc<Shared>, listener: TcpListener) {
     }
 }
 
+/// The `operationId` of each operation of the contract that this server serves. The session lists them as its
+/// capabilities, so an operation that is not served is not here. A test calls each of them on its path.
+pub(super) const OPERATIONS: [&str; 6] = [
+    "createSession",
+    "getWorkflow",
+    "saveWorkflow",
+    "checkWorkflow",
+    "startRun",
+    "getRun",
+];
+
 /// What the router decided a path is.
 enum Route {
     Session,

@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-//! The six operations of the canvas contract. Each is a function of the shared state and the decoded request, and
-//! gives a [`Reply`] or the [`ApiError`] to answer with. Each makes its checks in the order the contract fixes.
-//! Nothing here reads a socket, so a test can call them without one.
+//! The operations of the canvas contract that this server serves. Each is a function of the shared state and the decoded
+//! request, and gives a [`Reply`] or the [`ApiError`] to answer with. Each makes its checks in the order the contract
+//! fixes. Nothing here reads a socket, so a test can call them without one.
 
 use std::io::Write;
 
 use workflow_core::json::Json;
-use workflow_core::limits::{MAX_FILE_BYTES, MAX_GOAL_CHARS};
+use workflow_core::limits::{
+    MAX_FILE_BYTES, MAX_GOAL_CHARS, MAX_OUTCOME_CHARS, MAX_PROMPT_CHARS, MAX_STAGES,
+};
 use workflow_core::ports::{Claim, Clock, LockRecord, PortError, RunLock, RunStore};
 use workflow_core::rules::{code_points, decode_file, is_name};
 use workflow_core::run::{Run, RunStatus};
@@ -494,6 +496,18 @@ fn wrap(run: &Run) -> Json {
     body
 }
 
+/// The limits that the session reports, by their names in the contract. They are the constants that the checker and the
+/// run start enforce, so a client reads what the server holds a workflow and a run to.
+fn limits_json() -> Json {
+    let mut limits = Json::object();
+    limits.insert("text_bytes", Json::number(MAX_FILE_BYTES));
+    limits.insert("stages", Json::number(MAX_STAGES));
+    limits.insert("outcome_chars", Json::number(MAX_OUTCOME_CHARS));
+    limits.insert("prompt_chars", Json::number(MAX_PROMPT_CHARS));
+    limits.insert("goal_chars", Json::number(MAX_GOAL_CHARS));
+    limits
+}
+
 /// `createSession`.
 pub fn create_session(shared: &Shared, body: &Body) -> Result<Reply, ApiError> {
     only_fields(body, &["code"])?;
@@ -514,5 +528,19 @@ pub fn create_session(shared: &Shared, body: &Body) -> Result<Reply, ApiError> {
     session.insert("root", Json::str(&shared.config.root));
     session.insert("harness", Json::str(&shared.config.harness));
     session.insert("api_version", Json::number(1));
+    session.insert(
+        "konductor_version",
+        Json::str(&shared.config.konductor_version),
+    );
+    session.insert(
+        "capabilities",
+        Json::Array(
+            super::server::OPERATIONS
+                .iter()
+                .map(|id| Json::str(id))
+                .collect(),
+        ),
+    );
+    session.insert("limits", limits_json());
     ok(session)
 }
