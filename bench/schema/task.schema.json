@@ -619,7 +619,10 @@
         "design-review",
         "planning",
         "release-ops",
-        "multi-phase"
+        "multi-phase",
+        "documentation",
+        "triage",
+        "log-analysis"
       ]
     },
     "phases2": {
@@ -640,7 +643,10 @@
           "design-review",
           "planning",
           "release-ops",
-          "multi-phase"
+          "multi-phase",
+          "documentation",
+          "triage",
+          "log-analysis"
         ]
       }
     },

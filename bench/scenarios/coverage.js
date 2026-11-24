@@ -11,12 +11,18 @@ const { splitOf } = require('./split.js');
 const { targetsOf } = require('../runner/lib/task-v3.js');
 const { kiroReachers } = require('../cap/reach.js');
 
-const PHASES = ['ideation', 'requirements', 'architecture', 'decisions', 'nfr', 'security', 'implementation', 'bugfix', 'refactor', 'testing', 'code-review', 'design-review', 'planning', 'release-ops', 'multi-phase'];
+// The plan's 15 phases (plan section 2). The LITE rule and the pre-registered levels read these only.
+const CORE_PHASES = ['ideation', 'requirements', 'architecture', 'decisions', 'nfr', 'security', 'implementation', 'bugfix', 'refactor', 'testing', 'code-review', 'design-review', 'planning', 'release-ops', 'multi-phase'];
+// Added 2026-11-24 (batch T13, reports/new-task-briefs-2026-11-24.md): the three types of work the pack had no task for.
+// They are outside the plan's matrix, so a level rule that was locked before they existed must not pick from them.
+const ADDED_PHASES = ['documentation', 'triage', 'log-analysis'];
+const PHASES = [...CORE_PHASES, ...ADDED_PHASES];
 const ROLES = ['pm', 'tpm', 'architect', 'developer', 'frontend', 'qa', 'security', 'sre', 'reviewer'];
 const PHASE_LABEL = {
   ideation: 'Ideation and framing', requirements: 'Requirements (scripted user)', architecture: 'Architecture, API/DB design', decisions: 'Decisions (ADR, trade-off, cost)',
   nfr: 'NFR and performance', security: 'Security and IAM', implementation: 'Implementation', bugfix: 'Bug fix', refactor: 'Refactor, migration, upgrade', testing: 'Testing and QA',
   'code-review': 'Code and PR review', 'design-review': 'Design review', planning: 'Planning, status, estimation', 'release-ops': 'Release, ops, incident', 'multi-phase': 'Long multi-phase (idea to ship)',
+  documentation: 'Technical documentation', triage: 'Issue and crash triage', 'log-analysis': 'Log analysis',
 };
 const ROLE_LABEL = { pm: 'PM', tpm: 'TPM', architect: 'Arch', developer: 'Dev', frontend: 'FE', qa: 'QA', security: 'Sec', sre: 'SRE', reviewer: 'Rev' };
 
@@ -27,6 +33,8 @@ const TARGET_ROWS = {
   implementation: [0, 0, 0, 8, 3, 0, 0, 0, 0], bugfix: [0, 0, 0, 6, 1, 0, 0, 1, 0], refactor: [0, 0, 1, 7, 1, 0, 0, 0, 0],
   testing: [0, 0, 0, 1, 1, 7, 0, 0, 0], 'code-review': [0, 0, 0, 0, 1, 0, 1, 0, 8], 'design-review': [0, 0, 3, 0, 0, 0, 1, 0, 4],
   planning: [1, 7, 0, 1, 0, 0, 0, 0, 0], 'release-ops': [0, 1, 0, 0, 0, 0, 0, 7, 0], 'multi-phase': [1, 1, 1, 3, 0, 0, 0, 0, 0],
+  // The added phases start at two tasks each (the T13 briefs); a target, so the matrix names them as short until they grow.
+  documentation: [0, 0, 0, 2, 0, 0, 0, 0, 0], triage: [0, 0, 0, 2, 0, 0, 0, 0, 0], 'log-analysis': [0, 0, 0, 0, 0, 0, 1, 1, 0],
 };
 const TARGET = Object.fromEntries(PHASES.map((p) => [p, Object.fromEntries(ROLES.map((r, i) => [r, TARGET_ROWS[p][i]]))]));
 
@@ -142,4 +150,4 @@ function renderCoverageMd(cov) {
   return `${L.join('\n')}\n`;
 }
 
-module.exports = { buildCoverage, renderCoverageMd, PHASES, ROLES, TARGET, MIN, UNIT_MIN, PHASE_LABEL };
+module.exports = { buildCoverage, renderCoverageMd, PHASES, CORE_PHASES, ADDED_PHASES, ROLES, TARGET, MIN, UNIT_MIN, PHASE_LABEL };
