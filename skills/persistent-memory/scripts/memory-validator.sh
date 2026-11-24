@@ -593,7 +593,11 @@ if [[ ${#ALLOWLIST_PATTERNS[@]} -gt 0 ]]; then
     url_output="$(check_write_urls "${#url_entries[@]}" "${url_lines[@]}" "${url_entries[@]}")"
     url_status=$?
     set -e
-    mapfile -t url_results <<< "$url_output"
+    # A read loop, not mapfile: macOS still ships bash 3.2.
+    url_results=()
+    while IFS= read -r verdict; do
+      url_results+=("$verdict")
+    done <<< "$url_output"
     expected=$(( ${#url_entries[@]} + 1 ))
     if [[ ( "$url_status" -ne 0 && "$url_status" -ne 1 ) || ${#url_results[@]} -ne $expected ]]; then
       URL_CHECK_FAILED="$url_status"

@@ -36,6 +36,7 @@ Run:  cd tests && pytest test_memory_validator.py
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -92,6 +93,24 @@ def write_config(path: Path, allowlist_patterns: list[str]) -> None:
 def test_script_exists_and_is_executable():
     assert VALIDATOR.is_file(), f"missing script: {VALIDATOR}"
     assert os.access(VALIDATOR, os.X_OK), f"script not executable: {VALIDATOR}"
+
+
+# macOS ships bash 3.2 as /bin/bash, which `#!/usr/bin/env bash` resolves to
+# there, and CI runs only on Linux. Pin the script to bash 3.2 builtins and
+# syntax so a write does not fail with "command not found" on macOS.
+_BASH4_ONLY = re.compile(
+    r"\b(mapfile|readarray|coproc)\b|declare -[aA]*A|local -n|declare -n"
+    r"|\$\{[A-Za-z_][A-Za-z0-9_]*(,,?|\^\^?)\}|&>>|\|&"
+)
+
+
+def test_script_uses_only_bash_3_2_features():
+    hits = [
+        f"{n}: {line.strip()}"
+        for n, line in enumerate(VALIDATOR.read_text().splitlines(), 1)
+        if not line.lstrip().startswith("#") and _BASH4_ONLY.search(line)
+    ]
+    assert not hits, "bash 4 only feature(s):\n" + "\n".join(hits)
 
 
 def test_canonical_config_present_is_read_and_enforced(tmp_path):
