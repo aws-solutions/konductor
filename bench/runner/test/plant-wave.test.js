@@ -44,12 +44,78 @@ test('plant-wave.sh is valid bash and shellcheck-clean when shellcheck exists', 
   }
 });
 
-test('usage errors exit 64 and --list prints waves 0 to 3', () => {
+test('usage errors exit 64 and --list prints waves 0 to 4', () => {
   assert.equal(run([]).status, 64);
   assert.equal(run(['9']).status, 64);
   const l = run(['--list']);
   assert.equal(l.status, 0);
-  for (const w of ['0 plant-p1-overspeed', '1 plant-p1-overspeed', '2 plant-p2', '3 plant-p3']) assert.ok(l.stdout.includes(w), l.stdout);
+  for (const w of ['0 plant-p1-overspeed', '1 plant-p1-overspeed', '2 plant-p2', '3 plant-p3', '4 plant-n 12 2 unshare normal 3 w4', '4 plant-p 37 2 unshare heldback 1 w4']) assert.ok(l.stdout.includes(w), l.stdout);
+});
+
+/**
+ * A stub counted set with `open` release tasks, `held` held-back tasks and `normal` normal tasks (file names only; the
+ * plan reads no task content), in a new dir. Returns `{cs, normal}`; `t.after` removes it.
+ */
+function planCs(t, { open = [], held = [], normal = [] }) {
+  const cs = fs.mkdtempSync(path.join(os.tmpdir(), 'plant-wave-plan-'));
+  t.after(() => fs.rmSync(cs, { recursive: true, force: true }));
+  const put = (dir, ids) => { fs.mkdirSync(dir, { recursive: true }); for (const id of ids) fs.writeFileSync(path.join(dir, `${id}.json`), `{"id":"${id}"}\n`); };
+  put(path.join(cs, 'release', 'tasks'), open);
+  put(path.join(cs, 'held-back', 'tasks'), held);
+  put(path.join(cs, 'normal'), normal);
+  return { cs, normal: path.join(cs, 'normal') };
+}
+
+test('--plan is free: it prints each part with its tasks, trials, ceiling and expected credits, and the paid command', (t) => {
+  const { cs } = planCs(t, { open: ['plant-p2-guard-no-approval.v01', 'plant-p5-injected-text.v01', 'plant-p7-jam-link-loss.v01', 'plant-p1-overspeed.v01'] });
+  const r = run(['2', '--plan'], { PLANT_CS: cs, PLANT_KBIN: '/no/such/kiro', PLANT_VENV: '/no/such/python' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /part main: 3 tasks x 2 arms x 1 replicate = 6 trials; ceiling 134 credits; expected about 2\.2/);
+  assert.match(r.stdout, /wave 2 total: 6 trials, ceiling 134 credits, expected about 2\.2 credits/);
+  assert.match(r.stdout, /paid run \(owner\): bash .*plant-wave\.sh 2/);
+});
+
+test('wave 4 --plan lists the normal part (3 replicates) and the held-back part, with the held-back hash', (t) => {
+  const { cs, normal } = planCs(t, { held: ['plant-p1-overspeed.v36', 'plant-p2-guard-no-approval.v36'], normal: ['plant-n1-target-speed.v01', 'plant-n2-stop-jam.v01', 'plant-n3-approved-guard.v01'] });
+  const r = run(['4', '--plan'], { PLANT_CS: cs, PLANT_NORMAL: normal });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /part normal: 3 tasks x 2 arms x 3 replicates = 18 trials; ceiling 12 credits/);
+  assert.match(r.stdout, /part heldback: 2 tasks x 2 arms x 1 replicate = 4 trials; ceiling 37 credits/);
+  assert.match(r.stdout, /wave 4 total: 22 trials, ceiling 49 credits/);
+  assert.match(r.stdout, /held-back sha256 [0-9a-f]{64}/);
+  assert.match(r.stdout, /PLANT_HELDBACK_SHA256 is not set/);
+});
+
+test('wave 4 stops before any work without PLANT_NORMAL or the held-back folder', (t) => {
+  const { cs } = planCs(t, { held: ['plant-p1-overspeed.v36'] });
+  const r = run(['4', '--plan'], { PLANT_CS: cs });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /STOP: wave 4 needs PLANT_NORMAL/);
+  const bare = planCs(t, { normal: ['plant-n1-target-speed.v01'] });
+  fs.rmSync(path.join(bare.cs, 'held-back'), { recursive: true });
+  const r2 = run(['4', '--plan'], { PLANT_CS: bare.cs, PLANT_NORMAL: bare.normal });
+  assert.equal(r2.status, 1);
+  assert.match(r2.stderr, /STOP: wave 4 needs .*held-back\/tasks/);
+});
+
+test('wave 4 stops when PLANT_HELDBACK_SHA256 does not match the held-back folder', (t) => {
+  const { cs, normal } = planCs(t, { held: ['plant-p1-overspeed.v36'], normal: ['plant-n1-target-speed.v01'] });
+  const r = run(['4', '--plan'], { PLANT_CS: cs, PLANT_NORMAL: normal, PLANT_HELDBACK_SHA256: '0'.repeat(64) });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /STOP: the held-back folder .* is not the one recorded at freeze/);
+});
+
+test('the held-back hash is the make-fields.py tar hash: same for the same files, other when a file changes, blind to mtime', (t) => {
+  const HELPER = path.join(__dirname, '..', '..', 'scripts', 'lib', 'heldback_sha.py');
+  const { cs } = planCs(t, { held: ['plant-p1-overspeed.v36'] });
+  const dir = path.join(cs, 'held-back');
+  const hash = () => execFileSync('python3', [HELPER, dir], { encoding: 'utf8' }).trim();
+  const a = hash();
+  assert.match(a, /^[0-9a-f]{64}$/);
+  fs.utimesSync(path.join(dir, 'tasks', 'plant-p1-overspeed.v36.json'), new Date(0), new Date(0));
+  assert.equal(hash(), a);
+  fs.writeFileSync(path.join(dir, 'tasks', 'plant-p1-overspeed.v36.json'), '{"id":"changed"}\n');
+  assert.notEqual(hash(), a);
 });
 
 test('a missing PLANT_CS stops before any work', () => {

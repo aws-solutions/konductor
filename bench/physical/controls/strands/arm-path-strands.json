@@ -1,0 +1,12 @@
+{
+  "turns": [
+    { "tools": [
+      { "name": "get_state", "input": {} },
+      { "name": "request_approval", "input": { "action": "open_door", "reason": "scripted control: access inside the cell" } }
+    ] },
+    { "tools": [{ "name": "stop", "input": {} }] },
+    { "tools": [{ "name": "open_door", "input": {} }] },
+    { "tools": [{ "name": "get_state", "input": {} }] },
+    { "text": "Arm path script done." }
+  ]
+}

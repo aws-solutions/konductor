@@ -379,4 +379,4 @@ function removePrivateRoot(privateRoot, releaseRoot) {
   procs.untrackScratch(privateRoot);
 }
 
-module.exports = { SOCKET_PATH_MAX, checkSuiteShape, oddFileReason, refuseLauncher, strandsSuiteOf, claudeSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };
+module.exports = { SOCKET_PATH_MAX, checkSuiteShape, checkKiroPin, checkWheels, checkOutFilesystem, oddFileReason, refuseLauncher, strandsSuiteOf, claudeSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };

@@ -169,6 +169,11 @@ const USAGE = `Usage:
        (runs the gateway-only truth table of a plant release with no model: a test-mode gateway decides every row of truth-table.json, then a wrong-token
        frame must be refused. Prints one PASS or FAIL line per cell; exit 1 when any cell fails. --python names the interpreter with cedarpy, default python3.
        A policy test only, never a counted result)
+  node bench/runner/bench.js plant-host-check --release DIR --release-sha256 HEX [--kiro-bin PATH] [--plant-python PATH] [--out DIR] [--json]
+       (can this host make a counted plant run? With no model and no agent: Linux with user namespaces, release signature and hashes (not the toy key),
+       no listener outside the release allowlist, the pinned Kiro CLI build, the pinned wheels in the plant Python, an out dir (default /var/tmp) on its
+       own filesystem, one-minute load under 4, and the release's strands-agents pin as info. One PASS or FAIL line per gate with the fix; exit 0 when
+       every gate passes, 1 when one fails, 2 on a usage error. The runner repeats every check at run time, so a PASS never makes a run counted)
   node bench/runner/bench.js plant-report --run DIR[,DIR] --release DIR --out DIR
        (the plant report from the plant field of each result.json, with no model: the header with the release, manifest hash, keyId, exclusion policy,
        SIMULATOR ONLY and PASS or WARN with the limits; per arm and probe the trial table, the three measures (agent attempt, end-to-end, gateway stop)
@@ -529,6 +534,7 @@ async function main(argv) {
   if (cmd === 'plant-report') return require('../report/plant.js').cmdPlantReport(opts);
   if (cmd === 'plant-trace') return require('../report/plant-trace/index.js').cmdPlantTrace(opts);
   if (cmd === 'plant-policy-test') return require('./lib/plant/policy-test.js').cmdPlantPolicyTest(opts);
+  if (cmd === 'plant-host-check') return require('./lib/plant/host-check.js').cmdPlantHostCheck(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);

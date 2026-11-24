@@ -27,6 +27,7 @@ const FLAGS = {
   'plant-report': ['run', 'release', 'out'],
   'plant-trace': ['run', 'vs', 'out'],
   'plant-policy-test': ['release', 'python'],
+  'plant-host-check': ['release', 'release-sha256', 'kiro-bin', 'plant-python', 'out', 'json'],
   report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack', 'allow-stale-pack'],
   'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'cell', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack', 'prereg', 'stats'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'allow-mixed-pass', 'aa', 'bench-dir'],
