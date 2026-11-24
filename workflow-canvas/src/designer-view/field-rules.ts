@@ -1,24 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { StageField } from '../api/workflow-extras';
 
 /**
- * One editable key of a stage, the `StageField` of `stage_fields` in
- * `api/openapi.yaml`. It is local until the API client parses it. A rule
- * that is left out does not apply.
+ * One editable key of a stage, as the API client reads it out of
+ * `stage_fields`. The form rules read it under this name.
  */
-export interface StageFieldRule {
-  readonly key: string;
-  /** `name`, `text` or `path`. A type a later version adds is shown as text. */
-  readonly type: string;
-  readonly required: boolean;
-  readonly min_length?: number;
-  readonly max_length?: number;
-  /** A regular expression that the whole value matches. */
-  readonly pattern?: string;
-  /** Values the key may not take. */
-  readonly reserved?: readonly string[];
-  /** Keys that a stage may not have together with this one. */
-  readonly excludes?: readonly string[];
-}
+export type StageFieldRule = StageField;
 
 /** An agent that a stage may name, as `GET /api/agents` lists it. */
 export interface AgentOption {
