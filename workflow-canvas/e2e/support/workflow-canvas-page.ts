@@ -32,7 +32,7 @@ export const NODE_NAMES = [
 
 /** The words a node shows for its state in a run. */
 export type BadgeText =
-  'Queued' | 'Running' | 'Done' | 'Failed' | 'Not run' | 'Passed' | 'Halted';
+  'Queued' | 'Running' | 'Done' | 'Blocked' | 'Not run' | 'Passed' | 'Halted';
 
 /**
  * How long to wait for a step of a run on the stub. A stage takes 3 seconds

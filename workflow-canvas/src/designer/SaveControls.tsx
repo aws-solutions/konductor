@@ -2,11 +2,13 @@
 import Button from '@cloudscape-design/components/button';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
+import { plainText } from '../workflow/message-parts';
 import { saveBlocker, saveStatus, type EditState } from './core';
 
 /**
  * The state of the work, as words in a polite live region, and the Save
  * button. A Save that cannot be pressed says why, and keeps keyboard focus.
+ * The reason is plain text there: the alerts show its names as code.
  */
 export function SaveControls({
   state,
@@ -25,7 +27,7 @@ export function SaveControls({
       <Button
         variant="primary"
         disabled={blocker !== undefined}
-        disabledReason={blocker}
+        disabledReason={blocker === undefined ? undefined : plainText(blocker)}
         loading={state.save.phase === 'saving'}
         onClick={onSave}
       >

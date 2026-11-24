@@ -15,6 +15,7 @@ import {
 } from '../../src/designer/core/draft.ts';
 import { problemsOf } from '../../src/designer/core/problems.ts';
 import { withStages } from '../../src/designer/core/stage-text.ts';
+import { STAGE_FIELDS } from '../core/fields.ts';
 import { sha256Hex } from '../core/hash.ts';
 import { SAMPLE_FILES } from '../core/sample.ts';
 import { LAUNCH_CODE, useStub } from '../test-support/harness.ts';
@@ -51,12 +52,29 @@ describe('the wire types of the page read GET /api/workflow', () => {
       view: {
         name: 'hello',
         intent: { outcome: 'Add a greeting to the README' },
+        params: {
+          goal: {
+            description: 'What the workflow should accomplish.',
+            default: 'Add a greeting to the README',
+          },
+        },
         stages: [
-          { name: 'draft', agent: 'k-developer' },
-          { name: 'review', agent: 'k-quality-assurance' },
+          {
+            name: 'draft',
+            kind: 'agent',
+            agent: 'k-developer',
+            range: { line: 14, end_line: 15 },
+          },
+          {
+            name: 'review',
+            kind: 'agent',
+            agent: 'k-quality-assurance',
+            range: { line: 16, end_line: 17 },
+          },
         ],
       },
       diagnostics: [],
+      stageFields: STAGE_FIELDS,
     });
   });
 });
@@ -99,7 +117,12 @@ describe('the wire types of the page read GET /api/workflow with another workflo
     const reply = await stub().client.get(PATH);
 
     expect(parseWorkflowDocument(reply.body).view?.stages).toEqual([
-      { name: 'solo', agent: 'k-developer' },
+      {
+        name: 'solo',
+        kind: 'agent',
+        agent: 'k-developer',
+        range: { line: 7, end_line: 8 },
+      },
     ]);
   });
 });
@@ -120,11 +143,9 @@ describe('the wire types and text of the Designer against PUT /api/workflow', ()
     const loaded = await document();
     if (!loaded.view) throw new Error('The sample has no view.');
     const draft = change(draftOf(loaded.view.stages));
-    return {
-      loaded,
-      text: withStages(sample, loaded.view, stagesOf(draft)),
-      draft,
-    };
+    const written = withStages(sample, loaded.view, stagesOf(draft));
+    if (!written.ok) throw new Error(written.reason);
+    return { loaded, text: written.text, draft };
   }
 
   it('accepts the text of a renamed stage and returns the new view', async () => {

@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Lint, typecheck, test, build and end-to-end tests for workflow-canvas/. Pull
-# requests and pushes run only when that folder (or this workflow) changes. The
-# integration/** and wc/** PR targets cover stacked PRs, where a PR's base is
-# another feature branch rather than main. Pushes to main and integration/**
-# give a post-merge signal. workflow_dispatch re-runs manually and ignores the
-# path filter.
+# requests and pushes run only when that folder, this workflow or
+# workflow-engine/examples/hello-plan.yml changes; an end-to-end test reads
+# that example. The integration/** and wc/** PR targets cover stacked PRs,
+# where a PR's base is another feature branch rather than main. Pushes to main
+# and integration/** give a post-merge signal. workflow_dispatch re-runs
+# manually and ignores the path filter.
 #
 # The root .prettierrc is a trigger because `prettier --check` resolves it.
 # Install scripts are skipped: no dependency needs one to lint, test or build.
@@ -28,12 +29,14 @@ on:
     branches: [main, 'integration/**', 'wc/**']
     paths:
       - 'workflow-canvas/**'
+      - 'workflow-engine/examples/hello-plan.yml'
       - '.prettierrc'
       - '.github/workflows/workflow-canvas.yml'
   push:
     branches: [main, 'integration/**']
     paths:
       - 'workflow-canvas/**'
+      - 'workflow-engine/examples/hello-plan.yml'
       - '.prettierrc'
       - '.github/workflows/workflow-canvas.yml'
   workflow_dispatch:

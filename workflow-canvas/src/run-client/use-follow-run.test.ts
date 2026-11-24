@@ -46,13 +46,17 @@ class HeldSession {
     this.mostInFlight = Math.max(this.mostInFlight, this.inFlight);
     let settled = false;
     return new Promise<EventsReply>((resolve, reject) => {
-      this.held.push({ resolve, reject });
+      const call = { resolve, reject };
+      this.held.push(call);
       signal.addEventListener(
         'abort',
         () => {
           if (settled) return;
           this.log.push(`${this.name} aborted`);
-          if (!this.answersPastAbort) reject(new Error('aborted'));
+          if (this.answersPastAbort) return;
+          // An aborted call cannot be answered any more, as `fetch` cannot.
+          this.held = this.held.filter((held) => held !== call);
+          reject(new Error('aborted'));
         },
         { once: true },
       );
@@ -389,6 +393,47 @@ describe('useFollowRun', () => {
 
     expect(session.paths).toHaveLength(reads);
     expect(session.inFlight).toBe(0);
+  });
+
+  it('shows the live follower, not how the one before it ended for the same run id', async () => {
+    const session = new HeldSession();
+    const { result, rerender } = renderFollow(session);
+    await settle();
+    await giveUp(session);
+    expect(result.current.status.kind).toBe('failed');
+
+    // Back to the first run before the second has read anything, so the
+    // state of the follower that gave up still holds the same values.
+    rerender({ runId: 'r2' });
+    await settle();
+    rerender({ runId: 'r1' });
+    await settle();
+
+    expect(result.current.status).toEqual({ kind: 'following' });
+    expect(result.current.run?.stages[0]?.status).toBe('pending');
+    expect(session.paths.at(-1)).toContain('after=0');
+  });
+
+  it('takes nothing up on retry once the run id has come back, and reads on to the end once', async () => {
+    const session = new HeldSession();
+    const { result, rerender } = renderFollow(session);
+    await settle();
+    await session.answer(page([stageState(1, 'draft', 'running')]));
+    await giveUp(session);
+    rerender({ runId: 'r2' });
+    await settle();
+    rerender({ runId: 'r1' });
+    await settle();
+    const reads = session.paths.length;
+
+    act(() => result.current.retry());
+    await settle();
+    expect(session.paths).toHaveLength(reads);
+
+    await session.answer(page([finishedEvent(1)], true));
+    expect(result.current.status).toEqual({ kind: 'finished' });
+    expect(session.paths).toHaveLength(reads);
+    expect(session.mostInFlight).toBe(1);
   });
 
   it('says the session is lost on a 401, and reads no more', async () => {
