@@ -83,6 +83,9 @@ reference.
 - `make test-py` now checks every skill's frontmatter, description, size, code fences, and
   `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
   `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
+- New `konductor metrics [--since 7d] [--by agent|model|day|repo] [--json]` reports local usage of
+  Konductor sessions in Claude Code, Kiro CLI v2 and Kiro v3: tokens for Claude Code, credits for
+  Kiro. It counts only sessions run by installed Konductor agents.
 
 ### Changed
 
