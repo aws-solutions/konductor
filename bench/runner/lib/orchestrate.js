@@ -20,6 +20,7 @@ const DEFAULT_CENSORED_FLOOR = 1.0;
 // The seeded generator and the Fisher-Yates shuffle live in util.js, so a run order is reproduced from the seed in
 // run-config the same way every other seeded draw in bench is.
 const { mulberry32, shuffle } = require('./util.js');
+const { markSelfKill } = require('./self-kill.js');
 
 // Replicate-major: every (task, arm) pair runs once per replicate.
 // `order` 'konductor-first' (the default): tasks in a seeded random order, and within a task every konductor arm before
@@ -405,6 +406,8 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
         r = await runIt();
       }
       if (refused.length) r.throttleRetries = refused;
+      markSelfKill(r, dir);
+      if (r.agentSelfKill) log(`self-kill ${arm.id} / ${task.id} / #${replicate}: the agent's own kill command ended its runtime (SIGTERM); a run result, not an infra failure`);
       const charge = ledger.add(r);
       if (unit === 'usd') r.costUsdCharged = charge; else r.creditsCharged = charge;
       const seen = costOf(r);

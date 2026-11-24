@@ -34,6 +34,10 @@
       "type": "integer",
       "minimum": 1
     },
+    "agentSelfKill": {
+      "description": "The agent's own kill command ended its runtime: an errored run whose last interrupted shell call is a kill and whose agent exited on SIGTERM (runner/lib/self-kill.js, D-243). A run result, never counted as an infrastructure failure.",
+      "type": "boolean"
+    },
     "throttleRetries": {
       "description": "Attempts the model service refused (a throttle) before this run, each kept as <replicate>.throttled-N with its own attempt-result.json (orchestrate.js DEFAULT_THROTTLE_RETRY).",
       "type": "array",

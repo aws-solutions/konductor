@@ -12,9 +12,11 @@ const minRealRunMs = () => (process.env.BENCH_TEST_MODE === '1' ? 0 : MIN_REAL_R
 function infraFailure(results, minMs = minRealRunMs()) {
   const ran = results.filter((r) => r.status !== 'budget_skipped');
   if (!ran.length) return null;
-  const errored = ran.filter((r) => r.status === 'error').length;
+  const errored = ran.filter((r) => r.status === 'error' && !r.agentSelfKill).length;
+  const selfKilled = ran.filter((r) => r.agentSelfKill).length;
   const quick = ran.filter((r) => r.status !== 'error' && Number.isFinite(r.wallClockMs) && r.wallClockMs < minMs).length;
-  if (errored + quick !== ran.length) return null;
+  // An agent that killed its own runtime ran (D-243): that is a result, so it never counts toward an infra failure.
+  if (selfKilled || errored + quick !== ran.length) return null;
   return { runs: ran.length, errored, quick, reason: `all ${ran.length} run(s) errored (${errored}) or finished in under ${minMs} ms (${quick}); treat the study as an infrastructure failure, not a result` };
 }
 

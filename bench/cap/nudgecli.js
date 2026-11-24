@@ -11,6 +11,7 @@ const nudge = require('./nudge.js');
 const { parseStream } = require('../runner/lib/stream.js');
 const { extractSkills } = require('../runner/lib/skills.js');
 const { STUDY_RUNTIME } = require('./runtimes.js');
+const { isSelfKill } = require('../runner/lib/self-kill.js');
 
 const list = (v) => (v === undefined || v === true ? [] : String(v).split(',').map((s) => s.trim()).filter(Boolean));
 
@@ -69,23 +70,11 @@ function resultDirs(root) {
 }
 
 const NO_SKILL_RE = /no skill fits/i;
-const KILL_RE = /\b(pkill|killall|kill)\b/;
-const INTERRUPTED = 'interrupted before it reported a result';
 
-/**
- * Whether an errored run killed itself: its last interrupted shell call holds a kill command (as `pkill -f "node -"`,
- * which also matches kiro-cli's own node), and kiro-cli exited on SIGTERM. That is the agent's own act, a run result,
- * not an infrastructure failure. `dir` is one run's folder.
- */
+/** Whether an errored run killed itself (runner/lib/self-kill.js, D-243). `dir` is one run's folder. */
 function selfKill(dir) {
   const r = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'));
-  if (r.status !== 'error' || !/SIGTERM/.test(readLines(path.join(dir, 'stderr.txt')))) return false;
-  let last = null;
-  for (const line of readLines(path.join(dir, 'stream.jsonl')).split('\n')) {
-    if (!line.includes(INTERRUPTED)) continue;
-    try { last = JSON.parse(line).data?.update ?? last; } catch { /* a cut line */ }
-  }
-  return Boolean(last && KILL_RE.test(String(last.rawInput?.command ?? '')));
+  return r.agentSelfKill === true || isSelfKill(dir, r.status);
 }
 
 /** One row per finished run under `runs`: the hook check and the skill outcome, full loads apart from preview-only ones. */
