@@ -232,15 +232,17 @@ import html, re, sys
 from urllib.parse import unquote
 
 # What counts as a link:
-# - A special scheme (http, https, ws, wss, ftp, file) followed by any number
-#   of / or \, zero included. A browser parses https:evil.test and
+# - A special scheme (http, https, ws, wss, ftp) followed by any number of /
+#   or \, zero included. A browser parses https:evil.test and
 #   https:/evil.test as https://evil.test. Text that is only trailing
 #   punctuation after the colon ("Use https:, not http:.") is prose.
-# - Any other scheme followed by at least two / or \, as in ftp-like or
-#   git+ssh:// links. Without them, "Note: see" or "key:value" is prose.
+# - Any other scheme, file included, followed by at least two / or \, as in
+#   file:// or git+ssh:// links. Without them, "Note: see", "key:value" or
+#   "file:line" is prose: file: with fewer slashes names a local path, never
+#   a host.
 # The scan restarts right after each scheme's slashes, so a link glued to
 # another one, or carried in its query, is checked on its own.
-SPECIAL = {"http", "https", "ws", "wss", "ftp", "file"}
+SPECIAL = {"http", "https", "ws", "wss", "ftp"}
 SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):([/\\]*)(\S*)")
 # Punctuation that closes a sentence, markdown link, quote, code span or
 # emphasis, as in [a](https://docs.example.com) or `https:`. None of it can

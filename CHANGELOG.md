@@ -652,9 +652,9 @@ not per individual commit.
   URL's hostname only, so a query string, fragment or userinfo can no longer carry an allowed
   suffix (for example `https://evil%2Ecom?.example.com/x`), and a host with an encoded dot or raw
   non-ASCII characters is rejected. Every `scheme://` is checked in any letter case, including a
-  second link glued to an allowed one, and `http`, `https`, `ws`, `wss`, `ftp` and `file` are
-  checked with any number of slashes, so `https:evil.test` and `https:/evil.test` no longer skip
-  the allowlist. Punctuation that closes a markdown link, quote or emphasis right after the host
+  second link glued to an allowed one, and `http`, `https`, `ws`, `wss` and `ftp` are checked
+  with any number of slashes, so `https:evil.test` and `https:/evil.test` no longer skip the
+  allowlist. `file:` is a link only with two or more slashes, so `file:line` is prose. Punctuation that closes a markdown link, quote or emphasis right after the host
   no longer blocks an allowed link. A backslash-escaped colon or a character reference in the
   scheme (`https\://`, `https&#58;//`) is checked like a plain one, and a tab, CR or LF inside a
   link is removed before the check. A bare scheme inside a code span or emphasis (`` `https:` ``)

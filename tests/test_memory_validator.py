@@ -1547,8 +1547,11 @@ def test_double_star_pattern_matches_one_or_more_labels(tmp_path, pattern, url, 
         "wss:/docs.example.com",
         "ftp:docs.example.com",
         "ftp:/evil.test/x",
-        "file:/etc/passwd",
-        "file:docs.example.com",
+        # file: names a host only after two slashes, and those forms stay links.
+        "file://evil.test/x",
+        "FILE://x",
+        "file:\\\\evil.test\\x",
+        "file:///etc/passwd",
     ],
 )
 def test_special_scheme_with_fewer_slashes_is_still_checked(tmp_path, url):
@@ -1595,6 +1598,13 @@ def test_https_with_fewer_slashes_to_an_allowed_host_is_accepted(tmp_path, url):
         "_http:_ is old",
         "~~http:~~ removed",
         "> see https:>",
+        # file: with zero or one slash names a local path, never a host, so it
+        # is prose, as in "file:line" in a review note. file:// is still a link.
+        "Cite findings as file:line in reviews",
+        "cite as file:42",
+        "file:/tmp/x",
+        "file:docs.example.com",
+        "FILE:\\tmp",
     ],
 )
 def test_prose_with_a_colon_is_not_a_link(tmp_path, text):
