@@ -61,6 +61,8 @@ is the docs owner's page and points here.
 | `run-cc-plant-check-v2.sh` | The first real Claude Code plant check. Paid. |
 | `run-cc-plant-check.sh` | Superseded by `run-cc-plant-check-v2.sh`. |
 | `run-clean-fill.sh` | The clean-run plan of 2026-11-24 in one command: `--plan` (free: every step's plan), `--go` (Kiro Opus fill, Claude Code fill, then the nudge, Opus-fill and Claude Code judge passes, one at a time; refused while `run-cc-compare.sh` runs). Paid. |
+| `run-overnight.sh` | The overnight chain of 2026-11-24: the credential refresher, a wait (up to 8 h) for `run-cc-compare.sh` to end, `run-clean-fill.sh --go`, then the Claude Code judge (its free `--plan` first). Stops at the first failing step. Paid, through the approved caps of each step. |
+| `debt-open-rows.js` | Lists the rows of `bench/DEBT.md` that are not closed, with counts by status, owner and area. Free, read only. |
 | `run-full-suite-twice-v2.sh` | KR k485f5870: two full suite runs through `bench/scripts/test.sh --tap`, then the reading. Free. |
 | `run-full-suite-twice.sh` | Superseded by `run-full-suite-twice-v2.sh`. |
 | `run-fw30-rewrite.sh` | FW-30: the pilot tasks written again from `briefs-fw30.json`, deepseek-3.2 writes, glm-5 reviews. Paid (cap 120); `--dry-run` is free. |
@@ -105,6 +107,7 @@ is the docs owner's page and points here.
 | `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
+| `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
 | `test-run-full-suite-twice.sh` | Superseded by `test-run-full-suite-twice-v2.sh`. |
 | `test-run-pilot-option-b.sh` | Stub run of the 15-task path and option B. Free. |
