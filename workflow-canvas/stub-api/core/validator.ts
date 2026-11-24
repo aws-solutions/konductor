@@ -6,12 +6,14 @@ import {
   isName,
   isOutputName,
   isParamName,
+  isShowable,
   isUsableStageName,
   MAX_INTENT_CHARS,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_YAML_DEPTH,
   PATH_PATTERN,
+  quoteValue,
   RESERVED_STAGE_NAMES,
   SUGGESTED_VERSION,
   VERSION_PATTERN,
@@ -197,16 +199,16 @@ function readEntries(
     const keySpan = spanOf(entry.key);
     const slice = sliceOf(table, entry.keyText);
     if (seen.has(entry.keyText)) {
-      const message = `The key ${quote(entry.keyText)} is already used.`;
+      const message = `The key ${quoteValue(entry.keyText)} is already used.`;
       ctx.reporter.report('DUPLICATE_KEY', keyPath, keySpan, message);
     } else if (slice === undefined) {
-      const message = `Unknown key ${quote(entry.keyText)}.`;
+      const message = `Unknown key ${quoteValue(entry.keyText)}.`;
       const suggestion = suggestKey(entry.keyText, candidates);
       ctx.reporter.report('UNKNOWN_KEY', keyPath, keySpan, message, suggestion);
     } else if (isBuiltIn(slice)) {
       entries.set(entry.keyText, entry);
     } else {
-      const message = `The key ${quote(entry.keyText)} is not supported by this build. ${laterSlice(slice)}`;
+      const message = `The key ${quoteValue(entry.keyText)} is not supported by this build. ${laterSlice(slice)}`;
       ctx.reporter.report(
         'NOT_SUPPORTED_BY_THIS_BUILD',
         keyPath,
@@ -222,15 +224,6 @@ function readEntries(
 // The sentence that says which slice adds what this build lacks.
 function laterSlice(slice: Slice): string {
   return `Slice ${slice} adds it.`;
-}
-
-// Names a key in a message only if it is short and plain. A longer key, or a
-// key of 12 or more characters with a digit, may be an access key, a token or
-// a hash, and is never echoed.
-function quote(text: string): string {
-  const plain = /^[\w.~-]{1,24}$/.test(text);
-  const looksSecret = text.length >= 12 && /\d/.test(text);
-  return plain && !looksSecret ? `\`${text}\`` : '(not shown)';
 }
 
 function reportMissing(
@@ -498,7 +491,7 @@ function readParams(
 // A param name is checked at its key, where the author wrote it.
 function readParamName(entry: MapEntry, name: string, ctx: Context): boolean {
   if (isParamName(name)) return true;
-  const message = `The param name ${quote(name)} ${PARAM_NAME_RULE}.`;
+  const message = `The param name ${quoteValue(name)} ${PARAM_NAME_RULE}.`;
   const path = ['params', name];
   ctx.reporter.report('INVALID_NAME', path, spanOf(entry.key), message);
   return false;
@@ -557,7 +550,7 @@ function readParamType(
   const text = readString(entry, path, ctx);
   if (text === undefined) return undefined;
   if (text === 'string') return 'string';
-  const message = `The param type ${quote(text)} is not supported by this build. ${laterSlice(PARAM_TYPE_SLICE)}`;
+  const message = `The param type ${quoteValue(text)} is not supported by this build. ${laterSlice(PARAM_TYPE_SLICE)}`;
   const span = valueSpanOf(entry);
   ctx.reporter.report('NOT_SUPPORTED_BY_THIS_BUILD', path, span, message);
   return undefined;
@@ -653,7 +646,7 @@ function readOutputs(
   const outputs: Record<string, string> = {};
   for (const [name, found] of entries) {
     if (!isOutputName(name)) {
-      const message = `The output name ${quote(name)} ${OUTPUT_NAME_RULE}.`;
+      const message = `The output name ${quoteValue(name)} ${OUTPUT_NAME_RULE}.`;
       const span = spanOf(found.key);
       ctx.reporter.report(
         'INVALID_NAME',
@@ -844,15 +837,13 @@ function referenceProblem(
   }
   return outputs.has(name)
     ? undefined
-    : `${shown} names an output that the stage ${quote(scope)} does not declare.`;
+    : `${shown} names an output that the stage ${quoteValue(scope)} does not declare.`;
 }
 
 // A reference is echoed only when both of its names are plain, since a
 // message never quotes a value that looks like a secret.
 function quoteReference(reference: Reference): string {
-  const plain =
-    quote(reference.scope).startsWith('`') &&
-    quote(reference.name).startsWith('`');
+  const plain = isShowable(reference.scope) && isShowable(reference.name);
   return plain ? `\`${reference.text}\`` : 'The reference (not shown)';
 }
 

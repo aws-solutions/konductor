@@ -15,11 +15,14 @@ import {
   HASH_PATTERN,
   MAX_GOAL_CHARS,
   MAX_INTENT_CHARS,
+  MAX_PARAM_CHARS,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_TEXT_BYTES,
   MAX_YAML_DEPTH,
   NAME_PATTERN,
+  OUTPUT_NAME_PATTERN,
+  PARAM_NAME_PATTERN,
   PATH_PATTERN_SOURCE,
   RESERVED_STAGE_NAMES,
   RUN_ID_PATTERN,
@@ -99,6 +102,38 @@ describe('the stub and api/openapi.yaml', () => {
     expect(schemaOf('RunId').pattern).toBe(RUN_ID_PATTERN.source);
     expect(schemaOf('Version').pattern).toBe(VERSION_PATTERN.source);
     expect(schemaOf('Path').pattern).toBe(PATH_PATTERN_SOURCE);
+    expect(schemaOf('ParamName').pattern).toBe(PARAM_NAME_PATTERN.source);
+    expect(schemaOf('OutputName').pattern).toBe(OUTPUT_NAME_PATTERN.source);
+  });
+
+  it('name the keys of the params and outputs maps by those patterns', () => {
+    const maps: [schema: string, key: string, pattern: RegExp][] = [
+      ['WorkflowView', 'params', PARAM_NAME_PATTERN],
+      ['Stage', 'outputs', OUTPUT_NAME_PATTERN],
+      ['RunRequest', 'params', PARAM_NAME_PATTERN],
+    ];
+    for (const [schema, key, pattern] of maps) {
+      const names = property(schemaOf(schema), key).propertyNames as Json;
+      expect(names?.pattern, `${schema}.${key}`).toBe(pattern.source);
+    }
+  });
+
+  it('give each value of those maps the schema the stub reads', () => {
+    const outputs = property(schemaOf('Stage'), 'outputs');
+    const file = outputs.additionalProperties as Json;
+    expect(file.pattern).toBe(PATH_PATTERN_SOURCE);
+    const declared = property(schemaOf('WorkflowView'), 'params');
+    const param = declared.additionalProperties as Json;
+    expect(Object.keys(param.properties as Json).sort()).toEqual([
+      'default',
+      'description',
+      'required',
+      'type',
+    ]);
+    // Every param of a run is a string, whatever the file declares.
+    const sent = property(schemaOf('RunRequest'), 'params')
+      .additionalProperties as Json;
+    expect(sent.type).toBe('string');
   });
 
   it('have the same reasons for a blocked stage', () => {
@@ -145,6 +180,9 @@ describe('the stub and api/openapi.yaml', () => {
     );
     const params = property(schemaOf('RunRequest'), 'params');
     expect(property(params, 'goal').maxLength).toBe(MAX_GOAL_CHARS);
+    expect((params.additionalProperties as Json).maxLength).toBe(
+      MAX_PARAM_CHARS,
+    );
     for (const request of ['SaveRequest', 'CheckRequest']) {
       const text = property(schemaOf(request), 'text').description as string;
       expect(text, request).toContain(`${MAX_TEXT_BYTES} bytes`);

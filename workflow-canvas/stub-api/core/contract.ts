@@ -6,6 +6,11 @@ export const API_VERSION = 1;
 export const HARNESS = 'kiro-cli';
 export const MAX_TEXT_BYTES = 262_144;
 export const MAX_GOAL_CHARS = 2048;
+/**
+ * The most characters in a param other than the goal: 64 KiB, so a value
+ * such as a diff can be passed inline.
+ */
+export const MAX_PARAM_CHARS = 65_536;
 export const MAX_INTENT_CHARS = 300;
 export const MAX_PROMPT_CHARS = 32_768;
 export const MAX_STAGES = 40;
@@ -83,4 +88,21 @@ export function isParamName(value: string): boolean {
 /** A stage name must be a name and must not be one of the reserved words. */
 export function isUsableStageName(value: string): boolean {
   return isName(value) && !RESERVED_STAGE_NAMES.has(value);
+}
+
+/**
+ * Whether a value is short and plain enough to echo in a message. A longer
+ * value, or one of 12 or more characters with a digit, may be an access key,
+ * a token or a hash, and the contract says a message never quotes a value
+ * that looks like a secret.
+ */
+export function isShowable(value: string): boolean {
+  const plain = /^[\w.~-]{1,24}$/.test(value);
+  const looksSecret = value.length >= 12 && /\d/.test(value);
+  return plain && !looksSecret;
+}
+
+/** A value in backticks, or `(not shown)` when it may be a secret. */
+export function quoteValue(value: string): string {
+  return isShowable(value) ? `\`${value}\`` : '(not shown)';
 }

@@ -1496,6 +1496,26 @@ describe('workflow canvas API contract', () => {
       expect(description).not.toMatch(/every run that/);
     });
 
+    it('says it reads the keys of slices 1 and 2', () => {
+      expect(words(spec.info.description)).toContain(
+        'This version reads the keys of slices 1 and 2.',
+      );
+    });
+
+    it('gives a param other than the goal its own, larger limit', () => {
+      const description = words(spec.info.description);
+      expect(description).toContain(
+        'a `goal` is at most 2048 characters, and every other param of a run is at most 65536 characters (64 KiB)',
+      );
+      const run = spec.paths['/api/run']?.['post']?.responses?.['422'];
+      const text = words(
+        (run as unknown as { description: string }).description,
+      );
+      expect(text).toMatch(
+        /a `goal` over 2048 characters or another value over 65536, a param the workflow does not declare, or a param it declares as `required`/,
+      );
+    });
+
     it('says that version 1.9.0 reads the keys that carry data between stages', () => {
       expect(spec.info.description).toMatch(
         /Version 1\.9\.0 only\s+adds, in the sense the rule means: it reads the keys that carry data\s+between stages, `stages\[\]\.outputs` and the params other than `goal`, and\s+it gives a reference in a `prompt` its meaning/,
@@ -1607,10 +1627,10 @@ describe('workflow canvas API contract', () => {
       );
     });
 
-    it('checks trust after the workflow and before the active run and the harness', () => {
+    it('checks the params and trust after the workflow, and before the active run and the harness', () => {
       const description = words(spec.info.description);
       expect(description).toMatch(
-        /after the body its order is 404 for the file, then 422 `invalid_workflow`, then 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
+        /after the body its order is 404 for the file, then 422 `invalid_workflow`, then the params against the declaration, as 422 `bad_params`: first a param the workflow does not declare, then a param it declares as `required` with neither a value in the call nor a `default`\. After the params come 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
       );
       const run = spec.paths['/api/run']?.['post']?.responses?.['409'];
       const text = words(

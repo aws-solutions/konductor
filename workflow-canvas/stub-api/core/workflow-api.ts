@@ -4,6 +4,7 @@ import {
   HASH_PATTERN,
   isName,
   MAX_TEXT_BYTES,
+  quoteValue,
   RUN_ID_PATTERN,
 } from './contract.ts';
 import { AGENTS, type Agent } from './agents.ts';
@@ -126,7 +127,7 @@ export class WorkflowApi {
     const check = checkWorkflowText(file.text, this.root);
     if (!check.view) throw invalidWorkflow(check);
     const view = check.view;
-    refuseUndeclared(params, view);
+    resolveParams(params, view);
     const stageNames = view.stages.map((stage) => stage.name);
     if (this.trustedHash !== file.hash) throw untrusted(this.root);
     this.findOtherRun();
@@ -249,19 +250,34 @@ function goalOfOther(view: WorkflowView): string {
 }
 
 // A run takes the goal and the params the workflow declares, and nothing
-// else. The HTTP layer has already checked the shape of each value.
-function refuseUndeclared(
+// else. The HTTP layer has already checked the shape of each value, so what
+// is left needs the declaration: a name the file does not declare, and a
+// required param with neither a value nor a default. A name is matched as an
+// own key, so an inherited name such as `constructor` is undeclared.
+function resolveParams(
   params: Record<string, string>,
   view: WorkflowView,
 ): void {
-  const undeclared = Object.keys(params).filter(
-    (name) => name !== 'goal' && view.params?.[name] === undefined,
-  );
-  if (undeclared.length === 0) return;
-  throw new ApiError(
-    'bad_params',
-    `The workflow does not declare the param \`${undeclared[0]}\`.`,
-  );
+  const declared = view.params ?? {};
+  for (const name of Object.keys(params)) {
+    if (name === 'goal' || Object.hasOwn(declared, name)) continue;
+    throw new ApiError(
+      'bad_params',
+      `The workflow does not declare the param ${quoteValue(name)}.`,
+    );
+  }
+  for (const [name, param] of Object.entries(declared)) {
+    const missing =
+      param.required === true &&
+      !Object.hasOwn(params, name) &&
+      param.default === undefined;
+    if (missing) {
+      throw new ApiError(
+        'bad_params',
+        `The param ${quoteValue(name)} is required and has no default, so the run needs a value for it.`,
+      );
+    }
+  }
 }
 
 // Whether a stage of the workflow declares the output named.

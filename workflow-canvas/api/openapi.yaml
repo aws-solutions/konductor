@@ -97,8 +97,9 @@ info:
       `not_found`. The server sends no CORS headers and sets no cookies.
     - Every response carries `X-Konductor-Api: 1` and `Cache-Control: no-store`.
     - A request body is at most 1 MiB. The `text` of a workflow is at most
-      262144 bytes (256 KiB) of UTF-8, and a `goal` is at most 2048
-      characters. A larger body or text is 413 `too_large`. A longer `goal` is
+      262144 bytes (256 KiB) of UTF-8, a `goal` is at most 2048 characters,
+      and every other param of a run is at most 65536 characters (64 KiB). A
+      larger body or text is 413 `too_large`. A value over its own limit is
       422 `bad_params`. Here and below, a length in characters counts Unicode
       code points, not bytes or UTF-16 units, as `maxLength` does in JSON
       Schema.
@@ -119,12 +120,17 @@ info:
     `POST /api/session`), `Content-Type`, body size, the body's shape (JSON,
     fields, types), `name` format, `name` is the root, `base_hash` format, the
     workflow text (413 over the limit, then 422 for errors), and last the state
-    of the file or of the run (404, 409). The body's shape includes the `goal`
-    of a run, so a bad `goal` is 422 `bad_params` before anything about the
-    run is looked at. `POST /api/run` has no text in its body: it reads the
-    saved file, so after the body its order is 404 for the file, then 422
-    `invalid_workflow`, then 409 `trust_required`, then 409 `already_running`,
-    then 409 `harness_unavailable`. A workflow that is not trusted is refused
+    of the file or of the run (404, 409). The body's shape includes the
+    `params` of a run: a missing or empty `goal`, a key that is not a param
+    name, a value that is not a string, and a value over its own limit are all
+    422 `bad_params` (400 `bad_request` for a value that is not a string)
+    before anything about the run is looked at. `POST /api/run` has no text in
+    its body: it reads the saved file, so after the body its order is 404 for
+    the file, then 422 `invalid_workflow`, then the params against the
+    declaration, as 422 `bad_params`: first a param the workflow does not
+    declare, then a param it declares as `required` with neither a value in
+    the call nor a `default`. After the params come 409 `trust_required`, then
+    409 `already_running`, then 409 `harness_unavailable`. A workflow that is not trusted is refused
     before anything about the runs is looked at, so a refused call neither
     reveals nor touches the state of a run. These orders are normative, so that
     two servers answer one bad call with one status.
@@ -301,7 +307,7 @@ info:
     appears twice in one mapping is an error, not a case of the last one
     winning. The text is a mapping with the keys below and no others. A key
     belongs to a slice, a unit of delivery of the workflow format. This version
-    reads the keys of slice 1.
+    reads the keys of slices 1 and 2.
 
     | Key                       | Required                | Value                                                                                         | Slice |
     | ------------------------- | ----------------------- | --------------------------------------------------------------------------------------------- | ----- |
@@ -1227,8 +1233,10 @@ paths:
       summary: Start a run
       description: |
         Starts a run of the root workflow and returns at once with its id.
-        The run works from the file as last saved, so a client saves first. A
-        save after this call does not change the run. Follow the run with
+        The run works from the file as last saved, so a client saves first, and
+        the params are read against that file: the goal, and a value for each
+        param it declares. A param left out takes its `default`. A save after
+        this call does not change the run. Follow the run with
         `GET /api/runs/{id}`. Only one run can be active at a time in a
         workspace. See **How a run goes** for what the run does.
       tags: [Run]
@@ -1321,8 +1329,11 @@ paths:
               $ref: '#/components/headers/XKonductorApi'
           description: |
             The saved workflow has errors (`invalid_workflow`, with
-            `diagnostics`), or `params` is missing a `goal`, has another key,
-            or has a `goal` over 2048 characters (`bad_params`).
+            `diagnostics`), or the `params` are wrong (`bad_params`): no
+            `goal` or an empty one, a key that is not a param name, a `goal`
+            over 2048 characters or another value over 65536, a param the
+            workflow does not declare, or a param it declares as `required`
+            with neither a value here nor a `default`.
           content:
             application/json:
               schema:
@@ -2416,11 +2427,12 @@ components:
             $ref: '#/components/schemas/ParamName'
           additionalProperties:
             type: string
-            maxLength: 2048
+            maxLength: 65536
             description: |
-              The value of a param the workflow declares. A param the
-              workflow does not declare is `bad_params`, and one longer than
-              2048 characters is too.
+              The value of a param the workflow declares, at most 65536
+              characters (64 KiB). A param the workflow does not declare is
+              `bad_params`, and one over the limit is too. The `goal` has its
+              own, smaller limit.
           description: |
             The inputs of the run: the goal, and a value for each param the
             workflow declares. A param left out takes its `default`, and a

@@ -8,7 +8,12 @@ import {
   expectError,
   responseExample,
 } from '../test-support/contract.ts';
-import { useStub, type TestStub } from '../test-support/harness.ts';
+import {
+  openStub,
+  signIn,
+  useStub,
+  type TestStub,
+} from '../test-support/harness.ts';
 import { oneStageWorkflow } from '../test-support/workflows.ts';
 import type { Behavior } from '../core/sample.ts';
 
@@ -514,6 +519,86 @@ describe('POST /api/run of a workflow that declares data', () => {
 
   it('takes the goal on its own, leaving the param to its default', async () => {
     expect((await stub().client.post(RUN, GOAL)).status).toBe(202);
+  });
+
+  it('takes a declared param of 65536 code points', async () => {
+    const topic = '\u{1f600}'.repeat(65_536);
+    const body = { params: { goal: 'g', topic } };
+    expect((await stub().client.post(RUN, body)).status).toBe(202);
+  });
+
+  it('is bad_params with a declared param of 65537 code points', async () => {
+    const body = { params: { goal: 'g', topic: 'y'.repeat(65_537) } };
+    const reply = await stub().client.post(RUN, body);
+    expectContract(reply, 'POST', RUN);
+    expectError(reply, 422, 'bad_params');
+    expect((reply.body as { error: string }).error).toContain('65536');
+  });
+
+  it('keeps the goal on its own, smaller limit', async () => {
+    const body = { params: { goal: 'g'.repeat(2049), topic: 'x' } };
+    expectError(await stub().client.post(RUN, body), 422, 'bad_params');
+  });
+
+  it('refuses a name that is only an inherited property', async () => {
+    const body = { params: { goal: 'g', constructor: 'x' } };
+    const reply = await stub().client.post(RUN, body);
+    expectContract(reply, 'POST', RUN);
+    expectError(reply, 422, 'bad_params');
+  });
+
+  it('does not echo an undeclared name that may be a secret', async () => {
+    const name = 'abcdefghijkl1mnop';
+    const reply = await stub().client.post(RUN, {
+      params: { goal: 'g', [name]: 'x' },
+    });
+    expectError(reply, 422, 'bad_params');
+    const { error } = reply.body as { error: string };
+    expect(error).not.toContain(name);
+    expect(error).toContain('(not shown)');
+  });
+});
+
+// `topic` is required with no default, so only a value in the call will do.
+const NEEDS_TOPIC = WITH_DATA.replace(
+  '    description: What to greet.\n    default: the README\n',
+  '    description: What to greet.\n    required: true\n',
+);
+
+describe('POST /api/run of a workflow with a required param', () => {
+  const stub = useStub({ files: { hello: NEEDS_TOPIC } });
+
+  it('is bad_params when the call leaves it out', async () => {
+    const reply = await stub().client.post(RUN, GOAL);
+    expectContract(reply, 'POST', RUN);
+    expectError(reply, 422, 'bad_params');
+    expect((reply.body as { error: string }).error).toContain('`topic`');
+  });
+
+  it('starts the run when the call gives it a value', async () => {
+    const body = { params: { goal: 'g', topic: 'the CHANGELOG' } };
+    expect((await stub().client.post(RUN, body)).status).toBe(202);
+  });
+
+  it('starts the run when the param is required but has a default', async () => {
+    const withDefault = NEEDS_TOPIC.replace(
+      '    required: true\n',
+      '    required: true\n    default: the README\n',
+    );
+    const other = await openStub({ files: { hello: withDefault } });
+    await signIn(other);
+    try {
+      expect((await other.client.post(RUN, GOAL)).status).toBe(202);
+    } finally {
+      await other.stub.close();
+    }
+  });
+
+  it('refuses the run before it asks about trust or an active run', async () => {
+    await stub().client.post(RUN, {
+      params: { goal: 'g', topic: 'first' },
+    });
+    expectError(await stub().client.post(RUN, GOAL), 422, 'bad_params');
   });
 });
 
