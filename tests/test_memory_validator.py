@@ -1712,6 +1712,68 @@ def test_tab_inside_an_allowed_link_is_accepted(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
+def _write_verdict(tmp_path: Path, proposed: str, existing: str | None = None):
+    write_config(tmp_path / ".konductor" / "memory-config.json", _ALLOWLIST)
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    if existing is not None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(existing)
+    return run_validator(proposed, target, cwd=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "proposed",
+    [
+        # A URL parser drops the line break inside a quoted href.
+        '- [2026-11-24] [origin:agent] Reference: <a href="https:\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https://docs.example.com\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="htt\n[origin:agent]ps://evil.test/">x</a>\n',
+        # Tab, CR and escapes inside a split link are still decoded.
+        '- [2026-11-24] [origin:agent] See <a href="https:\t\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https:\r\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https\\:\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https&#58;\n[origin:agent]@evil.test/">x</a>\n',
+        # A link split over three lines.
+        '- [2026-11-24] [origin:agent] See <a href="https:\n[origin:agent]//\n[origin:agent]@evil.test/">x</a>\n',
+    ],
+)
+def test_link_split_across_new_lines_is_checked_joined(tmp_path, proposed):
+    result = _write_verdict(tmp_path, proposed)
+    assert result.returncode == 1, f"{proposed!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "proposed",
+    [
+        # A split link to an allowed host passes.
+        '- [2026-11-24] [origin:agent] See <a href="https://docs.example.com/a\n[origin:agent]b">x</a>\n',
+        # A bare scheme or an allowed link at the end of a line, followed by
+        # an ordinary next entry, is not a split link.
+        "- [2026-11-24] [origin:agent] Use https:\n- [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Prefer http:\n[2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use https:\n[origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use ws:\n* [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use https:\n1. [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] See https://docs.example.com\n- [2026-11-24] [origin:agent] Next\n",
+        "- [2026-11-24] [origin:agent] See https://docs.example.com\n[2026-11-24] [origin:agent] Next\n",
+        "- [2026-11-24] [origin:agent] the `https:`\n- [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use https:\n\n[origin:agent]@evil.test is a host name\n",
+    ],
+)
+def test_ordinary_lines_after_a_bare_scheme_are_not_joined_into_a_link(tmp_path, proposed):
+    result = _write_verdict(tmp_path, proposed)
+    assert result.returncode == 0, f"{proposed!r} was rejected: {result.stderr}"
+
+
+def test_lines_already_in_the_file_are_not_joined(tmp_path):
+    existing = '- [2026-11-20] [origin:agent] Old <a href="https:\n'
+    proposed = existing + "[origin:agent]@evil.test/ is a sentence\n"
+    # The new line alone has no link, and the existing line stays exempt.
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 0, result.stderr
+
+
 def test_non_https_urls_pass_without_an_allowlist(tmp_path):
     # No allowlist means every URL is allowed, whatever its scheme.
     write_config(tmp_path / ".konductor" / "memory-config.json", [])
@@ -1827,7 +1889,7 @@ def test_url_check_interpreter_failure_is_reported_as_environment(tmp_path, body
         assert "blocked external URL" not in result.stderr, result.stderr
 
 
-def test_url_check_runs_once_per_entry_not_once_per_url(tmp_path):
+def test_url_check_runs_once_per_write_not_once_per_entry_or_url(tmp_path):
     write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
     fake_bin = tmp_path / "fakebin"
@@ -1842,4 +1904,4 @@ def test_url_check_runs_once_per_entry_not_once_per_url(tmp_path):
     )
     result = run_validator(proposed, target, cwd=tmp_path, env=env)
     assert result.returncode == 0, result.stderr
-    assert log.read_text().count("call") == 2
+    assert log.read_text().count("call") == 1

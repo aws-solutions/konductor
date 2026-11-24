@@ -220,14 +220,17 @@ else
   BUDGET="$MEMORY_MAX"
 fi
 
-# check_entry_urls <entry>: checks every link in one entry against the
-# allowlist in a single python3 call, so all URL rules live in one place.
-# The python side prints OK and exits 0 when every link is allowed, or prints
-# BLOCKED:<url> and exits 1 for the first link that is not. Any other result,
-# including exit 1 without the BLOCKED: line, is an interpreter failure. With
-# no allowlist configured, every URL is permitted and python3 is not called.
-check_entry_urls() {
-  python3 - "$1" "${ALLOWLIST_PATTERNS[@]}" <<'PYEOF'
+# check_write_urls <n> <line>... <entry>... <pattern>...: checks every link in
+# the write against the allowlist in a single python3 call, so all URL rules
+# live in one place. Each <line> is a new line of the write prefixed with C
+# when it directly follows another new line, or N when it starts a new run.
+# Each <entry> is that line's derived entry. The python side prints one
+# verdict per entry, OK or BLOCKED:<url> for its first blocked link, then one
+# JOINED:OK or JOINED:BLOCKED:<url> line for links split across lines, and
+# exits 1 if anything is blocked, 0 otherwise. Any other result is an
+# interpreter failure.
+check_write_urls() {
+  python3 - "$@" "${ALLOWLIST_PATTERNS[@]}" <<'PYEOF'
 import html, re, sys
 from urllib.parse import unquote
 
@@ -256,17 +259,23 @@ HOST_TAIL = re.compile(CLOSING + "+$")
 MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
 # A URL parser removes every ASCII tab, CR and LF before it parses, so
-# https:<TAB>//evil.test opens https://evil.test. An entry is one line, so
-# only tab and CR can occur here; a link split across lines is not joined.
+# https:<TAB>//evil.test opens https://evil.test. Line breaks are handled by
+# joining consecutive new lines; see joined_links.
 URL_STRIPPED = re.compile(r"[\t\r]")
 
-# The entry as written plus each way a renderer or URL parser can decode it.
+def _md(t): return MD_ESCAPE.sub(r"\1", t)
+def _strip(f): return lambda t: URL_STRIPPED.sub("", f(t))
+
+# The text as written plus each way a renderer or URL parser can decode it.
 # A link that any of them shows must pass.
+_DECODINGS = [
+    lambda t: t, _md, html.unescape,
+    lambda t: html.unescape(_md(t)), lambda t: _md(html.unescape(t)),
+]
+TRANSFORMS = _DECODINGS + [_strip(f) for f in _DECODINGS]
+
 def renderings(text):
-    md = MD_ESCAPE.sub(r"\1", text)
-    decoded = html.unescape(text)
-    forms = [text, md, decoded, html.unescape(md), MD_ESCAPE.sub(r"\1", decoded)]
-    return dict.fromkeys(forms + [URL_STRIPPED.sub("", f) for f in forms])
+    return dict.fromkeys(f(text) for f in TRANSFORMS)
 
 def links(text):
     pos = 0
@@ -278,7 +287,35 @@ def links(text):
         else:
             is_link = len(slashes) >= 2 and (rest or len(slashes) > 2)
         if is_link:
-            yield scheme, m.group(0)[: m.start(3) - m.start()], rest
+            yield scheme, m.group(0)[: m.start(3) - m.start()], rest, m.start(), m.end()
+
+# How an ordinary entry line begins: a list, quote or heading marker, or a
+# date or origin tag, each followed by whitespace. When a link seems to run
+# into the next line and the next line's part of it is only one of these, the
+# link ended at the line break and the next line is a new entry.
+NEW_ENTRY_START = re.compile(
+    r"[-*+]|>+|#{1,6}|[0-9]+[.)]|\[[0-9]{4}-[0-9]{2}-[0-9]{2}\]|\[origin:(agent|user)\]"
+)
+
+# Links that cross a line break when consecutive new lines are joined with
+# the breaks removed, as a URL parser does inside a quoted href. A link that
+# stays within one line is already checked on its own.
+def joined_links(lines):
+    for f in TRANSFORMS:
+        pieces = [f(line) for line in lines]
+        text = "".join(pieces)
+        breaks, pos = [], 0
+        for piece in pieces[:-1]:
+            pos += len(piece)
+            breaks.append(pos)
+        for scheme, start, rest, a, b in links(text):
+            crossed = [k for k in breaks if a < k < b]
+            if not crossed:
+                continue
+            tail = text[crossed[0]:b]
+            if len(crossed) == 1 and NEW_ENTRY_START.fullmatch(tail):
+                continue
+            yield scheme, start, rest
 
 # The authority ends at the first / ? # or backslash. Closing punctuation at
 # its end, userinfo before the last @ and a numeric port are dropped. Anything
@@ -339,15 +376,36 @@ def allowed(scheme, rest, patterns):
     host = hostname(rest)
     return host is not None and any(host_matches(host, p) for p in patterns)
 
+def first_blocked(found, patterns):
+    for scheme, start, rest, *_ in found:
+        if not allowed(scheme, rest, patterns):
+            return start + rest
+    return None
+
 def main():
-    entry, patterns = sys.argv[1], sys.argv[2:]
-    for text in renderings(entry):
-        for scheme, start, rest in links(text):
-            if not allowed(scheme, rest, patterns):
-                print("BLOCKED:" + start + rest)
-                return 1
-    print("OK")
-    return 0
+    n = int(sys.argv[1])
+    lines, entries, patterns = sys.argv[2:2 + n], sys.argv[2 + n:2 + 2 * n], sys.argv[2 + 2 * n:]
+    status = 0
+    for entry in entries:
+        url = None
+        for text in renderings(entry):
+            url = first_blocked(links(text), patterns)
+            if url:
+                break
+        print("OK" if url is None else "BLOCKED:" + url)
+        status = status or (url is not None)
+    runs = []
+    for line in lines:
+        if line.startswith("C") and runs:
+            runs[-1].append(line[1:])
+        else:
+            runs.append([line[1:]])
+    url = None
+    for run in runs:
+        if len(run) > 1 and (url := first_blocked(joined_links(run), patterns)):
+            break
+    print("JOINED:OK" if url is None else "JOINED:BLOCKED:" + url)
+    return 1 if (status or url) else 0
 
 try:
     status = main()
@@ -505,6 +563,67 @@ if [[ -f "$TARGET" ]]; then
   done < "$TARGET"
 fi
 
+url_interpreter_failure() {
+  echo "REJECT: could not invoke the interpreter needed to check the entry's URLs against the allowlist (exit ${URL_CHECK_FAILED}). This is an environment problem (e.g. python3 missing or not executable), not a problem with the proposed content. Fix the environment, then retry." >&2
+  exit 1
+}
+
+# Run the URL check once for the whole write, before the per-line checks, so
+# that links split across consecutive new lines can be joined. A new line is a
+# non-blank line not already in the file; lines already in the file stay
+# exempt and end a run of new lines, as a blank line does.
+URL_VERDICTS=()
+URL_JOINED="JOINED:OK"
+URL_CHECK_FAILED=""
+if [[ ${#ALLOWLIST_PATTERNS[@]} -gt 0 ]]; then
+  url_lines=()
+  url_entries=()
+  prev_new=""
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^[[:space:]]*$ ]] || printf '%s\n' "$EXISTING" | grep -qxF -- "$line"; then
+      prev_new=""
+      continue
+    fi
+    url_lines+=("${prev_new:-N}$line")
+    url_entries+=("$(derive_entry "$line")")
+    prev_new="C"
+  done <<< "$PROPOSED"
+  if [[ ${#url_entries[@]} -gt 0 ]]; then
+    set +e
+    url_output="$(check_write_urls "${#url_entries[@]}" "${url_lines[@]}" "${url_entries[@]}")"
+    url_status=$?
+    set -e
+    mapfile -t url_results <<< "$url_output"
+    expected=$(( ${#url_entries[@]} + 1 ))
+    if [[ ( "$url_status" -ne 0 && "$url_status" -ne 1 ) || ${#url_results[@]} -ne $expected ]]; then
+      URL_CHECK_FAILED="$url_status"
+    else
+      any_blocked=""
+      for verdict in "${url_results[@]:0:${#url_entries[@]}}"; do
+        case "$verdict" in
+          OK) ;;
+          BLOCKED:*) any_blocked=1 ;;
+          *) URL_CHECK_FAILED="$url_status" ;;
+        esac
+      done
+      URL_JOINED="${url_results[${#url_entries[@]}]}"
+      case "$URL_JOINED" in
+        JOINED:OK) ;;
+        JOINED:BLOCKED:*) any_blocked=1 ;;
+        *) URL_CHECK_FAILED="$url_status" ;;
+      esac
+      # The exit status must agree with the verdicts.
+      if [[ -z "$URL_CHECK_FAILED" ]]; then
+        if [[ -n "$any_blocked" && "$url_status" -ne 1 ]] || [[ -z "$any_blocked" && "$url_status" -ne 0 ]]; then
+          URL_CHECK_FAILED="$url_status"
+        fi
+      fi
+      [[ -z "$URL_CHECK_FAILED" ]] && URL_VERDICTS=("${url_results[@]:0:${#url_entries[@]}}")
+    fi
+  fi
+fi
+url_index=0
+
 # Validate proposed entries. Every non-blank line is checked -- bullets,
 # numbered items, headings, paragraphs, blockquotes, etc. -- not just
 # bullet lines (CWE-20 fix).
@@ -532,17 +651,15 @@ while IFS= read -r line; do
     exit 1
   fi
 
-  # 3a. External URLs, checked against the allowlist by check_entry_urls.
+  # 3a. External URLs, from the check_write_urls verdicts computed above.
   if [[ ${#ALLOWLIST_PATTERNS[@]} -gt 0 ]]; then
-    set +e
-    url_verdict="$(check_entry_urls "$entry")"
-    url_status=$?
-    set -e
-    if [[ "$url_status" -eq 1 && "$url_verdict" == BLOCKED:* ]]; then
+    if [[ -n "$URL_CHECK_FAILED" ]]; then
+      url_interpreter_failure
+    fi
+    url_verdict="${URL_VERDICTS[$url_index]}"
+    url_index=$((url_index + 1))
+    if [[ "$url_verdict" == BLOCKED:* ]]; then
       echo "REJECT: blocked external URL: ${url_verdict#BLOCKED:}" >&2
-      exit 1
-    elif [[ "$url_status" -ne 0 || "$url_verdict" != OK ]]; then
-      echo "REJECT: could not invoke the interpreter needed to check the entry's URLs against the allowlist (exit ${url_status}). This is an environment problem (e.g. python3 missing or not executable), not a problem with the proposed content. Fix the environment, then retry." >&2
       exit 1
     fi
   fi
@@ -591,6 +708,12 @@ while IFS= read -r line; do
     exit 1
   fi
 done <<< "$PROPOSED"
+
+# 3d. A link split across consecutive new lines, found by check_write_urls.
+if [[ "$URL_JOINED" == JOINED:BLOCKED:* ]]; then
+  echo "REJECT: blocked external URL: ${URL_JOINED#JOINED:BLOCKED:} (split across lines)" >&2
+  exit 1
+fi
 
 # 4. Budget check
 # `wc -m` only counts characters in a UTF-8-aware locale; under C/POSIX

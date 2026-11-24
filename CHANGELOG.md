@@ -668,13 +668,15 @@ not per individual commit.
   non-ASCII characters is rejected. Every `scheme://` is checked in any letter case, including a
   second link glued to an allowed one, and `http`, `https`, `ws`, `wss` and `ftp` are checked
   with any number of slashes, so `https:evil.test` and `https:/evil.test` no longer skip the
-  allowlist. `file:` is a link only with two or more slashes, so `file:line` is prose. Punctuation that closes a markdown link, quote or emphasis right after the host
-  no longer blocks an allowed link. A backslash-escaped colon or a character reference in the
-  scheme (`https\://`, `https&#58;//`) is checked like a plain one, and a tab or CR inside a link
-  is removed before the check (a link split across two lines is not joined). A bare scheme
-  inside a code span or emphasis (`` `https:` ``) is prose. Links without a scheme (`//host`,
-  `www.host`) are not checked. An interpreter failure during the check is reported as an
-  environment problem.
+  allowlist. `file:` is a link only with two or more slashes, so `file:line` is prose. Punctuation
+  that closes a markdown link, quote or emphasis right after the host no longer blocks an allowed
+  link. A backslash-escaped colon or a character reference in the scheme (`https\://`,
+  `https&#58;//`) is checked like a plain one, and a tab or CR inside a link is removed before the
+  check. Consecutive new lines are also checked joined, with the line breaks removed, so a link
+  split across lines is caught; lines already in the file are not rescanned. A bare scheme inside a
+  code span or emphasis (`` `https:` ``) is prose. Links without a scheme (`//host`, `www.host`) are
+  not checked. The URL check runs in one `python3` call per write. An interpreter failure during the
+  check is reported as an environment problem.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
