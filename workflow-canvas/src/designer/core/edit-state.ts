@@ -5,7 +5,7 @@ import type {
   WorkflowDocument,
   WorkflowView,
 } from '../../api/types';
-import { draftOf, type Draft } from './draft';
+import { draftOf, idsOf, type Draft } from './draft';
 import { checkOf, type Check } from './problems';
 
 /** A workflow that has a file, so it can be edited and saved. */
@@ -37,6 +37,14 @@ export interface EditState {
   /** The workflow as the server has it. */
   saved: EditableDocument;
   draft: Draft;
+  /**
+   * The id of the draft stage that each stage of `saved.view` is, in order,
+   * so a save knows which stage of the file a draft stage was and edits its
+   * values in place. A stage that was deleted from the draft keeps its id.
+   */
+  bases: readonly string[];
+  /** The ids of the draft stages in the save that is going on, in order. */
+  sent?: readonly string[];
   selectedId: string;
   /**
    * Counts the changes of the draft; a check answers for one revision. A
@@ -116,6 +124,7 @@ export function openDocument(
   return {
     saved: document,
     draft,
+    bases: idsOf(draft),
     selectedId: draft.stages[0]?.id ?? '',
     revision,
     check: checkOf(revision, document.diagnostics, draft),

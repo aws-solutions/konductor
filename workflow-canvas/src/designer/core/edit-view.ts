@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { EditState } from './edit-state';
-import { sameStages, stagesOf } from './draft';
+import type { EditableDocument, EditState } from './edit-state';
+import { sameStages, stagesOf, type Draft } from './draft';
 import { hasErrors, withEchoes, type Problem } from './problems';
-import { withStages } from './stage-text';
+import { inPlaceBlocker, withStages, type Written } from './stage-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
 export const READ_ONLY_REASON = 'The workflow is read-only.';
@@ -26,10 +26,61 @@ export function isDirty(state: EditState): boolean {
   return !sameStages(stagesOf(state.draft), state.saved.view.stages);
 }
 
-/** The text that a save would write: the saved text with the draft's stages. */
-export function textOf(state: EditState): string {
-  const { text, view } = state.saved;
-  return withStages(text, view, stagesOf(state.draft));
+// The writer reads the whole file, which takes a few milliseconds for a large
+// one, and one render asks for its result several times: Save, the alerts and
+// the editor. The result depends only on the saved document, the draft and
+// `bases`, which a change replaces and never mutates, so it is kept for each
+// draft and used again while the other two are the same objects.
+const written = new WeakMap<
+  Draft,
+  { saved: EditableDocument; bases: readonly string[]; result: Written }
+>();
+const fileReasons = new WeakMap<
+  EditableDocument,
+  { reason: string | undefined }
+>();
+
+/**
+ * What a save would write: the saved text with the draft's stages, each
+ * edited in place in the item of the stage it was, or the reason the change
+ * cannot be written in place.
+ */
+export function writtenOf(state: EditState): Written {
+  const { saved, draft, bases } = state;
+  const kept = written.get(draft);
+  if (kept && kept.saved === saved && kept.bases === bases) return kept.result;
+  const stages = draft.stages.map(({ id, name, agent }) => {
+    const from = bases.indexOf(id);
+    return from < 0 ? { name, agent } : { name, agent, from };
+  });
+  const result = withStages(saved.text, saved.view, stages);
+  written.set(draft, { saved, bases, result });
+  return result;
+}
+
+/** The text that a save would write, or `undefined` when it cannot be written. */
+export function textOf(state: EditState): string | undefined {
+  const written = writtenOf(state);
+  return written.ok ? written.text : undefined;
+}
+
+/** Why the draft cannot be written in place, or `undefined` when it can. */
+export function writeBlocker(state: EditState): string | undefined {
+  const written = writtenOf(state);
+  return written.ok ? undefined : written.reason;
+}
+
+/**
+ * Why no change to the stages of the saved file can be written in place, or
+ * `undefined`: a file-wide reason, known before any change is made.
+ */
+export function fileBlocker(state: EditState): string | undefined {
+  const { saved } = state;
+  const kept = fileReasons.get(saved);
+  if (kept) return kept.reason;
+  const reason = inPlaceBlocker(saved.text, saved.view);
+  fileReasons.set(saved, { reason });
+  return reason;
 }
 
 // The findings that speak for the draft as it is now. After a change they are
@@ -67,6 +118,8 @@ export function saveBlocker(state: EditState): string | undefined {
       break;
   }
   if (!isDirty(state)) return 'There are no changes to save.';
+  const unwritable = writeBlocker(state);
+  if (unwritable !== undefined) return unwritable;
   return hasErrors(currentFindings(state))
     ? 'Fix the problems in the workflow first.'
     : undefined;

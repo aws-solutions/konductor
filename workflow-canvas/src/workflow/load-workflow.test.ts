@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type WorkflowApi } from '../api/api';
-import { sessionStorageMemory } from '../launch/session-memory';
+import {
+  sessionStorageMemory,
+  type SessionRecord,
+} from '../launch/session-memory';
 import {
   HELLO_DOCUMENT,
   HELLO_HASH,
@@ -158,7 +161,7 @@ describe('loadWorkflow', () => {
   });
 
   const LOST_SESSION =
-    'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
+    'The server no longer knows this session. It may have been started again. Start `flow view` again and open the address it prints. An address works once.';
   const CHANGES_LOST =
     'The changes you made on this page are lost when you open a fresh address; copy them first.';
 
@@ -254,7 +257,7 @@ describe('loadWorkflow', () => {
     const lost = result.workflow.edits.save('text', HELLO_HASH);
 
     await expect(lost).rejects.toThrow(
-      'The server answered 502. If it stopped, start it again and get a fresh launch address from the server.',
+      'The server answered 502. If it stopped, start `flow view` again and open the address it prints.',
     );
   });
 
@@ -359,6 +362,9 @@ describe('loadWorkflow', () => {
 
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.message).toContain('launch code');
+    expect(result.ok === false && result.message).toContain(
+      'Start `flow view` again and open the address it prints',
+    );
     expect(result.ok === false && result.message).toContain('works once');
     expect(api.createSession).not.toHaveBeenCalled();
   });
@@ -417,7 +423,7 @@ describe('loadWorkflow', () => {
   });
 });
 
-const STORED = { token: 'stored-token', harness: 'stored-harness' };
+const STORED: SessionRecord = { token: 'stored-token', harness: 'claude' };
 
 function memoryWith(record?: typeof STORED) {
   const sessionStorage = memoryStorage();
@@ -550,7 +556,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(api.getWorkflow).toHaveBeenCalledWith('stored-token');
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness', document: HELLO_DOCUMENT },
+      workflow: { harness: 'claude', document: HELLO_DOCUMENT },
     });
   });
 
@@ -569,7 +575,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(memory.recall()).toBeUndefined();
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.message).toMatch(
-      /server no longer knows this session.*launch address/s,
+      /server no longer knows this session.*Start `flow view` again/s,
     );
   });
 
@@ -585,7 +591,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(result).toEqual({
       ok: false,
       message:
-        'Not reached. If it stopped, start it again and get a fresh launch address from the server.',
+        'Not reached. If it stopped, start `flow view` again and open the address it prints.',
     });
   });
 
@@ -651,7 +657,7 @@ describe('loadOnOpen', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
     });
     expect(api.getWorkflow).toHaveBeenCalledWith('stored-token');
     expect(memory.recall()).toEqual(STORED);
@@ -743,8 +749,8 @@ describe('loadOnOpen', () => {
   });
 });
 
-const PASTED = { token: 'token-1', harness: 'kiro-cli' };
-const PENDING = { token: 'pending-token', harness: 'pending-harness' };
+const PASTED: SessionRecord = { token: 'token-1', harness: 'kiro-cli' };
+const PENDING: SessionRecord = { token: 'pending-token', harness: 'fake' };
 
 const serverError = () => new ApiError('Server error.', 500);
 const unknownSession = () => new ApiError('Wrong.', 401);
@@ -843,7 +849,7 @@ describe('loadWorkflow with a pending session', () => {
     expect(api.getWorkflow).toHaveBeenCalledExactlyOnceWith('pending-token');
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'pending-harness' },
+      workflow: { harness: 'fake' },
     });
     expect(result).not.toHaveProperty('refused');
   });
@@ -868,7 +874,7 @@ describe('loadWorkflow with a pending session', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'pending-harness' },
+      workflow: { harness: 'fake' },
     });
   });
 
@@ -883,7 +889,7 @@ describe('loadWorkflow with a pending session', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
     });
     expect(result).not.toHaveProperty('refused');
     expect(memory.recallPending()).toBeUndefined();
@@ -900,7 +906,7 @@ describe('loadWorkflow with a pending session', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
     });
     expect(result).not.toHaveProperty('refused');
     expect(memory.recallPending()).toEqual(PENDING);
@@ -1017,7 +1023,7 @@ describe('loadOnOpen sessions', () => {
     ]);
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
       refused: expect.stringMatching(/^Server error\./),
     });
     if (!result.ok) throw new Error('The load failed.');
@@ -1043,7 +1049,7 @@ describe('loadOnOpen sessions', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'pending-harness' },
+      workflow: { harness: 'fake' },
       refused: 'Wrong.',
     });
   });
@@ -1085,7 +1091,7 @@ function slowSession() {
 }
 
 describe('a session that answers after a newer one was kept', () => {
-  const newer = { token: 'newer-token', harness: 'kiro-cli' };
+  const newer: SessionRecord = { token: 'newer-token', harness: 'kiro-cli' };
 
   it('is not held as pending when a paste over a kept session answers late', async () => {
     const { api, answer } = slowSession();
@@ -1179,7 +1185,7 @@ describe('a 401 on a call after the load', () => {
       );
 
       await expect(call(runs)).rejects.toThrow(
-        /server no longer knows this session.*fresh launch address/s,
+        /server no longer knows this session.*Start `flow view` again/s,
       );
       expect(memory.recall()).toBeUndefined();
     },

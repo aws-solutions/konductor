@@ -4,8 +4,9 @@ import { END_ID, INTENT_ID, stageNodeId, type NodeStatus } from '../../graph';
 
 const QUEUED: NodeStatus = { state: 'queued', label: 'Queued' };
 const RUNNING: NodeStatus = { state: 'running', label: 'Running' };
-const DONE: NodeStatus = { state: 'done', label: 'Done' };
-const FAILED: NodeStatus = { state: 'failed', label: 'Failed' };
+const INTENT_DONE: NodeStatus = { state: 'done', label: 'Done' };
+const PASSED: NodeStatus = { state: 'done', label: 'Passed' };
+const BLOCKED: NodeStatus = { state: 'failed', label: 'Blocked' };
 const NOT_RUN: NodeStatus = { state: 'queued', label: 'Not run' };
 
 function stageStatus(stage: RunStageView, run: RunView): NodeStatus {
@@ -16,9 +17,9 @@ function stageStatus(stage: RunStageView, run: RunView): NodeStatus {
     case 'running':
       return RUNNING;
     case 'passed':
-      return DONE;
+      return PASSED;
     case 'blocked':
-      return FAILED;
+      return BLOCKED;
   }
 }
 
@@ -28,7 +29,7 @@ function endStatus(run: RunView): NodeStatus {
     case 'running':
       return QUEUED;
     case 'passed':
-      return { state: 'done', label: 'Passed' };
+      return PASSED;
     case 'halted':
       return { state: 'failed', label: 'Halted' };
   }
@@ -44,7 +45,7 @@ export function nodeStatuses(
 ): ReadonlyMap<string, NodeStatus> {
   if (!run) return new Map();
   return new Map<string, NodeStatus>([
-    [INTENT_ID, DONE],
+    [INTENT_ID, INTENT_DONE],
     ...run.stages.map((stage): [string, NodeStatus] => [
       stageNodeId(stage.name),
       stageStatus(stage, run),

@@ -2,6 +2,7 @@
 import type { Page, Route } from '@playwright/test';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/editing-fixtures';
+import { HELLO_PLAN_TEXT } from '../support/hello-plan';
 import {
   currentWorkflow,
   overwriteWorkflow,
@@ -48,6 +49,54 @@ test('changes the agent of a stage, saves it, and shows it after a reload', asyn
   await canvas.page.reload();
   await canvas.title.waitFor();
   await expect(canvas.node('node-stage-draft')).toContainText('k-architect');
+});
+
+test('changes the agent of a stage of hello-plan and keeps every other key of the file', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(request, HELLO_PLAN_TEXT);
+  await canvas.page.reload();
+  await expect(designer.name).toHaveValue('plan');
+
+  await designer.chooseAgent('k-tpm');
+  await designer.save.click();
+  await designer.expectStatus('Saved');
+
+  expect((await currentWorkflow(request)).text).toBe(
+    HELLO_PLAN_TEXT.replace('agent: k-architect', 'agent: k-tpm'),
+  );
+});
+
+test('keeps Save off for a change it cannot write in place, and says why', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  const flow = SAMPLE_TEXT.replace(
+    /stages:\n[\s\S]*$/,
+    'stages: [{name: draft, agent: k-developer}, {name: review, agent: k-quality-assurance}]\n',
+  );
+  await overwriteWorkflow(request, flow);
+  await canvas.page.reload();
+  let puts = 0;
+  designer.page.on('request', (sent) => {
+    if (sent.method() === 'PUT') puts += 1;
+  });
+
+  await expect(designer.page.getByTestId('in-place-notice')).toContainText(
+    'cannot change them in place',
+  );
+  await designer.rename('write');
+
+  await designer.expectStatus('Unsaved changes');
+  await designer.expectSaveEnabled(false);
+  await designer.save.focus();
+  await designer.page.keyboard.press('Enter');
+  await expect(designer.save).toBeFocused();
+  expect(puts).toBe(0);
+  expect((await currentWorkflow(request)).text).toBe(flow);
 });
 
 test('renames a stage and saves it', async ({ designer, request }) => {
