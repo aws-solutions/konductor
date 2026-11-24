@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # Claude Code twin of run-model-swap.sh: does skill loading differ between Sonnet 5.5 and Opus 5.5 on Claude Code?
-# cc-konductor only (konductor f5d18459 installed for Claude Code), the same 8 LITE tasks, frozen bench 69149846, the
+# cc-konductor only (konductor f5d18459 installed for Claude Code, with team mode: see run-cc-compare.sh), the same 8
+# LITE tasks, frozen bench 69149846, the
 # pinned claude, 2 replicates, everything as run-cc-compare.sh, which runs each stage with its CC_* overrides:
 #
 #   sonnet  cc-konductor on us.anthropic.claude-sonnet-5-5, 16 runs, USD 1 a run, cap USD 16
@@ -29,7 +30,7 @@ HERE0=$(cd "$(dirname "$0")" && pwd)
 CCM_ROOT=${CCM_ROOT:-/var/tmp/cc-model-swap}
 CC_COMPARE_ROOT=${CC_COMPARE_ROOT:-/var/tmp/cc-compare}
 KONDUCTOR_SHA=f5d184596378ae72ae531d80647548512c14cacf
-R=$WS/worktrees/cc-frozen-69149846
+R=$WS/worktrees/cc-team-69149846   # run-cc-compare.sh's frozen worktree: 69149846 plus cc-team-mode.patch (D-241)
 MANIFEST=$WS/reports/next-experiment-2026-11-22/prefixes/manifest.json
 SONNET_USD=0.67
 OPUS_FACTOR=1.87

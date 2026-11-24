@@ -1,0 +1,68 @@
+diff --git a/bench/runner/lib/harness/claude-code.js b/bench/runner/lib/harness/claude-code.js
+index 61401e67..130c341e 100644
+--- a/bench/runner/lib/harness/claude-code.js
++++ b/bench/runner/lib/harness/claude-code.js
+@@ -24,6 +24,7 @@ const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
+ const parse = require('./claude-code-parse.js');
+ const { turnStreamTexts } = require('../autonomy.js');
+ const listing = require('./claude-listing.js');
++const { applyTeamMode } = require('./claude-team-mode.js');
+ 
+ const id = 'claude-code';
+ const meta = require('./claude-code-meta.js');
+@@ -299,6 +300,8 @@ function installInto(home, { arm, prepared, ctx, config, outDir }) {
+     log.push('vanilla: empty config directory, built-in agents and skills only');
+   }
+   ensureEmptyClaudeRules(configDir);
++  // D-241 (cc-team-mode.patch): konductor's Claude Code guide steps 2 and 3 for konductor arms.
++  if (!arm.vanilla) log.push(applyTeamMode(configDir));
+   if (outDir) fs.writeFileSync(path.join(outDir, 'install.log'), `${log.join('\n')}\n`);
+   return meta;
+ }
+diff --git a/bench/runner/lib/harness/claude-team-mode.js b/bench/runner/lib/harness/claude-team-mode.js
+new file mode 100644
+index 00000000..b63faed2
+--- /dev/null
++++ b/bench/runner/lib/harness/claude-team-mode.js
+@@ -0,0 +1,41 @@
++// SPDX-License-Identifier: Apache-2.0
++'use strict';
++
++// Steps 2 and 3 of konductor's own Claude Code guide (docs/user-guide/tasks/install-claude-code.md at f5d18459): team
++// mode on (env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) and the guide's permissions.allow list, written into the run's
++// settings.json beside what `konductor install --harness claude` put there (its SessionStart hook). Konductor arms only.
++// Node built-ins only: run-cc-compare.sh copies this file unchanged into its frozen bench (cc-team-mode.patch).
++
++const fs = require('node:fs');
++const path = require('node:path');
++
++const TEAM_ENV = 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS';
++// The guide's list, in its order.
++const GUIDE_ALLOW = Object.freeze([
++  'Read', 'Edit', 'Write', 'Glob', 'Grep', 'TodoWrite',
++  'Bash(git status*)', 'Bash(git diff*)', 'Bash(git log*)', 'Bash(git blame*)', 'Bash(git show*)', 'Bash(git add*)',
++  'Bash(git commit*)', 'Bash(git branch*)', 'Bash(git checkout*)', 'Bash(git switch*)', 'Bash(git stash*)',
++  'Bash(git fetch*)', 'Bash(git rebase*)', 'Bash(npm *)', 'Bash(ls *)', 'Bash(find *)', 'Bash(grep *)',
++]);
++
++/**
++ * Merges team mode and the guide's allow list into `<configDir>/settings.json` and returns the install.log line.
++ * Keeps every other key (the install's hooks); allow entries already there stay, first. Refuses a settings.json that
++ * is a symlink or not a JSON object, so nothing outside the run's config directory is written.
++ */
++function applyTeamMode(configDir) {
++  const file = path.join(configDir, 'settings.json');
++  let settings = {};
++  if (fs.existsSync(file)) {
++    if (fs.lstatSync(file).isSymbolicLink()) throw new Error(`refused: ${file} is a symlink`);
++    settings = JSON.parse(fs.readFileSync(file, 'utf8'));
++    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error(`refused: ${file} is not a JSON object`);
++  }
++  const allow = settings.permissions?.allow ?? [];
++  settings.env = { ...settings.env, [TEAM_ENV]: '1' };
++  settings.permissions = { ...settings.permissions, allow: [...allow, ...GUIDE_ALLOW.filter((a) => !allow.includes(a))] };
++  fs.writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
++  return `team mode: settings.json env ${TEAM_ENV}=1, permissions.allow ${settings.permissions.allow.length} entries (guide steps 2 and 3)`;
++}
++
++module.exports = { TEAM_ENV, GUIDE_ALLOW, applyTeamMode };

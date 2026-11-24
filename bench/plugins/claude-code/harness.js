@@ -24,6 +24,7 @@ const { copyPlainFile } = require('../../runner/lib/safe-copy.js');
 const parse = require('./parse.js');
 const { turnStreamTexts } = require('../../runner/lib/autonomy.js');
 const listing = require('./listing.js');
+const { TEAM_ENV, GUIDE_ALLOW, applyTeamMode } = require('./team-mode.js');
 const { plantPrompt, MCP_CONFIG_REL, SERVER_NAME: PLANT_SERVER } = require('../../runner/lib/plant/agent-file.js');
 
 const id = 'claude-code';
@@ -206,6 +207,8 @@ function installInto(home, { arm, prepared, ctx, config, outDir }) {
     log.push('vanilla: empty config directory, built-in agents and skills only');
   }
   ensureEmptyClaudeRules(configDir);
+  // After the rules gate, which refuses the real config directory. --allowedTools stays on the command for both arms.
+  if (!arm.vanilla) log.push(applyTeamMode(configDir));
   if (outDir) fs.writeFileSync(path.join(outDir, 'install.log'), `${log.join('\n')}\n`);
   return meta;
 }
@@ -377,7 +380,9 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
   return {
     binaryName: path.basename(ctx.claude.bin), version: ctx.claude.version, binarySha256: ctx.claude.sha256, supportsHookEvents: ctx.claude.supportsHookEvents,
     provider: PROVIDER, modelId: config.model, canonicalModel: config.canonicalModel, region,
-    permissionMode: PERMISSION_MODE, allowedTools: ALLOWED_TOOLS, maxBudgetUsdPerRun: runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD,
+    permissionMode: PERMISSION_MODE, allowedTools: ALLOWED_TOOLS,
+    teamMode: { arms: 'konductor arms only', settingsEnv: { [TEAM_ENV]: '1' }, permissionsAllow: GUIDE_ALLOW, note: 'claude -p spawns no teammates (Claude Code agent-teams docs); named sub-agents run as ordinary sub-agents' },
+    maxBudgetUsdPerRun: runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD,
     flags: ['-p', '--output-format stream-json', '--verbose', '--model', '--max-budget-usd', '--permission-mode', '--effort', '--strict-mcp-config', '--allowedTools', '--agent (konductor arms)', ...(ctx.claude.supportsHookEvents ? ['--include-hook-events (konductor arms)'] : [])],
     effort: { applied: true, flag: '--effort', level: config.effort },
     credentials: ctx.awsCreds

@@ -8,6 +8,7 @@
 #   case 4: a command that finishes 2 of 4 runs leaves no .done; the rerun passes --resume and finishes the task
 #   case 5: a ROOT under HOME is refused before any bench call
 #   case 6: cc-skill-loads.js tells whole, partial, preload, failed and missing apart, with the frozen stream reader
+#   case 7: cc-team-mode.patch (D-241) gives the pinned tree and team mode for cc-konductor only
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 HERE0=$(cd "$(dirname "$0")" && pwd)
@@ -100,4 +101,35 @@ for want in 'alpha (whole, main)' 'beta (partial, main)' 'gamma (preload, child)
   grep -qF -- "$want" "$T/f.md" || { cat "$T/f.md"; fail "case 6: no '$want'"; }
 done
 echo "case 6 ok: whole, partial, preload, failed and missing"
+
+# case 7 (D-241): cc-team-mode.patch on the frozen bench gives TEAM_TREE, carries the current bench's team-mode.js
+# unchanged, and the patched frozen harness writes team mode into a cc-konductor run HOME only.
+REPO=$KONDUCTOR_WS/worktrees/konductor-plant
+PATCH=$HERE0/cc-team-mode.patch
+WANT_TREE=$(sed -n 's/^TEAM_TREE=\([0-9a-f]*\).*/\1/p' "$HERE0/run-cc-compare.sh")
+GIT_INDEX_FILE=$T/idx git -C "$REPO" read-tree 69149846ad65f1016ec386e88ec9043bdec57203
+GIT_INDEX_FILE=$T/idx git -C "$REPO" apply --cached "$PATCH"
+[ "$(GIT_INDEX_FILE=$T/idx git -C "$REPO" write-tree)" = "$WANT_TREE" ] || fail "case 7: the patched tree is not TEAM_TREE $WANT_TREE"
+mkdir -p "$T/F"
+git -C "$REPO" archive 69149846ad65f1016ec386e88ec9043bdec57203 bench/runner/lib | tar -x -C "$T/F"
+(cd "$T/F" && git apply "$PATCH") || fail "case 7: the patch does not apply to the frozen bench"
+cmp -s "$T/F/bench/runner/lib/harness/claude-team-mode.js" "$HERE0/../../plugins/claude-code/team-mode.js" \
+  || fail "case 7: the patch's claude-team-mode.js differs from bench/plugins/claude-code/team-mode.js (regenerate the patch)"
+node -e '
+const fs = require("fs"), path = require("path");
+const cc = require(path.join(process.argv[1], "bench/runner/lib/harness/claude-code.js"));
+const NAMES = ["k-architect", "k-browser", "k-developer", "k-media-analyzer", "k-product-manager", "k-quality-assurance", "k-researcher", "k-tpm", "konductor", "konductor-cmux-orchestrator", "konductor-mux-orchestrator"];
+const claudeInstall = (home) => { fs.mkdirSync(path.join(home, ".claude/agents"), { recursive: true });
+  for (const n of NAMES) fs.writeFileSync(path.join(home, ".claude/agents", n + ".md"), "---\nname: " + n + "\nmodel: claude-sonnet-5-5\n---\n");
+  fs.writeFileSync(path.join(home, ".claude/settings.json"), JSON.stringify({ hooks: { SessionStart: [] } })); return "installed"; };
+const config = { model: "us.anthropic.claude-sonnet-5-5", canonicalModel: "claude-sonnet-5-5", effort: "high" };
+for (const vanilla of [false, true]) {
+  const home = path.join(process.argv[2], vanilla ? "hv" : "hk");
+  cc.installInto(home, { arm: { vanilla, agent: "konductor" }, prepared: {}, ctx: { config, claude: { version: "t" }, claudeInstall }, config, outDir: null });
+  const f = path.join(home, ".claude/settings.json");
+  if (vanilla) { if (fs.existsSync(f)) throw new Error("cc-vanilla got a settings.json"); continue; }
+  const s = JSON.parse(fs.readFileSync(f, "utf8"));
+  if (s.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS !== "1" || s.permissions.allow.length !== 23 || !s.hooks) throw new Error("cc-konductor settings: " + JSON.stringify(s));
+}' "$T/F" "$T" || fail "case 7: the patched frozen harness"
+echo "case 7 ok: the team-mode patch gives TEAM_TREE and writes team mode for cc-konductor only"
 echo "all stub cases passed"

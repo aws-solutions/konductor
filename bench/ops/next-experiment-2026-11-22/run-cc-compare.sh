@@ -4,6 +4,10 @@
 # against Claude Code with konductor (cc-konductor at the frozen konductor ref f5d18459), on the same 8 tasks, at the
 # same frozen bench commit 69149846 and task versions, so the results sit beside the Kiro runs. 8 tasks x 2 arms x
 # 2 replicates = 32 runs; one bench command per task; tasks with runs-cc/<task>.done are skipped.
+# Team mode (D-241): the frozen bench gets one commit, cc-team-mode.patch, so cc-konductor follows all four steps of
+# konductor's Claude Code guide: its run settings.json also holds env CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and the
+# guide's permissions.allow list. cc-vanilla is unchanged. Under claude -p no teammate spawns (Claude Code's agent-teams
+# docs), so the run shape and the USD figures below are as before.
 #
 #   bash run-cc-compare.sh             dry run: each task's budget and the running worst case; no agent, no build
 #   bash run-cc-compare.sh --prepare   free: frozen worktree, pinned claude copy, both arms built and trial-installed
@@ -30,7 +34,9 @@ WS=$KONDUCTOR_WS
 REPO=$WS/worktrees/konductor-plant
 BENCH_SHA=69149846ad65f1016ec386e88ec9043bdec57203      # the forced experiment's frozen bench (LITE plan benchSha)
 KONDUCTOR_SHA=f5d184596378ae72ae531d80647548512c14cacf  # the frozen konductor ref (LITE plan konductorSha)
-R=${R:-$WS/worktrees/cc-frozen-69149846}                # this study's own frozen worktree; never pilot or lite-frozen
+TEAM_PATCH=$(cd "$(dirname "$0")" && pwd)/cc-team-mode.patch   # D-241, applied on BENCH_SHA as one commit
+TEAM_TREE=e7ed4d5581728c8839c7d95a7d181693f84dbb31      # the tree of BENCH_SHA with TEAM_PATCH applied
+R=${R:-$WS/worktrees/cc-team-69149846}                  # this study's own frozen worktree; never pilot or lite-frozen
 HERE=${HERE:-$WS/reports/next-experiment-2026-11-22}
 ROOT=${ROOT:-/var/tmp/cc-compare}
 OUT=$ROOT/runs
@@ -65,13 +71,19 @@ t2-arch-dr-split-checkout t2 3
 t7-program-brief t7 5
 t1-nfr-report-queries t1 3'
 
-# The frozen worktree: made on --prepare or --go; refused at another commit or with local changes.
+# The frozen worktree: BENCH_SHA plus one commit of TEAM_PATCH, made on --prepare or --go; refused unless its parent
+# is BENCH_SHA, its tree is TEAM_TREE and it has no local changes.
 check_frozen() {
-  if [ -e "$R" ]; then
-    [ "$(git -C "$R" rev-parse HEAD)" = "$BENCH_SHA" ] || stop "$R is not at $BENCH_SHA"
-    [ -z "$(git -C "$R" status --porcelain)" ] || stop "$R has local changes"
-  elif [ -n "$MODE" ]; then
+  if [ ! -e "$R" ] && [ -n "$MODE" ]; then
     git -C "$REPO" worktree add --detach "$R" "$BENCH_SHA" >/dev/null || stop "cannot add $R"
+    git -C "$R" apply --index "$TEAM_PATCH" || stop "cannot apply $TEAM_PATCH in $R"
+    git -C "$R" -c user.name=konductor-bench -c user.email=bench@localhost -c commit.gpgsign=false commit -q -m "bench: D-241 Claude Code team mode on the frozen bench (cc-team-mode.patch)" \
+      || stop "cannot commit $TEAM_PATCH in $R"
+  fi
+  if [ -e "$R" ]; then
+    [ "$(git -C "$R" rev-parse HEAD^)" = "$BENCH_SHA" ] || stop "$R is not one commit on $BENCH_SHA"
+    [ "$(git -C "$R" rev-parse 'HEAD^{tree}')" = "$TEAM_TREE" ] || stop "$R is not $BENCH_SHA with $TEAM_PATCH (tree $TEAM_TREE)"
+    [ -z "$(git -C "$R" status --porcelain)" ] || stop "$R has local changes"
   fi
 }
 

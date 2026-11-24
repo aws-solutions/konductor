@@ -472,6 +472,13 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   HOME (the install writes absolute paths, so it is repeated per run). It starts in `--agent konductor`. The ref must carry the
   dashed model pin (`model: claude-sonnet-5-5`) on every agent: a dotted pin is not a Bedrock id and sub-agent spawns fail, so
   the install is refused with that reason, as is any install that does not give exactly 11 agents.
+- Team mode (D-241): a konductor arm then gets steps 2 and 3 of konductor's own guide
+  (`docs/user-guide/tasks/install-claude-code.md`) in the run's `<HOME>/.claude/settings.json`, merged beside the install's
+  SessionStart hook: `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and the guide's 23-entry `permissions.allow` list
+  (`plugins/claude-code/team-mode.js`). `install.log` and run-config (`teamMode`) record both. `cc-vanilla` gets neither.
+  The command line is the same for both arms (`--allowedTools Bash Edit Write Read` stays, so unscoped Bash is still
+  allowed beside the guide's scoped entries). Under `claude -p` Claude Code spawns no teammates; a named sub-agent runs
+  as an ordinary sub-agent, so team mode changes the mount, not the run shape.
 - The binary: `--claude-bin PATH` (`BENCH_CLAUDE_BIN`), or the newest `<version>/claude` under `--claude-tools-dir DIR`
   (`BENCH_CLAUDE_TOOLS_DIR`). There is no default location. A launcher script is refused (the resolved file must be named
   `claude` and be at least 50 MB): a launcher can override the model, region and credentials, so a vanilla arm through it is
