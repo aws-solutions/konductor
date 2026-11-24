@@ -78,10 +78,6 @@ const SKIPS: Skip[] = [
     why: 'compares the prose of the message, which names the key by its path in the real server',
   },
   {
-    test: /^GET \/api\/agents > /,
-    why: NOT_YET('listAgents'),
-  },
-  {
     test: /^GET \/api\/runs\/\{id}\/events(?! > is not_found)/,
     why: NOT_YET('getRunEvents'),
   },

@@ -830,13 +830,14 @@ fn the_session_says_which_server_it_is_what_it_serves_and_its_limits() {
 }
 
 /// What the server answers on each operation of the contract that it serves, with the method and path.
-const SERVED: [(&str, &str, &str); 6] = [
+const SERVED: [(&str, &str, &str); 7] = [
     ("createSession", "POST", "/api/session"),
     ("getWorkflow", "GET", "/api/workflow"),
     ("saveWorkflow", "PUT", "/api/workflow"),
     ("checkWorkflow", "POST", "/api/validate"),
     ("startRun", "POST", "/api/run"),
     ("getRun", "GET", "/api/runs/20261024-0412-a7b3c"),
+    ("listAgents", "GET", "/api/agents"),
 ];
 
 #[test]
@@ -866,6 +867,125 @@ fn the_capabilities_are_the_operations_that_the_server_answers_and_no_others() {
         call(&f, "GET", "/api/runs/20261024-0412-a7b3c/events", None).code(),
         "not_found"
     );
+}
+
+/// The agents of the contract's example for `listAgents`, as `(id, summary)`. The contract file is the one that the
+/// Designer and the stub are checked against, so a list that matches it matches them.
+fn contract_agents() -> Vec<(String, String)> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../workflow-canvas/api/openapi.yaml");
+    let text = fs::read_to_string(path).expect("the contract is in the repository");
+    let after = text
+        .split("operationId: listAgents")
+        .nth(1)
+        .expect("the contract has listAgents");
+    let example = after
+        .split("example:\n")
+        .nth(1)
+        .and_then(|rest| rest.split("'401':").next())
+        .expect("listAgents has an example");
+    let mut agents = Vec::new();
+    let mut id = None;
+    for line in example.lines().map(str::trim) {
+        if let Some(found) = line.strip_prefix("- id: ") {
+            id = Some(found.to_string());
+        } else if let (Some(summary), Some(id)) = (line.strip_prefix("summary: "), id.take()) {
+            agents.push((id, summary.to_string()));
+        }
+    }
+    agents
+}
+
+#[test]
+fn listagents_gives_the_agents_of_the_contract_example() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let json = call(&f, "GET", "/api/agents", None).json();
+    let text = |agent: &Json, key: &str| agent.get(key).and_then(Json::as_str).unwrap().to_string();
+    let got: Vec<(String, String)> = json
+        .get("agents")
+        .and_then(Json::as_array)
+        .expect("agents")
+        .iter()
+        .map(|agent| (text(agent, "id"), text(agent, "summary")))
+        .collect();
+    let want = contract_agents();
+    assert_eq!(want.len(), 8, "the example was read: {want:?}");
+    assert_eq!(got, want);
+}
+
+#[test]
+fn listagents_gives_the_specialist_agents_in_the_order_of_their_ids() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let reply = call(&f, "GET", "/api/agents", None);
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.header("x-konductor-api"), Some("1"));
+    let json = reply.json();
+    let agents = json.get("agents").and_then(Json::as_array).expect("agents");
+    let ids: Vec<&str> = agents
+        .iter()
+        .map(|agent| agent.get("id").and_then(Json::as_str).unwrap())
+        .collect();
+    assert_eq!(
+        ids,
+        [
+            "k-architect",
+            "k-browser",
+            "k-developer",
+            "k-media-analyzer",
+            "k-product-manager",
+            "k-quality-assurance",
+            "k-researcher",
+            "k-tpm"
+        ]
+    );
+    let mut sorted = ids.clone();
+    sorted.sort_unstable();
+    assert_eq!(ids, sorted, "in the order of the ids");
+    for agent in agents {
+        let id = agent.get("id").and_then(Json::as_str).unwrap();
+        let summary = agent.get("summary").and_then(Json::as_str).unwrap();
+        assert!(workflow_core::rules::is_name(id), "{id} is a name");
+        assert!(
+            (1..=120).contains(&summary.chars().count()),
+            "{id} has a line of 1 to 120 characters"
+        );
+    }
+    // An orchestrator is not an agent that a stage can name.
+    assert!(!ids
+        .iter()
+        .any(|id| id.contains("orchestrator") || *id == "konductor"));
+}
+
+/// A list that needs the token, its own Host and a GET, as every other call does.
+fn assert_list_is_guarded(f: &Fixture, path: &str) {
+    let no_token = |n: &str, v: String| if n == "Authorization" { None } else { Some(v) };
+    let bad_host = |n: &str, v: String| {
+        if n == "Host" {
+            Some("evil.example".to_string())
+        } else {
+            Some(v)
+        }
+    };
+    assert_eq!(
+        call_with(f, "GET", path, None, &no_token).code(),
+        "unauthorized",
+        "{path}"
+    );
+    assert_eq!(
+        call_with(f, "GET", path, None, &bad_host).code(),
+        "forbidden_host",
+        "{path}"
+    );
+    let post = call(f, "POST", path, Some("{}"));
+    assert_eq!(post.code(), "method_not_allowed", "{path}");
+    assert_eq!(post.header("allow"), Some("GET"), "{path}");
+}
+
+#[test]
+fn listagents_takes_the_token_and_a_get_like_every_other_call() {
+    let _serial = one_at_a_time();
+    assert_list_is_guarded(&signed_in(), "/api/agents");
 }
 
 #[test]

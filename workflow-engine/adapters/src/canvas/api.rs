@@ -496,6 +496,36 @@ fn wrap(run: &Run) -> Json {
     body
 }
 
+/// The specialist agents of Konductor that a stage may name, in the order of their ids, each with the line the contract
+/// gives it. This version does not look up whether an agent exists, so the list is fixed and does not read the agent
+/// catalog, which finds one agent by its id. An orchestrator is not listed, because a stage cannot use one.
+const AGENTS: [(&str, &str); 8] = [
+    ("k-architect", "System designs, API specs and data models"),
+    ("k-browser", "Browser automation with Playwright"),
+    ("k-developer", "Backend and frontend code, code review"),
+    ("k-media-analyzer", "PDFs, images and diagrams"),
+    ("k-product-manager", "User stories and requirements"),
+    ("k-quality-assurance", "Test coverage and test strategy"),
+    ("k-researcher", "External docs, web and AWS documentation"),
+    ("k-tpm", "Program plans and status reports"),
+];
+
+/// `listAgents`.
+pub fn list_agents() -> Result<Reply, ApiError> {
+    let agents = AGENTS
+        .iter()
+        .map(|(id, summary)| {
+            let mut agent = Json::object();
+            agent.insert("id", Json::str(id));
+            agent.insert("summary", Json::str(summary));
+            agent
+        })
+        .collect();
+    let mut body = Json::object();
+    body.insert("agents", Json::Array(agents));
+    ok(body)
+}
+
 /// The limits that the session reports, by their names in the contract. They are the constants that the checker and the
 /// run start enforce, so a client reads what the server holds a workflow and a run to.
 fn limits_json() -> Json {

@@ -57,13 +57,14 @@ pub(super) fn accept_loop(shared: Arc<Shared>, listener: TcpListener) {
 
 /// The `operationId` of each operation of the contract that this server serves. The session lists them as its
 /// capabilities, so an operation that is not served is not here. A test calls each of them on its path.
-pub(super) const OPERATIONS: [&str; 6] = [
+pub(super) const OPERATIONS: [&str; 7] = [
     "createSession",
     "getWorkflow",
     "saveWorkflow",
     "checkWorkflow",
     "startRun",
     "getRun",
+    "listAgents",
 ];
 
 /// What the router decided a path is.
@@ -71,6 +72,7 @@ enum Route {
     Session,
     Workflow,
     Validate,
+    Agents,
     Run,
     RunStatus(String),
     Page,
@@ -81,6 +83,7 @@ fn route_of(path: &str) -> Option<Route> {
         "/api/session" => Some(Route::Session),
         "/api/workflow" => Some(Route::Workflow),
         "/api/validate" => Some(Route::Validate),
+        "/api/agents" => Some(Route::Agents),
         "/api/run" => Some(Route::Run),
         p if p == "/api" || p.starts_with("/api/") => match p.strip_prefix("/api/runs/") {
             Some(id) if !id.is_empty() && !id.contains('/') => {
@@ -96,7 +99,7 @@ fn allowed_methods(route: &Route) -> &'static [&'static str] {
     match route {
         Route::Workflow => &["GET", "PUT"],
         Route::Session | Route::Validate | Route::Run => &["POST"],
-        Route::RunStatus(_) | Route::Page => &["GET"],
+        Route::Agents | Route::RunStatus(_) | Route::Page => &["GET"],
     }
 }
 
@@ -221,6 +224,7 @@ fn answer(
         Route::Workflow if head.method == "GET" => api::get_workflow(shared, &names_in(query)),
         Route::Workflow => api::save_workflow(shared, &body),
         Route::Validate => api::check_workflow(shared, &body),
+        Route::Agents => api::list_agents(),
         Route::Run => api::start_run(shared, &body),
         Route::RunStatus(id) => api::get_run(shared, id),
         Route::Page => unreachable!("a page is answered above"),
