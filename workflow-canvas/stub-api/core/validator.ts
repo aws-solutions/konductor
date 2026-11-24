@@ -237,15 +237,25 @@ function reportMissing(
   ctx.reporter.report('MISSING_KEY', path, spanOf(map), message, suggestion);
 }
 
+/**
+ * How a key is named in a message. A static key of the format is safe to
+ * echo; a key the author chose, such as a param or an output name, is passed
+ * through `quoteValue` first.
+ */
+function labelOf(entry: MapEntry, label?: string): string {
+  return label ?? `\`${entry.keyText}\``;
+}
+
 /** The string value of an entry, or `undefined` after a WRONG_TYPE. */
 function readString(
   entry: MapEntry,
   path: Segment[],
   ctx: Context,
+  label?: string,
 ): string | undefined {
   const { value } = entry;
   if (isScalar(value) && typeof value.value === 'string') return value.value;
-  const message = `\`${entry.keyText}\` must be a string.`;
+  const message = `${labelOf(entry, label)} must be a string.`;
   ctx.reporter.report('WRONG_TYPE', path, valueSpanOf(entry), message);
   return undefined;
 }
@@ -281,10 +291,11 @@ function readPath(
   entry: MapEntry,
   path: Segment[],
   ctx: Context,
+  label?: string,
 ): string | undefined {
-  const text = readString(entry, path, ctx);
+  const text = readString(entry, path, ctx, label);
   if (text === undefined || PATH_PATTERN.test(text)) return text;
-  const message = `\`${entry.keyText}\` must be a relative path of segments joined by \`/\`, with no empty, \`.\` or \`..\` segment, no \`\\\`, no drive letter and no control character.`;
+  const message = `${labelOf(entry, label)} must be a relative path of segments joined by \`/\`, with no empty, \`.\` or \`..\` segment, no \`\\\`, no drive letter and no control character.`;
   ctx.reporter.report('INVALID_VALUE', path, valueSpanOf(entry), message);
   return undefined;
 }
@@ -516,8 +527,9 @@ function readGoal(entry: MapEntry, ctx: Context): Param {
 
 function readParam(entry: MapEntry, name: string, ctx: Context): Param {
   const path = ['params', name];
+  const label = quoteValue(name);
   if (!isMap(entry.value)) {
-    const message = `\`${name}\` must be a mapping.`;
+    const message = `${label} must be a mapping.`;
     ctx.reporter.report('WRONG_TYPE', path, valueSpanOf(entry), message);
     return {};
   }
@@ -656,7 +668,7 @@ function readOutputs(
       );
       continue;
     }
-    const file = readPath(found, [...outputsPath, name], ctx);
+    const file = readPath(found, [...outputsPath, name], ctx, quoteValue(name));
     if (file !== undefined) outputs[name] = file;
   }
   return outputs;
@@ -822,8 +834,9 @@ function referenceProblem(
   const { scope, name } = reference;
   const shown = quoteReference(reference);
   if (isRunReference(reference)) {
-    // The goal is a param of every run, declared or not.
-    const declared = name === 'goal' || params?.[name] !== undefined;
+    // The goal is a param of every run, declared or not. An own-key check, so
+    // an inherited name such as `constructor` is not taken as declared.
+    const declared = name === 'goal' || Object.hasOwn(params ?? {}, name);
     return declared
       ? undefined
       : `${shown} names a param that the file does not declare.`;

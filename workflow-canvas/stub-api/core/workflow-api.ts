@@ -280,14 +280,15 @@ function resolveParams(
   }
 }
 
-// Whether a stage of the workflow declares the output named.
+// Whether a stage of the workflow declares the output named. An own-key
+// check, so an inherited name such as `constructor` is not taken as declared.
 function declares(
   view: WorkflowView,
   named: { stage: string; output: string } | undefined,
 ): named is { stage: string; output: string } {
   if (!named) return false;
   const stage = view.stages.find((found) => found.name === named.stage);
-  return stage?.outputs?.[named.output] !== undefined;
+  return Object.hasOwn(stage?.outputs ?? {}, named.output);
 }
 
 function emptyDocument(name: string): WorkflowDocument {

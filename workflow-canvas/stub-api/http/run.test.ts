@@ -636,3 +636,16 @@ describe('POST /api/run when an unwritten output is not declared', () => {
     expect(await stagesOf(stub(), runId)).toEqual(['passed', 'passed']);
   });
 });
+
+describe('POST /api/run when the unwritten output is only on the prototype', () => {
+  const stub = useStub({
+    files: { hello: WITH_DATA },
+    behavior: { unwrittenOutput: { stage: 'draft', output: 'constructor' } },
+  });
+
+  it('passes every stage: an inherited name is not a declared output', async () => {
+    const runId = await start(stub());
+    stub().clock.advance(DEFAULT_STAGE_MS * 3);
+    expect(await stagesOf(stub(), runId)).toEqual(['passed', 'passed']);
+  });
+});

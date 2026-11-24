@@ -24,6 +24,7 @@ import {
   OUTPUT_NAME_PATTERN,
   PARAM_NAME_PATTERN,
   PATH_PATTERN_SOURCE,
+  REFERENCE_PATTERN_SOURCE,
   RESERVED_STAGE_NAMES,
   RUN_ID_PATTERN,
   SESSION_LIMITS,
@@ -134,6 +135,25 @@ describe('the stub and api/openapi.yaml', () => {
     const sent = property(schemaOf('RunRequest'), 'params')
       .additionalProperties as Json;
     expect(sent.type).toBe('string');
+  });
+
+  it('give a param the value rules the stub reads', () => {
+    const param = property(schemaOf('WorkflowView'), 'params')
+      .additionalProperties as Json;
+    const type = property(param, 'type');
+    expect(type.type).toBe('string');
+    // The stub reads the one type, and names the slice for any other.
+    expect(type.enum).toEqual(['string']);
+    expect(property(param, 'description').type).toBe('string');
+    expect(property(param, 'default').type).toBe('string');
+    expect(property(param, 'required').type).toBe('boolean');
+  });
+
+  it('have the same grammar for a reference in a prompt', () => {
+    expect(schemaOf('TemplateReference').pattern).toBe(
+      REFERENCE_PATTERN_SOURCE,
+    );
+    expect(contractDescription()).toContain(REFERENCE_PATTERN_SOURCE);
   });
 
   it('have the same reasons for a blocked stage', () => {

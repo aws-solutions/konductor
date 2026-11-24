@@ -1069,3 +1069,69 @@ describe('references in a prompt', () => {
     expect(found?.message).toContain('(not shown)');
   });
 });
+
+describe('a name that only the prototype has', () => {
+  it('is not a declared param, so a reference to it is refused', () => {
+    const text = `${HEAD}params: {}\nstages:\n  - name: write\n    agent: k-developer\n    prompt: Read {run.constructor}.\n`;
+    const [found, ...rest] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(rest).toEqual([]);
+    expect(found).toMatchObject({
+      code: 'INVALID_VALUE',
+      path: 'stages.write.prompt',
+    });
+    expect(found?.message).toContain('does not declare');
+  });
+
+  it('is refused with no `params` key at all', () => {
+    const text = stageWith('prompt: Read {run.constructor}.');
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'stages.write.prompt', 9, 18],
+    ]);
+  });
+
+  it('is not a declared output of a stage', () => {
+    const text = stageWith('prompt: Read {write.constructor}.', 'outputs: {}');
+    const [found] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(found?.code).toBe('INVALID_VALUE');
+    expect(found?.message).toContain('does not declare');
+  });
+
+  it('is a param like any other once the file declares it', () => {
+    const text = `${HEAD}params:\n  constructor:\n    default: c\nstages:\n  - name: write\n    agent: k-developer\n    prompt: Read {run.constructor}.\n`;
+    expect(codesOf(text)).toEqual([]);
+  });
+});
+
+describe('a param or output name that may be a secret', () => {
+  const SECRET = 'abcdefghijkl1mnop';
+
+  it('is not echoed when the param is not a mapping', () => {
+    const text = `${HEAD}params:\n  ${SECRET}: x\n${STAGES}`;
+    const [found] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(found?.code).toBe('WRONG_TYPE');
+    expect(found?.message).not.toContain(SECRET);
+    expect(found?.message).toContain('(not shown)');
+  });
+
+  it('is not echoed when an output path breaks the path rules', () => {
+    const text = stageWith('outputs:', `  ${SECRET}: ../D.md`);
+    const [found] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(found?.code).toBe('INVALID_VALUE');
+    expect(found?.message).not.toContain(SECRET);
+    expect(found?.message).toContain('(not shown)');
+  });
+
+  it('is not echoed when an output value is not a string', () => {
+    const text = stageWith('outputs:', `  ${SECRET}: 7`);
+    const [found] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(found?.code).toBe('WRONG_TYPE');
+    expect(found?.message).not.toContain(SECRET);
+    expect(found?.message).toContain('(not shown)');
+  });
+
+  it('is still echoed when the name is short and plain', () => {
+    const text = `${HEAD}params:\n  topic: x\n${STAGES}`;
+    const [found] = checkWorkflowText(text, 'hello').diagnostics;
+    expect(found?.message).toContain('`topic`');
+  });
+});

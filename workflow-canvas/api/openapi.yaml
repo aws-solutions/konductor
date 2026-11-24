@@ -360,8 +360,9 @@ info:
     The string form of `intent` (`intent: <text>`) is also reported with
     `NOT_SUPPORTED_BY_THIS_BUILD`, at the value, naming slice 13. This version
     takes the mapping with `outcome` only, and the canvas writes the mapping.
-    A reference in a `prompt` (`{`, a name, `.`, another name and `}`) names
-    an input of the run. `{run.<param>}` is a param the file declares, and the
+    A reference in a `prompt` names an input of the run. It is `{`, a scope,
+    `.`, a name and `}`, which the `TemplateReference` schema fixes as
+    `\{[a-z0-9][a-z0-9-]*\.[a-z_][a-z0-9_-]*\}`. `{run.<param>}` is a param the file declares, and the
     goal is a param of every run whether the file declares it or not.
     `{<stage>.<output>}` is an output of that stage or of an earlier one, and
     it renders as the output's path, not the content of the file, so what an
@@ -1872,6 +1873,16 @@ components:
       pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
       description: A workflow name, a check id or an agent id.
       examples: [hello, k-developer]
+    TemplateReference:
+      type: string
+      pattern: '\{[a-z0-9][a-z0-9-]*\.[a-z_][a-z0-9_-]*\}'
+      description: |
+        A reference in a `prompt`: `{`, a scope, `.`, a name and `}`. The
+        scope is `run` or a stage name, and the name is a param or an output
+        name. This pattern is normative: text that does not match it is plain
+        text, so a JSON shape such as `{severity, file, line}` and a number
+        such as `{1.5}` are left as they are. The schema is here to fix the
+        grammar; no field of the API carries one reference on its own.
     ParamName:
       type: string
       pattern: '^[a-z][a-z0-9_]{0,63}$'
