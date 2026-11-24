@@ -391,8 +391,8 @@ export function DesignView({
             action={<Button onClick={opened.checkAgain}>Check again</Button>}
           >
             {opened.failure} Only the name and the agent of a stage are shown,
-            and a save of a stage that was loaded is refused until the keys are
-            known.
+            so the other keys of the file are not on the page. A save still
+            keeps them.
           </Alert>
         )}
         <CheckLine status={draft.status} failure={draft.failure} />
