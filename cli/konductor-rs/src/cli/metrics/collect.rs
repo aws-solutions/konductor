@@ -146,6 +146,20 @@ impl Record {
     }
 }
 
+/// Reads `path` only if it's a regular file (or a link to one). Sidecar
+/// files are read with this too: a FIFO would block forever, a device
+/// could stream without end. A non-regular file is `InvalidInput`, so
+/// callers can tell it apart from a missing one (`NotFound`).
+pub(crate) fn read_regular(path: &Path) -> std::io::Result<Vec<u8>> {
+    if !std::fs::metadata(path)?.is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    std::fs::read(path)
+}
+
 /// Drops the cloud-provider prefix (`global.anthropic.`, `us.anthropic.`)
 /// and the `[1m]` context suffix so one model groups as one row.
 pub(crate) fn normalize_model(raw: &str) -> String {
@@ -259,7 +273,7 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
 
     if subagents_dir.is_some() {
         let meta = path.with_extension("meta.json");
-        rec.agent = std::fs::read(&meta)
+        rec.agent = read_regular(&meta)
             .ok()
             .and_then(|b| serde_json::from_slice::<ClaudeSubagentMeta>(&b).ok())
             .and_then(|m| m.agent_type);
@@ -477,7 +491,7 @@ struct V3SessionJson {
 /// isn't a JSON object. Each field is read on its own, so one field
 /// changing type loses only that field.
 fn read_v3_session_json(path: &Path) -> Result<V3SessionJson, ()> {
-    let bytes = match std::fs::read(path) {
+    let bytes = match read_regular(path) {
         Ok(b) => b,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(V3SessionJson::default()),
         Err(_) => return Err(()),
@@ -900,6 +914,37 @@ mod tests {
         let mut bytes = br#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#.to_vec();
         bytes.extend_from_slice(b"\n\xff\xfe not utf-8\n");
         std::fs::write(&p, bytes).unwrap();
+        assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    fn mkfifo(path: &Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        assert!(std::process::Command::new("mkfifo")
+            .arg(path)
+            .status()
+            .unwrap()
+            .success());
+    }
+
+    #[test]
+    fn fifo_sidecars_are_never_opened() {
+        let d = tmp("fifo-sidecars");
+        // Claude subagent: FIFO meta.json beside a regular transcript.
+        mkfifo(&d.join("proj/s/subagents/agent-a.meta.json"));
+        let p = write(
+            &d,
+            "proj/s/subagents/agent-a.jsonl",
+            r#"{"type":"assistant","message":{"id":"x","model":"m","usage":{"input_tokens":1}}}"#,
+        );
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!((r.status, r.agent), (Status::Ok, None));
+        // Kiro v3: FIFO session.json beside a regular messages.jsonl.
+        mkfifo(&d.join("ws/s/session.json"));
+        let p = write(
+            &d,
+            "ws/s/messages.jsonl",
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#,
+        );
         assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
     }
 
