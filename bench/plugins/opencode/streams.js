@@ -43,6 +43,19 @@ function firstDecision(events) {
   return { kind: 'none', name: null };
 }
 
+// File-writing tools (load-check.js).
+const WRITE_TOOLS = new Set(['write', 'edit', 'patch']);
+
+/** One event for load-check.js loadOrderOf: the skill and task tools, a file write, an errored call. */
+function loadOrderEvent(ev, at, { add, fail, write }) {
+  const p = ev?.type === 'tool_use' ? ev.part : null;
+  if (!p) return;
+  if (p.tool === 'skill') add(p.callID, p.state?.input?.name ?? p.state?.input?.skill_name, 'skill', at);
+  else if (p.tool === 'task') add(p.callID, p.state?.input?.subagent_type, 'agent', at);
+  else if (WRITE_TOOLS.has(p.tool)) write(at);
+  if (p.state?.status === 'error') fail(p.callID);
+}
+
 module.exports = {
   // The last assistant text of the parent session.
   finalText: (events) => aggregateEvents(events).lastText,
@@ -50,4 +63,5 @@ module.exports = {
   skillCalls,
   skillAnswer: 'text',
   firstDecision,
+  loadOrderEvent,
 };

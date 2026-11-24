@@ -6,6 +6,23 @@
 
 const parse = require('./parse.js');
 
+// File-writing tools; shortcut: a file written by a shell command is not seen (load-check.js).
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
+const SKILL_FILE = /(?:^|\/)([^/]+)\/SKILL\.md$/;
+
+/** One event for load-check.js loadOrderOf: the Skill tool, a SKILL.md read, a subagent tool, a file write, a failed result. */
+function loadOrderEvent(ev, at, { add, fail, write }) {
+  const blocks = Array.isArray(ev?.message?.content) ? ev.message.content : [];
+  for (const b of blocks) {
+    if (ev.type === 'assistant' && b?.type === 'tool_use') {
+      if (b.name === 'Skill') add(b.id, b.input?.skill ?? b.input?.name, 'skill', at);
+      else if (b.name === 'Read' && SKILL_FILE.test(String(b.input?.file_path ?? ''))) add(b.id, SKILL_FILE.exec(b.input.file_path)[1], 'skill', at);
+      else if (parse.SUBAGENT_TOOLS.has(b.name)) add(b.id, b.input?.subagent_type, 'agent', at);
+      else if (WRITE_TOOLS.has(b.name)) write(at);
+    } else if (ev.type === 'user' && b?.type === 'tool_result' && b.is_error) fail(b.tool_use_id);
+  }
+}
+
 const blank = (t) => typeof t !== 'string' || !t.trim();
 
 module.exports = {
@@ -19,6 +36,7 @@ module.exports = {
   // The Skill tool calls, with their text answers (skills.js extractSkills, `skillAnswer: 'text'`).
   skillCalls: parse.skillCalls,
   skillAnswer: 'text',
+  loadOrderEvent,
   /** The first capability call of a run: the Skill tool or a subagent tool. { kind: 'skill'|'subagent'|'none', name }. */
   firstDecision(events) {
     for (const ev of events ?? []) {

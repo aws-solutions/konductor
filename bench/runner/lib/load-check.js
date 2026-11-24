@@ -6,17 +6,10 @@
 // stream only. Whether a skill or SOP load succeeded comes from the shared extractor (skills.js extractSkills); this
 // file adds the order, the agents and the first write.
 
-const { toolNameOf, isV3Call, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf, subagentTargets, SUBAGENT_TOOL } = require('./stream.js');
-const { SUBAGENT_TOOLS } = require('../../plugins/claude-code/parse.js');
-
+// The run's harness reads its own events (`streams.loadOrderEvent`); loaded at call time through harness/streams.js.
 // shortcut: a file written by a shell command (`cat > f`, `sed -i`) is not seen as a write, so firstWriteAt can be
 // late on a run that writes only through the shell; upgrade when such runs show up in the load-check table.
-const WRITE_TOOLS = {
-  'kiro-cli': new Set(['fs_write', 'str_replace', 'fs_append', 'write']),
-  'claude-code': new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']),
-  opencode: new Set(['write', 'edit', 'patch']),
-};
-const CC_SKILL_FILE = /(?:^|\/)([^/]+)\/SKILL\.md$/;
+const { streamsOf } = require('./harness/streams.js');
 
 const lower = (s) => String(s).toLowerCase();
 /** The name a unit is matched by: lower case, without a kind prefix (`skill:`) or the `sop-` wrapper prefix. */
@@ -25,7 +18,9 @@ const unitKey = (name) => lower(name).replace(/^(skill|sop|agent)::?/, '').repla
 /**
  * Units the stream asked for, in stream order: { name, kind: 'skill'|'agent', at, failed }, `at` being the index of the
  * event that made the call. A skill-kind entry may be an SOP; the caller decides with its catalog. Also firstWriteAt,
- * the index of the first file-writing tool call, or null.
+ * the index of the first file-writing tool call, or null. Each harness's `streams.loadOrderEvent(ev, at, {add, fail,
+ * write, calls})` reads one event: `add(id, name, kind, at)` records a call, `fail(id)` marks it failed, `write(at)` a
+ * file write; `calls` maps a call id to its entries.
  */
 function loadOrderOf(events, runtime) {
   const calls = new Map();
@@ -39,47 +34,9 @@ function loadOrderOf(events, runtime) {
   };
   const fail = (id) => { for (const c of calls.get(id) ?? []) c.failed = true; };
   const write = (at) => { if (firstWriteAt === null) firstWriteAt = at; };
-  (events ?? []).forEach((ev, at) => {
-    if (runtime === 'claude-code') {
-      const blocks = Array.isArray(ev?.message?.content) ? ev.message.content : [];
-      for (const b of blocks) {
-        if (ev.type === 'assistant' && b?.type === 'tool_use') {
-          if (b.name === 'Skill') add(b.id, b.input?.skill ?? b.input?.name, 'skill', at);
-          else if (b.name === 'Read' && CC_SKILL_FILE.test(String(b.input?.file_path ?? ''))) add(b.id, CC_SKILL_FILE.exec(b.input.file_path)[1], 'skill', at);
-          else if (SUBAGENT_TOOLS.has(b.name)) add(b.id, b.input?.subagent_type, 'agent', at);
-          else if (WRITE_TOOLS['claude-code'].has(b.name)) write(at);
-        } else if (ev.type === 'user' && b?.type === 'tool_result' && b.is_error) fail(b.tool_use_id);
-      }
-      return;
-    }
-    if (runtime === 'opencode') {
-      const p = ev?.type === 'tool_use' ? ev.part : null;
-      if (!p) return;
-      if (p.tool === 'skill') add(p.callID, p.state?.input?.name ?? p.state?.input?.skill_name, 'skill', at);
-      else if (p.tool === 'task') add(p.callID, p.state?.input?.subagent_type, 'agent', at);
-      else if (WRITE_TOOLS.opencode.has(p.tool)) write(at);
-      if (p.state?.status === 'error') fail(p.callID);
-      return;
-    }
-    const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
-    if (!u) return;
-    if (u.sessionUpdate === 'tool_call_update') {
-      if (u.status === 'failed') fail(u.toolCallId);
-      // v2 may name a get_skill target only in an update.
-      const pending = (calls.get(u.toolCallId) ?? []).find((c) => c.name === '(get_skill)');
-      const n = mcpInputOf(u.rawInput ?? {})?.name;
-      if (pending && typeof n === 'string' && n.trim()) pending.name = n.trim();
-      return;
-    }
-    if (u.sessionUpdate !== 'tool_call' || (u.toolCallId && calls.has(u.toolCallId))) return;
-    const tool = toolNameOf(u);
-    const named = skillFileReadOf(u) ?? skillResourceCallOf(u) ?? skillActivationOf(u);
-    if (named) { add(u.toolCallId, named.name, /sop-md$/.test(named.via ?? '') ? 'sop' : 'skill', at); return; }
-    const sc = skillsCallOf(u);
-    if (sc?.tool === 'get_skill') { const n = mcpInputOf(u.rawInput ?? {})?.name; add(u.toolCallId, typeof n === 'string' && n.trim() ? n.trim() : '(get_skill)', 'skill', at); return; }
-    if (tool === SUBAGENT_TOOL) { for (const t of subagentTargets(u.rawInput ?? {}, { nameIsAgent: isV3Call(u) })) if (t !== '(unnamed)') add(u.toolCallId, t, 'agent', at); return; }
-    if (WRITE_TOOLS['kiro-cli'].has(tool)) write(at);
-  });
+  // A harness with no reader (Strands) has no capability calls to order.
+  const read = streamsOf({ runtime }).loadOrderEvent;
+  if (read) (events ?? []).forEach((ev, at) => read(ev, at, { add, fail, write, calls }));
   return { order: order.filter((c) => c.name !== '(get_skill)'), firstWriteAt };
 }
 
@@ -116,4 +73,4 @@ function loadCheckOf({ order, extraction, task, arm, isSop = () => false }) {
   };
 }
 
-module.exports = { loadOrderOf, loadCheckOf, unitKey, WRITE_TOOLS };
+module.exports = { loadOrderOf, loadCheckOf, unitKey };
