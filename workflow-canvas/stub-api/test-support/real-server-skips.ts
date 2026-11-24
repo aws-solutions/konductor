@@ -25,7 +25,6 @@ const HARNESS =
 
 const NOT_YET = (operation: string) =>
   `the real server does not serve ${operation} yet`;
-const NO_STAGE_FIELDS = 'the real server does not return stage_fields yet';
 
 const LIBRARY =
   'the real server does not serve the workflow library yet (follow-up 28)';
@@ -89,30 +88,6 @@ const SKIPS: Skip[] = [
   {
     test: /^GET \/api\/runs(?!\/)/,
     why: NOT_YET('listRuns'),
-  },
-  {
-    test: /^the wire types of the page read GET \/api\/workflow/,
-    why: NO_STAGE_FIELDS,
-  },
-  {
-    test: /^the wire types and text of the Designer against PUT \/api\/workflow/,
-    why: NO_STAGE_FIELDS,
-  },
-  {
-    test: /^GET \/api\/workflow > returns the sample workflow, its hash and its view$/,
-    why: NO_STAGE_FIELDS,
-  },
-  {
-    test: /^GET \/api\/workflow for a fixture with stage keys > shows the prompt and the prompt_file of a stage in the view$/,
-    why: NO_STAGE_FIELDS,
-  },
-  {
-    test: /^GET \/api\/workflow with the file of the contract example > returns exactly what the example shows$/,
-    why: NO_STAGE_FIELDS,
-  },
-  {
-    test: /^GET \/api\/workflow with text that has errors > returns the text with a null view and the diagnostics$/,
-    why: NO_STAGE_FIELDS,
   },
   {
     test: /^POST \/api\/run > is a bad request with a param that is not a string$/,

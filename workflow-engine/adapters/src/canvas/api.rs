@@ -13,7 +13,7 @@ use workflow_core::run::{Run, RunStatus};
 use workflow_core::runner::recover;
 use workflow_core::time::is_run_id;
 use workflow_core::trust::sha256_hex;
-use workflow_core::view::{check_response, checked_view, diagnostics_json};
+use workflow_core::view::{check_response, checked_view, diagnostics_json, stage_fields};
 use workflow_core::{check_text, Checked};
 
 use crate::clock::SystemClock;
@@ -190,6 +190,8 @@ pub fn get_workflow(shared: &Shared, names: &[String]) -> Result<Reply, ApiError
     let mut doc = Json::object();
     doc.insert("name", Json::str(&target));
     doc.insert("read_only", Json::Bool(false));
+    // The same for every text, so a client has it when `view` is null too.
+    doc.insert("stage_fields", stage_fields());
     match read_root(shared)? {
         RootFile::Missing => {
             doc.insert("text", Json::Null);

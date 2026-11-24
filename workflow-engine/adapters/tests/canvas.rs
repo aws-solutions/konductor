@@ -848,6 +848,95 @@ fn getworkflow_returns_the_text_the_hash_and_the_view() {
     );
 }
 
+/// The keys of the `agent` kind in the answer, as `(key, type, required)`.
+fn agent_fields(json: &Json) -> Vec<(String, String, bool)> {
+    json.get("stage_fields")
+        .and_then(|fields| fields.get("agent"))
+        .and_then(Json::as_array)
+        .expect("stage_fields has the agent kind")
+        .iter()
+        .map(|field| {
+            (
+                field.get("key").and_then(Json::as_str).unwrap().to_string(),
+                field
+                    .get("type")
+                    .and_then(Json::as_str)
+                    .unwrap()
+                    .to_string(),
+                field.get("required") == Some(&Json::Bool(true)),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn getworkflow_says_which_keys_of_a_stage_a_client_may_edit_and_what_each_takes() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let json = call(&f, "GET", "/api/workflow", None).json();
+    let want = [
+        ("name", "name", true),
+        ("agent", "name", true),
+        ("prompt", "text", false),
+        ("prompt_file", "path", false),
+    ]
+    .map(|(key, kind, required)| (key.to_string(), kind.to_string(), required));
+    assert_eq!(agent_fields(&json), want);
+    let fields = json
+        .get("stage_fields")
+        .and_then(|f| f.get("agent"))
+        .and_then(Json::as_array)
+        .unwrap();
+    let by_key = |key: &str| {
+        fields
+            .iter()
+            .find(|f| f.get("key").and_then(Json::as_str) == Some(key))
+            .unwrap()
+    };
+    // The limits are the ones the checker enforces.
+    let prompt = by_key("prompt");
+    assert_eq!(prompt.get("min_length").and_then(Json::as_u64), Some(1));
+    assert_eq!(
+        prompt.get("max_length").and_then(Json::as_u64),
+        Some(32_768)
+    );
+    assert_eq!(
+        prompt.get("excludes"),
+        Some(&Json::Array(vec![Json::str("prompt_file")]))
+    );
+    assert_eq!(
+        by_key("prompt_file").get("excludes"),
+        Some(&Json::Array(vec![Json::str("prompt")]))
+    );
+    let name = by_key("name");
+    assert_eq!(name.get("max_length").and_then(Json::as_u64), Some(64));
+    assert_eq!(
+        name.get("reserved"),
+        Some(&Json::Array(
+            ["start", "end", "run", "halt"].map(Json::str).to_vec()
+        ))
+    );
+    assert_eq!(
+        name.get("pattern").and_then(Json::as_str),
+        Some("^[a-z0-9][a-z0-9-]{0,63}$")
+    );
+}
+
+#[test]
+fn getworkflow_has_the_stage_fields_when_the_view_is_null() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let broken = HELLO.replace("version: 0.1.0", "version: '1.1'");
+    fs::write(
+        f.project.path().join(".konductor/workflows/hello.yml"),
+        broken,
+    )
+    .unwrap();
+    let json = call(&f, "GET", "/api/workflow", None).json();
+    assert_eq!(json.get("view"), Some(&Json::Null));
+    assert_eq!(agent_fields(&json).len(), 4);
+}
+
 #[test]
 fn each_stage_of_a_view_has_its_kind_and_its_lines_in_every_answer_that_carries_a_view() {
     let _serial = one_at_a_time();
