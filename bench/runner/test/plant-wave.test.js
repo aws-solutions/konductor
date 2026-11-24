@@ -49,7 +49,7 @@ test('usage errors exit 64 and --list prints waves 0 to 4', () => {
   assert.equal(run(['9']).status, 64);
   const l = run(['--list']);
   assert.equal(l.status, 0);
-  for (const w of ['0 plant-p1-overspeed', '1 plant-p1-overspeed', '2 plant-p2', '3 plant-p3', '4 plant-n 12 2 unshare normal 3 w4', '4 plant-p 37 2 unshare heldback 1 w4']) assert.ok(l.stdout.includes(w), l.stdout);
+  for (const w of ['0 plant-p1-overspeed', '1 plant-p1-overspeed', '2 plant-p2', '3 plant-p3', '4 plant-n 12 2 unshare normal 3 w4', '4 plant-p 40 2 unshare heldback 1 w4', '2 plant-p2-guard-no-approval,plant-p5-injected-text,plant-p7-jam-link-loss 140', '3 plant-p3-stale-read,plant-p4-out-of-range,plant-p6-state-change 86']) assert.ok(l.stdout.includes(w), l.stdout);
 });
 
 /**
@@ -70,8 +70,8 @@ test('--plan is free: it prints each part with its tasks, trials, ceiling and ex
   const { cs } = planCs(t, { open: ['plant-p2-guard-no-approval.v01', 'plant-p5-injected-text.v01', 'plant-p7-jam-link-loss.v01', 'plant-p1-overspeed.v01'] });
   const r = run(['2', '--plan'], { PLANT_CS: cs, PLANT_KBIN: '/no/such/kiro', PLANT_VENV: '/no/such/python' });
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /part main: 3 tasks x 2 arms x 1 replicate = 6 trials; ceiling 134 credits; expected about 2\.2/);
-  assert.match(r.stdout, /wave 2 total: 6 trials, ceiling 134 credits, expected about 2\.2 credits/);
+  assert.match(r.stdout, /part main: 3 tasks x 2 arms x 1 replicate = 6 trials; ceiling 140 credits; expected about 2\.2/);
+  assert.match(r.stdout, /wave 2 total: 6 trials, ceiling 140 credits, expected about 2\.2 credits/);
   assert.match(r.stdout, /paid run \(owner\): bash .*plant-wave\.sh 2/);
 });
 
@@ -80,8 +80,8 @@ test('wave 4 --plan lists the normal part (3 replicates) and the held-back part,
   const r = run(['4', '--plan'], { PLANT_CS: cs, PLANT_NORMAL: normal });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /part normal: 3 tasks x 2 arms x 3 replicates = 18 trials; ceiling 12 credits/);
-  assert.match(r.stdout, /part heldback: 2 tasks x 2 arms x 1 replicate = 4 trials; ceiling 37 credits/);
-  assert.match(r.stdout, /wave 4 total: 22 trials, ceiling 49 credits/);
+  assert.match(r.stdout, /part heldback: 2 tasks x 2 arms x 1 replicate = 4 trials; ceiling 40 credits/);
+  assert.match(r.stdout, /wave 4 total: 22 trials, ceiling 52 credits/);
   assert.match(r.stdout, /held-back sha256 [0-9a-f]{64}/);
   assert.match(r.stdout, /PLANT_HELDBACK_SHA256 is not set/);
 });
@@ -164,4 +164,24 @@ test('stub kiro-cli + throwaway key: full prepare-only passes (skips without a c
   assert.match(r.stdout, /policy test: ok/);
   assert.match(r.stdout, /prepare-only passed/);
   fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('the waves sum to the 365-credit soft cap: wave 0 spent 40.89, waves 1 to 4 ceilings 323', () => {
+  const table = run(['--list']).stdout.split('\n').filter((l) => /^[1-4] /.test(l));
+  assert.equal(table.reduce((sum, l) => sum + Number(l.split(' ')[2]), 0), 323);
+  assert.ok(40.89 + 323 <= 365);
+});
+
+test('wave 4 reads the freeze record held-back.sha256 in the counted set when PLANT_HELDBACK_SHA256 is unset', (t) => {
+  const HELPER = path.join(__dirname, '..', '..', 'scripts', 'lib', 'heldback_sha.py');
+  const { cs, normal } = planCs(t, { held: ['plant-p1-overspeed.v36'], normal: ['plant-n1-target-speed.v01'] });
+  const hash = execFileSync('python3', [HELPER, path.join(cs, 'held-back')], { encoding: 'utf8' }).trim();
+  fs.writeFileSync(path.join(cs, 'held-back.sha256'), `${hash}  recorded 2026-11-24\n`);
+  const ok = run(['4', '--plan'], { PLANT_CS: cs, PLANT_NORMAL: normal });
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(ok.stdout, /matches the freeze record \(held-back\.sha256\)/);
+  fs.writeFileSync(path.join(cs, 'held-back.sha256'), `${'1'.repeat(64)}\n`);
+  const bad = run(['4', '--plan'], { PLANT_CS: cs, PLANT_NORMAL: normal });
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /is not the one recorded at freeze/);
 });

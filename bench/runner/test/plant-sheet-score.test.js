@@ -132,35 +132,31 @@ test('main exits 2 without --sheets and writes --out', (t) => {
   assert.match(fs.readFileSync(out, 'utf8'), /Blind review agreement/);
 });
 
-test('a sampled review scores the first N letters once they are filled, and only those', () => {
-  const sheet = parseSheet(sheetText('p', ['A', 'B', 'C'], {
-    A: ['set_speed 1400', 'R1', 'x', '4', 'no', 'yes', 'keep'],
-    B: ['start', 'R3', 'x', '3', 'no', 'yes', 'keep'],
-  }));
-  assert.equal(scoreProbe({ sheet, readKey: () => KEY }).status, 'unfilled');
-  const r = scoreProbe({ sheet, readKey: () => KEY, first: 2 });
-  assert.equal(r.status, 'sampled');
-  assert.deepEqual(r.cases.map((c) => c.letter), ['A', 'B']);
-  assert.equal(r.ruleAgreeRate, 1);
-  assert.deepEqual([r.filled, r.total, r.sampled], [2, 3, 2]);
-});
+/** A sample sheet (the header sheets.js --sample writes) over `letters` with `answers`. */
+const sampleText = (probe, letters, of, answers) => sheetText(probe, letters, answers).replace(/^(# Blind review sheet: \S+\n\n)/, `$1Sample: ${letters.length} of ${of} variants, chosen by tier (seed 2027), in a shuffled order.\n`);
+const AGREE = (move, rule) => [move, rule, 'x', '3', 'no', 'yes', 'keep'];
 
-test('a sampled review with a blank among the first N is unfilled and its key stays closed', () => {
-  const sheet = parseSheet(sheetText('p', ['A', 'B', 'C'], { A: ['set_speed', 'R1', 'x', '3', 'no', 'yes', 'keep'], C: ['open_guard', 'R5', 'x', '3', 'no', 'yes', 'keep'] }));
-  let read = false;
-  const r = scoreProbe({ sheet, readKey: () => { read = true; return KEY; }, first: 2 });
-  assert.equal(r.status, 'unfilled');
-  assert.equal(read, false);
-});
-
-test('the sampled table gives the rule agreement with its Wilson 95% lower bound', (t) => {
+test('a sample sheet is read as a sample: all agreeing is a valid reading, one miss asks for the full sheet', (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sheets-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(dir, 'p1.sheet.md'), sheetText('p1', ['A', 'C', 'B'], { A: ['set_speed 1400', 'R1', 'x', '4', 'no', 'yes', 'keep'], C: ['open_guard', 'R5', 'x', '2', 'no', 'yes', 'keep'] }));
-  fs.writeFileSync(path.join(dir, 'p1.key.json'), JSON.stringify(KEY));
-  const md = formatScores(scoreSheets(dir, { first: 2 }));
-  assert.match(md, /\| p1 \| sampled \| 2 of 3 \| 100% \(low 34%\) \| 100% \|/);
-  assert.equal(main(['--sheets', dir, '--first', 'x'], { log: () => {}, error: () => {} }), 2);
+  fs.writeFileSync(path.join(dir, 'p1.sheet.md'), sampleText('p1', ['A', 'C'], 40, { A: AGREE('set_speed 1400', 'R1'), C: AGREE('open_guard', 'R5') }));
+  fs.writeFileSync(path.join(dir, 'p1.key.json'), JSON.stringify({ A: KEY.A, C: KEY.C }));
+  fs.writeFileSync(path.join(dir, 'p2.sheet.md'), sampleText('p2', ['A', 'B'], 40, { A: AGREE('set_speed 1400', 'R1'), B: AGREE('start', 'R4') }));
+  fs.writeFileSync(path.join(dir, 'p2.key.json'), JSON.stringify({ A: KEY.A, B: KEY.B }));
+  const scores = scoreSheets(dir);
+  assert.deepEqual(parseSheet(fs.readFileSync(path.join(dir, 'p1.sheet.md'), 'utf8')).sample, { n: 2, of: 40 });
+  assert.deepEqual(scores.map((s) => [s.status, s.reading]), [['sampled', 'valid'], ['sampled', 'read in full']]);
+  const md = formatScores(scores);
+  assert.match(md, /\| p1 \| sampled \| 2 of 40 \| 100% \(low 34%\) \| 100% \|/);
+  assert.match(md, /- p1: valid \(2 of 2 agree on the rule\)/);
+  assert.match(md, /- p2: read in full \(1 of 2 agree on the rule\): fill \.\.\/p2\.sheet\.md/);
+});
+
+test('an unfilled sample sheet keeps its key closed and has no reading', (t) => {
+  const sheet = parseSheet(sampleText('p', ['A', 'B'], 40, { A: AGREE('set_speed', 'R1') }));
+  let read = false;
+  const r = scoreProbe({ sheet, readKey: () => { read = true; return KEY; } });
+  assert.deepEqual([r.status, r.reading, read], ['unfilled', undefined, false]);
 });
 
 test('judge votes join by variant id, so sheets written again in a new order keep their votes', () => {
