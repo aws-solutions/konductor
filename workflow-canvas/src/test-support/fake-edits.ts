@@ -30,10 +30,16 @@ export function viewOfText(text: string): WorkflowView {
   ];
   return {
     ...HELLO_VIEW,
-    stages: stages.map((match) => ({
-      name: match[1] ?? '',
-      agent: match[2] ?? '',
-    })),
+    stages: stages.map((match) => {
+      // The two lines it reads, counted from 1.
+      const line = text.slice(0, match.index).split('\n').length;
+      return {
+        name: match[1] ?? '',
+        kind: 'agent',
+        agent: match[2] ?? '',
+        range: { line, end_line: line + 1 },
+      };
+    }),
   };
 }
 

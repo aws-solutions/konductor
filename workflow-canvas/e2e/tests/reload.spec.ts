@@ -64,14 +64,12 @@ test('shows the workflow of a pasted launch code once its session is open', asyn
 }) => {
   await canvas.expectWorkflowDrawn();
   await page.route('**/api/session', (route) =>
-    route.fulfill({ json: { ...sharedSession(), harness: 'other-harness' } }),
+    route.fulfill({ json: { ...sharedSession(), harness: 'claude' } }),
   );
 
   await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
 
-  await expect(page.getByTestId('node-stage-draft')).toContainText(
-    'other-harness',
-  );
+  await expect(page.getByTestId('node-stage-draft')).toContainText('claude');
 });
 
 // The launch code works once and the page removes it from the address. A
@@ -110,7 +108,7 @@ test('never writes the launch code to the storage of the page', async ({
   expect(stored).not.toContain(STUB_LAUNCH_CODE);
 });
 
-test('asks for a fresh launch address when the server no longer knows the session', async ({
+test('tells to start flow view again when the server no longer knows the session', async ({
   canvas,
   page,
 }) => {
@@ -129,7 +127,7 @@ test('asks for a fresh launch address when the server no longer knows the sessio
 
   await expect(
     page.getByText(/server no longer knows this session/),
-  ).toBeVisible();
+  ).toContainText('Start flow view again');
   expect(await page.evaluate(() => window.sessionStorage.length)).toBe(0);
 
   await page.unroute('**/api/workflow');
@@ -210,7 +208,7 @@ test('resumes after a reload when a fresh address opens over a dead session and 
   await page.evaluate(() =>
     window.sessionStorage.setItem(
       'konductor-workflow-canvas-session',
-      JSON.stringify({ token: 'dead-token', harness: 'old-harness' }),
+      JSON.stringify({ token: 'dead-token', harness: 'claude' }),
     ),
   );
   await page.route('**/api/session', (route) =>

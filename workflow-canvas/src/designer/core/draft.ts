@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { StageView } from '../../api/types';
+import type { StageKeys } from '../../api/types';
 
 /** A stage being edited. The `id` stays when the stage is renamed. */
 export interface DraftStage {
@@ -26,7 +26,7 @@ function idOf(number: number): string {
 }
 
 /** A draft that starts as the stages of a saved workflow. */
-export function draftOf(stages: readonly StageView[]): Draft {
+export function draftOf(stages: readonly StageKeys[]): Draft {
   return {
     stages: stages.map((stage, index) => ({ ...stage, id: idOf(index + 1) })),
     nextId: stages.length + 1,
@@ -34,7 +34,7 @@ export function draftOf(stages: readonly StageView[]): Draft {
 }
 
 /** The stages of a draft as the API names them. */
-export function stagesOf(draft: Draft): StageView[] {
+export function stagesOf(draft: Draft): StageKeys[] {
   return draft.stages.map(({ name, agent }) => ({ name, agent }));
 }
 
@@ -45,8 +45,8 @@ export function idsOf(draft: Draft): string[] {
 
 /** Whether two lists have the same stages, in the same order. */
 export function sameStages(
-  a: readonly StageView[],
-  b: readonly StageView[],
+  a: readonly StageKeys[],
+  b: readonly StageKeys[],
 ): boolean {
   return (
     a.length === b.length &&

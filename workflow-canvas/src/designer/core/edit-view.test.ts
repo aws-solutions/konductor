@@ -5,6 +5,7 @@ import {
   HELLO_DOCUMENT,
   HELLO_TEXT,
   HELLO_VIEW,
+  stageViewOf,
 } from '../../test-support/fixtures';
 import { reduce } from './edit-reducer';
 import { openDocument, type EditEvent, type EditState } from './edit-state';
@@ -154,8 +155,8 @@ describe('textOf, across saves', () => {
       view: {
         ...HELLO_VIEW,
         stages: [
-          { name: 'plan', agent: 'k-architect' },
-          { name: 'implement', agent: 'k-developer' },
+          stageViewOf('plan', 'k-architect'),
+          stageViewOf('implement', 'k-developer'),
         ],
       },
     };
@@ -181,8 +182,8 @@ describe('textOf, across saves', () => {
         view: {
           ...PLAN.view,
           stages: [
-            { name: 'planning', agent: 'k-architect' },
-            { name: 'implement', agent: 'k-developer' },
+            stageViewOf('planning', 'k-architect'),
+            stageViewOf('implement', 'k-developer'),
           ],
         },
         diagnostics: [],
@@ -205,7 +206,7 @@ describe('textOf, across saves', () => {
     );
     const saved = runOn(
       deleted,
-      savedOf(deleted, [{ name: 'review', agent: 'k-quality-assurance' }]),
+      savedOf(deleted, [stageViewOf('review', 'k-quality-assurance')]),
     );
 
     const next = runOn(saved, { type: 'set-agent', id: 's2', agent: 'k-tpm' });
@@ -227,8 +228,8 @@ describe('textOf, across saves', () => {
       saving,
       { type: 'add' },
       savedOf(saving, [
-        { name: 'write', agent: 'k-developer' },
-        { name: 'review', agent: 'k-quality-assurance' },
+        stageViewOf('write', 'k-developer'),
+        stageViewOf('review', 'k-quality-assurance'),
       ]),
     );
 
@@ -418,7 +419,7 @@ describe('saveStatus', () => {
           view: {
             ...HELLO_DOCUMENT.view!,
             stages: [
-              { name: 'draft', agent: 'k-tpm' },
+              stageViewOf('draft', 'k-tpm'),
               HELLO_DOCUMENT.view!.stages[1]!,
             ],
           },

@@ -6,6 +6,7 @@ import {
   HELLO_VIEW,
   failed,
   loaded,
+  stageViewOf,
 } from '../test-support/fixtures';
 import { Designer } from './Designer';
 
@@ -188,7 +189,7 @@ describe('Designer', () => {
       view: {
         name: 'hello',
         intent: { outcome: LONG_OUTCOME },
-        stages: [{ name: LONG_NAME, agent: LONG_AGENT }],
+        stages: [stageViewOf(LONG_NAME, LONG_AGENT)],
       },
     };
 
@@ -241,7 +242,7 @@ describe('Designer', () => {
       const name = '日本語の長いステージ名です';
       const wide = {
         ...HELLO_DOCUMENT,
-        view: { ...HELLO_VIEW, stages: [{ name, agent: 'a' }] },
+        view: { ...HELLO_VIEW, stages: [stageViewOf(name, 'a')] },
       };
 
       render(<Designer result={loaded(wide)} />);
