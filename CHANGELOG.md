@@ -657,7 +657,8 @@ not per individual commit.
   the allowlist. Punctuation that closes a markdown link, quote or emphasis right after the host
   no longer blocks an allowed link. A backslash-escaped colon or a character reference in the
   scheme (`https\://`, `https&#58;//`) is checked like a plain one, and a tab, CR or LF inside a
-  link is removed before the check. Links without a scheme (`//host`, `www.host`) are not checked.
+  link is removed before the check. A bare scheme inside a code span or emphasis (`` `https:` ``)
+  is prose. Links without a scheme (`//host`, `www.host`) are not checked.
   An interpreter failure during the check is reported as an environment problem.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,

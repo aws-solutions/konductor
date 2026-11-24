@@ -242,11 +242,13 @@ from urllib.parse import unquote
 # another one, or carried in its query, is checked on its own.
 SPECIAL = {"http", "https", "ws", "wss", "ftp", "file"}
 SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):([/\\]*)(\S*)")
-PROSE_TAIL = re.compile(r"[.,;:!?)\]}'\"]*")
-# Punctuation that closes a markdown link, quote, code span or emphasis
-# right after the host, as in [a](https://docs.example.com) or
-# **https://docs.example.com**. None of it can appear in a plain hostname.
-HOST_TAIL = re.compile(r"[.,;:!?)\]}'\"`>*_~]+$")
+# Punctuation that closes a sentence, markdown link, quote, code span or
+# emphasis, as in [a](https://docs.example.com) or `https:`. None of it can
+# appear in a plain hostname. After a bare scheme it is prose; after a host
+# it is not part of the host.
+CLOSING = r"[.,;:!?)\]}'\"`>*_~]"
+PROSE_TAIL = re.compile(CLOSING + "*")
+HOST_TAIL = re.compile(CLOSING + "+$")
 # A markdown renderer drops a backslash before ASCII punctuation and decodes
 # character references, so https\://x and https&#58;//x still render as links.
 MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")

@@ -1588,6 +1588,13 @@ def test_https_with_fewer_slashes_to_an_allowed_host_is_accepted(tmp_path, url):
         "git+ssh:repo",
         "xhttps:evil.test",
         "httpsx:evil.test",
+        # Code spans and emphasis around a bare scheme name are prose too.
+        "Always use `https:` URLs",
+        "Prefer **https:** over http",
+        "the `ws:` scheme",
+        "_http:_ is old",
+        "~~http:~~ removed",
+        "> see https:>",
     ],
 )
 def test_prose_with_a_colon_is_not_a_link(tmp_path, text):
