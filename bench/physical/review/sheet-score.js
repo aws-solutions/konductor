@@ -8,10 +8,10 @@
 // move and the rule, plus one action per case under the doc's resolution rules. A sheet with a blank answer is not
 // scored and its key and judge files are not opened, so the review stays blind. No model, no network.
 //
-//   node bench/physical/review/sheet-score.js --sheets COUNTED_SET/sheets [--first N] [--out FILE.md] [--json]
+//   node bench/physical/review/sheet-score.js --sheets COUNTED_SET/sheets[/sample-10] [--out FILE.md] [--json]
 //
-// --first N scores a sample: the first N letters of each sheet. The sheet order is a seeded shuffle, so they are a
-// random sample of the probe's variants; the key opens only once those N are filled.
+// A sample sheet (written by sheets.js --sample, header "Sample: N of M") is scored the same way, plus a reading: valid
+// when every sampled case agrees with the key on the rule, else the probe's full sheet must be read.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -54,7 +54,8 @@ function parseSheet(text, fallbackProbe = null) {
     letters[letter] = entry;
   }
   const all = Object.values(letters);
-  return { probe, letters, filled: all.filter((e) => Object.values(e).every((v) => v !== null)).length, total: all.length };
+  const sample = text.match(/^Sample: (\d+) of (\d+) variants/m);
+  return { probe, sample: sample ? { n: Number(sample[1]), of: Number(sample[2]) } : null, letters, filled: all.filter((e) => Object.values(e).every((v) => v !== null)).length, total: all.length };
 }
 
 /** True when any part of `rule` ("R2/R3", "R2, R3") is one of `expect` (the judge-run.js rule). */
@@ -97,15 +98,14 @@ const rate = (n, d) => (d ? Math.round((n / d) * 1000) / 1000 : null);
 
 /**
  * Scores one parsed sheet. `readKey()` returns the key (`{L: {id, tier, unsafeMove, expectRules, ...}}`); `judges` (or
- * `readJudges()`) the judge-results JSON or null. `first` (a count) scores only the first letters of the sheet, a
- * sample. Key and judges are read only when every scored letter is filled. Returns `{probe, status: 'unfilled', filled,
- * total}` or `{..., status: 'scored' or 'sampled', sampled, ruleAgreeRate, ruleAgreeLow, moveAgreeRate, counts, cases}`.
+ * `readJudges()`) the judge-results JSON or null. Both are read only when every letter is filled. Returns `{probe,
+ * status: 'unfilled', filled, total}` or `{..., status: 'scored' or 'sampled', ruleAgreeRate, ruleAgreeLow, moveAgreeRate,
+ * counts, cases}`; a sample also gets `of` (the probe's size) and `reading` ('valid' or 'read in full').
  */
-function scoreProbe({ sheet, readKey, judges = null, readJudges = () => null, first = null }) {
+function scoreProbe({ sheet, readKey, judges = null, readJudges = () => null }) {
   const base = { probe: sheet.probe, filled: sheet.filled, total: sheet.total };
-  const entries = Object.entries(sheet.letters).slice(0, first ?? undefined);
-  const complete = (e) => Object.values(e).every((v) => v !== null);
-  if (!entries.length || !entries.every(([, e]) => complete(e))) return { ...base, status: 'unfilled' };
+  const entries = Object.entries(sheet.letters);
+  if (!sheet.total || sheet.filled < sheet.total) return { ...base, status: 'unfilled' };
   const key = readKey();
   const panel = judges ?? readJudges();
   // Join by variant id when the judge file records one: a sheet written again reshuffles the letters.
@@ -119,23 +119,25 @@ function scoreProbe({ sheet, readKey, judges = null, readJudges = () => null, fi
     };
   });
   const counts = Object.fromEntries(ACTIONS.map((a) => [a, cases.filter((c) => c.action === a).length]));
+  const agreed = cases.filter((c) => c.ruleAgree).length;
+  const sample = sheet.sample ? { of: sheet.sample.of, reading: agreed === cases.length ? 'valid' : 'read in full', agreed } : {};
   return {
-    ...base, status: cases.length < sheet.total ? 'sampled' : 'scored', sampled: cases.length, judged: Boolean(panel),
-    ruleAgreeRate: rate(cases.filter((c) => c.ruleAgree).length, cases.length),
-    ruleAgreeLow: wilson(cases.filter((c) => c.ruleAgree).length, cases.length).lo,
+    ...base, status: sheet.sample ? 'sampled' : 'scored', ...sample, judged: Boolean(panel),
+    ruleAgreeRate: rate(agreed, cases.length),
+    ruleAgreeLow: wilson(agreed, cases.length).lo,
     moveAgreeRate: rate(cases.filter((c) => c.moveAgree).length, cases.length),
     counts, cases,
   };
 }
 
 /** Scores every `*.sheet.md` in `dir`, in name order, with its key and judge files beside it. */
-function scoreSheets(dir, { first = null } = {}) {
+function scoreSheets(dir) {
   return fs.readdirSync(dir).filter((f) => f.endsWith('.sheet.md')).sort().map((f) => {
     const stem = f.slice(0, -'.sheet.md'.length);
     const file = (ext) => path.join(dir, `${stem}${ext}`);
     const sheet = parseSheet(fs.readFileSync(path.join(dir, f), 'utf8'), stem);
     const readJudges = () => (fs.existsSync(file('.judge-results.json')) ? JSON.parse(fs.readFileSync(file('.judge-results.json'), 'utf8')) : null);
-    return scoreProbe({ sheet, readKey: () => JSON.parse(fs.readFileSync(file('.key.json'), 'utf8')), readJudges, first });
+    return scoreProbe({ sheet, readKey: () => JSON.parse(fs.readFileSync(file('.key.json'), 'utf8')), readJudges });
   });
 }
 
@@ -147,15 +149,17 @@ const agree = (s) => (s.ruleAgreeRate === undefined ? '-' : `${pct(s.ruleAgreeRa
 function formatScores(scores) {
   const lines = [
     '# Blind review agreement', '',
-    'Owner sheet against the author key, per probe. Agreement: the owner names the key\'s tool and one of its rules; low is the Wilson 95% lower bound. A sampled probe scores the first letters only. An unfilled sheet is not scored and its key stays closed.', '',
+    'Owner sheet against the author key, per probe. Agreement: the owner names the key\'s tool and one of its rules; low is the Wilson 95% lower bound. A sampled probe is read as valid only when every sampled case agrees on the rule. An unfilled sheet is not scored and its key stays closed.', '',
     '| probe | status | filled | rule agree | move agree | keep | fix | review | drop or rewrite |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const s of scores) {
     const c = s.counts ?? {};
     const n = (a) => (s.cases ? c[a] : '-');
-    lines.push(`| ${s.probe} | ${s.status} | ${s.sampled ?? s.filled} of ${s.total} | ${agree(s)} | ${pct(s.moveAgreeRate)} | ${ACTIONS.map(n).join(' | ')} |`);
+    lines.push(`| ${s.probe} | ${s.status} | ${s.filled} of ${s.of ?? s.total} | ${agree(s)} | ${pct(s.moveAgreeRate)} | ${ACTIONS.map(n).join(' | ')} |`);
   }
   const todo = scores.flatMap((s) => (s.cases ?? []).filter((c) => c.action !== 'keep').map((c) => `- ${s.probe} ${c.letter} (${c.id}): ${c.action}: ${c.why.join('; ')}`));
+  const readings = scores.filter((s) => s.reading).map((s) => `- ${s.probe}: ${s.reading} (${s.agreed} of ${s.total} agree on the rule)${s.reading === 'valid' ? '' : `: fill ../${s.probe}.sheet.md`}`);
+  if (readings.length) lines.push('', '## Sample readings', '', ...readings);
   lines.push('', '## Cases to act on', '', ...(todo.length ? todo : ['None.']));
   return `${lines.join('\n')}\n`;
 }
@@ -164,12 +168,11 @@ function formatScores(scores) {
 function main(argv, io = { log: console.log, error: console.error }) {
   const flag = (n) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : null; };
   const dir = flag('sheets');
-  const first = flag('first') === null ? null : Number(flag('first'));
-  if (!dir || !fs.existsSync(dir) || (first !== null && !(Number.isInteger(first) && first > 0))) {
-    io.error('usage: sheet-score.js --sheets DIR [--first N] [--out FILE.md] [--json]');
+  if (!dir || !fs.existsSync(dir)) {
+    io.error('usage: sheet-score.js --sheets DIR [--out FILE.md] [--json]');
     return 2;
   }
-  const scores = scoreSheets(dir, { first });
+  const scores = scoreSheets(dir);
   const md = formatScores(scores);
   if (flag('out')) fs.writeFileSync(flag('out'), md);
   io.log(argv.includes('--json') ? JSON.stringify(scores, null, 2) : md);

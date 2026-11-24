@@ -1,0 +1,17 @@
+{
+  "name": "harborline-service",
+  "version": "1.8.0",
+  "private": true,
+  "packageManager": "pnpm@9",
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check-env": "node scripts/check-env.js",
+    "version:show": "node scripts/print-version.js"
+  }
+}

@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 
 const KIT = path.join(__dirname, '..', '..', 'kit', 'standard');
@@ -47,6 +48,26 @@ test('kit standard: helper plan places every DEV task in run or skipped, a probe
   for (const t of p.run) assert.ok(p.batches[t.batch].tasks.includes(t.id));
   const probe = [...p.run, ...p.skipped].find((t) => t.id.startsWith('probe-'));
   if (probe) assert.ok(!/not in the scenario pack/.test(probe.why || ''), 'a probe DEV task is gated, not dropped as unknown');
+});
+
+test('kit standard: helper cc-plan mirrors the plan under the cc- prefix and prices it from the plain credits', () => {
+  const repo = path.join(__dirname, '..', '..', '..');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccplan-'));
+  try {
+    const plan = { konductorSha: 'kon-sha', noskillsArm: 'konductor-noskills=dir:/var/tmp/x/tree', run: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], batches: { t1: { tasks: ['a', 'b'], expected: 37.5 }, t9: { tasks: ['c'], expected: 7.5 } } };
+    const file = path.join(dir, 'plan.json');
+    fs.writeFileSync(file, JSON.stringify(plan));
+    const r = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'cc-plan', '.', file], { cwd: repo, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const c = JSON.parse(r.stdout);
+    assert.deepEqual(c.arms, ['cc-vanilla', 'cc-konductor=kon-sha', 'cc-konductor-noskills=dir:/var/tmp/x/tree']);
+    assert.deepEqual(c.armIds, ['cc-vanilla', 'cc-konductor', 'cc-konductor-noskills']);
+    // t1: 37.5 expected Kiro credits over the ratio sum 3.75 = 10 plain credits; x 0.071 USD x (1 + 1.59 + 1.3) = 2.76
+    assert.equal(c.batches.t1.expectedUsd, 2.76);
+    assert.equal(c.batches.t9.expectedUsd, 0.55);
+    assert.equal(c.expectedUsdPerStage, 3.31);
+    assert.equal(c.runsPerStage, 9);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 for (const t of TESTS) {

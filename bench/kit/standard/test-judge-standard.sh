@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# test-judge-standard.sh: paid-path test for judge-standard.sh with a stub bench, helper and aws: no
+# test-judge-standard.sh: paid-path test for judge-standard.sh (Kiro and Claude Code units) with a stub bench, helper and aws: no
 # model, no keys, no spend. Checks the --plan dry run (no judge call), the paid pass (copies, code-only removal, the
 # USD guard per unit, done markers, the three-arm report call), resume, the cap stop and the heavy-lock stop.
 #
@@ -36,12 +36,13 @@ if (cmd === 'judge-spent') { let usd = 0; const walk = (d) => { for (const e of 
   walk(R); console.log(usd); }
 JS
 printf '#!/bin/sh\nexit 0\n' > "$T/bin/aws"; chmod +x "$T/bin/aws"
-mk_root() { # mk_root NAME: a STANDARD root with two finished units (r1 t1, r2 t1) and one unfinished (r1 t2)
+mk_root() { # mk_root NAME: a STANDARD root with two finished Kiro units (r1 t1, r2 t1), one unfinished (r1 t2) and one finished Claude Code unit (claude r1 t1)
   local r=$T/$1 u
   for u in r1/t1 r2/t1 r1/t2; do
     mkdir -p "$r/runs/$u/vanilla/t1-a" "$r/runs/$u/vanilla/t1-code" "$r/runs/$u/konductor/t1-code"
   done
-  touch "$r/runs/r1/t1.done" "$r/runs/r2/t1.done"
+  mkdir -p "$r/claude/runs/r1/t1/cc-vanilla/t1-a" "$r/claude/runs/r1/t1/cc-vanilla/t1-code"
+  touch "$r/runs/r1/t1.done" "$r/runs/r2/t1.done" "$r/claude/runs/r1/t1.done"
   printf '{"benchSha":"%s"}\n' "$SHA" > "$r/plan.json"
 }
 run() { # run ROOTNAME [ARGS...]
@@ -55,23 +56,25 @@ bash -n "$SCRIPT" && ok "bash -n clean" || bad "syntax"
 
 mk_root A
 : > "$T/calls"; run A --plan; rc=$?
-[ "$rc" = 0 ] && [ "$(judges)" = 2 ] && [ "$(grep -c -- '--plan' "$T/calls")" = 2 ] && ok "--plan: one plan call per finished unit, exit 0" || { bad "plan: rc $rc"; cat "$T/log"; }
+[ "$rc" = 0 ] && [ "$(judges)" = 3 ] && [ "$(grep -c -- '--plan' "$T/calls")" = 3 ] && ok "--plan: one plan call per finished unit (2 Kiro, 1 Claude Code), exit 0" || { bad "plan: rc $rc"; cat "$T/log"; }
 [ ! -e "$T/A/judge/runs/r1-t1" ] && ! grep -q '^report' "$T/calls" && ok "--plan copies nothing and writes no report" || bad "plan side effects"
 grep -q 'r1 t2: run not finished, left out' "$T/log" && ok "unfinished unit left out" || bad "no left-out line"
 
 : > "$T/calls"; run A; rc=$?
-[ "$rc" = 0 ] && [ "$(grep -c '^judge .*--budget-usd' "$T/calls")" = 2 ] && ok "paid pass judges the 2 finished units" || { bad "paid: rc $rc"; cat "$T/log"; }
-grep '^judge ' "$T/calls" | sed -n 1p | grep -q -- '--budget-usd 15.0000' && grep '^judge ' "$T/calls" | sed -n 2p | grep -q -- '--budget-usd 14.5000' && ok "USD guard is the cap minus spend so far" || bad "guards: $(grep '^judge' "$T/calls")"
+[ "$rc" = 0 ] && [ "$(grep -c '^judge .*--budget-usd' "$T/calls")" = 3 ] && ok "paid pass judges the 3 finished units" || { bad "paid: rc $rc"; cat "$T/log"; }
+grep '^judge ' "$T/calls" | sed -n 1p | grep -q -- '--budget-usd 25.0000' && grep '^judge ' "$T/calls" | sed -n 3p | grep -q -- '--budget-usd 24.0000' && ok "USD guard is the cap minus spend so far" || bad "guards: $(grep '^judge' "$T/calls")"
 [ ! -e "$T/A/judge/runs/r1-t1/vanilla/t1-code" ] && [ -d "$T/A/judge/runs/r1-t1/vanilla/t1-a" ] && [ -d "$T/A/runs/r1/t1/vanilla/t1-code" ] && ok "code-only task removed from the copy, raw run kept" || bad "copy"
-grep -q "^report --run $T/A/judge/runs/r1-t1,$T/A/judge/runs/r2-t1 --baseline vanilla" "$T/calls" && ok "report over both judged copies" || bad "report: $(grep '^report' "$T/calls")"
-[ -e "$T/A/judge/runs/r1-t1.done" ] && [ -e "$T/A/judge/runs/r2-t1.done" ] && ok "done markers" || bad "markers"
+grep -q "^report --run $T/A/judge/runs/r1-t1,$T/A/judge/runs/r2-t1 --baseline vanilla" "$T/calls" && ok "Kiro report over both judged copies, baseline vanilla" || bad "report: $(grep '^report' "$T/calls")"
+grep -q "^report --run $T/A/judge/runs/cc-r1-t1 --baseline cc-vanilla .*--out $T/A/judge/report-cc" "$T/calls" && ok "Claude Code report over its copy, baseline cc-vanilla" || bad "cc report: $(grep '^report' "$T/calls")"
+[ ! -e "$T/A/judge/runs/cc-r1-t1/cc-vanilla/t1-code" ] && [ -d "$T/A/judge/runs/cc-r1-t1/cc-vanilla/t1-a" ] && ok "code-only task removed from the Claude Code copy too" || bad "cc copy"
+[ -e "$T/A/judge/runs/r1-t1.done" ] && [ -e "$T/A/judge/runs/r2-t1.done" ] && [ -e "$T/A/judge/runs/cc-r1-t1.done" ] && ok "done markers" || bad "markers"
 
 : > "$T/calls"; run A; rc=$?
-[ "$rc" = 0 ] && [ "$(judges)" = 0 ] && grep -q 'r2-t1\|r2 t1: judged, skipped' "$T/log" && ok "rerun skips judged units" || bad "resume: rc $rc, judges $(judges)"
+[ "$rc" = 0 ] && [ "$(judges)" = 0 ] && grep -q 'r2 t1: judged, skipped' "$T/log" && grep -q 'cc-r1 t1: judged, skipped' "$T/log" && ok "rerun skips judged units" || bad "resume: rc $rc, judges $(judges)"
 
 mk_root B
-: > "$T/calls"; STUB_USD=14.6 run B; rc=$?
-[ "$rc" = 1 ] && [ "$(judges)" = 1 ] && grep -q 'STOP: spent USD 14.6 of the USD 15 cap before r2 t1' "$T/log" && ok "cap stop before a unit that could pass it" || bad "cap: rc $rc; $(tail -n 2 "$T/log")"
+: > "$T/calls"; STUB_USD=24.6 run B; rc=$?
+[ "$rc" = 1 ] && [ "$(judges)" = 1 ] && grep -q 'STOP: spent USD 24.6 of the USD 25 cap before r2 t1' "$T/log" && ok "cap stop before a unit that could pass it" || bad "cap: rc $rc; $(tail -n 2 "$T/log")"
 
 mk_root C
 : > "$T/calls"; flock -x "$T/heavy.lock" sleep 60 & HOLDER=$!; sleep 0.3

@@ -1,0 +1,5 @@
+{
+  "service": "retry-queue-demo",
+  "metrics": ["queue_depth", "job_latency_ms", "retry_rate"],
+  "sampling": 0.2
+}

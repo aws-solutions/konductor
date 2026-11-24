@@ -1,0 +1,5 @@
+deploy_utc,release,service,actor,result
+2026-03-14T10:22:00Z,release-2026.03.14.1,gateway,lee,success
+2026-03-17T17:42:00Z,release-2026.03.17.2,gateway,mina,success
+2026-03-17T18:12:00Z,rollback-2026.03.17.2,gateway,lee,success
+2026-03-18T09:05:00Z,release-2026.03.18.1,gateway,mina,success

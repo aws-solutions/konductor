@@ -7,15 +7,15 @@
 # The arm trial defaults to the Strands/Bedrock harness (USD-costed, --budget-usd 8; set STRANDS_PYTHON to a strands
 # venv and ARM_MODEL to a Bedrock id). ARM_HARNESS=kiro runs it on kiro-cli instead, credit-costed (--budget-credits).
 #
-# NOTE on "wave 0": wave 0 is the dev-box UNCOUNTED dress rehearsal (p1, ~26 credits, ceiling 45) -- it does NOT
-# count toward the 360-credit soft cap. The 360 cap is for the COUNTED waves 1-4 (on the quiet host). The ledger
-# below still records wave 0's spend so cumulative credits are visible, but the counted budget is spent by waves 1-4.
+# NOTE on "wave 0": wave 0 is the dev-box UNCOUNTED dress rehearsal (p1, ~26 credits, ceiling 45). Its trials do not
+# count, but its spend does: the counted-set doc's soft cap covers waves 0 to 4. The cap was 360 and is 365 since the
+# owner's yes of 2026-11-24 (D-250); wave 0 spent 40.89, and waves 1-4 have ceilings of 323.
 #
 # SAFETY the wrapper adds on top of bench's own budget flags:
 #   - waits (up to 60 min) for a QUIET host: no pilot-wave.sh running AND 1-min load < 4;
 #   - holds the shared heavy lock (/var/tmp/konductor-heavy.lock) for the whole run, so no other heavy job overlaps;
 #   - a credit LEDGER under reports/: before each paid step it refuses to start unless at least 15 credits of headroom
-#     remain under the 360 soft cap (the owner's "each call counts 15" guard), and reconciles to the real spend after;
+#     remain under the 365 soft cap (the owner's "each call counts 15" guard), and reconciles to the real spend after;
 #   - wave 0's own ceiling (--budget-credits 45, enforced by bench) and the arm trial's USD 8 cap (--budget-usd 8);
 #   - every log under one stable folder in reports/, whose paths are printed at the end.
 #
@@ -29,7 +29,7 @@
 #   PLANT_VENV      a python 3.12 with cedarpy+mujoco (default: the konductor-arm cache venv below)
 #   ARM_RELEASE     a signed arm release dir for the arm trial (default: cut+signed from the arm stub under $R)
 #   ARM_TASK        the arm task id to run in the trial (default: the first arm-sim task in $ARM_RELEASE/tasks)
-#   PLANT_CAP       the counted soft-cap ceiling in credits (default: 360)
+#   PLANT_CAP       the counted soft-cap ceiling in credits (default: 365)
 set -euo pipefail
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 
@@ -39,7 +39,7 @@ for a in "$@"; do case "$a" in --dry-run) DRY=1 ;; -h|--help) sed -n '2,30p' "$0
 CHECKOUT=${PLANT_CHECKOUT:-$KONDUCTOR_WS/worktrees/konductor-plant/.worktrees/phys-nk}
 VENV=${PLANT_VENV:-/home/$USER/.cache/konductor-arm/venv}
 KEY=${PLANT_KEY:-$HOME/.plant-release-key/private.pem}
-CAP=${PLANT_CAP:-360}
+CAP=${PLANT_CAP:-365}
 PERCALL=15
 FFI=/local/apollo/package/local_1/AL2023_x86_64/Libffi/Libffi-119967.0-0/lib
 HEAVY_LOCK=/var/tmp/konductor-heavy.lock

@@ -64,9 +64,18 @@ function taskErrors(task) {
   return errors;
 }
 
-/** T8's task builder plus the scripted user from the draft (the brief's facts, as the author copied them). */
+/** Owner rule: a task named in a row of this batch's HAND-EDITS.md (the kept table) carries `handEdited`. */
+function handEditedIds() {
+  const file = path.join(DIR, 'HAND-EDITS.md');
+  if (!fs.existsSync(file)) return new Set();
+  const kept = fs.readFileSync(file, 'utf8').split('## Dropped')[0];
+  return new Set([...kept.matchAll(/^\| (t13-[a-z0-9-]+(?:, t13-[a-z0-9-]+)*) \|/gm)].flatMap((m) => m[1].split(', ')));
+}
+
+/** T8's task builder plus the scripted user from the draft (the brief's facts, as the author copied them), and this batch's hand-edit record. */
 function buildTask(s, id) {
-  const task = t8.stage.buildTask(s, id);
+  const { handEdited: _t8, ...task } = t8.stage.buildTask(s, id);
+  if (handEditedIds().has(id)) task.handEdited = { family: 'claude', editor: 'kirocrew-mate-worker (T13 worker session)', log: 'HAND-EDITS.md' };
   const b = s.brief(id);
   if (b.questions !== 'scripted') return task;
   const draft = s.readJson(s.work(id, 'task-draft.json'));

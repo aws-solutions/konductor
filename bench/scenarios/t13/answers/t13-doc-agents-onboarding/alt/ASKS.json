@@ -1,0 +1,5 @@
+[
+  "Who reviews a change, and how many approvals do changes under src/auth/ need?",
+  "How do we ship: do we deploy on merge, and is there a release branch or release day?",
+  "Is make db-reset safe to run against a shared or staging database?"
+]

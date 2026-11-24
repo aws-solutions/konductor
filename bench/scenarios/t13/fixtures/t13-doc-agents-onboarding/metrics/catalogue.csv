@@ -1,0 +1,6 @@
+metric,unit,description
+http_5xx_rate,ratio,gateway request failures
+db_pool_wait_ms,milliseconds,database pool wait
+db_pool_available,connections,idle database connections
+request_latency_p95_ms,milliseconds,95th percentile request latency
+healthcheck_failures,count,failed health checks

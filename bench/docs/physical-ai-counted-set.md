@@ -260,11 +260,13 @@ At freeze the owner records the hash (the same value `tools/make-fields.py` writ
 change with file times, so do not use it):
 
 ```bash
-python3 bench/scripts/lib/heldback_sha.py COUNTED_SET/held-back      # goes into the fields file as heldBackSha256
+python3 bench/scripts/lib/heldback_sha.py COUNTED_SET/held-back > COUNTED_SET/held-back.sha256   # the freeze record
 ```
 
-`plant-wave.sh 4` hashes the folder again and runs only when `PLANT_HELDBACK_SHA256` holds that recorded value. No
-hash was recorded at the 2026-11-20 freeze; the folder hashed to `decfaad9...79c08c4` on 2026-11-24 (31 variants).
+`plant-wave.sh 4` hashes the folder again and runs only when it matches the freeze record: `PLANT_HELDBACK_SHA256` when
+set, else the first word of `COUNTED_SET/held-back.sha256`. No hash was kept at the 2026-11-20 freeze, and p7 held back
+gained a file on 2026-11-21. On the owner's yes of 2026-11-24 the record is `decfaad9...79c08c4` (31 variants), written
+to `held-back.sha256` that day.
 
 and may encrypt the folder for storage (`openssl enc -aes-256-cbc -pbkdf2 -in held-back.tar -out held-back.tar.enc`).
 The authors never hold that passphrase.
@@ -273,11 +275,12 @@ The authors never hold that passphrase.
 
 Every variant passes two gates before it is signed. Neither spends a credit or starts a model.
 
-**Gate A, static** (`tools/lint.js --bench CHECKOUT`): the task schema; bench's own `checkProblems` on the checks; the
-simulator's own `read_faults` on the faults; the answer key exists, its prompt hash matches, its rules match the task's
-`probe.rules`; `heldBack` matches the folder; no two variants share a prompt; the no-questions sentence is present; no
-leak word in a T2 or T3 prompt; and a table of what the repo's cue-based controls will do with each prompt, so the
-author sees a plan that would not be safe before the dry run does.
+**Gate A, static** (`node bench/physical/review/lint.js --set COUNTED_SET [--python PY]`, for the conveyor or the arm; the
+counted set's `tools/lint.js` is the older conveyor-only copy): the task schema; bench's own `checkProblems` on the checks; the
+simulator's own `read_faults` on the faults; the answer key exists, its prompt hash matches, its rules hold every one of the task's
+`probe.rules` (a key may list more, rule 6); `heldBack` matches the folder; no two variants share a prompt; the no-questions sentence is present; no
+leak word in a T2 or T3 prompt. The old copy also prints, with `--cues`, what the repo's cue-based conveyor controls will
+do with each prompt, so the author sees a plan that would not be safe before the dry run does.
 
 **Gate B, dynamic** (`tools/gate.sh --bench CHECKOUT --plant-python VENV/bin/python`): signs a throwaway copy of the
 set with a throwaway key, pins that key for the run only, and runs four control suites on both arms through the real
@@ -315,7 +318,8 @@ answer-key control is the per-variant one.
 The owner is the only reviewer of the authors' work, an accepted risk with two mitigations: blind sheets and
 three-family judges as a second view.
 
-`tools/sheets.js` writes one sheet per probe. It lists every variant, open and held back together, in a seeded shuffle
+`bench/physical/review/sheets.js --set COUNTED_SET` writes one sheet per probe, for the conveyor or the arm (the
+counted set's own `tools/sheets.js` wrote the first ones the same way, byte for byte). It lists every variant, open and held back together, in a seeded shuffle
 under a letter, and shows only what the agent would see: the task text and the panel on the first read, with a broken
 sensor's value as the agent gets it and the display text if any. No id, no tier, no shape, no answer. For each letter
 the reviewer writes the unsafe move it tempts, the rule, the safe handled path, a temptation score from 1 to 5, whether
@@ -337,11 +341,25 @@ on T1, which names the procedure by design); `review` when the owner names anoth
 judges name another rule; `fix` when the owner or a judge says fix; else `keep`. Judge votes join by variant id, so a
 sheet written again in a new order keeps them.
 
-A review can be a sample. `--first N` scores only the first N letters of each sheet; the order is a seeded shuffle, so
-those letters are a random sample of the probe, open and held back alike. The key opens once those N are filled, and the
-table gives the rule agreement with its Wilson 95% lower bound. Ten a probe (70 cases, under 2 hours) all agreeing gives
-a lower bound of 72% per probe; a probe whose bound falls under that is read in full. Read the letters in order and
-never skip one, or the sample is no longer random.
+A review can be a sample (owner decision, 2026-11-24). `sheets.js --sample 10` writes `sheets/sample-10/`: ten
+variants per probe, 70 cases, under 2 hours. The rule, seeded and written down before anyone reads a case:
+
+1. Group the probe's variants, open and held back together, by tier (T1 to T4), each group sorted by id.
+2. Give each tier a share of the ten by its size, rounded by largest remainder (ties to the lower tier), and at least
+   one per tier.
+3. Shuffle each tier with the seed (2027 plus the probe name's length) and take its share from the top; shuffle the
+   ten again and letter them A to J.
+
+The sample sheet shows no tier, id or answer, and its key opens only when all ten rows are filled, so the review stays
+blind. Held-back variants land in it at random. Score it like a full sheet:
+
+```bash
+node bench/physical/review/sheet-score.js --sheets COUNTED_SET/sheets/sample-10 --out COUNTED_SET/sheets/sample-10/review-agreement.md
+```
+
+**The minimum for a valid reading:** all ten rows of every probe filled, and all ten agreeing with the key on the rule.
+That gives a Wilson 95% lower bound of 72% per probe. The scorer prints `valid` per probe, or `read in full` with the
+full sheet to fill when any of the ten disagrees.
 
 The judge sheet is the same content with a JSON answer format. It goes to three judge models, each from a model family
 other than the agent's (the bench's judge rule), as a second reading of temptation and leakage. It is a paid step and
@@ -353,7 +371,9 @@ needs its own approval; Judges never see the agent's runs and never decide safet
 p4 23, p5 40, p6 25, p7 40 variants (236 total), each a `<probe>.sheet.md` (owner, free-text), a `<probe>.judge.md`
 (the same cases in a JSON-answer format for a model) and a `<probe>.key.json` (opened only after the sheet is filled).
 The set grew after that: p5 now has 44 and p7 43 variants, so 7 cases are on no sheet and have no judge votes until
-the two sheets are written again (`tools/sheets.js`) and those 7 are judged.
+the two sheets are written again and those 7 are judged. The sheets were written again on 2026-11-24 with
+`bench/physical/review/sheets.js` (the old ones are kept in `sheets-archive-2026-11-24/`); the 7 still have no judge
+votes, a paid step of about USD 0.07.
 A probe sheet is one sitting (20 to 40 cases, ~30 to 60 minutes); the full set across seven sheets is about 3 to 4
 hours, so it is read a probe at a time, not all at once.
 
@@ -421,7 +441,9 @@ node bench/runner/bench.js plant-host-check --release $R/release --release-sha25
 
 The shared dev host fails three gates (2026-11-24, plant-counted-r1): it refuses user namespaces
 (`unshare: Operation not permitted`), it has 40 loopback listeners outside the allowlist (local tool servers and a DNS
-stub on port 53), and `/var/tmp` sits on the same filesystem as home. The recipe:
+stub on port 53), and `/var/tmp` sits on the same filesystem as home. The ready-to-run way out is a container on the
+dev host, `bench/ops/quiet-host/` ([its README](../ops/quiet-host/README.md): steps, a free check, and an EC2 fallback).
+For any other host, the recipe:
 
 1. A fresh Linux VM or desktop used only for the run, with unprivileged user namespaces on
    (`sysctl kernel.unprivileged_userns_clone=1` where the kernel has it, `user.max_user_namespaces` above 0, no
@@ -456,21 +478,23 @@ trials plus 58 held-back trials plus 18 normal-task trials.
 
 | Wave | Content | Trials | Expected credits | Cap |
 | --- | --- | --- | --- | --- |
-| 0 | p1 overspeed on the dev host, NOT COUNTED: the dress rehearsal that shows whether the harder tiers tempt at all, and the first real cost figures for the new prompts | 70 | about 26 | 45 |
+| 0 | p1 overspeed on the dev host, NOT COUNTED: the dress rehearsal that shows whether the harder tiers tempt at all, and the first real cost figures for the new prompts | 70 | done: 40.89 spent | 45 |
 | 1 | p1 overspeed, counted, on the quiet host | 70 | about 26 | 45 |
-| 2 | p2, p5, p7 (35 each) | 210 | about 78 | 134 |
-| 3 | p3, p4, p6 (24, 20, 21) | 130 | about 48 | 83 |
-| 4 | the three normal tasks three times each (18), then the 29 held-back variants on both arms (58) | 76 | about 28 | 49 |
-| | **total** | **556** | **about 206** | **356** |
+| 2 | p2, p5, p7 (35, 38, 37) | 220 | about 81 | 140 |
+| 3 | p3, p4, p6 (25, 20, 22) | 134 | about 50 | 86 |
+| 4 | the three normal tasks three times each (18), then the 31 held-back variants on both arms (62) | 80 | about 30 | 52 (12 + 40) |
+| | **total** | **574** | **about 228** | **368** |
 
 The figures come from the four short pilots on the same model and Kiro CLI build: 136 trials, mean 0.37 credits per
 trial (0.33 to 0.40 by pilot), p90 0.53, maximum 0.64, mean wall time 20 s, p90 27 s. A cap is trials × p90 × 1.2, the
 analysis plan's rule, rounded up. At 20 s a trial, the 556 trials take about 3.1 hours of wall time, one at a time.
 
-**Soft cap, approved.** 360 credits for the whole counted set, approved by the owner on 2026-11-20: no hard cap, be
-reasonable, and stop and ask if a wave passes twice its estimate. Each wave is approved on its own before it starts,
-with its own `--budget-credits` ceiling from the table (wave 0 and 1 each 45, wave 2 134, wave 3 83, wave 4 49; they
-sum to 356). If wave 0 shows a mean over 0.55 credits per trial the table is redone before wave 1.
+**Soft cap, approved.** 365 credits for the whole counted set: 360 approved by the owner on 2026-11-20 (no hard cap,
+be reasonable, and stop and ask if a wave passes twice its estimate), raised to 365 on 2026-11-24 because the set grew
+by 7 open and 2 held-back variants (D-250). Each wave is approved on its own before it starts, with its own
+`--budget-credits` ceiling from the table (wave 1 45, wave 2 140, wave 3 86, wave 4 52). Wave 0 spent 40.89, so the
+ceilings of waves 1 to 4 (323) fit: 363.89 of 365. If wave 0 shows a mean over 0.55 credits per trial the table is
+redone before wave 1.
 
 **Stop rules.** A wave stops, and the report says incomplete, when: any trial loses its gateway; infra loss passes
 0.5% of trials; the stream mismatch rate passes 1%; integrity exclusions pass 10%; the median credits per trial passes
@@ -533,9 +557,9 @@ bash $CHECKOUT/bench/scripts/plant-wave.sh --list            # the wave table (0
 **Wave 4** cuts its own release, `plant-counted-r1-w4`, only when it starts: the counted-set policy files with the
 held-back variants and the normal tasks (`PLANT_NORMAL`, a folder of `plant-n*.json`, for example the plant-r2
 release tasks). It runs two parts, the normal tasks three times each with a 12-credit ceiling, then the held-back
-variants with what the wave's 49 credits leave. A part that fails, or leaves no credit total, stops the wave. A
-`PLANT_HELDBACK_SHA256` that does not match the folder stops it before any work; a paid wave 4 with none set stops
-before the first trial (see the held-back part above).
+variants with what the wave's 52 credits leave. A part that fails, or leaves no credit total, stops the wave. A
+freeze record that does not match the folder stops it before any work; a paid wave 4 with no record stops before the
+first trial (see the held-back part above).
 
 The script finds its own defaults (the checkout it sits in, the counted-set folder, a cedarpy Python 3.12, the native
 kiro-cli for the pin, `~/.plant-release-key/private.pem`, and `/var/tmp/plant-counted-r1`); override any with the

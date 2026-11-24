@@ -169,3 +169,14 @@ Free; every agent and judge is a test double. Run from a checkout, no launcher.
 | `study.js --tree DIR --out DIR` | One side: Kiro CLI twice with a compare, a stub judge pass, opencode, Claude Code, plant on Claude Code and Strands with plant-report, a report of each run. |
 | `diff.js` | Normalises (roots, per-run dirs, times, ids; drops volatile keys, `schemaVersion`, `plugins`, `benchCommit`) and compares two trees. |
 | `report.js --base --head [--noise]` | The markdown; a difference that also shows between two head runs is marked noise. |
+
+## Quiet host for a counted plant run (`bench/ops/quiet-host/`)
+
+Run from a checkout in the owner's own terminal, no launcher. Steps, flags and the EC2 fallback are in
+[its README](quiet-host/README.md) (D-95).
+
+| File | What it does |
+| --- | --- |
+| `Dockerfile` | Amazon Linux 2023 with Node 22, Python 3.12 and cedarpy 4.12.2, and the owner's uid; nothing private in it. |
+| `quiet-host.sh print\|build\|start\|login\|check\|wave N\|shell\|stop` | The container: own network, no published port, not privileged; mounts the checkout, the counted set, the normal tasks, the wave dir and the pinned kiro-cli. `check` is free: the sandbox probe and `plant-host-check`. |
+| `test-quiet-host.sh` | Test of `quiet-host.sh` with a stub docker (refusals; no port, host network or privileged mode; the mounts; `check` and `wave`). Free. |
