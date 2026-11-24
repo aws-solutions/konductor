@@ -104,7 +104,7 @@ describe('oneCheck', () => {
     expect(server.calls[0]?.text).toBe('one');
   });
 
-  it('gives the editor the workflow of the answer, without the keys it has no use for', async () => {
+  it('gives the editor the workflow of the answer, with each stage as the contract has it', async () => {
     const server = held();
     const shared = oneCheck(server.validate);
 
@@ -114,7 +114,14 @@ describe('oneCheck', () => {
     expect((await judged).view).toEqual({
       name: 'hello',
       intent: { outcome: 'Add a greeting' },
-      stages: [{ name: 'draft', agent: 'k-developer' }],
+      stages: [
+        {
+          name: 'draft',
+          kind: 'agent',
+          agent: 'k-developer',
+          range: { line: 7, end_line: 9 },
+        },
+      ],
     });
   });
 
