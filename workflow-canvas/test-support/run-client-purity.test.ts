@@ -2,7 +2,8 @@
 /**
  * Checks that the run client does no IO of its own: the network and the clock
  * come in through its ports. It may import its own modules, the run core's
- * reducer and scheduler port, and the retry rule of the API client.
+ * reducer and scheduler port, and the retry rule of the API client. Its
+ * hooks may import React as well.
  */
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -23,17 +24,60 @@ const RULES: PurityRules = {
   allowedNames: { '../api/api': ['canRetryStatus'] },
 };
 
+// The React hooks of the run client, named `use-<name>.ts` as the page's
+// other hooks are. They may import React as well, and like the rest read no
+// clock or network of their own.
+const isHook = (file: string) => /^use-[a-z]/.test(file);
+const HOOK_RULES: PurityRules = {
+  ...RULES,
+  allowedPackages: new Set([...RULES.allowedPackages, 'react']),
+};
+const rulesFor = (file: string) => (isHook(file) ? HOOK_RULES : RULES);
+
+function problemsOf(hooks: boolean): string[] {
+  return sourcesUnder(RULES.dir)
+    .filter(({ file }) => isHook(file) === hooks)
+    .flatMap(({ file, source }) => problemsIn(file, source, rulesFor(file)));
+}
+
+const REACT_IMPORT = "import { useState } from 'react';";
+
 describe('the run client', () => {
   it('has sources to check', () => {
-    expect(sourcesUnder(RULES.dir).length).toBeGreaterThanOrEqual(2);
+    expect(sourcesUnder(RULES.dir).length).toBeGreaterThanOrEqual(3);
+    expect(sourcesUnder(RULES.dir).some(({ file }) => isHook(file))).toBe(true);
   });
 
   it('imports only its own modules, the run core and the retry rule, and reads no clock, randomness, environment or network', () => {
-    expect(problemsUnder(RULES)).toEqual([]);
+    expect(problemsOf(false)).toEqual([]);
+  });
+
+  it('lets only its hooks import React, and they read no clock, randomness, environment or network either', () => {
+    expect(problemsOf(true)).toEqual([]);
+    expect(problemsUnder(RULES).every((problem) => isHook(problem))).toBe(true);
   });
 
   it.each([
-    ['react', "import { useState } from 'react';"],
+    ['use-follow-run.ts', true],
+    ['use-x.ts', true],
+    ['user.ts', false],
+    ['useFollowRun.ts', false],
+    ['follow-run-events.ts', false],
+  ])('takes %s for a hook: %s', (file, hook) => {
+    expect(isHook(file)).toBe(hook);
+  });
+
+  it('lets a hook import React, and refuses React in any other file', () => {
+    expect(problemsIn('use-x.ts', REACT_IMPORT, rulesFor('use-x.ts'))).toEqual(
+      [],
+    );
+    expect(
+      problemsIn('user.ts', REACT_IMPORT, rulesFor('user.ts')),
+    ).not.toEqual([]);
+  });
+
+  it.each([
+    ['react', REACT_IMPORT],
     ['the HTTP adapter', "import { createHttpApi } from '../api/http-api';"],
     ['the API error', "import { ApiError } from '../api/api';"],
     [
