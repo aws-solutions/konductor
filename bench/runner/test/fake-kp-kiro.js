@@ -77,7 +77,9 @@ if (process.env.FAKE_KP_SEE_LEDGER) {
   const [from, to] = process.env.FAKE_KP_SEE_LEDGER.split(':');
   fs.copyFileSync(from, to);
 }
-const text = process.env.FAKE_KP_BROKEN === kind || brokenFirst ? 'I cannot answer in JSON.' : reply ? JSON.stringify(reply) : `Reply: ${prompt.includes('<<<FILE') ? 'UNIT-LOADED ' : ''}every point answered.`;
+// FAKE_KP_PROSE=1: the JSON reply of a judge comes wrapped in a sentence, which the strict reader refuses.
+const json = reply && process.env.FAKE_KP_PROSE && kind === 'judge' ? `Here is my verdict: ${JSON.stringify(reply)} Hope that helps.` : reply && JSON.stringify(reply);
+const text = process.env.FAKE_KP_BROKEN === kind || brokenFirst ? 'I cannot answer in JSON.' : reply ? json : `Reply: ${prompt.includes('<<<FILE') ? 'UNIT-LOADED ' : ''}every point answered.`;
 // FAKE_KP_SLEEP_MS=<ms>: waits that long before answering (the kill test).
 if (process.env.FAKE_KP_SLEEP_MS) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(process.env.FAKE_KP_SLEEP_MS));
 // FAKE_KP_ENV_OUT=<file>: writes the env the call was given (the env allowlist test).

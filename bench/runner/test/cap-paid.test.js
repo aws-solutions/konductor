@@ -19,7 +19,7 @@ const { unitManifest } = require('../../cap/units.js');
 
 const FAKE = path.join(__dirname, 'fake-kp-kiro.js');
 // A paid call gets only the env allowlist; the fake's own switches are let through by name.
-process.env.BENCH_PAID_ENV_KEEP = ['LOG', 'CREDITS', 'FAIL', 'NOFIX', 'BROKEN', 'BROKEN_FIRST', 'COUNTER', 'UNFINISHED', 'SEE_LEDGER', 'NO_ORACLE', 'TITLE_CASE'].map((n) => `FAKE_KP_${n}`).join(',');
+process.env.BENCH_PAID_ENV_KEEP = ['LOG', 'CREDITS', 'FAIL', 'NOFIX', 'BROKEN', 'BROKEN_FIRST', 'COUNTER', 'UNFINISHED', 'SEE_LEDGER', 'NO_ORACLE', 'TITLE_CASE', 'PROSE'].map((n) => `FAKE_KP_${n}`).join(',');
 const BENCH = path.join(__dirname, '..', '..');
 const REPO = path.join(BENCH, '..');
 const spec = (name, contexts = []) => JSON.stringify({ name, config: { description: `${name} desc`, systemPrompt: `You are ${name}.` },
@@ -453,11 +453,11 @@ test('controls only: the controls run and the unit does not; the plan then count
   } finally { r.cleanup(); }
 });
 
-test('an unreadable judge reply is asked once more, both calls counted; Met reads as MET', { timeout: 600000 }, () => {
+test('an unreadable judge reply is asked once more, both calls counted', { timeout: 600000 }, () => {
   const r = rig();
   try {
     const counter = path.join(r.root, 'judge-count');
-    const { record, calls } = paidStage(r, { FAKE_KP_BROKEN_FIRST: 'judge:1', FAKE_KP_COUNTER: counter, FAKE_KP_TITLE_CASE: '1' });
+    const { record, calls } = paidStage(r, { FAKE_KP_BROKEN_FIRST: 'judge:1', FAKE_KP_COUNTER: counter });
     assert.equal(record.quick.controls.passed, true);
     assert.equal(record.quick.coverage.tasksCounted, 16, 'the re-ask saved the judgment');
     assert.ok(!record.quick.noData.some((w) => /^FLAG/.test(w)));
@@ -466,6 +466,20 @@ test('an unreadable judge reply is asked once more, both calls counted; Met read
     assert.equal(bad.length, 1, 'the unreadable reply is kept aside');
   } finally { r.cleanup(); }
 });
+
+// The strict reader (judgereply.js) refuses a label spelled Met and a reply with prose around the JSON: each is
+// asked once more, and a judgment still unreadable is flagged, not read.
+for (const [name, env] of [['labels spelled Met', { FAKE_KP_TITLE_CASE: '1' }], ['a reply with prose around the JSON', { FAKE_KP_PROSE: '1' }]]) {
+  test(`judge replies are refused, asked once more and flagged: ${name}`, { timeout: 600000 }, () => {
+    const r = rig();
+    try {
+      const { record, calls } = paidStage(r, env);
+      assert.match(record.quick.noData[0], /^FLAG: only 0 of 16 tasks counted, under the floor of 12, and \d+ judge replies could not be read after one re-ask/);
+      const judgeCalls = calls.filter((l) => l.split(' ')[1] === 'judge').length;
+      assert.ok(judgeCalls > 0 && judgeCalls % 2 === 0, 'each judgment was asked exactly twice');
+    } finally { r.cleanup(); }
+  });
+}
 
 test('judge replies still unreadable after their re-ask are flagged, not a silent NO DATA', { timeout: 600000 }, () => {
   const r = rig();

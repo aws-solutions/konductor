@@ -16,9 +16,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { sha256 } = require('../runner/lib/util.js');
 const { paidCall, paidJson, ReplyUnreadable, jsonOf } = require('./paidcall.js');
+const { labelsOf } = require('./judgereply.js');
 
 const VERSION = 'kiro-cli-one-turn/1';
-const LABELS = new Set(['MET', 'PARTIAL', 'MISSING']);
 const LOADING_ARMS = new Set(['with', 'aa']);
 
 /** The keep arm's prompt: the kind's frame line (units.js PAID_FRAME), the unit's text, then the request. */
@@ -74,19 +74,13 @@ function createKiroProvider({ paid, callsDir, writerModel, frame }) {
   // Judge replies that could not be read: `reasked` got their one re-ask, `lost` were still unreadable after it.
   const stats = { reasked: 0, lost: 0 };
 
-  /** The labels of a judge reply `j`, upper-cased (`Met` reads as MET), or a throw when they are not one per item. */
-  const labelsOf = (j, items) => {
-    const labels = Array.isArray(j.labels) ? j.labels.map((l) => String(l).trim().toUpperCase()) : null;
-    if (!labels || labels.length !== items || !labels.every((l) => LABELS.has(l))) throw new Error(`wanted ${items} labels of MET, PARTIAL or MISSING`);
-    return labels;
-  };
-
   // An unreadable reply is moved aside and asked once more (both calls are counted). If the re-ask cannot be read
   // either, the labels are null: scoreOf reads them as invalid and the task does not count (PANEL_RULES 3), and
   // `stats.lost` says how many, so a reading under 12 of 16 can name the cause.
   function judge({ seat, checklist, answer: text }) {
     const o = call('judge', seat, judgePrompt(checklist, text));
-    const ask = () => paidJson(o, (j) => labelsOf(j, checklist.length)).value;
+    // The strict reader: one JSON object, upper-case labels, one per item (judgereply.js); anything else is unreadable.
+    const ask = () => paidJson(o, (labels) => labels, (text) => labelsOf(text, checklist.length)).value;
     let labels = null;
     try { labels = ask(); } catch (e) {
       if (!(e instanceof ReplyUnreadable)) throw e;

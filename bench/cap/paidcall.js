@@ -153,13 +153,15 @@ function jsonOf(text) {
 class ReplyUnreadable extends Error {}
 
 /**
- * paidCall, then `parse(json)` of the reply. When the reply cannot be read, its saved file is moved aside
- * (`<out>.bad-<n>.json`), so a rerun asks again (and counts again), and the error is thrown.
+ * paidCall, then `parse(read(text))` of the reply; `read` defaults to jsonOf (the first {...} of the text). A caller that
+ * must refuse a reply with prose around its JSON passes a stricter `read` (judgereply.js labelsOf). When the reply
+ * cannot be read, its saved file is moved aside (`<out>.bad-<n>.json`), so a rerun asks again (and counts again), and
+ * the error is thrown.
  */
-function paidJson(o, parse) {
+function paidJson(o, parse, read = jsonOf) {
   const r = paidCall(o);
   try {
-    return { ...r, value: parse(jsonOf(r.text)) };
+    return { ...r, value: parse(read(r.text)) };
   } catch (e) {
     let n = 1;
     while (fs.existsSync(`${o.out}.bad-${n}.json`)) n += 1;

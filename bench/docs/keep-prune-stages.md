@@ -100,7 +100,9 @@ scripts take `--dry-run`, which prints the calls, the worst case, the controls i
 the run, and makes no call.
 
 Four safeguards came from the 2026-11-23 review. A judge reply that cannot be read is asked once more, and both calls
-are counted. When replies are still unreadable and a reading counts under 12 of 16, the record says so with a
+are counted. A reply is read strictly (`bench/cap/judgereply.js`, from Michael Lin's PR #235): one JSON object
+`{"labels": [...]}`, upper-case `MET`, `PARTIAL` or `MISSING`, one per item. Text around the JSON, a repeated key, an extra
+field and a label spelled `Met` are unreadable. One code fence around the whole reply is accepted. When replies are still unreadable and a reading counts under 12 of 16, the record says so with a
 `FLAG:` line. A failed control stops the run before the unit's calls. The ledger counts each call at 15 before it
 starts, so a killed call is never under-counted. The baseline and the record also name the bench commit that made them.
 
