@@ -32,7 +32,7 @@ async function controlTrial(name, { taskId = TASK_ID, arm = 'st-plant-policy' } 
 
 test('every Strands control script is a known control with turns, and none reads the prompt', () => {
   const files = fs.readdirSync(DIR).filter((f) => f.endsWith('-strands.json')).sort();
-  assert.deepEqual(files, ['do-nothing-strands.json', 'path-strands.json', 'unsafe-agent-strands.json']);
+  assert.deepEqual(files, ['arm-path-strands.json', 'arm-unsafe-agent-strands.json', 'do-nothing-strands.json', 'path-strands.json', 'unsafe-agent-strands.json']);
   for (const f of files) {
     assert.ok(Object.hasOwn(REPORT_CONTROLS, f.replace(/-strands\.json$/, '')), f);
     assert.ok(Array.isArray(JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')).turns), f);

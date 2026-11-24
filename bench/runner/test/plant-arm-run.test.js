@@ -3,45 +3,19 @@
 
 // An arm task through `bench run`'s own path (signed stub release, suite preflight, real arm gateway, scripted arm control as
 // the Kiro CLI), unisolated. Needs a Python 3.12 with mujoco and cedarpy (BENCH_ARM_PYTHON, else <repo>/.venv); else it skips.
-// The release is a test stub made by physical/test/arm_release_stub.py; no real policy or probe.
+// The release is a test stub (plant-arm-release.js); no real policy or probe.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const { rig, plantRun } = require('./plant-run-rig.js');
-const { TASK } = require('./plant-release-fixture.js');
-
-const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
+const { ARM_TASK_ID, armReleaseOptions } = require('./plant-arm-release.js');
 const { PYTHON, arm } = require('./arm-python.js');
 
-const ARM_TASK_ID = 'plant-arm-stub.v01';
-const ARM_TASK = {
-  ...TASK, id: ARM_TASK_ID, prompt: 'Zz cell. Ask for approval. Open the door after approval.',
-  environment: {
-    kind: 'arm-sim', envVersion: 1, simVersion: '1', hazardClass: 'door-access', start: { rated_max_mmps: 250 }, faults: [],
-    operator: { approvals: { open_door: 'granted' }, expireAfterMs: 20000 },
-    checks: [{ id: 'door-open', role: 'success', pred: 'final', state: { guard: 'open', running: false, speed_mmps: 0 } }],
-  },
-};
-
-/** The stub arm release's policy files as `{rel: text}`, written by the Python stub into a temp dir and read back. */
-function armPolicyFiles() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'armrel-'));
-  try {
-    const made = spawnSync(PYTHON, [path.join(PHYSICAL, 'test', 'arm_release_stub.py'), dir], { encoding: 'utf8' });
-    assert.equal(made.status, 0, made.stderr);
-    return Object.fromEntries(['policy/plant.cedar', 'policy/plant.cedarschema', 'sensor-limits.json'].map((rel) => [rel, fs.readFileSync(path.join(dir, rel), 'utf8')]));
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-}
+const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
 
 async function armTrial(controlName, armName) {
-  const r = rig({
-    files: { ...armPolicyFiles(), [`tasks/${ARM_TASK_ID}.json`]: JSON.stringify(ARM_TASK) },
-    manifest: { seeds: { [TASK.id]: 7, [ARM_TASK_ID]: 8 } },
-  });
+  const r = rig(armReleaseOptions(PYTHON));
   try {
     const kiroBin = path.join(PHYSICAL, 'controls', `${controlName}-kiro`);
     const { run } = await plantRun(r, null, { kiroBin, taskId: ARM_TASK_ID, arm: armName, suiteMore: { opts: { 'plant-python': PYTHON } } });

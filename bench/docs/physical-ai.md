@@ -111,8 +111,10 @@ The arm plant has its own careful operator, unsafe agent, scripted calls and pat
 
 Every control also runs as Claude Code: `<control>-claude` is the same control, given as `--claude-bin`. It needs no
 AWS keys and never counts. Strands has three of the controls as scripts for its fake model, in
-`bench/physical/controls/strands/`: do-nothing, path and unsafe agent, for the conveyor. The fake model cannot read
-the task, so there is no Strands careful operator. The plant report finds all of these and lists them under Controls.
+`bench/physical/controls/strands/`: do-nothing, path and unsafe agent for the conveyor, and `arm-path` and
+`arm-unsafe-agent` for the arm (do-nothing is shared). A Strands agent drives the arm the same way it drives the
+conveyor: its forwarding stubs take whatever tools the gateway lists. The fake model cannot read the task, so there is
+no Strands careful operator on either plant. The plant report finds all of these and lists them under Controls.
 
 ## The release stays private
 

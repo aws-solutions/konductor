@@ -113,11 +113,13 @@ async function claudePlantRun(r, claudeBin, { arm = 'cc-plant-policy', taskId = 
 /**
  * One Strands plant trial of `arm` (an `st-plant-*` id) on task `taskId`: `python` has strands-agents, `script` is the
  * fake model's turns file, `agentFile` an agent file or null for a plain Agent. Its out dir is under `outName`.
+ * `plantPython` runs the gateway (an arm task needs one with mujoco; default python3).
  * Returns `{result, gateway, suite, ctx, outDir}`.
  */
-async function strandsPlantRun(r, { python, script, agentFile = null, arm = 'st-plant-policy', taskId = TASK_ID, outName = 'plain' }) {
+async function strandsPlantRun(r, { python, script, agentFile = null, arm = 'st-plant-policy', taskId = TASK_ID, outName = 'plain', plantPython = null }) {
   const config = { ...CONFIG, model: `fake:${script}`, effort: 'default' };
-  const suite = suiteOf(r, { taskId, arms: [resolveArm(arm, r.repo)], ctx: { scratchDir: r.scratch, config, isolation: { mode: 'none' } } });
+  const opts = plantPython ? { 'plant-python': plantPython } : {};
+  const suite = suiteOf(r, { taskId, opts, arms: [resolveArm(arm, r.repo)], ctx: { scratchDir: r.scratch, config, isolation: { mode: 'none' } } });
   const ctx = {
     config, scratchDir: r.scratch, envKeep: [], envInfo: { kiroCliVersion: null, harnessVersion: 'test', modelListSnapshotPath: null },
     isolation: { mode: 'none' }, tripwire: { roots: [{ dir: r.probe, depth: 1 }], extraExcludes: [], absExclude: [r.scratch, r.out] }, plant: suite,
