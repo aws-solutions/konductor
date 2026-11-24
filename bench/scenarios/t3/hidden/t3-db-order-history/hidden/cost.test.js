@@ -76,14 +76,6 @@ test('cost is reasonable for chosen option', () => {
     assert(decision.monthly_cost_usd <= expectedMax,
       `Cost for composite-optimized should not exceed $${expectedMax}`);
   }
-  
-  // For two-table-normalized (would be over limit, so shouldn't be chosen)
-  if (decision.chosen === 'two-table-normalized') {
-    // This would require more storage, so cost would be higher
-    const expectedMin = 150;
-    assert(decision.monthly_cost_usd >= expectedMin,
-      `Cost for two-table-normalized would be higher due to storage overage`);
-  }
 });
 
 test('cost does not exceed budget limit', () => {

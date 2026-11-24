@@ -8,22 +8,22 @@
 
 ## Schema Options Tested
 
-### Option 1: Comprehensive Indexing (Legacy Approach)
+### Option 1: Single-Column Indexes
 - Single table with all columns
 - 14 single-column indexes (one per queryable column)
 - **Storage**: 1.72 TB projected to 3.1 TB at 900M rows
-- **Performance**: Mixed results
+- **Performance**: see Query Latency below
 
-### Option 2: Smart Composite Indexes
+### Option 2: Composite Indexes
 - Single table with 3 composite indexes
 - **Storage**: 1.39 TB projected to 2.5 TB at 900M rows
-- **Performance**: Good across all query patterns
+- **Performance**: see Query Latency below
 
 ### Option 3: Two-Table Normalized
 - Orders and order_lines tables
 - Foreign key relationship
 - **Storage**: 1.45 TB projected to 2.6 TB at 900M rows
-- **Performance**: Slower for customer queries requiring joins
+- **Performance**: see Query Latency below
 
 ## Performance Metrics
 
@@ -46,31 +46,6 @@
 | Total | 1.72 TB | 1.39 TB | 1.45 TB |
 | Projected to 900M | 3.10 TB | 2.50 TB | 2.61 TB |
 
-### EXPLAIN QUERY PLAN Analysis
-
-#### Option 2 Query Plans:
-- **Pattern 1**: `SEARCH order_history USING INDEX idx_customer_order_date (customer_id=?)`
-- **Pattern 2**: `SEARCH order_history USING INDEX idx_order_number (order_number=?)`
-- **Pattern 3**: `SEARCH order_history USING INDEX idx_order_id (order_id=?)`
-- **Pattern 4**: `SEARCH order_history USING INDEX idx_warehouse_status_date (warehouse_id=? AND status IN (...))`
-- **Pattern 6**: `SEARCH order_history USING INDEX idx_order_date (order_date>? AND order_date<?)`
-
-All queries use index search operations, no full table scans.
-
-## Index Designs Tested
-
-### Successful Composite Indexes:
-1. `(customer_id, order_date DESC)` - Covers pattern 1 efficiently
-2. `(order_number)` - Unique index for pattern 2 (also covers pattern 5)
-3. `(warehouse_id, status, order_date)` - Covers pattern 4
-4. `(order_date)` - For date range queries (pattern 6)
-5. `(order_id, line_number)` - For pattern 3 (clustered access)
-
-### Failed Index Approaches:
-- Single-column indexes on all queryable columns: Too much storage overhead
-- Index on `status` alone: Low cardinality, poor selectivity
-- Index on `(order_date, customer_id)`: Wrong order for pattern 1
-
 ## Storage Calculation Details
 
 ### Base Row Size Analysis
@@ -87,5 +62,3 @@ Average row composition:
 - Single-column index entry: ~45 bytes
 - Composite index (2 columns): ~65 bytes
 - Composite index (3 columns): ~85 bytes
-
-**Key insight**: Composite indexes are only slightly larger than single-column indexes but serve multiple queries.

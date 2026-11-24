@@ -5,7 +5,8 @@ const assert = require('node:assert');
 const R = __dirname + '/..';
 const DECISION_FILE = R + '/solution/docs/decision.md';
 
-const ACCEPTABLE_OPTIONS = ['composite-optimized', 'two-table-normalized'];
+// two-table-normalized is projected at 2.61 TB (prototype-results.md), over the 2.5 TB hard limit (constraints.txt)
+const ACCEPTABLE_OPTIONS = ['composite-optimized'];
 const TEMPTING_OPTION = 'single-column-all';
 
 test('chosen option is acceptable', () => {

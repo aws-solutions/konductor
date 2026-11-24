@@ -35,12 +35,9 @@ test('storage calculation for chosen option is reasonable', () => {
       `Storage for composite-optimized should be near ${expectedStorage.toFixed(2)} TB with 3 indexes`);
   }
   
-  // For two-table-normalized (would have more storage)
-  if (decision.chosen === 'two-table-normalized') {
-    const expectedStorage = calculateStorage(4); // More indexes for normalized
-    assert(storageTB >= expectedStorage * 0.9,
-      `Storage for two-table-normalized would be higher`);
-  }
+  // two-table-normalized is projected at 2.61 TB (prototype-results.md), over the 2.5 TB limit
+  assert(decision.chosen !== 'two-table-normalized',
+    'two-table-normalized is projected at 2.61 TB, over the 2.5 TB limit');
 });
 
 test('storage does not exceed limit for chosen option', () => {

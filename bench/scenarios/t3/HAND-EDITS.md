@@ -392,3 +392,20 @@ one fix the one-fix rule allows; if the v6 recheck fails, the task is dropped.
 - Reference `docs/decision.md`: the draft calculation and its correction are replaced by the one correct calculation.
   The scripted alt answer still carries the old draft lines; the grader does not read them.
 - Gates: reference 100, stub 0, lazy 14, alt 100 (unchanged). Non-Claude recheck of v6: pending.
+
+## t3-db-order-history v9 (2026-11-24, mate worker, claude; owner decision after the STANDARD recheck S4 of v8)
+
+The S4 recheck of v8 (gpt-5.6-luna, `bench/ops/workspace/standard-recheck/results-2026-11-24.md`) failed 3 of 4.
+The owner reopened t3-db-order-history (an exception to the one-fix rule above) and ruled on the key. v9:
+- Key: two-table-normalized is projected at 2.61 TB, over the 2.5 TB hard limit in `constraints.txt:3-7`, so it now
+  fails. `hidden/meta.json:3` and `hidden/options.test.js:9` accept only `composite-optimized`.
+  `hidden/storage.test.js:38-40` asserts the chosen option is not `two-table-normalized` (it used to require the
+  higher storage). The unreachable two-table branch in `hidden/cost.test.js` is gone. Test count unchanged.
+- fixture-lists-no-answer: `prototype-results.md` (and its `_pristine` copy) keeps every measurement (storage,
+  latency, row and index entry sizes) but loses what named the answer: the verdict labels on each option (Legacy,
+  Smart, Mixed results, Good across all query patterns, Slower), the Option 2-only EXPLAIN QUERY PLAN section, the
+  Successful and Failed index designs, and the Key insight line.
+- no-method-or-decoy: not changed, because the owner kept the prompt fixed. The note's premise is partly false: the
+  prompt does not name EXPLAIN QUERY PLAN. It does say SQLite, which `constraints.txt:16` makes a hard requirement,
+  and asks to avoid full table scans, which `constraints.txt:13` requires. Listed for the owner and Fable to rule.
+- Rubric and prompt unchanged. Gates: reference 100, stub 0, lazy 6, alt 100. Non-Claude recheck of v9: pending.

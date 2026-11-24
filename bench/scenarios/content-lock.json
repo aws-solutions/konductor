@@ -430,8 +430,8 @@
       "legacyRecheckVersion": 3
     },
     "t3-db-order-history": {
-      "version": 8,
-      "sha256": "ba05fd162a8126439dc60e418335191c99f7f982acaac2bb73e6a1ac1c8dddf4",
+      "version": 9,
+      "sha256": "b91d56851b5dd05b68b6ae1460eec267c81657af13696baeacba7c06b4a904fb",
       "legacyRecheckVersion": 5
     },
     "t3-db-tenant-isolation": {
