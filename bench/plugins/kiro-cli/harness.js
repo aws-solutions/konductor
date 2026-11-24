@@ -375,12 +375,31 @@ function harnessRunConfig({ envKeep, kiro }) {
 /** The agent env env.json describes: the runner's child env for a konductor or vanilla arm. */
 const envOfArm = ({ konductor, config, envKeep }) => buildChildEnv(process.env, { home: '<run-home>', agentEngine: config.agentEngine, keep: envKeep, konductor });
 
+// Where an install serves skills, relative to HOME (startup.js installedSkills): the skills MCP server's root, and the
+// SOPs the install wraps as `sop-<name>` skills.
+const skillDirs = Object.freeze({ served: '.konductor/skills', wrapped: '.kiro/skills' });
+
+/** The run's startup config (startup.js startupRecord): the agent and where it came from, MCP servers, steering, skills. */
+function startupConfig({ arm, home, cwd, read }) {
+  const settings = read.readJson(path.join(home, '.kiro/settings/cli.json')) ?? {};
+  const configured = settings['chat.defaultAgent'] ?? null;
+  const agent = arm.agentOverride ?? arm.agent ?? configured ?? 'kiro_default';
+  const agentSource = arm.agentOverride || arm.agent ? '--agent' : configured ? 'settings chat.defaultAgent' : 'built-in default';
+  const agentFile = [path.join(cwd, '.kiro/agents', `${agent}.json`), path.join(home, '.kiro/agents', `${agent}.json`)].find((f) => fs.existsSync(f));
+  return {
+    agent, agentSource,
+    mcpServers: [...(agentFile ? read.serversOf(agentFile) : []), ...read.serversOf(path.join(home, '.kiro/settings/mcp.json')), ...read.serversOf(path.join(cwd, '.kiro/settings/mcp.json'))],
+    steering: [...read.filesUnder(path.join(home, '.kiro/steering')), ...read.filesUnder(path.join(cwd, '.kiro/steering'))],
+    skills: read.skillCount(path.join(home, '.kiro/skills')) + read.skillCount(path.join(cwd, '.kiro/skills')),
+  };
+}
+
 // The model a run uses when --model is not given.
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 /** The run's model config from --model and --effort (run-cmd.js), with the --agent-engine value. */
 const modelConfig = ({ opts, agentEngine, defaultEffort }) => ({ model: opts.model || DEFAULT_MODEL, effort: opts.effort || defaultEffort, agentEngine });
 
 module.exports = {
-  id, meta, streams: require('./streams.js'), modelConfig, runEnvInfo, harnessRunConfig, envOfArm, listModels, DEFAULT_MODEL, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, streams: require('./streams.js'), modelConfig, skillDirs, startupConfig, runEnvInfo, harnessRunConfig, envOfArm, listModels, DEFAULT_MODEL, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

@@ -405,6 +405,29 @@ const strictMcp = true;
 
 const rc = () => require('../../runner/lib/runconfig.js');
 
+// Where an install serves skills, relative to HOME (startup.js installedSkills): ~/.claude/skills holds both.
+const skillDirs = Object.freeze({ served: '.claude/skills', wrapped: '.claude/skills' });
+
+/**
+ * The run's startup config (startup.js startupRecord): the agent and where it came from, the MCP servers (listed as
+ * ignored under --strict-mcp-config), the rules and CLAUDE.md files, and the skills.
+ */
+function startupConfig({ arm, home, cwd, strictMcp, read }) {
+  const configDir = path.join(home, '.claude');
+  const settings = read.readJson(path.join(configDir, 'settings.json')) ?? {};
+  const declared = [...read.serversOf(path.join(configDir, '.claude.json')), ...read.serversOf(path.join(home, '.claude.json')), ...read.serversOf(path.join(cwd, '.mcp.json'))];
+  return {
+    agent: arm.agentOverride ?? arm.agent ?? settings.agent ?? 'default',
+    agentSource: arm.agentOverride || arm.agent ? '--agent' : settings.agent ? 'settings agent' : 'built-in default',
+    ...(strictMcp ? { mcpIgnored: declared } : { mcpServers: declared }),
+    steering: [
+      ...read.filesUnder(path.join(configDir, 'rules')),
+      ...[path.join(configDir, 'CLAUDE.md'), path.join(cwd, 'CLAUDE.md'), path.join(cwd, '.claude/CLAUDE.md')].filter((f) => fs.existsSync(f)),
+    ],
+    skills: read.skillCount(path.join(configDir, 'skills')) + read.skillCount(path.join(cwd, '.claude/skills')),
+  };
+}
+
 /** The environment facts a run records (run-harness.js envInfoOf): the claude version and region. */
 const runEnvInfo = ({ ctx, ccRegion }) => ({ kiroCliVersion: null, harnessVersion: ctx.claude.version, modelListSnapshotPath: null, region: ccRegion });
 
@@ -423,7 +446,7 @@ function modelConfig({ opts, defaultEffort }) {
 }
 
 module.exports = {
-  id, meta, modelConfig, runEnvInfo, harnessRunConfig, envOfArm, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, modelConfig, skillDirs, startupConfig, runEnvInfo, harnessRunConfig, envOfArm, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: CREDENTIAL_VARS, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   listingMismatch: listing.listingMismatch, resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,

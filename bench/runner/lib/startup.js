@@ -31,14 +31,17 @@ const skillCount = (dir) => { try { return fs.readdirSync(dir).filter((n) => fs.
 const skillDirs = (dir) => { try { return fs.readdirSync(dir).filter((n) => fs.existsSync(path.join(dir, n, 'SKILL.md'))); } catch { return []; } };
 
 /**
- * The konductor skills an install put where its runtime serves them from: the skills MCP server's root
- * (~/.konductor/skills) on Kiro CLI, ~/.claude/skills on Claude Code. `sop-<name>` dirs are SOPs the install wraps as
- * skills (~/.kiro/skills on Kiro CLI), counted apart in `sops`. A konductor-noskills arm has 0 skills and keeps its SOPs.
+ * The konductor skills an install put where its runtime serves them from. The harness names the folders
+ * (`skillDirs: { served, wrapped }`, relative to HOME): `served` holds the skills (the skills MCP server's root on Kiro
+ * CLI, ~/.claude/skills on Claude Code); `sop-<name>` dirs in `wrapped` are SOPs the install wraps as skills, counted
+ * apart in `sops`. A harness without skillDirs is read as the default runtime's. A konductor-noskills arm has 0 skills
+ * and keeps its SOPs.
  */
 function installedSkills(home, runtime) {
-  const cc = runtime === 'claude-code';
-  const served = skillDirs(path.join(home, cc ? '.claude/skills' : '.konductor/skills'));
-  const wrapped = cc ? served : skillDirs(path.join(home, '.kiro/skills'));
+  const { harnessFor } = require('./harness/index.js');
+  const dirs = harnessFor({ runtime }).skillDirs ?? harnessFor({}).skillDirs;
+  const served = skillDirs(path.join(home, dirs.served));
+  const wrapped = dirs.wrapped === dirs.served ? served : skillDirs(path.join(home, dirs.wrapped));
   return { skills: served.filter((n) => !n.startsWith('sop-')).length, sops: wrapped.filter((n) => n.startsWith('sop-')).length };
 }
 
@@ -75,7 +78,7 @@ const serversOf = (file) => Object.keys(readJson(file)?.mcpServers ?? {}).map((n
 
 /**
  * The startup record of one run.
- *   runtime  'kiro-cli' or 'claude-code' (others get the common fields only)
+ *   runtime  the run's harness; one with `startupConfig` (Kiro CLI, Claude Code) adds its own fields
  *   arm      the resolved arm (vanilla, agent, agentOverride)
  *   home     the run's scratch HOME; cwd: its working directory
  *   realHome the invoking user's home, whose ~/.kiro and ~/.claude must never reach the run
@@ -93,33 +96,10 @@ function startupRecord({ runtime, arm, home, cwd, realHome = os.homedir(), stric
     // The konductor skills the arm can load, and the cap variant it was built as (konductor-noskills: 0 skills).
     konductorSkills: installedSkills(home, runtime), variant: variantOf(arm),
   };
-  if (runtime === 'kiro-cli') {
-    const settings = readJson(path.join(home, '.kiro/settings/cli.json')) ?? {};
-    const configured = settings['chat.defaultAgent'] ?? null;
-    rec.agent = arm.agentOverride ?? arm.agent ?? configured ?? 'kiro_default';
-    rec.agentSource = arm.agentOverride || arm.agent ? '--agent' : configured ? 'settings chat.defaultAgent' : 'built-in default';
-    const agentFile = [path.join(cwd, '.kiro/agents', `${rec.agent}.json`), path.join(home, '.kiro/agents', `${rec.agent}.json`)].find((f) => fs.existsSync(f));
-    rec.mcpServers = [
-      ...(agentFile ? serversOf(agentFile) : []),
-      ...serversOf(path.join(home, '.kiro/settings/mcp.json')),
-      ...serversOf(path.join(cwd, '.kiro/settings/mcp.json')),
-    ];
-    rec.steering = [...filesUnder(path.join(home, '.kiro/steering')), ...filesUnder(path.join(cwd, '.kiro/steering'))];
-    rec.skills = skillCount(path.join(home, '.kiro/skills')) + skillCount(path.join(cwd, '.kiro/skills'));
-  } else if (runtime === 'claude-code') {
-    const configDir = path.join(home, '.claude');
-    const settings = readJson(path.join(configDir, 'settings.json')) ?? {};
-    rec.agent = arm.agentOverride ?? arm.agent ?? settings.agent ?? 'default';
-    rec.agentSource = arm.agentOverride || arm.agent ? '--agent' : settings.agent ? 'settings agent' : 'built-in default';
-    const declared = [...serversOf(path.join(configDir, '.claude.json')), ...serversOf(path.join(home, '.claude.json')), ...serversOf(path.join(cwd, '.mcp.json'))];
-    if (strictMcp) rec.mcpIgnored = declared;
-    else rec.mcpServers = declared;
-    rec.steering = [
-      ...filesUnder(path.join(configDir, 'rules')),
-      ...[path.join(configDir, 'CLAUDE.md'), path.join(cwd, 'CLAUDE.md'), path.join(cwd, '.claude/CLAUDE.md')].filter((f) => fs.existsSync(f)),
-    ];
-    rec.skills = skillCount(path.join(configDir, 'skills')) + skillCount(path.join(cwd, '.claude/skills'));
-  }
+  // The harness reads its own agent, MCP servers, steering and skill count (`startupConfig`); others keep the common fields.
+  const { harnessFor } = require('./harness/index.js');
+  const own = harnessFor({ runtime }).startupConfig?.({ arm, home, cwd, strictMcp, read: { readJson, serversOf, filesUnder, skillCount } });
+  if (own) Object.assign(rec, own);
   // Paths are written relative to the run's HOME or cwd, so the record carries no host path.
   const rel = (p) => (isInside(p, home) ? `~/${path.relative(home, p)}` : isInside(p, cwd) ? `./${path.relative(cwd, p)}` : p);
   rec.mcpServers = rec.mcpServers.map((s) => ({ name: s.name, source: rel(s.source) }));
