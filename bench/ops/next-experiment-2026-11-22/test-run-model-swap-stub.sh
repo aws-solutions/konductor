@@ -44,7 +44,7 @@ for (const arm of arms) for (let rep = 1; rep <= reps; rep++) {
 }
 JS
 fail() { echo "FAIL: $*"; exit 1; }
-copy() { mkdir -p "$1"; cp "$HERE0/run-model-swap.sh" "$HERE0/model-swap-summary.js" "$1/"; }
+copy() { mkdir -p "$1"; cp "$HERE0/run-model-swap.sh" "$HERE0/model-swap-summary.js" "$HERE0/lib.sh" "$1/"; }
 
 # A fake reused baseline: the LITE run's konductor cells (runs/r<rep>/<batch>/konductor/<task>/<rep>) for the 8 tasks,
 # each 6 credits, one of them with a whole skill load and one with a preview-only load.

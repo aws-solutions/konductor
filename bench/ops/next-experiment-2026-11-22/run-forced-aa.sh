@@ -20,7 +20,9 @@ KBIN_PIN=e1bf38eb89e06d90ffb872565f3f191590e148c2da0b68e5d5ac31b7ca49a70e
 CACHE=/var/tmp/lite-konductor-cache
 PY312=$(ls -d "$HOME"/.local/share/mise/installs/python/3.12.*/bin/python3.12 2>/dev/null | sort -V | tail -1)
 GO=${1:-}
+spent_all() { ledger_spent "$HERE/runs"; }
 stop() { echo "stop: $*" >&2; exit 1; }
+. "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 
 # task batch runLimit budget (runLimit is the LITE batch's per-run cap; budget covers 3 forced + 3 vanilla runs)
 TASKS='t8-dec-deploy-strategy t8 23 55
@@ -46,21 +48,6 @@ fi
 # else, so one command can spend up to 0.9 x budget + one run's limit. Before each task the budget is cut so that
 # spend so far plus that worst case stays within CAP. A task that cannot fit one run is not started.
 CAP=450
-spent_all() {
-  node -e 'const {readLedger}=require(process.argv[1]); const fs=require("fs"), p=require("path"); const d=process.argv[2];
-    let s=0; for (const t of fs.existsSync(d)?fs.readdirSync(d):[]) s+=readLedger(p.join(d,t)).totals.total; console.log(s.toFixed(2))' \
-    "$R/bench/runner/lib/credit-ledger.js" "$HERE/runs"
-}
-# Wait (up to 60 min) for load under 4 and a free heavy lock before a task starts.
-wait_host() {
-  i=0
-  while :; do
-    l=$(cut -d' ' -f1 /proc/loadavg)
-    if awk -v l="$l" 'BEGIN { exit !(l < 4) }' && flock -n /var/tmp/konductor-heavy.lock true; then return 0; fi
-    i=$((i + 1)); [ "$i" -le 60 ] || stop "load $l or heavy lock busy for 60 min"
-    sleep 60
-  done
-}
 
 echo "$TASKS" | while read -r task batch limit budget; do
   pre=$HERE/prefixes/$task.txt

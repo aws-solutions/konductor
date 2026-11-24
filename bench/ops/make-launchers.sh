@@ -32,7 +32,7 @@ esac
 LOCAL_ONLY=' scripts/README.md scripts/keep-creds-fresh.sh '
 WS=$(cd "$WS" && pwd -P)
 MARK='Launcher written by bench/ops/make-launchers.sh'
-SOURCED=' kp-pilot-lib.sh standard-kit-env.sh '
+SOURCED=' kp-pilot-lib.sh standard-kit-env.sh lib.sh '
 OPS_EXPR='${KONDUCTOR_OPS:-$KONDUCTOR_WS/worktrees/ops}'
 RUNNING=$(ps -eo args= 2>/dev/null || true)
 status=0

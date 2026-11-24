@@ -61,7 +61,7 @@ for (const arm of arms) for (const rep of [1, 2, 3]) {
 if (String(process.env.STUB_ERR || '').split(':')[0] === task) process.exit(5);
 JS
 fail() { echo "FAIL: $*"; exit 1; }
-copy() { mkdir -p "$1"; cp "$HERE0/run-nudge.sh" "$1/"; }
+copy() { mkdir -p "$1"; cp "$HERE0/run-nudge.sh" "$HERE0/lib.sh" "$1/"; }
 
 copy "$T/a"
 FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB="node $STUBJS" HERE="$T/a" sh "$T/a/run-nudge.sh" --go > "$T/a.log" 2>&1 || { cat "$T/a.log"; fail "case 1 exited non-zero"; }

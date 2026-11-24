@@ -54,6 +54,7 @@ MODE=--plan
 STAGE=''
 CUR=''
 stop() { echo "stop: $*" >&2; exit 1; }
+. "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -118,11 +119,6 @@ counted_spent() {
     if (fs.existsSync(process.argv[1])) walk(process.argv[1]); console.log(s.toFixed(2))' "$1" "$FLOOR"
 }
 
-budget_for() {   # counted limit ownBudget -> budget, or STOP when one run would not fit under the cap
-  awk -v s="$1" -v c="$STAGE_CAP" -v l="$2" -v b="$3" 'BEGIN { if (b < l) b = l; m = (c - s - l) / 0.9; if (m < b) b = m;
-    if (b < l) print "STOP"; else printf "%d", b }'
-}
-worst_case() { awk -v s="$1" -v b="$2" -v l="$3" 'BEGIN { printf "%.2f", s + 0.9 * b + l }'; }
 ceil_mul() { awk -v a="$1" -v b="$2" 'BEGIN { x = a * b; y = int(x); if (y < x) y++; print y }'; }
 
 check_setup() {
@@ -161,15 +157,6 @@ wait_others() {
   done
 }
 
-wait_host() {   # up to 60 min for load under LOAD_MAX and a free heavy lock
-  i=0
-  while :; do
-    l=$(cut -d' ' -f1 /proc/loadavg)
-    if awk -v l="$l" -v m="$LOAD_MAX" 'BEGIN { exit !(l < m) }' && flock -n "$HEAVY_LOCK" true; then return 0; fi
-    i=$((i + 1)); [ "$i" -le 60 ] || stop "load $l or heavy lock busy for 60 min"
-    sleep 60
-  done
-}
 
 # After a task: the skill-load check (stops the list stage on a hook miss) and the model check. Sets TASK_STATE to
 # done, or open when a cell never ran. Called in this shell (never in $(...)), so its stop ends the script.
@@ -198,7 +185,7 @@ run_task() {
   else
     s=$DRY_COUNTED
   fi
-  budget=$(budget_for "$s" "$limit" "$own")
+  budget=$(budget_for "$s" "$limit" "$own" "$STAGE_CAP")
   if [ "$budget" = STOP ]; then
     [ "$MODE" = --go ] && stop "counted $s of $STAGE_CAP: $task cannot fit one run of $limit"
     printf '| %s | %s | - | - | - | %s | cut | %s | not reached |\n' "$task" "$REPS" "$limit" "$s"

@@ -24,7 +24,9 @@ PY312=$(ls -d "$HOME"/.local/share/mise/installs/python/3.12.*/bin/python3.12 2>
 GO=${1:-}
 STUB=${STUB:-}
 CAP=450
+spent_all() { ledger_spent "$HERE/runs"; }
 stop() { echo "stop: $*" >&2; exit 1; }
+. "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 
 # task batch runLimit budget (runLimit is the LITE batch's per-run cap; budget covers 3 forced + 3 vanilla runs)
 TASKS='t8-dec-deploy-strategy t8 23 55
@@ -47,33 +49,6 @@ fi
 if [ "$GO" = --go ] && [ -z "$STUB" ]; then
   unshare -Urm true 2>/dev/null || stop "user namespaces are blocked in this shell (--isolate unshare needs them): run from your own terminal"
 fi
-
-spent_all() {
-  node -e 'const {readLedger}=require(process.argv[1]); const fs=require("fs"), p=require("path"); const d=process.argv[2];
-    let s=0; for (const t of fs.existsSync(d)?fs.readdirSync(d):[]) if (!t.endsWith(".done")) s+=readLedger(p.join(d,t)).totals.total; console.log(s.toFixed(2))' \
-    "$R/bench/runner/lib/credit-ledger.js" "$HERE/runs"
-}
-
-# Budget for one task. The frozen runner starts a run while a command is under 90% of --budget-credits, so a command
-# can spend up to 0.9 x budget + one run's limit. The budget is max(own budget, limit), then cut so that
-# spent + 0.9 x budget + limit <= CAP. Prints STOP when even one run would not fit.
-budget_for() {
-  bs=$1; bl=$2; bb=$3
-  awk -v s="$bs" -v c="$CAP" -v l="$bl" -v b="$bb" 'BEGIN { if (b < l) b = l; m = (c - s - l) / 0.9; if (m < b) b = m;
-    if (b < l) print "STOP"; else printf "%d", b }'
-}
-worst_case() { awk -v s="$1" -v b="$2" -v l="$3" 'BEGIN { printf "%.2f", s + 0.9 * b + l }'; }
-
-# Wait (up to 60 min) for load under 4 and a free heavy lock before a task starts.
-wait_host() {
-  i=0
-  while :; do
-    l=$(cut -d' ' -f1 /proc/loadavg)
-    if awk -v l="$l" 'BEGIN { exit !(l < 4) }' && flock -n /var/tmp/konductor-heavy.lock true; then return 0; fi
-    i=$((i + 1)); [ "$i" -le 60 ] || stop "load $l or heavy lock busy for 60 min"
-    sleep 60
-  done
-}
 
 # Runs (or with no --go, prints) one task. Args: task batch limit budget. Dry-run spend is the running worst case.
 run_task() {

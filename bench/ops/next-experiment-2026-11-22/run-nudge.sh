@@ -66,7 +66,9 @@ HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 CAP=450
 FILL_JS=$CHECK_BENCH/bench/ops/next-experiment-2026-11-22/nudge-fill.js
 FILL_MIN=15
+spent_all() { ledger_spent "$OUT"; }
 stop() { echo "stop: $*" >&2; exit 1; }
+. "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 
 # task batch runLimit budget: the forced run's table (6 runs per task: 3 list + 3 filler, as there 3 forced + 3 vanilla)
 TASKS='t8-dec-deploy-strategy t8 23 55
@@ -121,22 +123,6 @@ forced_spent() {
     console.log(fs.existsSync(d) ? readLedger(d).totals.total.toFixed(2) : "-")' "$R/bench/runner/lib/credit-ledger.js" "$HERE/runs/$1"
 }
 
-spent_all() {
-  node -e 'const {readLedger}=require(process.argv[1]); const fs=require("fs"), p=require("path"); const d=process.argv[2];
-    let s=0; for (const t of fs.existsSync(d)?fs.readdirSync(d):[]) if (!t.endsWith(".done")) s+=readLedger(p.join(d,t)).totals.total; console.log(s.toFixed(2))' \
-    "$R/bench/runner/lib/credit-ledger.js" "$OUT"
-}
-
-# Budget for one task, as in run-forced-aa-r2.sh: the frozen runner starts a run while a command is under 90% of
-# --budget-credits, so a command can spend up to 0.9 x budget + one run's limit. The budget is max(own budget, limit),
-# cut so that spent + 0.9 x budget + limit <= CAP. Prints STOP when even one run would not fit.
-budget_for() {
-  bs=$1; bl=$2; bb=$3
-  awk -v s="$bs" -v c="$CAP" -v l="$bl" -v b="$bb" 'BEGIN { if (b < l) b = l; m = (c - s - l) / 0.9; if (m < b) b = m;
-    if (b < l) print "STOP"; else printf "%d", b }'
-}
-worst_case() { awk -v s="$1" -v b="$2" -v l="$3" 'BEGIN { printf "%.2f", s + 0.9 * b + l }'; }
-
 # Fill stage: counted spend of the stage cells, and one task's "budget worstCaseAfter" (STOP when it does not fit).
 # Args of fill_budget: counted spend, cells to run, run limit. See the top of this file for the rule.
 fill_spent() { node "$FILL_JS" spent "$OUT" 23; }
@@ -157,17 +143,6 @@ wait_forced() {
     [ "$i" = 0 ] && echo "[$(date -u +%H:%M)] waiting for the forced run (pid $pids)"
     i=$((i + 1)); [ "$i" -le 288 ] || stop "the forced run is still running after 24 h"
     sleep 300
-  done
-}
-
-# Wait (up to 60 min) for load under LOAD_MAX and a free heavy lock before a task starts.
-wait_host() {
-  i=0; l=''
-  while :; do
-    l=$(cut -d' ' -f1 /proc/loadavg)
-    if awk -v l="$l" -v m="$LOAD_MAX" 'BEGIN { exit !(l < m) }' && flock -n "$HEAVY_LOCK" true; then return 0; fi
-    i=$((i + 1)); [ "$i" -le 60 ] || stop "load $l or heavy lock busy for 60 min"
-    sleep 60
   done
 }
 
