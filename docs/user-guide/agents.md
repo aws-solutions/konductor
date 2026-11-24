@@ -110,11 +110,25 @@ These rows describe agents started by `konductor`. `konductor-mux-orchestrator` 
 `interactive`, the default, asks you in the pane; `headless` runs with `-p`, accepts file edits and
 denies any other call that would prompt unless your `permissions.allow` allows it; and the opt-in
 `bypass` runs with `--dangerously-skip-permissions`, for isolated environments only. In `headless`
-and `bypass`, deny rules in your `settings.json` still block, and in `headless` an ask rule denies
-the call. An `interactive` Claude Code child completes when it writes its `.done` file
-(`$KONDUCTOR_DONE_FILE`), but its session stays open until you type `/exit` in its pane. A mistyped `dispatch_permission_mode` value makes the dispatch stop with
-an error rather than fall back to `interactive`. Add deny rules for anything a dispatched agent must
-never do.
+and `bypass`, deny rules in your `settings.json` still block, and an ask rule denies the call,
+because the child runs with `-p` and can't prompt. An `interactive` Claude Code child completes when
+it writes its `.done` file (`$KONDUCTOR_DONE_FILE`), but its session stays open until you type
+`/exit` in its pane. A mistyped `dispatch_permission_mode` value makes the dispatch stop with an
+error rather than fall back to `interactive`.
+
+`konductor install --harness claude` sets an ask rule for each AWS MCP tool that acts on AWS
+(`aws___run_script`, `aws___get_presigned_url` and `aws___get_tasks`) in the settings file it
+installs into. An `interactive` pane that file applies to asks you before each call, and a `headless`
+or `bypass` pane cannot call them: every pane for the default `$HOME` install, and only panes running
+in the target project for a `--target` install. These rules apply to every Claude Code session using
+that settings file, not only Konductor's agents, because Claude Code has no per-agent permission
+settings. No ask rule is written for a Claude Code plugin install (add them yourself, see
+[Install from the Claude plugin marketplace](tasks/install-claude-plugin-marketplace.md)), when the
+settings file cannot be written (install still succeeds and ends by printing the rules to add by
+hand), or for a tool one of your own `deny` rules covers or one of your `allow` entries names
+exactly (a broad allow such as `mcp__aws-mcp__*` does not count). Calls to these tools need a person
+to approve them; run that work from `konductor` or an `interactive` pane. Add deny rules for anything
+a dispatched agent must never do.
 
 Three observations that are not obvious and do affect what you should trust:
 
@@ -321,7 +335,7 @@ The most capable agent in the package, on the strongest model.
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code), the same model every agent runs |
 | **SOPs** (3) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` |
 | **Skills** | **37** — the most of any specialist. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
-| **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==2.0.0`. Kiro CLI's `allowedTools` grants five tools (documentation search, documentation read, skill retrieval, region list, regional availability); Claude Code grants the whole server via `mcp__aws-mcp__*` (8 tools, including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) |
+| **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==2.0.0`. Both runtimes grant the server's 8 known tools by name (`@aws-mcp/<tool>` in Kiro CLI's `tools`, `mcp__aws-mcp__<tool>` in Claude Code's), including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`. A tool the hosted server adds later is not granted until it is classified. Kiro CLI's `allowedTools` pre-approves five of them (documentation search, documentation read, skill retrieval, region list, regional availability) |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 
@@ -426,7 +440,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
 | Cross-agent delegation | only `konductor` holds `subagent` on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
-| MCP servers | `aws-mcp` launched from `dependencies.mcpRegistry`; tools granted as `@aws-mcp`, or as five named read-only tools on `konductor` | `aws-mcp` launched from `dependencies.mcpRegistry`; tools granted via globs (`mcp__aws-mcp__*`), or as five named read-only tools on `konductor` |
+| MCP servers | `aws-mcp` launched from `dependencies.mcpRegistry`; tools granted by name (`@aws-mcp/<tool>`): the eight known tools on `k-architect` and `k-developer`, five read-only ones on `konductor` | `aws-mcp` launched from `dependencies.mcpRegistry`; tools granted by name (`mcp__aws-mcp__<tool>`), the same eight and five; `playwright-mcp` tools requested by glob (`mcp__playwright-mcp__*`), and you configure that server yourself |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
 | `k-browser` / `k-media-analyzer` | reads pre-approved; writes and shell ask first | write and shell granted |

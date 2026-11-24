@@ -131,13 +131,13 @@ Claude Code namespaces tools from a plugin MCP server. The generator rewrites
 bundled grants such as:
 
 ```text
-mcp__aws-mcp__*
+mcp__aws-mcp__aws___search_documentation
 ```
 
 to the plugin-scoped form:
 
 ```text
-mcp__plugin_konductor_aws-mcp__*
+mcp__plugin_konductor_aws-mcp__aws___search_documentation
 ```
 
 Bring-your-own servers, including `playwright-mcp`, keep their bare grants and
