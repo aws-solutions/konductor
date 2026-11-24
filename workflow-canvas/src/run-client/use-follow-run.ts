@@ -52,7 +52,9 @@ export interface FollowRunInput {
 const IDLE: FollowStatus = { kind: 'idle' };
 const FOLLOWING: FollowStatus = { kind: 'following' };
 
-// What a state was read for, so a state of an earlier follower is not shown.
+// What a state was read for: one object per follower, so a state of an
+// earlier follower is told apart by `===` even when a run id is left and
+// come back to, which gives the same values again.
 interface Source {
   readonly readEvents: ReadEvents;
   readonly runId: string;
@@ -108,7 +110,9 @@ function endStatus(
  * next one starts only once it has ended, so two never run at once.
  * Unmounting aborts it, and no update comes after. Following that gave up
  * ends in `failed`, and only `retry` takes it up again, from the run as read
- * so far and under the same rules.
+ * so far and under the same rules. Only the state of the follower reading
+ * now is given, so a run id left and come back to shows its new follower
+ * rather than what the one before it read or how it ended.
  */
 export function useFollowRun(input: FollowRunInput): FollowRunState {
   const { readEvents, runId, order } = input;
@@ -126,6 +130,11 @@ export function useFollowRun(input: FollowRunInput): FollowRunState {
   });
 
   useEffect(() => {
+    // Nothing a follower before this one read belongs to the new source,
+    // not even when the two hold the same values, so it goes before the
+    // first read of this one.
+    reached.current = undefined;
+    setFollowed(undefined);
     if (readEvents === undefined || runId === undefined) return;
     const source: Source = { readEvents, runId, orderKey };
     const controller = new AbortController();
@@ -175,18 +184,25 @@ export function useFollowRun(input: FollowRunInput): FollowRunState {
     const live = follower.current;
     const state = reached.current;
     if (!live || !state?.run || state.status.kind !== 'failed') return;
-    // A state of an earlier source is on screen no longer, so it is not
-    // taken up again either; its own follower has already started.
-    if (!sameSource(state.source, live.source)) return;
+    // The state must be of the follower reading now, which is the one `===`
+    // tells: a run id left and come back to has the same values but a
+    // follower of its own, already reading from the first event.
+    if (state.source !== live.source) return;
     live.resume(state.run);
   }, []);
 
   if (readEvents === undefined || runId === undefined) {
     return { status: IDLE, retry };
   }
+  const reading = follower.current;
+  // The state of the follower reading now, and only while it is the one
+  // this render asks for: on the first render after a change the effect has
+  // not run yet, so `follower` still holds the one before it.
   if (
     followed &&
-    sameSource(followed.source, { readEvents, runId, orderKey })
+    reading &&
+    followed.source === reading.source &&
+    sameSource(reading.source, { readEvents, runId, orderKey })
   ) {
     return { run: followed.run, status: followed.status, retry };
   }

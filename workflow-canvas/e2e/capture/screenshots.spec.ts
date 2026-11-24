@@ -64,10 +64,27 @@ test('capture the Execution tab after the run passed', async ({ canvas }) => {
   await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
-  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await canvas.expectBadges(['Done', 'Passed', 'Passed', 'Passed']);
   await expect(canvas.runStatus).toContainText('Run passed.');
 
   await saveFullPageScreenshot(canvas.page, 'execution-tab-finished');
+});
+
+test('capture the Execution tab after a stage was blocked', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('halted', ['passed', 'blocked'], 'OUTPUT_MISSING'),
+  );
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
+
+  await canvas.runButton.click();
+  await canvas.expectBadges(['Done', 'Passed', 'Blocked', 'Halted']);
+  await canvas.page.getByTestId('blocked-stage').waitFor();
+
+  await saveFullPageScreenshot(canvas.page, 'execution-tab-blocked');
 });
 
 // The Execution tab in the dark mode, while the first stage runs.
@@ -133,6 +150,26 @@ test('capture the Designer tab when the file changed on disk', async ({
   await expect(designer.conflict).toBeVisible();
 
   await saveFullPageScreenshot(designer.page, 'designer-conflict');
+});
+
+test('capture the Designer tab with a change it cannot write in place', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(
+    request,
+    SAMPLE_TEXT.replace(
+      /  - name: review\n    agent: k-quality-assurance\n(    prompt_file: .*\n)?/,
+      '  - {name: review, agent: k-quality-assurance}\n',
+    ),
+  );
+  await canvas.page.reload();
+  await designer.stage('review').click();
+  await designer.rename('check');
+  await expect(designer.page.getByTestId('not-in-place')).toBeVisible();
+
+  await saveFullPageScreenshot(designer.page, 'designer-not-in-place');
 });
 
 test('capture the Designer tab with unsaved edits in the dark mode', async ({

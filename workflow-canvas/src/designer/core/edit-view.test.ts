@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import type { DiagnosticView } from '../../api/types';
-import { HELLO_DOCUMENT, HELLO_TEXT } from '../../test-support/fixtures';
+import {
+  HELLO_DOCUMENT,
+  HELLO_TEXT,
+  HELLO_VIEW,
+  stageViewOf,
+} from '../../test-support/fixtures';
 import { reduce } from './edit-reducer';
 import { openDocument, type EditEvent, type EditState } from './edit-state';
 import { listedOf, problemsFor } from './problems';
@@ -12,6 +17,7 @@ import {
   saveBlocker,
   saveStatus,
   textOf,
+  writtenOf,
 } from './edit-view';
 
 function run(...events: EditEvent[]): EditState {
@@ -52,6 +58,186 @@ describe('textOf', () => {
   it('is the saved text with the stages of the draft', () => {
     expect(textOf(run(AGENT_CHANGE))).toBe(
       HELLO_TEXT.replace('k-developer', 'k-tpm'),
+    );
+  });
+});
+
+describe('writtenOf', () => {
+  it('gives the same result again for the same draft, document and bases', () => {
+    const state = run(AGENT_CHANGE);
+
+    expect(writtenOf({ ...state })).toBe(writtenOf(state));
+  });
+
+  it('writes again when the draft, the document or the bases change', () => {
+    const state = run(AGENT_CHANGE);
+    const first = writtenOf(state);
+    const other = { ...state.draft.stages[0]!, id: 's9' };
+
+    const moved = writtenOf({
+      ...state,
+      bases: ['s9', ...state.bases.slice(1)],
+    });
+    const draft = writtenOf({
+      ...state,
+      draft: {
+        ...state.draft,
+        stages: [other, ...state.draft.stages.slice(1)],
+      },
+    });
+    const saved = writtenOf({
+      ...state,
+      saved: { ...state.saved },
+    });
+
+    expect(moved).not.toBe(first);
+    expect(draft).not.toBe(first);
+    expect(saved).not.toBe(first);
+    expect(saved).toEqual(first);
+  });
+});
+
+describe('textOf, across saves', () => {
+  // A file whose stages carry the keys the Designer does not edit.
+  const PROMPTED = {
+    ...HELLO_DOCUMENT,
+    text: 'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n    prompt: Write the greeting.\n  - name: review\n    agent: k-quality-assurance\n    prompt_file: review.md\n',
+  };
+
+  function runOn(state: EditState | undefined, ...events: EditEvent[]) {
+    for (const event of events) state = reduce(state, event);
+    if (!state) throw new Error('Nothing to edit.');
+    return state;
+  }
+
+  // The answer to a save of the text that was sent, with the stages it holds.
+  function savedOf(
+    state: EditState,
+    stages: EditState['saved']['view']['stages'],
+  ): EditEvent {
+    return {
+      type: 'saved',
+      text: textOf(state)!,
+      result: {
+        hash: 'b'.repeat(64),
+        view: { ...state.saved.view, stages },
+        diagnostics: [],
+      },
+    };
+  }
+
+  it('keeps the prompt of a stage whose agent changes', () => {
+    const state = runOn(openDocument(PROMPTED), AGENT_CHANGE);
+
+    expect(textOf(state)).toBe(PROMPTED.text.replace('k-developer', 'k-tpm'));
+  });
+
+  it('keeps the prompt of a renamed stage in the text a save writes', () => {
+    const PLAN = {
+      ...HELLO_DOCUMENT,
+      text: [
+        'format: konductor/1',
+        'name: hello',
+        'version: 0.1.0',
+        'intent:',
+        '  outcome: Add a greeting to the README',
+        'stages:',
+        '  - name: plan',
+        '    agent: k-architect',
+        '    prompt: >-',
+        '      Write a short plan for the goal to PLAN.md.',
+        '      Do not change any other file.',
+        '  - name: implement',
+        '    agent: k-developer',
+        '    prompt: Read PLAN.md and do its first step only.',
+        '',
+      ].join('\n'),
+      view: {
+        ...HELLO_VIEW,
+        stages: [
+          stageViewOf('plan', 'k-architect'),
+          stageViewOf('implement', 'k-developer'),
+        ],
+      },
+    };
+
+    const renamed = runOn(openDocument(PLAN), {
+      type: 'rename',
+      id: 's1',
+      name: 'planning',
+    });
+
+    expect(textOf(renamed)).toBe(
+      PLAN.text.replace('- name: plan\n', '- name: planning\n'),
+    );
+
+    // The same holds for the next rename, after the first one was saved.
+    const sending = runOn(renamed, { type: 'save' });
+    const sent = textOf(renamed)!;
+    const saved = runOn(sending, {
+      type: 'saved',
+      text: sent,
+      result: {
+        hash: 'b'.repeat(64),
+        view: {
+          ...PLAN.view,
+          stages: [
+            stageViewOf('planning', 'k-architect'),
+            stageViewOf('implement', 'k-developer'),
+          ],
+        },
+        diagnostics: [],
+      },
+    });
+    const again = runOn(saved, { type: 'rename', id: 's1', name: 'draft' });
+
+    expect(textOf(again)).toBe(
+      sent.replace('- name: planning\n', '- name: draft\n'),
+    );
+  });
+
+  it('edits a stage in place after a save that deleted the one before it', () => {
+    const deleted = runOn(
+      openDocument(PROMPTED),
+      { type: 'remove', id: 's1' },
+      {
+        type: 'save',
+      },
+    );
+    const saved = runOn(
+      deleted,
+      savedOf(deleted, [stageViewOf('review', 'k-quality-assurance')]),
+    );
+
+    const next = runOn(saved, { type: 'set-agent', id: 's2', agent: 'k-tpm' });
+
+    expect(textOf(next)).toBe(
+      textOf(deleted)!.replace('k-quality-assurance', 'k-tpm'),
+    );
+    expect(textOf(next)).toContain('prompt_file: review.md');
+  });
+
+  it('knows the stages that were sent when the draft changed during the save', () => {
+    const saving = runOn(
+      openDocument(PROMPTED),
+      { type: 'rename', id: 's1', name: 'write' },
+      { type: 'save' },
+    );
+    const sent = textOf(saving)!;
+    const saved = runOn(
+      saving,
+      { type: 'add' },
+      savedOf(saving, [
+        stageViewOf('write', 'k-developer'),
+        stageViewOf('review', 'k-quality-assurance'),
+      ]),
+    );
+
+    const next = runOn(saved, { type: 'set-agent', id: 's1', agent: 'k-tpm' });
+
+    expect(isDirty(next)).toBe(true);
+    expect(textOf(next)).toBe(
+      `${sent.replace('agent: k-developer', 'agent: k-tpm')}  - name: agent-1\n    agent: k-developer\n`,
     );
   });
 });
@@ -233,7 +419,7 @@ describe('saveStatus', () => {
           view: {
             ...HELLO_DOCUMENT.view!,
             stages: [
-              { name: 'draft', agent: 'k-tpm' },
+              stageViewOf('draft', 'k-tpm'),
               HELLO_DOCUMENT.view!.stages[1]!,
             ],
           },

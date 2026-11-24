@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import Alert from '@cloudscape-design/components/alert';
+import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import Container from '@cloudscape-design/components/container';
 import FormField from '@cloudscape-design/components/form-field';
 import Header from '@cloudscape-design/components/header';
 import Input, { type InputProps } from '@cloudscape-design/components/input';
+import KeyValuePairs, {
+  type KeyValuePairsProps,
+} from '@cloudscape-design/components/key-value-pairs';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, {
   type StatusIndicatorProps,
@@ -13,13 +17,16 @@ import { useMemo } from 'react';
 import type { RunView, WorkflowView } from '../api/types';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
+import { MessageText } from '../workflow/MessageText';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
 import {
+  blockedStageOf,
   GOAL_MAX_LENGTH,
   goalProblem,
   isInFlight,
   isJoinedRun,
   nodeStatuses,
+  reasonSentence,
   runOf,
   stageDrift,
   statusKind,
@@ -56,6 +63,32 @@ function RunStatusLine({ state }: { state: ExecutionState }) {
   );
 }
 
+// The stage that stopped the run and why: the code of the reason, and what it
+// means when this page knows it. A blocked stage is a result, not an error.
+// A stage the reply gave no reason for shows with its name alone.
+function BlockedStage({ state }: { state: ExecutionState }) {
+  const blocked = blockedStageOf(runOf(state));
+  if (!blocked) return null;
+  const items: KeyValuePairsProps.Item[] = [
+    { label: 'Blocked stage', value: blocked.name },
+  ];
+  if (blocked.reason !== undefined) {
+    const sentence = reasonSentence(blocked.reason);
+    items.push({
+      label: 'Reason',
+      value: (
+        <SpaceBetween size="xxs">
+          <Box variant="code">{blocked.reason}</Box>
+          {sentence !== undefined && <Box>{sentence}</Box>}
+        </SpaceBetween>
+      ),
+    });
+  }
+  return (
+    <KeyValuePairs data-testid="blocked-stage" columns={1} items={items} />
+  );
+}
+
 // The alert sits under the Run button, so it is next to the control that was
 // pressed on a narrow screen too.
 function RunError({ state }: { state: ExecutionState }) {
@@ -63,7 +96,7 @@ function RunError({ state }: { state: ExecutionState }) {
   if (!error) return null;
   return (
     <Alert type="error" header={error.header} data-testid="run-error">
-      {error.message}
+      <MessageText text={error.message} />
       {error.note && <div>{error.note}</div>}
     </Alert>
   );
@@ -97,11 +130,16 @@ function StageDriftNotice({
 const NO_GOAL_OF_JOINED_RUN =
   'This run was already going, so its goal is not known here.';
 
+// What the Goal box says about itself when the file gives no description.
+const GOAL_HELP = 'What the run should achieve. Every stage is given it.';
+
 function RunPanel({
+  goalHelp,
   goal,
   onGoalChange,
   execution,
 }: {
+  goalHelp: string | undefined;
   goal: string;
   onGoalChange: (goal: string) => void;
   execution: ExecutionController;
@@ -115,11 +153,7 @@ function RunPanel({
       <SpaceBetween size="m">
         <FormField
           label="Goal"
-          description={
-            joined
-              ? NO_GOAL_OF_JOINED_RUN
-              : 'What the run should achieve. Every stage is given it.'
-          }
+          description={joined ? NO_GOAL_OF_JOINED_RUN : (goalHelp ?? GOAL_HELP)}
           constraintText={`At most ${GOAL_MAX_LENGTH} characters.`}
           errorText={problem}
         >
@@ -144,6 +178,7 @@ function RunPanel({
           Run
         </Button>
         <RunStatusLine state={execution.state} />
+        <BlockedStage state={execution.state} />
         <RunError state={execution.state} />
       </SpaceBetween>
     </Container>
@@ -182,6 +217,7 @@ function ExecutionView({
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
         <RunPanel
+          goalHelp={view.params?.goal?.description}
           goal={goal}
           onGoalChange={onGoalChange}
           execution={execution}
