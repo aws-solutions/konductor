@@ -33,10 +33,11 @@ const DEFAULT_COST = 4; // the pilot mean per plain run (3.97), for a batch with
 const ARMS = ['vanilla', 'konductor', 'konductor-noskills', 'konductor-list'];
 // Claude Code arms (the same conditions under the cc- prefix) and their USD model: the skill-loading study's 8 LITE tasks
 // cost USD 0.360 a plain run against 5.08 plain Kiro credits (USD 0.071 a credit), and a konductor run 1.59 times a
-// plain one (0.573 against 0.360); noskills sits between at 1.3. A task's size is its pilot plain credits.
+// plain one (0.573 against 0.360); noskills sits between at 1.3; the list arm (konductor plus the skill-list rules file)
+// at 1.7, konductor times the 7% the Kiro hook added (7.28 against 6.77 credits). A task's size is its pilot plain credits.
 const CC_PREFIX = 'cc-';
 const CC_USD_PER_PLAIN_CREDIT = 0.071;
-const CC_RATIO = { 'cc-vanilla': 1, 'cc-konductor': 1.59, 'cc-konductor-noskills': 1.3 };
+const CC_RATIO = { 'cc-vanilla': 1, 'cc-konductor': 1.59, 'cc-konductor-noskills': 1.3, 'cc-konductor-list': 1.7 };
 const CLAUDE = /claude|anthropic/i;
 
 // `--arms A,B,C` at the front of `rest`, else `fallback`; returns { arms, rest }.
@@ -162,13 +163,14 @@ function summary(out, dirs, arms = ARMS) {
   return 0;
 }
 
-// The Claude Code arms over a frozen plan: the same conditions under the cc- prefix (the noskills tree is the plan's),
+// The Claude Code arms over a frozen plan: the same conditions under the cc- prefix (the noskills and list trees are the plan's),
 // and the expected USD per batch and per stage from each batch's plain pilot credits (expected / the Kiro ratio sum).
 function ccPlan(planFile) {
   const p = JSON.parse(fs.readFileSync(planFile, 'utf8'));
-  const arms = [`${CC_PREFIX}vanilla`, `${CC_PREFIX}konductor=${p.konductorSha}`, `${CC_PREFIX}${p.noskillsArm}`];
+  const arms = [`${CC_PREFIX}vanilla`, `${CC_PREFIX}konductor=${p.konductorSha}`, `${CC_PREFIX}${p.noskillsArm}`, ...(p.listArm ? [`${CC_PREFIX}${p.listArm}`] : [])];
+  const ratio = Object.fromEntries(Object.entries(CC_RATIO).filter(([a]) => a !== 'cc-konductor-list' || p.listArm));
   const kiroPer = Object.values(RATIO).reduce((a, b) => a + b, 0);
-  const ccPer = Object.values(CC_RATIO).reduce((a, b) => a + b, 0);
+  const ccPer = Object.values(ratio).reduce((a, b) => a + b, 0);
   const batches = {}; let perStage = 0;
   for (const [b, x] of Object.entries(p.batches)) {
     const plainCredits = x.expected / kiroPer;
@@ -176,7 +178,7 @@ function ccPlan(planFile) {
     batches[b] = { tasks: x.tasks, expectedUsd: usd };
     perStage += usd;
   }
-  return { arms, armIds: Object.keys(CC_RATIO), usdPerPlainCredit: CC_USD_PER_PLAIN_CREDIT, ratio: CC_RATIO, batches, expectedUsdPerStage: Math.round(perStage * 100) / 100, runsPerStage: p.run.length * arms.length };
+  return { arms, armIds: Object.keys(ratio), usdPerPlainCredit: CC_USD_PER_PLAIN_CREDIT, ratio, batches, expectedUsdPerStage: Math.round(perStage * 100) / 100, runsPerStage: p.run.length * arms.length };
 }
 
 function ccTasks(planFile, n) {

@@ -191,6 +191,24 @@ function installKonductor(home, prepared, ctx) {
   return run(home, prepared);
 }
 
+// A konductor tree may carry Claude Code rules files under BENCH_RULES_REL (cap/nudge.js writes the skill-list hook's
+// text there for the list arm). They go into the run HOME's user-level rules, which Claude Code loads at session start
+// beside the empty file the rules gate left (https://code.claude.com/docs/en/memory, "User-level rules"). The plain arm
+// never reaches this. Returns the install.log line.
+const BENCH_RULES_REL = '.bench-claude-rules';
+function installBenchRules(configDir, exportDir) {
+  const src = exportDir ? path.join(exportDir, BENCH_RULES_REL) : null;
+  const files = src && fs.existsSync(src) ? fs.readdirSync(src).filter((f) => f.endsWith('.md')).sort() : [];
+  if (!files.length) return 'rules: empty.md only';
+  const out = [];
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(src, f));
+    fs.writeFileSync(path.join(configDir, 'rules', f), text);
+    out.push(`${f} (${text.length} bytes)`);
+  }
+  return `rules: ${out.join(', ')}`;
+}
+
 function installInto(home, { arm, prepared, ctx, config, outDir }) {
   const configDir = path.join(home, '.claude');
   fs.mkdirSync(configDir, { recursive: true });
@@ -208,7 +226,7 @@ function installInto(home, { arm, prepared, ctx, config, outDir }) {
   }
   ensureEmptyClaudeRules(configDir);
   // After the rules gate, which refuses the real config directory. --allowedTools stays on the command for both arms.
-  if (!arm.vanilla) log.push(applyTeamMode(configDir));
+  if (!arm.vanilla) { log.push(applyTeamMode(configDir)); log.push(installBenchRules(configDir, prepared.exportDir)); }
   if (outDir) fs.writeFileSync(path.join(outDir, 'install.log'), `${log.join('\n')}\n`);
   return meta;
 }
@@ -389,7 +407,7 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
       ? { mode: 'profile (keys read with aws configure export-credentials and exported to each run; no profile variables)', profile: ctx.awsCreds.profile, refresh: 'read again before a run when the cached keys carry no expiry or expire within 15 minutes', variableNames: CREDENTIAL_VARS, notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) }
       : { mode: 'environment (exported keys; no profile variables)', variableNames: credentialNames(), notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) },
     envVarNames: konductor.keys,
-    configDir: '<run>/home/.claude with an empty rules/empty.md', hooks: 'the SessionStart hook of the konductor install fires under -p (empty output in auto orchestration mode)',
+    configDir: '<run>/home/.claude with an empty rules/empty.md, plus the tree\'s .bench-claude-rules/*.md for a konductor arm that carries them (the list arm)', hooks: 'the SessionStart hook of the konductor install fires under -p (empty output in auto orchestration mode)',
     builtins: { agents: BUILTIN_AGENTS, note: 'Claude Code starts built-in agents and skills even with an empty config directory, so the vanilla arm is not empty' },
     expectedInstalledAgents: EXPECTED_AGENTS,
     sourceCommits: Object.fromEntries(arms.filter((a) => !a.vanilla).map((a) => [a.id, a.commitSha ?? a.contentHash ?? null])),

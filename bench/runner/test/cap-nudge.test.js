@@ -311,6 +311,11 @@ test('design A, the list arm: every skill name once, the pointer to the trigger 
     assert.ok(Buffer.byteLength(a) <= nudge.LIST_MAX_BYTES);
     assert.equal(v.meta.ops[0].id, 'hook:list');
     assert.equal(v.meta.ops[0].outputBytes, Buffer.byteLength(a));
+    // The same text as a Claude Code rules file in the tree, so a cc- arm of this tree reads what the Kiro hook prints.
+    const rules = path.join(v.dir, nudge.CLAUDE_RULES_REL, nudge.CLAUDE_RULES_FILE);
+    assert.equal(fs.readFileSync(rules, 'utf8'), a, 'the rules file holds the hook output byte for byte');
+    assert.deepEqual(v.meta.ops[0].claudeRules, { file: path.join(nudge.CLAUDE_RULES_REL, nudge.CLAUDE_RULES_FILE), bytes: Buffer.byteLength(a), sha256: crypto.createHash('sha256').update(a).digest('hex') });
+    assert.equal(fs.existsSync(path.join(s.build('filler').dir, nudge.CLAUDE_RULES_REL)), false, 'the filler tree carries no rules file');
   } finally { s.done(); }
 });
 

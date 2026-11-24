@@ -59,6 +59,36 @@ test('the vanilla arm gets neither: its config directory holds only the empty ru
   }
 });
 
+// The list-hook arm's tree carries the Kiro hook's text as a Claude Code rules file (cap/nudge.js opHook 'list');
+// the install copies it into the run HOME's user-level rules, which Claude Code loads at session start
+// (https://code.claude.com/docs/en/memory, "User-level rules"). Other konductor arms get the empty file only.
+test('a konductor tree with a bench rules file gets it in the run HOME rules, byte for byte; trees without one do not', () => {
+  const root = tmp();
+  try {
+    const text = 'Your skills (load one with get_skill):\nrisk-management, decision-writing\nCheck this list and load a matching skill before you start; say "no skill fits" if none does.\n';
+    const exportDir = path.join(root, 'tree');
+    write(path.join(exportDir, '.bench-claude-rules', 'skill-list.md'), text);
+    const home = path.join(root, 'home'); const out = path.join(root, 'out');
+    fs.mkdirSync(out, { recursive: true });
+    cc.installInto(home, { arm: { vanilla: false, agent: 'konductor' }, prepared: { exportDir }, ctx, config: ctx.config, outDir: out });
+    const rules = path.join(home, '.claude', 'rules');
+    assert.deepEqual(fs.readdirSync(rules).sort(), ['empty.md', 'skill-list.md']);
+    assert.equal(fs.readFileSync(path.join(rules, 'skill-list.md'), 'utf8'), text);
+    assert.match(fs.readFileSync(path.join(out, 'install.log'), 'utf8'), new RegExp(`rules: skill-list.md \\(${Buffer.byteLength(text)} bytes\\)`));
+
+    const plain = path.join(root, 'plain-tree'); fs.mkdirSync(plain, { recursive: true });
+    const home2 = path.join(root, 'home2'); const out2 = path.join(root, 'out2'); fs.mkdirSync(out2, { recursive: true });
+    cc.installInto(home2, { arm: { vanilla: false, agent: 'konductor' }, prepared: { exportDir: plain }, ctx, config: ctx.config, outDir: out2 });
+    assert.deepEqual(fs.readdirSync(path.join(home2, '.claude', 'rules')), ['empty.md']);
+    assert.match(fs.readFileSync(path.join(out2, 'install.log'), 'utf8'), /rules: empty.md only/);
+    const home3 = path.join(root, 'home3'); const out3 = path.join(root, 'out3'); fs.mkdirSync(out3, { recursive: true });
+    cc.installInto(home3, { arm: { vanilla: true }, prepared: { exportDir }, ctx, config: ctx.config, outDir: out3 });
+    assert.deepEqual(fs.readdirSync(path.join(home3, '.claude', 'rules')), ['empty.md'], 'the vanilla arm never reads a tree');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('the command and environment of both arms are unchanged by team mode', () => {
   const home = '/var/tmp/x/home';
   const c = { claude: { bin: '/b/claude', supportsHookEvents: false }, runBudgetUsd: 1 };

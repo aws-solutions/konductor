@@ -55,19 +55,23 @@ test('kit standard: helper cc-plan mirrors the plan under the cc- prefix and pri
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccplan-'));
   try {
     // expected is in Kiro credits over the four Kiro arms (ratio sum 5.35): 53.5 is 10 plain credits, 10.7 is 2
-    const plan = { konductorSha: 'kon-sha', noskillsArm: 'konductor-noskills=dir:/var/tmp/x/tree', run: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], batches: { t1: { tasks: ['a', 'b'], expected: 53.5 }, t9: { tasks: ['c'], expected: 10.7 } } };
+    const plan = { konductorSha: 'kon-sha', noskillsArm: 'konductor-noskills=dir:/var/tmp/x/tree', listArm: 'konductor-list=dir:/var/tmp/x/list', run: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], batches: { t1: { tasks: ['a', 'b'], expected: 53.5 }, t9: { tasks: ['c'], expected: 10.7 } } };
     const file = path.join(dir, 'plan.json');
     fs.writeFileSync(file, JSON.stringify(plan));
     const r = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'cc-plan', '.', file], { cwd: repo, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     const c = JSON.parse(r.stdout);
-    assert.deepEqual(c.arms, ['cc-vanilla', 'cc-konductor=kon-sha', 'cc-konductor-noskills=dir:/var/tmp/x/tree']);
-    assert.deepEqual(c.armIds, ['cc-vanilla', 'cc-konductor', 'cc-konductor-noskills']);
-    // t1: 10 plain credits x 0.071 USD x (1 + 1.59 + 1.3) = 2.76
-    assert.equal(c.batches.t1.expectedUsd, 2.76);
-    assert.equal(c.batches.t9.expectedUsd, 0.55);
-    assert.equal(c.expectedUsdPerStage, 3.31);
-    assert.equal(c.runsPerStage, 9);
+    assert.deepEqual(c.arms, ['cc-vanilla', 'cc-konductor=kon-sha', 'cc-konductor-noskills=dir:/var/tmp/x/tree', 'cc-konductor-list=dir:/var/tmp/x/list']);
+    assert.deepEqual(c.armIds, ['cc-vanilla', 'cc-konductor', 'cc-konductor-noskills', 'cc-konductor-list']);
+    // t1: 10 plain credits x 0.071 USD x (1 + 1.59 + 1.3 + 1.7) = 3.97
+    assert.equal(c.batches.t1.expectedUsd, 3.97);
+    assert.equal(c.batches.t9.expectedUsd, 0.79);
+    assert.equal(c.expectedUsdPerStage, 4.76);
+    assert.equal(c.runsPerStage, 12);
+    // a plan frozen before the list arm keeps three cc- arms
+    fs.writeFileSync(file, JSON.stringify({ ...plan, listArm: undefined }));
+    const r3 = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'cc-plan', '.', file], { cwd: repo, encoding: 'utf8' });
+    assert.equal(JSON.parse(r3.stdout).armIds.length, 3);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
