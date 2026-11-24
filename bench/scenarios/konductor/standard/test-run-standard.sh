@@ -49,7 +49,7 @@ if (cmd === 'spent') {
       for (const l of fs.readFileSync(p, 'utf8').split('\n').filter(Boolean)) { const j = JSON.parse(l); credits += j.credits; if (j.unknown) unknown++; } } };
   walk(rest[0]); console.log(JSON.stringify({ credits, unknown }));
 } else if (cmd === 'plan') console.log(JSON.stringify({ level: 'standard', listHash: 'lh', levelIds: ['t1-a', 't9-b', 't1-x'], run: [{ id: 't1-a' }, { id: 't9-b' }],
-  skipped: [{ id: 't1-x', why: 'no recheck at v1', needs: 'a recheck' }], batches: { t1: { tasks: ['t1-a'], runLimit: 23 }, t9: { tasks: ['t9-b'], runLimit: 15 } }, expectedPerStage: 120 }));
+  skipped: [{ id: 't1-x', why: 'no recheck at v1', needs: 'a recheck' }], batches: { t1: { tasks: ['t1-a'], runLimit: 23 }, t9: { tasks: ['t9-b'], runLimit: 15 } }, expectedPerStage: Number(process.env.STUB_EXPECTED || 120) }));
 else if (cmd === 'stage') { console.log('stub stage'); process.exitCode = Number(process.env.STUB_STAGE_RC || 0); }
 else if (cmd === 'summary') fs.writeFileSync(rest[0], '| stub summary |\n');
 JS
@@ -77,15 +77,19 @@ grep -q '^run .*--prepare-only' "$T/calls" && [ "$(grep '^run ' "$T/calls" | gre
 grep -q -- "--arms vanilla,konductor=$SHA,konductor-noskills=dir:$T/variants/v1/tree,konductor-list=dir:$T/variants/v2/tree " "$T/calls" && ok "four arms passed" || bad "arms: $(grep '^run' "$T/calls")"
 [ ! -e "$T/A/plan.json" ] && [ -s "$T/A/prepare/plan-preview.json" ] && [ ! -e "$T/A/runs" ] && [ ! -e "$T/A/kit" ] && ok "preview plan only; no frozen plan, kit or runs" || bad "prepare-only left: $(ls "$T/A")"
 grep -q 't1-x: no recheck at v1' "$T/log" && ok "skipped tasks listed with their reason" || bad "no skipped list"
+# A2. the default stage cap is 1600 and the 2026-11-24 preview (1519 real credits a stage) fits under it
+: > "$T/calls"; STUB_EXPECTED=1519 run A2 --prepare-only; rc=$?
+grep -q 'expected real credits per stage: 1519; cap 1600 per stage' "$T/log" && grep -q -- '^run .*--budget-credits 1600 .*--prepare-only' "$T/calls" \
+  && ok "default stage cap 1600; a 1519-credit preview fits" || bad "default cap: rc $rc; $(grep 'expected real' "$T/log")"
 
 # B. paid path, 100 credits per batch: both stages, budgets off the stage cap, done markers, kit frozen, tables copied
 : > "$T/calls"; run B --foreground; rc=$?
 [ "$rc" = 0 ] && grep -q 'all units finished' "$T/log" && ok "paid path finishes both stages" || { bad "paid exit $rc"; tail -n 20 "$T/log"; }
 grep -q "kit $T/B/kit" "$T/log" && [ -f "$T/B/kit/run-standard.sh" ] && ok "paid start freezes the kit and runs the copy" || bad "kit copy: $(grep 'run-standard.sh' "$T/log")"
 [ "$(runs)" = 4 ] && ok "4 bench runs (2 batches x 2 stages)" || bad "bench runs: $(runs)"
-nth_run 1 | grep -q -- '--replicate-offset 0 --budget-credits 1075 --run-credit-limit 23' && ok "stage 1 first batch: budget 1100 - 0 - 25" || bad "first run: $(nth_run 1)"
-nth_run 2 | grep -q -- '--budget-credits 975 --run-credit-limit 15' && ok "second batch budget takes the stage's spend off" || bad "second run: $(nth_run 2)"
-nth_run 3 | grep -q -- '--replicate-offset 1 --budget-credits 1075' && ok "stage 2 has its own cap" || bad "third run: $(nth_run 3)"
+nth_run 1 | grep -q -- '--replicate-offset 0 --budget-credits 1575 --run-credit-limit 23' && ok "stage 1 first batch: budget 1600 - 0 - 25 (the default cap)" || bad "first run: $(nth_run 1)"
+nth_run 2 | grep -q -- '--budget-credits 1475 --run-credit-limit 15' && ok "second batch budget takes the stage's spend off" || bad "second run: $(nth_run 2)"
+nth_run 3 | grep -q -- '--replicate-offset 1 --budget-credits 1575' && ok "stage 2 has its own cap" || bad "third run: $(nth_run 3)"
 [ "$(ls "$T"/B/runs/r*/*.done | wc -l)" = 4 ] && ok "4 done markers" || bad "done markers: $(ls "$T"/B/runs/r*/)"
 [ -s "$T/B/plan.json" ] && [ -s "$T/reports-B/plan.json" ] && [ -s "$T/reports-B/code-gap.md" ] && ok "plan frozen; tables and plan copied to REPORTS" || bad "reports: $(ls "$T/reports-B")"
 grep -q '^cap variant' "$T/calls" && ! grep -q '^cap variant.*--verify' "$T/calls" && ok "paid path rebuilds noskills without a trial install" || bad "paid cap variant: $(grep '^cap' "$T/calls")"
@@ -96,11 +100,11 @@ grep -q '^cap variant' "$T/calls" && ! grep -q '^cap variant.*--verify' "$T/call
 
 # C2. STAGES=3: a third replicate with its own cap (the full design of the run plan)
 : > "$T/calls"; STAGES=3 run C2 --foreground; rc=$?
-[ "$rc" = 0 ] && [ "$(runs)" = 6 ] && nth_run 5 | grep -q -- '--replicate-offset 2 --budget-credits 1075' && ok "STAGES=3 runs a third stage with its own cap" || bad "STAGES=3: rc $rc, runs $(runs); $(nth_run 5)"
+[ "$rc" = 0 ] && [ "$(runs)" = 6 ] && nth_run 5 | grep -q -- '--replicate-offset 2 --budget-credits 1575' && ok "STAGES=3 runs a third stage with its own cap" || bad "STAGES=3: rc $rc, runs $(runs); $(nth_run 5)"
 
-# D. stage cap: 1070 credits in the first batch leaves 5 < run limit 15, so t9 and stage 2 never start
-: > "$T/calls"; STUB_SPEND=1070 run D --foreground; rc=$?
-[ "$rc" = 1 ] && [ "$(runs)" = 1 ] && grep -q 'stage cap reached before r1 t9: 1070 real credits' "$T/log" && ok "stage cap stops before a batch it cannot cover" || bad "cap: rc $rc, runs $(runs); $(grep -E 'STOP|cap' "$T/log")"
+# D. stage cap: 1570 credits in the first batch leaves 5 < run limit 15, so t9 and stage 2 never start
+: > "$T/calls"; STUB_SPEND=1570 run D --foreground; rc=$?
+[ "$rc" = 1 ] && [ "$(runs)" = 1 ] && grep -q 'stage cap reached before r1 t9: 1570 real credits' "$T/log" && ok "stage cap stops before a batch it cannot cover" || bad "cap: rc $rc, runs $(runs); $(grep -E 'STOP|cap' "$T/log")"
 
 # E. a failed batch resumes with --resume on the rerun
 : > "$T/calls"; echo 4 > "$T/rc"; STUB_RC_FILE="$T/rc" run E --foreground; rc=$?

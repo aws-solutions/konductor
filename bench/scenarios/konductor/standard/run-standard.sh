@@ -15,7 +15,7 @@
 # Arms: vanilla, konductor=<sha>, konductor-noskills=dir:<cap variant --preset noskills of the same sha> and
 # konductor-list=dir:<cap variant --hook list of the same sha>: konductor plus the prompt hook that lists every skill name
 # (the LITE hook study's list arm, bench/cap/nudge.js; planned cost 1.6 x plain, measured 1.43).
-# Stage A is replicate 1 of every batch, stage B replicate 2, each capped at STAGE_CAP real credits (1100). Before each
+# Stage A is replicate 1 of every batch, stage B replicate 2, each capped at STAGE_CAP real credits (STAGE_CAP_DEFAULT, 1600). Before each
 # batch: the credit ledger must have no entry of unknown cost, and what the stage cap leaves minus MARGIN must cover the
 # batch's per-run limit (a one-shot run cannot be stopped mid-run, D-67), else the run stops cleanly. That rest is the
 # batch's --budget-credits, so bench's own guard checks it before every run. Stage B starts only on a clean stage A
@@ -50,7 +50,8 @@ HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 LITE_LOCK=${LITE_LOCK:-/var/tmp/konductor-lite.lock}
 OWN_LOCK=${OWN_LOCK:-/var/tmp/konductor-standard.lock}
 WAIT_MAX=${WAIT_MAX:-3600}; WAIT_STEP=${WAIT_STEP:-60}
-STAGE_CAP=${STAGE_CAP:-1100}; MARGIN=25; STAGES=${STAGES:-2}
+STAGE_CAP_DEFAULT=1600 # real credits a stage (owner, 2026-11-24: the preview expects 1519 a stage)
+STAGE_CAP=${STAGE_CAP:-$STAGE_CAP_DEFAULT}; MARGIN=25; STAGES=${STAGES:-2}
 SEED=20261121
 PLAN=$ROOT/plan.json
 STOPPED=""

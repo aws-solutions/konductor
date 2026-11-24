@@ -75,6 +75,22 @@ test('kit standard: helper cc-plan mirrors the plan under the cc- prefix and pri
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('kit standard: the default STANDARD stage cap is one named constant, 1600, and the repo plan fits under it', () => {
+  const src = fs.readFileSync(path.join(KIT, 'run-standard.sh'), 'utf8');
+  const m = src.match(/^STAGE_CAP_DEFAULT=(\d+)(?:\s+#.*)?$/m);
+  assert.ok(m, 'run-standard.sh sets STAGE_CAP_DEFAULT=<credits> on its own line');
+  const cap = Number(m[1]);
+  assert.equal(cap, 1600);
+  assert.match(src, /^STAGE_CAP=\$\{STAGE_CAP:-\$STAGE_CAP_DEFAULT\}/m);
+  assert.doesNotMatch(src, /STAGE_CAP:-\d/, 'no second literal default');
+  // 1519: the 2026-11-24 prepare-only preview, priced from the LITE pilot costs (owner host data, not in the repo)
+  assert.ok(1519 <= cap);
+  const repo = path.join(__dirname, '..', '..', '..');
+  const r = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'plan', '.'], { cwd: repo, encoding: 'utf8', maxBuffer: 1 << 26 });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(JSON.parse(r.stdout).expectedPerStage <= cap, 'the repo plan preview fits under the default cap');
+});
+
 for (const t of TESTS) {
   test(`kit standard: ${t} (paid path on stubs)`, () => {
     const r = spawnSync('bash', [path.join(KIT, t)], { encoding: 'utf8', timeout: 240000, env: { ...process.env, TMPDIR: '/tmp' } });
