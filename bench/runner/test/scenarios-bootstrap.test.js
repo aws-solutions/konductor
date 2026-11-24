@@ -72,6 +72,12 @@ test('the protocol lists the six words in the rule order, and the lock carries t
   assert.match(PROTOCOL.verdictWords['loses by the margin'], /U under -5/);
 });
 
+test('D-122 (owner yes, 2026-11-24): the eight single-family batches are in the protocol the lock copies', () => {
+  assert.deepEqual(PROTOCOL.singleFamilyBatches.batches, ['t1', 't4', 't5', 't7', 't8', 't10', 't11', 't12']);
+  assert.match(PROTOCOL.singleFamilyBatches.decided, /2026-11-24/);
+  assert.match(PROTOCOL.singleFamilyBatches.rule, /shown apart/);
+});
+
 test('the interval covers the run-level noise too: runs that vary widen it, with the same task means', () => {
   const still = Array.from({ length: 4 }, (_, i) => ({ id: `s${i}`, head: [70, 70, 70], base: [60, 60, 60] }));
   const noisy = Array.from({ length: 4 }, (_, i) => ({ id: `s${i}`, head: [50, 70, 90], base: [40, 60, 80] }));
