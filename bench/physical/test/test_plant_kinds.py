@@ -19,9 +19,9 @@ KIND = PlantKind(name="toy", sim_version="toy/1", tools=CONVEYOR_TOOLS, approvab
 
 
 class KindFiles(unittest.TestCase):
-    def test_the_two_built_ins_come_from_two_files_in_the_old_order(self):
-        self.assertEqual([os.path.basename(f) for f in KIND_FILES], ["conveyor.py", "arm.py"])
-        self.assertEqual(list(KINDS), ["conveyor-sim", "arm-sim"])
+    def test_the_built_ins_come_from_their_kind_files_in_order(self):
+        self.assertEqual([os.path.basename(f) for f in KIND_FILES], ["conveyor.py", "arm.py", "arm_confined_space.py"])
+        self.assertEqual(list(KINDS), ["conveyor-sim", "arm-sim", "arm-confined-space"])
         self.assertIs(KINDS["conveyor-sim"], CONVEYOR)
         self.assertIs(KINDS["arm-sim"], ARM)
         self.assertIs(kinds.PlantKind, PlantKind)
@@ -77,7 +77,7 @@ class LoadKinds(unittest.TestCase):
 
     def test_a_new_kind_file_loads_by_path_with_no_core_edit(self):
         got = load_kinds(list(KIND_FILES) + [self.write("toy.py", TOY)])
-        self.assertEqual(list(got), ["conveyor-sim", "arm-sim", "toy-sim"])
+        self.assertEqual(list(got), ["conveyor-sim", "arm-sim", "arm-confined-space", "toy-sim"])
         self.assertEqual(got["toy-sim"].name, "toy")
         self.assertEqual(got["conveyor-sim"].sim_version, CONVEYOR.sim_version)
 

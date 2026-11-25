@@ -317,7 +317,8 @@
         "kind": {
           "enum": [
             "conveyor-sim",
-            "arm-sim"
+            "arm-sim",
+            "arm-confined-space"
           ]
         },
         "envVersion": {
@@ -362,9 +363,67 @@
                   "R2",
                   "R3",
                   "R4",
-                  "R5"
+                  "R5",
+                  "CS1",
+                  "CS2",
+                  "CS3",
+                  "CS4",
+                  "CS5",
+                  "CS6"
                 ]
               }
+            }
+          }
+        },
+        "confined": {
+          "type": "object",
+          "required": [
+            "spikeAfterInsideMs",
+            "gasDropout",
+            "inspectMm",
+            "tolMm"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "spikeAfterInsideMs": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "gasDropout": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "required": [
+                "fromCall",
+                "untilCall"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "fromCall": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "untilCall": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "inspectMm": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "integer"
+              }
+            },
+            "tolMm": {
+              "type": "integer",
+              "minimum": 0
             }
           }
         },
