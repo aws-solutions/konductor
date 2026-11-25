@@ -118,6 +118,42 @@ test('sends a value with its spaces, as the server takes it', async ({
     });
 });
 
+test('sends a value with its line breaks, which the API takes', async ({
+  page,
+}) => {
+  const canvas = await openDeclaringParams(page);
+  const started = await catchStart(page);
+
+  // A real browser strips the line breaks of a single-line control, so this
+  // only passes while the box takes several lines.
+  await canvas.page.getByLabel('diff_input').fill('line 1\nline 2');
+
+  await canvas.runButton.click();
+
+  await expect
+    .poll(() => paramsOf(started()))
+    .toEqual({
+      goal: 'Add a greeting to the README',
+      diff_input: 'line 1\nline 2',
+      branch: 'main',
+    });
+});
+
+test('adds a line in a param box on Enter, and starts no run', async ({
+  page,
+}) => {
+  const canvas = await openDeclaringParams(page);
+  const started = await catchStart(page);
+  const box = canvas.page.getByLabel('diff_input');
+  await box.fill('line 1');
+
+  await box.press('Enter');
+  await box.pressSequentially('line 2');
+
+  await expect(box).toHaveValue('line 1\nline 2');
+  expect(started()).toBeUndefined();
+});
+
 test('shows what the server says about a param it refuses', async ({
   page,
 }) => {

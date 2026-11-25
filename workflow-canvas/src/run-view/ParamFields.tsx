@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import FormField from '@cloudscape-design/components/form-field';
-import Input from '@cloudscape-design/components/input';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import Textarea from '@cloudscape-design/components/textarea';
 import type { ParamBox } from './run-params';
 
 const REQUIRED = 'A value is needed to run.';
@@ -10,6 +10,13 @@ const TAKES_DEFAULT =
   'Left empty, the run takes the value the workflow declares.';
 
 const OPTIONAL = 'Optional.';
+
+/**
+ * How tall a param box starts. A param is any string the API takes, a diff
+ * among them, so the box takes several lines without growing with the text:
+ * a box that grew would push the Run button off the screen for a long value.
+ */
+const PARAM_ROWS = 3;
 
 // A box with a default says what an empty one gets, whether the param is
 // required or not. Without a default there is nothing to fall back on, so a
@@ -23,7 +30,12 @@ function constraintOf(box: ParamBox): string {
  * The boxes for the params the workflow declares, under the Goal box, in the
  * order of the file. Each one is labelled with the param's name, so a person
  * reads the same name here and in the file, and starts out with the declared
- * default in it. It adds no live region: the Run button says why it is off.
+ * default in it.
+ *
+ * Each box takes several lines, because a param is any string the API takes
+ * and a single-line control would drop the line breaks of one that has them.
+ * Enter in a box is a line break and starts nothing; the Run button starts
+ * the run. It adds no live region: that button says why it is off.
  */
 export function ParamFields({
   params,
@@ -48,10 +60,11 @@ export function ParamFields({
           constraintText={constraintOf(box)}
           {...(box.problem === undefined ? {} : { errorText: box.problem })}
         >
-          <Input
+          <Textarea
             value={readOnly ? '' : box.value}
             placeholder={readOnly ? 'Not known' : undefined}
             readOnly={readOnly}
+            rows={PARAM_ROWS}
             data-testid={`run-param-${box.name}`}
             onChange={({ detail }) => onParam(box.name, detail.value)}
           />

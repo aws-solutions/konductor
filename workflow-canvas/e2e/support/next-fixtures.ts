@@ -98,7 +98,9 @@ export const DECLARED_PARAMS = {
     description: 'The diff to read.',
     required: true,
   },
-  branch: { type: 'string', default: 'main' },
+  // Required and with a default, so the test that clears it goes through the
+  // shape it is named for: a value the run leaves out and the server fills in.
+  branch: { type: 'string', default: 'main', required: true },
 };
 
 /*

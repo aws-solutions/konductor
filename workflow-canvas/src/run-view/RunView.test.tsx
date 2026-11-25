@@ -181,7 +181,7 @@ function drawn({
 
 const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
 const paramBox = (name: string) =>
-  screen.getByLabelText(name) as HTMLInputElement;
+  screen.getByLabelText(name) as HTMLTextAreaElement;
 const runButton = () => screen.getByRole('button', { name: 'Run' });
 const followAgainButton = () =>
   screen.getByRole('button', { name: 'Follow again' });
@@ -888,6 +888,39 @@ describe('RunView, the params the workflow declares', () => {
       { goal: GOAL_DEFAULT, diff_input: '   ' },
       expect.anything(),
     );
+  });
+
+  // A param is any string the API takes, a diff among them, so the box must
+  // keep the line breaks of a value that has them.
+  it('keeps the line breaks of a value, and sends them as typed', async () => {
+    const { start } = drawn({ declaredParams: [DIFF] });
+
+    await typeParam('diff_input', 'line 1\nline 2');
+
+    expect(paramBox('diff_input').value).toBe('line 1\nline 2');
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT, diff_input: 'line 1\nline 2' },
+      expect.anything(),
+    );
+  });
+
+  it('takes several lines in a box, which Enter adds to', () => {
+    drawn({ declaredParams: [DIFF] });
+
+    expect(paramBox('diff_input').tagName).toBe('TEXTAREA');
+    expect(paramBox('diff_input').rows).toBeGreaterThan(1);
+  });
+
+  it('starts no run on Enter in a param box', async () => {
+    const { start } = drawn({ declaredParams: [DIFF] });
+    await typeParam('diff_input', 'the.diff');
+
+    await act(async () => {
+      fireEvent.keyDown(paramBox('diff_input'), { key: 'Enter' });
+    });
+
+    expect(start).not.toHaveBeenCalled();
   });
 
   it('says what an empty box gets only when the param has a default', () => {
