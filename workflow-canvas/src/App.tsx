@@ -13,7 +13,11 @@ import { isDirty } from './designer/core';
 import { useEditor } from './designer/use-editor';
 import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
-import type { RunMemory, Scheduler } from './execution/core';
+import {
+  reasonSentence,
+  type RunMemory,
+  type Scheduler,
+} from './execution/core';
 import { timerScheduler } from './execution/timer-scheduler';
 import type { SwapRisk } from './launch/swap-guard';
 import type { NextPorts } from './next-ui/next-http';
@@ -223,6 +227,7 @@ export function App({
             content: (
               <RunView
                 controller={nextRunner}
+                reasonSentence={reasonSentence}
                 {...(workflowName === undefined ? {} : { workflowName })}
               />
             ),
@@ -275,7 +280,10 @@ export function App({
                 {reason}
               </Alert>
             ))}
-            <NextRunAnnouncements run={nextRun} />
+            <NextRunAnnouncements
+              run={nextRun}
+              reasonSentence={reasonSentence}
+            />
             <ModePanels views={views} active={view} />
           </ContentLayout>
         }

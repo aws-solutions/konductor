@@ -327,6 +327,9 @@ export function useRunController({
   const lifecycle: RunLifecycle = {
     active: atRisk && !runFinished && !unfollowed,
     status: progress ? progressText(progress) : '',
+    ...(progress?.outcome === 'halted' && progress.blocked?.reason !== undefined
+      ? { reason: progress.blocked.reason }
+      : {}),
     ...(notice ? { error: `${notice.header} ${notice.message}` } : {}),
     ...(follow.status.kind === 'failed' || gone
       ? { error: followMessage(follow) }
