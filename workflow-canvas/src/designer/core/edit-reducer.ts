@@ -161,15 +161,16 @@ function checked(
 // before it. What the server parsed of what was written is the new truth, so
 // the state opens again from it rather than keeping stages that no longer
 // point anywhere. A save of a form edit never reaches this.
+// A raw edit sent the whole file, so the ids of the draft describe the text
+// before it. What the server parsed of what was written is the new truth, so
+// the state opens again from it rather than keeping stages that no longer
+// point anywhere. A save of a form edit never reaches this. Nothing can have
+// been typed since: editing pauses for the whole save.
 function openedAfterRaw(
   state: EditState,
   text: string,
   result: SaveResult,
 ): EditState {
-  // Text typed while the save ran is newer than what was written, so it
-  // stays the raw edit, now over the file the save made. Its own check has
-  // not answered, so the findings stay with the revision that was sent.
-  const newer = newerRawOf(state, text);
   const next = openDocument(
     {
       ...state.saved,
@@ -178,28 +179,11 @@ function openedAfterRaw(
       view: result.view,
       diagnostics: result.diagnostics,
     },
-    newer === undefined ? state.revision : submittedRevision(state),
+    state.revision,
   );
   return next
-    ? {
-        ...next,
-        revision: state.revision,
-        save: { phase: 'saved' },
-        ...(newer === undefined ? {} : { raw: newer }),
-      }
+    ? { ...next, revision: state.revision, save: { phase: 'saved' } }
     : { ...state, save: { phase: 'conflict', problem: NOT_EDITABLE } };
-}
-
-// The raw text the editor holds now, when it was typed after the save was
-// sent and is not what the save wrote.
-function newerRawOf(state: EditState, written: string): string | undefined {
-  const { submitted, raw } = state;
-  if (!submitted || state.revision <= submitted.revision) return undefined;
-  return raw !== undefined && raw !== written ? raw : undefined;
-}
-
-function submittedRevision(state: EditState): number {
-  return state.submitted?.revision ?? state.revision;
 }
 
 // What a save is being asked to write, kept so its answer is applied to that

@@ -176,7 +176,7 @@ export function YamlPane({
           text={text}
           label={`Text of ${file}`}
           describedBy={noteId}
-          disabled={blocked !== undefined}
+          readOnly={blocked !== undefined}
           onChange={onChange}
         />
       ) : (

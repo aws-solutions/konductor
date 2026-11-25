@@ -126,6 +126,7 @@
   outline-offset: -2px;
 }
 
-.wf-code-area:disabled {
+/* Readable and selectable, but not typed into. */
+.wf-code-area:read-only {
   color: var(--wf-code-text-muted);
 }

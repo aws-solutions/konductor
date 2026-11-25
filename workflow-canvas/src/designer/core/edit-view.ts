@@ -24,6 +24,10 @@ export const RAW_EDIT_REASON =
 export const RAW_SAVE_REASON =
   'A text typed over the workflow is being saved. Wait for it to finish before changing the keys of a stage.';
 
+/** The words that say why the text cannot be typed while a save is going on. */
+export const SAVING_REASON =
+  'The workflow is being saved, so typing is paused until the save finishes. The text can still be read and copied.';
+
 /**
  * The text of a raw edit while one is pending, or `undefined` when there is
  * none. It is pending while the state holds it: the reducer drops it as soon
@@ -44,16 +48,22 @@ export function changeBlocker(state: EditState): string | undefined {
   if (!canEdit(state)) return READ_ONLY_REASON;
   if (state.save.phase === 'reloading') return RELOADING_REASON;
   // A raw save reopens the draft from what the server parsed, so a change
-  // made to the stages while it runs would be thrown away by its answer.
+  // made to the stages while it runs would be thrown away by its answer. A
+  // form save keeps the draft, so it takes changes as it always has.
   if (savingRawText(state)) return RAW_SAVE_REASON;
   // The stages of the draft describe the file, not the text typed over it.
   return rawTextOf(state) === undefined ? undefined : RAW_EDIT_REASON;
 }
 
-/** Why the text cannot be typed over now, or `undefined` when it can. */
+/**
+ * Why the text cannot be typed over now, or `undefined` when it can. Typing
+ * pauses for the whole of any save: the answer settles what the file holds,
+ * and a text typed in that window would be judged against the wrong one.
+ */
 export function textBlocker(state: EditState): string | undefined {
   if (!canEdit(state)) return READ_ONLY_REASON;
-  return state.save.phase === 'reloading' ? RELOADING_REASON : undefined;
+  if (state.save.phase === 'reloading') return RELOADING_REASON;
+  return state.save.phase === 'saving' ? SAVING_REASON : undefined;
 }
 
 // Whether the stages or the prompts of the draft differ from the file.

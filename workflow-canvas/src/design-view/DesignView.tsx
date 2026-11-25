@@ -361,12 +361,21 @@ export function DesignView({
     else history.redo();
   };
 
-  const marked = pickedPlace
-    ? markedStageOf(checked?.view, pickedPlace, {
-        stale: ofNow === undefined,
-        sources: state.draft.stages.map((one) => sources.of(one.id)),
-      })
-    : undefined;
+  // Why the text cannot be typed into now, if it cannot: read-only, a load,
+  // or a save on its way to the server.
+  const blocked = textBlocker(state);
+  // The lines of a stage are named only while the drawing and the text agree
+  // on them. A raw edit leaves the draft on the loaded stages while the check
+  // parses whatever was typed, so the stage at a given place in that parse
+  // need not be the one that is picked: a rename, a reorder, a deletion or a
+  // replacement that keeps the count would mark another stage's lines.
+  const marked =
+    pickedPlace && rawTextOf(state) === undefined
+      ? markedStageOf(checked?.view, pickedPlace, {
+          stale: ofNow === undefined,
+          sources: state.draft.stages.map((one) => sources.of(one.id)),
+        })
+      : undefined;
   const showingEarlier = history.text !== text;
 
   return (
@@ -423,14 +432,14 @@ export function DesignView({
             ...(marked ? { stage: marked } : {}),
             // Typing writes the text into the editor and into the history in
             // one event, so a single render carries both and the caret stays
-            // where it was.
+            // where it was. While the box is blocked nothing is taken, so the
+            // history cannot hold a text the editor refused.
             onChange: (next: string) => {
+              if (blocked !== undefined) return;
               editor.setText(next);
               record(next);
             },
-            ...(textBlocker(state) === undefined
-              ? {}
-              : { blocked: textBlocker(state) }),
+            ...(blocked === undefined ? {} : { blocked }),
           }}
           stage={stage}
           agents={agents}

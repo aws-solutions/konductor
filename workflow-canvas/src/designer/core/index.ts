@@ -40,6 +40,7 @@ export {
   promptFieldOf,
   RAW_EDIT_REASON,
   RAW_SAVE_REASON,
+  SAVING_REASON,
   rawTextOf,
   READ_ONLY_REASON,
   saveBlocker,

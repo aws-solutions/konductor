@@ -8,12 +8,16 @@ import './code-pane.css';
  * text, never markup, so nothing in the file can be rendered. It has no line
  * numbers: a text being typed has no stable lines to number, and the browser
  * owns the caret, the selection and the scrolling.
+ *
+ * With `readOnly` the text stays reachable: the box keeps its place in the
+ * tab order, so it can be focused, read, selected and copied, and only
+ * typing is refused. `describedBy` is where the reason is said.
  */
 export function CodeText({
   text,
   label,
   describedBy,
-  disabled = false,
+  readOnly = false,
   onChange,
 }: {
   text: string;
@@ -21,8 +25,8 @@ export function CodeText({
   label: string;
   /** The id of the element that says more about the box. */
   describedBy?: string;
-  /** Shown but not editable, as while the file is being loaded again. */
-  disabled?: boolean;
+  /** Shown and readable but not editable, as while a save is going on. */
+  readOnly?: boolean;
   onChange: (text: string) => void;
 }) {
   const id = useId();
@@ -35,7 +39,7 @@ export function CodeText({
         id={id}
         className="wf-code-area"
         value={text}
-        disabled={disabled}
+        readOnly={readOnly}
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
