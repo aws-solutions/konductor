@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { packSuite, render, SUITE_FILE } = require('../../scenarios/pack-suite.js');
 const { loadTasks, loadSuite, suiteExtraDirs, SUITE_NAMES } = require('../lib/tasks.js');
-const { planLevel } = require('../../scenarios/konductor/levels.js');
+const { planLevel, selectLevel, LEVELS } = require('../../scenarios/konductor/levels.js');
 
 test('bench/suites/pack.json is the generated file (run node bench/scenarios/pack-suite.js after adding a task)', () => {
   assert.equal(fs.readFileSync(SUITE_FILE, 'utf8'), render(packSuite()));
@@ -25,6 +25,27 @@ test('the pack suite loads every task and --level lite picks from it', () => {
   assert.deepEqual(suite.taskIds.filter((id) => !all.has(id)), []);
   const plan = planLevel({ level: 'lite' }, { candidates: suite.taskIds.map((id) => all.get(id)), extraDirs });
   assert.ok(plan.sel.ids.length > 0 && plan.sel.ids.every((id) => suite.taskIds.includes(id)));
+});
+
+test('pack.json levels list every task once, with exactly the levels levels.js picks for a pack run (B-009)', () => {
+  const extraDirs = suiteExtraDirs('pack');
+  const all = loadTasks(undefined, { extraDirs });
+  const suite = loadSuite('pack', all);
+  const tasks = suite.taskIds.map((id) => all.get(id));
+  const file = JSON.parse(fs.readFileSync(SUITE_FILE, 'utf8'));
+  assert.deepEqual(Object.keys(file.levels).sort(), [...suite.taskIds].sort());
+  for (const level of LEVELS) {
+    const sel = selectLevel({ level, tasks });
+    assert.deepEqual(Object.keys(file.levels).filter((id) => file.levels[id].includes(level)).sort(), sel.ids, level);
+    assert.equal(file.listHashes[level], sel.listHash, level);
+  }
+});
+
+test('render keeps one task per line in levels, and leaves other arrays expanded', () => {
+  const text = render({ tasks: ['a', 'b'], levels: { a: ['lite', 'standard', 'full'], b: ['full'] } });
+  assert.ok(text.includes('    "a": ["lite","standard","full"],\n') && text.includes('    "b": ["full"]\n'));
+  assert.ok(text.includes('"tasks": [\n    "a",\n    "b"\n  ]'));
+  assert.deepEqual(JSON.parse(text).levels.a, ['lite', 'standard', 'full']);
 });
 
 test('scenarios lint on the pack fails on a stale pack.json with the command to run, and passes on a fresh one (D-164)', () => {
