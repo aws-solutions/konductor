@@ -215,6 +215,20 @@ describe('App', () => {
     expect(within(panel).getByLabelText('Goal')).toBeTruthy();
   });
 
+  it('says a run uses the saved workflow when Design has unsaved changes', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
+    await screen.findByTestId('node-stage-draft');
+    fireEvent.change(screen.getByTestId('yaml-text'), {
+      target: { value: 'name: hello\n' },
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+
+    expect(screen.getByTestId('unsaved-note').textContent).toContain(
+      'A run uses the saved workflow',
+    );
+  });
+
   it('keeps the loaded workflow when the views are switched back and forth', async () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
     await screen.findByTestId('node-stage-draft');
