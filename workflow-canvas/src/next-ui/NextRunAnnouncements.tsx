@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import '../execution/announcements.css';
+import type { ReasonSentence } from '../execution/core/stage-detail';
 import type { RunLifecycle } from '../run-view/run-start';
 
 /**
@@ -7,7 +8,17 @@ import type { RunLifecycle } from '../run-view/run-start';
  * outside the views, so a change is announced while the Design view is open
  * too.
  */
-export function NextRunAnnouncements({ run }: { run: RunLifecycle }) {
+export function NextRunAnnouncements({
+  run,
+  reasonSentence,
+}: {
+  run: RunLifecycle;
+  reasonSentence: ReasonSentence;
+}) {
+  const status =
+    run.reason === undefined
+      ? run.status
+      : `${run.status} ${reasonSentence(run.reason) ?? run.reason}`;
   return (
     <>
       <div
@@ -15,7 +26,7 @@ export function NextRunAnnouncements({ run }: { run: RunLifecycle }) {
         className="wf-visually-hidden"
         data-testid="run-live-status"
       >
-        {run.status}
+        {status}
       </div>
       <div
         role="alert"

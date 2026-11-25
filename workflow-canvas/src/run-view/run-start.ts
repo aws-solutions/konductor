@@ -236,6 +236,8 @@ export interface RunLifecycle {
   readonly active: boolean;
   /** Where the run is, as a sentence, or empty before there is one. */
   readonly status: string;
+  /** The reason code of the blocked stage after a halted run. */
+  readonly reason?: string;
   /** Why the run could not be started or followed, if that happened. */
   readonly error?: string;
 }

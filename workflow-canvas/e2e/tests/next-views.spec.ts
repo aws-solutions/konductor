@@ -5,8 +5,10 @@ import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/fixtures';
 import {
   answerRunWith,
+  blocked,
   passed,
   refuseRunsWith,
+  runFinished,
   runPassed,
   runRow,
   running,
@@ -182,6 +184,20 @@ test('follows a run to Passed and lists it among the past runs', async ({
     'Run passed.',
   );
   await expect(canvas.page.getByTestId('run-history-row')).toHaveCount(1);
+});
+
+test('shows and announces why a stage halted the run', async ({ canvas }) => {
+  await answerRunWith(canvas.page, [
+    blocked(1, 'draft', 'RESULT_MISSING'),
+    runFinished(2, 'halted'),
+  ]);
+  await canvas.selectTab('Run');
+
+  await canvas.runButton.click();
+
+  const sentence = 'The final message of the session has no result line.';
+  await expect(canvas.page.getByText(sentence, { exact: true })).toBeVisible();
+  await expect(canvas.runLiveStatus).toContainText(sentence);
 });
 
 test('offers another run once the run has passed, with the goal to edit', async ({
