@@ -28,11 +28,13 @@ around both are in this folder.
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `canvas/` draws the graph. The views the page
   opens with are `design-view/` (editing) and `run-view/` with `run-client/`
-  (the run), which follow a run through its events: a long poll the server may
-  hold open for 20 seconds, a failed call tried again after a second and
-  doubling to 16, and the follower giving up after eight failures in a row or
-  at once on a 401. The views behind `?ui=classic` are `designer/` and
-  `execution/`, and `execution/core/` reads a run once a second for them: a
+  (the run). They follow a run through its events with a long poll the server
+  may hold open for 20 seconds. After a network failure or a 408, 429 or 5xx
+  response, the follower retries the call after a second, doubling the wait to
+  16 seconds, and gives up after eight failures in a row. A 401 ends the
+  following at once. Any other 4xx or a malformed successful reply also ends
+  it. The views behind `?ui=classic` are `designer/` and `execution/`, and
+  `execution/core/` reads a run once a second for them: a
   read that fails with no answer, a server error, 408 or 429 is tried
   again, up to three in a row; any other failure ends the following. A start
   that finds a run already active follows that run. Every run call takes a
@@ -492,11 +494,12 @@ keeps.
   stage, selects the one before it (or the next, for the first) and moves
   focus to its name. A workflow keeps at least one stage, so it is off for the
   last.
-- Choosing a stage by its node (click, or Enter or Space) selects it and moves
-  focus to its name. Enter or Space on the stage that is already selected also
-  moves focus to its name; a click on it changes nothing. Escape on a node
-  leaves focus on it. In the classic Designer, a polite live region also says
-  what was added, deleted or selected.
+- Choosing a stage by its node (click, or Enter or Space) selects it. In the
+  Design view, each action opens Properties and moves focus to the first
+  editable control, the name. The same happens when the stage is already
+  selected. Escape on a node leaves focus on it. The classic Designer also
+  moves focus to the name, and a polite live region says what was added,
+  deleted or selected.
 
 Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
@@ -505,18 +508,19 @@ was loaded (`base_hash`), and takes the hash of the answer for the next save.
 The writer (`stage-text.ts`) changes only the bytes of the values it edits, in
 two passes. The first writes `name`, `agent` and whole stages by line. A
 stage whose `name` or `agent` changed keeps every other byte of its item: its
-other keys, such as `prompt` and `prompt_file`, its comments and its layout. A
-deleted stage takes its item and the comments in front of it, and a new stage
-is written after the others, with its dashes where theirs are. Every byte
-outside the block of stages stays as it was, so `format`, `version`, `params`,
-the comments and the line endings are kept. The writer knows which stage of the
-file each stage of the draft was, also after a save, so a rename is an edit of
-that stage and not a new one.
+other keys, such as `prompt` and `prompt_file`, its comments and its layout.
+In the classic Designer, a deleted stage takes its item and the comments in
+front of it. A new stage is written after the others, with its dashes where
+theirs are. Every byte outside the block of stages stays as it was, so
+`format`, `version`, `params`, the comments and the line endings are kept. The
+writer knows which stage of the file each stage of the draft was, also after a
+save, so a rename is an edit of that stage and not a new one.
 
-The second pass writes the prompts. The line writer cannot find where a block
-scalar ends, and a prompt is usually one (`>-` in `hello-plan.yml`), so
-`prompt-spots.ts` finds the range of each stage's `prompt` value with the
-`yaml` parser, and `prompt-text.ts` replaces only those bytes:
+For the classic Designer, the second pass writes prompt edits. The line writer
+cannot find where a block scalar ends, and a prompt is usually one (`>-` in
+`hello-plan.yml`), so `prompt-spots.ts` finds the range of each stage's
+`prompt` value with the `yaml` parser, and `prompt-text.ts` replaces only those
+bytes:
 
 - Text on one line is plain when that is safe. With a `: `, a ` #`, a leading
   indicator, a space at either end or a character that YAML reads as syntax, it
@@ -558,15 +562,15 @@ text:
   value that goes on to the next line, a double-quoted value with an escape
   that JSON does not read), or does not read as the value the server gave, the
   same warning says so.
-- A prompt change that cannot be written in place says why in the same
-  warning: the file mixes line endings or does not read as YAML, the stage has
-  both `prompt` and `prompt_file`, two `prompt` keys, or a prompt that is an
-  alias or has an anchor or a tag, the file uses a `<<` merge key, the stage is
-  in the flow form (`- {name: a}`) and its prompt would be added or removed, or
-  the prompt is the only key on the line of its dash and would be removed. A
-  prompt in the other layouts that stop a `name` or `agent` change (a value on
-  the next line, a block scalar, a flow item) is edited, since the parser gives
-  the range of its value.
+- In the classic Designer, a prompt change that cannot be written in place
+  says why in the same warning: the file mixes line endings or does not read
+  as YAML, the stage has both `prompt` and `prompt_file`, two `prompt` keys, or
+  a prompt that is an alias or has an anchor or a tag, the file uses a `<<`
+  merge key, the stage is in the flow form (`- {name: a}`) and its prompt would
+  be added or removed, or the prompt is the only key on the line of its dash
+  and would be removed. A prompt in the other layouts that stop a `name` or
+  `agent` change (a value on the next line, a block scalar, a flow item) is
+  edited, since the parser gives the range of its value.
 
 A double-quoted value with a YAML escape that JSON cannot read, such as `\x41`
 or `\e`, is refused for an in-place edit, since the page cannot tell its text.
@@ -577,16 +581,17 @@ breaks.
 
 - **Checking.** A moment (400 ms) after the last change, the text is checked
   with `POST /api/validate`. The Design view lists what it finds in one
-  warning above the columns, as `Line N:` and the message. The classic
-  Designer shows each under the field it is about, and all of it in an alert
-  above the graph, with the name of the stage in front. What the last check found stays on show while you type, until the
-  check of the new text answers, so the page does not jump at every key. The
-  server has the last word: Save is off while the check of the current draft
-  has errors, with the reason in a tooltip, and a save that goes out in the
-  pause is checked again by the server. A check that cannot reach the server
-  says nothing; the save checks again and reports it. Only an error stops a
-  save: a warning or a note is shown as a note (a warning or info alert, and
-  the text under the field in the warning style) and Save stays on.
+  warning above the columns, as `Line N:` and the message. An edit clears those
+  line findings until the new check answers. Its check-status line shows when
+  a check cannot reach the server. The classic Designer shows each finding
+  under its field and all findings in an alert above the graph, with the stage
+  name in front. Its last findings stay on show while you type, until the check
+  of the new text answers. An ordinary check failure there says nothing; the
+  save checks again and reports it. In both views, Save is off while the check
+  of the current draft has errors, with the reason in a tooltip, and a save
+  that goes out during the pause is checked again by the server. Only an error
+  stops a save. The Design view lists warnings and notes above the columns; the
+  classic Designer also shows each under its field in the warning style.
 - **A refused save** (422) shows the findings the same way. A refusal with no
   error among its findings shows the sentence of the server as a failure, so
   it is never silent.
@@ -684,15 +689,18 @@ run.
   the next run, the one typed or else the workflow's default.
 - Resume works after a reload: the page keeps the id of the latest run in the
   storage of the browser tab (`sessionStorage`; the id is no secret) and drops
-  it once the run has ended or turns out to be gone. When the page opens again
-  with a session it reads that run's events from the start, so the stages and
-  the console lines the server still holds come back.
-- A failed call is tried again after `RETRY_FIRST_MS`, doubling to
-  `RETRY_MAX_MS`, until `MAX_FAILURES_IN_A_ROW` have failed in a row; then the
-  follower gives up and the alert offers **Follow again**, which reads on from
-  where the reads stopped. A 401 ends the follower at once with its own alert:
-  the server no longer knows the session. A call that brings nothing new waits
-  `MIN_POLL_GAP_MS` before the next one.
+  it once the run has ended, turns out to be gone or the follower gives up.
+  While the id is kept, opening the page again with a session reads that run's
+  events from the start, so the stages and the console lines the server still
+  holds come back. After a follow failure, use **Follow again** before
+  reloading to continue from the last event the page read.
+- After a network failure or a 408, 429 or 5xx response, the follower retries
+  the call after `RETRY_FIRST_MS`, doubling the wait to `RETRY_MAX_MS`, until
+  `MAX_FAILURES_IN_A_ROW` have failed in a row. Then the follower gives up and
+  the alert offers **Follow again**. Any other 4xx or a malformed successful
+  reply ends the follower at once; a 401 has its own alert because the server
+  no longer knows the session. When a call brings nothing new, the next read
+  does not start until at least `MIN_POLL_GAP_MS` after that empty read started.
 - A line above the stages says where the run is ("Running draft. 0 of 2 stages
   passed."), with a bar of the stages that passed or stopped it and the
   elapsed time. A screen reader hears each change from a polite live region
@@ -700,11 +708,11 @@ run.
   is open too; the line itself is not a live region, or the change would be
   heard twice.
 - Each stage of the run is a button in the Tab order. Picking one shows its
-  detail next in the Tab order: where it is, why it stopped the run when it is
-  blocked, with one sentence for each `reason` code the contract lists, and its
-  console lines. The lines are live only, as the server drops them a minute
-  after the run ends, and the page keeps at most `CONSOLE_LINES_PER_RUN` of
-  them.
+  detail next in the Tab order: where it is, its console lines and why it
+  stopped the run when blocked. For a reason code, the mounted view says
+  "The stage stopped the run with the reason CODE." The lines are live only,
+  as the server drops them a minute after the run ends, and the page keeps at
+  most `CONSOLE_LINES_PER_RUN` of them.
 - The past runs come from `GET /api/runs`, newest first, with the state, id,
   start time and goal of each. The list is read again once the run has ended.
   When it cannot be read, a warning says so and the rest of the view goes on
@@ -929,9 +937,9 @@ editing tests, add `--no-deps`, or `functional` runs first as its dependency.
 The stub keeps what is saved until it stops, so the fixture puts the sample
 workflow back before and after each test, and a test that needs the file changed
 by someone else writes it itself (`e2e/support/stub-workflow.ts`, which fails on
-a refused call). The editing tests also cover saves that go wrong: a refusal
-with findings and one with none, a lost session, an answer that is lost or
-cannot be read (the file holds the text, or does not), and a conflict whose
+a refused call). The classic-view editing tests also cover saves that go wrong:
+a refusal with findings and one with none, a lost session, an answer that is
+lost or cannot be read (the file holds the text, or does not), a conflict whose
 draft can be copied, and a graph that grows by added stages and is fitted again.
 They edit the `hello-plan` example of the workflow engine
 (`workflow-engine/examples/hello-plan.yml`, named `hello`, the root of the
