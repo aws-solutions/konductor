@@ -430,3 +430,41 @@ test('run-2x2.sh stage 1: the Kiro cap stops before a batch it cannot cover; Cla
   assert.deepEqual(budgets(cc, '--budget-usd'), [2]);
   assert.ok(cc[0].includes('--aws-profile') && cc[0][cc[0].indexOf('--run-budget-usd') + 1] === '3');
 });
+
+test('every kit script that runs on its own stops on a failed command; lib.sh is sourced, so its callers set the flags (D-270)', () => {
+  const strict = /^set -E?euo pipefail/m;
+  for (const f of SCRIPTS.filter((s) => s !== 'lib.sh')) {
+    assert.match(fs.readFileSync(path.join(KIT, f), 'utf8'), strict, `${f} must set -euo pipefail`);
+  }
+  assert.doesNotMatch(fs.readFileSync(path.join(KIT, 'lib.sh'), 'utf8'), /^set -/m, 'lib.sh is sourced; it must not change its caller\'s flags');
+});
+
+test('prep.sh runs both prepares even when the first fails, and exits non-zero when either fails (D-270)', () => {
+  const R = tmp(); const B = tmp();
+  const calls = path.join(B, 'calls.jsonl');
+  write(path.join(R, 'bench', 'runner', 'bench.js'), [
+    "const fs = require('node:fs');",
+    "const a = process.argv.slice(2);",
+    "fs.appendFileSync(process.env.CALLS, JSON.stringify(a) + '\\n');",
+    "process.exit(a.includes('--claude-bin') ? Number(process.env.CC_CODE || 0) : Number(process.env.KIRO_CODE || 0));",
+  ].join('\n'));
+  const run = (codes) => { fs.rmSync(calls, { force: true }); return sh('prep.sh', [], { R, SHA: 'abc123', B, CALLS: calls, ...codes }); };
+
+  const ok = run({});
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(callsOf(calls).length, 2);
+  assert.match(ok.stdout, /kiro exit 0/); assert.match(ok.stdout, /cc exit 0/);
+
+  const kiroFails = run({ KIRO_CODE: '3' });
+  assert.equal(kiroFails.status, 1);
+  assert.equal(callsOf(calls).length, 2, 'the Claude Code prepare still runs after a failed Kiro prepare');
+  assert.match(kiroFails.stdout, /kiro exit 3/); assert.match(kiroFails.stdout, /cc exit 0/);
+
+  const ccFails = run({ CC_CODE: '4' });
+  assert.equal(ccFails.status, 1);
+  assert.match(ccFails.stdout, /cc exit 4/);
+
+  const noR = sh('prep.sh', [], { SHA: 'abc123', B });
+  assert.notEqual(noR.status, 0);
+  assert.match(noR.stderr, /set R to a konductor worktree/);
+});
