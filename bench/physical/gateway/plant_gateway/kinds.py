@@ -11,7 +11,7 @@ import os
 from .plant_kind import PlantKind
 
 KIND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kind_files")
-KIND_FILES = (os.path.join(KIND_DIR, "conveyor.py"), os.path.join(KIND_DIR, "arm.py"))
+KIND_FILES = (os.path.join(KIND_DIR, "conveyor.py"), os.path.join(KIND_DIR, "arm.py"), os.path.join(KIND_DIR, "arm_confined_space.py"))
 
 
 def _load_file(path):
