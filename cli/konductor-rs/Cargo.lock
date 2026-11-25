@@ -512,7 +512,7 @@ checksum = "3bd1574e617a9a6c1f8f8181bd7e841e1f20e4277607ef28945765188d6284d4"
 
 [[package]]
 name = "konductor"
-version = "1.2.0"
+version = "2.0.0"
 dependencies = [
  "clap",
  "flate2",
@@ -534,7 +534,7 @@ dependencies = [
 
 [[package]]
 name = "konductor-telemetry"
-version = "1.2.0"
+version = "2.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "telemetry-test-sink"
-version = "1.2.0"
+version = "2.0.0"
 dependencies = [
  "rcgen",
  "rustls",

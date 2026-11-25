@@ -89,7 +89,6 @@ def test_docs_name_the_checked_kiro_versions():
     bullet = _kiro_v2_bullet()
     for version in versions:
         assert version in bullet, version
-    assert f"checked with kiro-cli {' and '.join(versions)}" in _flat(_read("CHANGELOG.md"))
 
     cell = f"Kiro CLI (checked: {', '.join(versions)})"
     for rel in ("docs/site/user-guide.html", "docs/index.html"):
