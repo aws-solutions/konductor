@@ -24,6 +24,7 @@ if ! "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; th
 fi
 "$PY" -c 'import cedarpy' 2>/dev/null || { echo "STOP: $PY has no cedarpy; run: .venv/bin/pip install cedarpy==4.12.2 (the venv needs Python 3.10 or newer)" >&2; exit 1; }
 WORK=${TOY_WORK:-$(mktemp -d /tmp/konductor-toy.XXXXXX)}
+mkdir -p "$WORK"   # tee opens $WORK/release.txt before toy-release.js makes the dir (D-263)
 export TMPDIR=/tmp   # Claude Code runs refuse a scratch dir under HOME
 
 step() { printf '\n== %s\n' "$*"; }

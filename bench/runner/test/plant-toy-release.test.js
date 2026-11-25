@@ -23,7 +23,7 @@ const { cmdPlantReport } = require('../../report/plant.js');
 const { policyTestCommand } = require('../lib/plant/policy-test.js');
 const { CC_CONFIG } = require('./plant-run-rig.js');
 
-const { PYTHON, HAS_CEDAR } = require('./arm-python.js');
+const { PYTHON, HAS_CEDAR, arm } = require('./arm-python.js');
 const { mkScratch } = require('./scratch.js');
 const CONTROLS = path.join(__dirname, '..', '..', 'physical', 'controls');
 
@@ -131,7 +131,7 @@ test('the toy walkthrough trial: a Claude Code control on the toy release comple
   } finally { r.cleanup(); }
 });
 
-test('the toy arm release: toy key, arm tasks and probes, and every policy cell passes', { skip: !HAS_CEDAR && 'no Python with cedarpy (set BENCH_ARM_PYTHON)' }, () => {
+test('the toy arm release: toy key, arm tasks and probes, and every policy cell passes', arm, () => {
   const { makeToyArmRelease, ARM_RELEASE_ID, ARM_TASKS } = require('../../physical/toy/toy-release.js');
   const root = mkScratch('toy-arm-');
   try {

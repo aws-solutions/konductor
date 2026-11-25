@@ -55,7 +55,8 @@ Run every command from the repository root.
    node bench/runner/bench.js run --suite cap --extra-tasks DIR --tasks ID --arms vanilla,main --budget-credits 20 --out $OUT --prepare-only
    ```
 
-Claude Code instead of Kiro CLI: use the arms `cc-vanilla,cc-main` with `--budget-usd N --aws-profile NAME`.
+Claude Code instead of Kiro CLI: use the arms `cc-vanilla,cc-main` with `--budget-usd N --aws-profile NAME` and
+`--claude-bin PATH` (or `--claude-tools-dir DIR`, a folder of `<version>/claude`); there is no default claude binary.
 An agent program bench does not run yet needs a plugin: see [Write a plugin](../write-a-plugin.md).
 
 ## Go deeper

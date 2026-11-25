@@ -8,8 +8,9 @@ from strands.models.model import Model
 class ScriptedModel(Model):
     """Answers each model call with the next turn of `turns`, whatever the conversation says.
 
-    A turn is `{"tools": [{"name", "input", "id"?}], "text"?}`: the tool uses to emit (ids default to `fake-<n>`),
-    then optional text. A turn with tools stops with `tool_use`, else with `end_turn`. After the last turn every call
+    A turn is `{"tools": [{"name", "input", "id"?}]}` (the tool uses to emit, ids default to `fake-<n>`) or
+    `{"text"}`. A turn with tools stops with `tool_use`, else with `end_turn`. Give a turn tools or text, not both:
+    the plant runner counts a mixed turn as a stream mismatch and the trial ends `error` (D-264). After the last turn every call
     answers `{"text": "done"}`. Each call reports one input and one output token, so usage is never empty.
     """
 

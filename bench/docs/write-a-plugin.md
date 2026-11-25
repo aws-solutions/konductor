@@ -115,7 +115,8 @@ the template, so a plugin that breaks fails the suite.
 3. Rewrite `harness.js` for your agent's command and stream. `agent.js` is only a stand-in; delete it.
 4. Record one real single-turn run as `test/fixtures/single-turn.jsonl`, and set `test/conformance.js`.
 5. Write the golden with `node bench/kit/plugin/check.js --record bench/plugins/NAME`, and read it once.
-6. Run the kit until it prints `PASS`, then `node bench/runner/bench.js list-arms` to see your arms.
+6. Run the kit until it prints `PASS`, then `node bench/runner/bench.js plugins` to see your plugin (a new
+   plugin's arms do not show in `list-arms` yet).
 
 ## A judge backend
 

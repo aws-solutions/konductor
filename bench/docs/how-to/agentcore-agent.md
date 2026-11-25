@@ -39,10 +39,10 @@ folder, and the sandbox does not cover it.
    node bench/kit/plugin/check.js bench/plugins/agentcore
    ```
 
-5. See your new arms.
+5. See your plugin in the plugins table (a new plugin's arms do not show in `list-arms` yet).
 
    ```bash
-   node bench/runner/bench.js list-arms
+   node bench/runner/bench.js plugins
    ```
 
 ## Missing today

@@ -26,7 +26,9 @@ and step 6 are free. Step 5 spends USD on Amazon Bedrock.
    Keep the file outside the checkout.
 
 4. Run your agent on the toy release with a scripted model (free). This is a control run and never counts.
-   `SCRIPT.json` is `{"turns": [{"tools": [{"name": ..., "input": ...}], "text": ...}]}`: one model turn per call.
+   `SCRIPT.json` is `{"turns": [{"tools": [{"name": ..., "input": ...}]}, ..., {"text": ...}]}`: one model turn per
+   call. A turn has `tools` or `text`, not both, and the last turn is a text turn. A turn with both ends the trial
+   `error` with a stream mismatch.
    The task ids are on the `tasks:` line of `/tmp/toy/release.txt`.
 
    ```bash

@@ -25,7 +25,7 @@ repository root.
 
    ```bash
    node --test bench/runner/test/plant-*.test.js
-   python3 -m unittest discover -s bench/physical/test -p 'test_*.py'
+   .venv/bin/python -m unittest discover -s bench/physical/test -p 'test_*.py'
    ```
 
 4. With your team's signed release `DIR`, check the host and the policy (free).
