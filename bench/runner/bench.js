@@ -83,7 +83,7 @@ const USAGE = `Usage:
        arrive once, at the end of a turn, so a one-shot run always finishes: over X it gets creditLimitExceeded and creditOvershoot, nothing is killed;
        a conversation task is checked after each turn and stops before the next one. --budget-credits is the only bound on total spend: new launches stop
        when charged credits plus the largest run so far would pass it. --run-credit-limit-mode hard (the default) stops the run as above; soft never stops it:
-       a run that ends over X gets creditLimitExceeded, a warning in run.log and creditLimitWarning in result.json, and runs to its natural end)
+       a run that ends over X gets creditLimitExceeded, a warning in runner.log and creditLimitWarning in result.json, and runs to its natural end)
        (--auth-db is the kiro-cli auth database each run's scratch HOME gets a copy of, default the standard location under HOME)
        (--arm-prefix puts the text of FILE (at most 90000 bytes) in front of the task prompt of that arm; run-config records its sha256 and size.
        --arm-agent starts that arm in AGENT instead of its default agent. --arm-config writes keys into that arm's scratch ~/.konductor/config.yml after the

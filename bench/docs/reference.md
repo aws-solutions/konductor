@@ -1259,7 +1259,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   estimate can sit below the real spend, so `--budget-credits` stays the bound on total spend.
   `--run-credit-limit-mode hard|soft` (needs `--run-credit-limit`; any other value is refused) picks what the limit does. `hard`, the
   default, is everything above. `soft` never stops a run: no kill during a turn and the next turn still starts. A run that ends over X
-  gets the flag `creditLimitExceeded`, a `warning <arm> / <task> / #<rep>: ...` line in `run.log`, and in `result.json`
+  gets the flag `creditLimitExceeded`, a `warning <arm> / <task> / #<rep>: ...` line in `runner.log`, and in `result.json`
   `creditLimitMode: "soft"` and `creditLimitWarning`; `run-config.json` records `runCreditLimitMode` only when it is soft.
 - Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
   load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
