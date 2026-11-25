@@ -228,6 +228,7 @@ export function App({
               <RunView
                 controller={nextRunner}
                 reasonSentence={reasonSentence}
+                unsaved={unsaved}
                 {...(workflowName === undefined ? {} : { workflowName })}
               />
             ),
