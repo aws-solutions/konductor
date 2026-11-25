@@ -1,6 +1,6 @@
 # Design: plants as plugins
 
-Date: 2026-11-24. Status: proposal, not built. Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
+Date: 2026-11-24. Status: steps 1 and 2 built (2026-11-25; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
 
 ## The problem
 

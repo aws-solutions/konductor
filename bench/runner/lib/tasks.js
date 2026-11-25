@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { validate, loadSchema } = require('./schema.js');
+const { withPluginTypes } = require('./check-types.js');
 const real = require('./real.js');
 const { v3Errors, targetsOf, catalogOfRepo } = require('./task-v3.js');
 const { scriptedToAutonomy } = require('./autonomy.js');
@@ -101,7 +102,7 @@ function readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots, hiddenRoot, a
  * to bench/fixtures) and `<dir>/hidden/<name>`. A task id may appear only once across all of them.
  */
 function loadTasks(benchDir = BENCH_DIR, { extraDirs = [] } = {}) {
-  const schema = loadSchema('task');
+  const schema = withPluginTypes(loadSchema('task'));
   const tasks = new Map();
   readTaskDir({ dir: path.join(benchDir, 'tasks'), tasks, schema, benchDir, fixtureRoots: [path.join(benchDir, 'fixtures')], hiddenRoot: path.join(benchDir, 'tasks', 'hidden'), allowReal: true });
   for (const raw of extraDirs) {

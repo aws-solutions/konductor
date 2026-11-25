@@ -40,6 +40,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { evalCheck: sharedEvalCheck, CHECK_TYPES, PATTERN_FLAGS, ANSWER_KEY } = require('../runner/lib/check-matcher.js');
+const { defaultCheckTypes, pluginShapeErrors } = require('../runner/lib/check-types.js');
 const { checkPanel, checkJudgeModel } = require('../judge/config.js');
 const { loadCases, checkCases } = require('../runner/lib/negatives.js');
 const reallib = require('../real/lib.js');
@@ -317,7 +318,9 @@ function validateShape(file, t, textOnly = false, rubricMax = 6) {
   }
   (t.checks || []).forEach((c, i) => {
     const at = `${where} checks[${i}]`;
-    if (!CHECK_TYPES.includes(c.type)) return err(at, `type must be one of ${CHECK_TYPES.join('|')}`);
+    const plugin = CHECK_TYPES.includes(c.type) ? null : defaultCheckTypes().plugin(c.type);
+    if (!CHECK_TYPES.includes(c.type) && !plugin) return err(at, `type must be one of ${defaultCheckTypes().ids().join('|')}`);
+    if (plugin) for (const problem of pluginShapeErrors(plugin, c)) err(at, problem);
     if (c.type !== 'cmd' && c.type !== 'tests' && !isStr(c.path)) err(at, 'path is required');
     if (c.weight !== undefined && !(typeof c.weight === 'number' && Number.isFinite(c.weight) && c.weight >= 0)) err(at, 'weight must be a number of 0 or more');
     if (c.kind !== undefined && !['substance', 'format'].includes(c.kind)) err(at, 'kind must be substance or format');
@@ -695,7 +698,7 @@ function proveStub(t, overlay, report) {
     .filter(({ r }) => !r.pass);
   fs.rmSync(stubbed, { recursive: true, force: true });
   if (failed.length === 0) err(t.id, 'the keyword-only stub passes every check');
-  else if (!failed.some(({ c }) => c.type === 'min_matches' || c.type === 'cmd' || c.type === 'labelled_findings')) {
+  else if (!failed.some(({ c }) => ['min_matches', 'cmd', 'labelled_findings'].includes(c.type) || defaultCheckTypes().plugin(c.type)?.meta.realCheck === true)) {
     err(t.id, 'the keyword-only stub fails only keyword checks (no min_matches or cmd check caught it)');
   }
   report.stubs.push(`${t.id} ${failed.length}/${t.checks.length}`);

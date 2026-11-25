@@ -1,6 +1,6 @@
 # Design: check types as plugins
 
-Date: 2026-11-24. Status: proposal, not built. Rows: DEBT D-269, BACKLOG B-004.
+Date: 2026-11-24. Status: steps 1 and 2 built, step 3 mostly built (2026-11-25; see BACKLOG B-004). Rows: DEBT D-269, BACKLOG B-004.
 
 ## The problem
 
