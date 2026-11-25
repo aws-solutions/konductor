@@ -5,13 +5,13 @@
 // bench/plugins (core/registry.js). Leaf module: it loads only static descriptors, so runtime.js and arms.js can use it
 // without a require cycle. harness/index.js checks that each harness module carries the same descriptor.
 const path = require('node:path');
-const { createRegistry } = require('../../../core/registry.js');
+const { createRegistry, pluginPathRoots } = require('../../../core/registry.js');
 
 const PLUGINS_DIR = path.resolve(__dirname, '..', '..', '..', 'plugins');
 
 const REGISTRY = createRegistry({
   builtins: [],
-  pluginRoots: [PLUGINS_DIR],
+  pluginRoots: [PLUGINS_DIR, ...pluginPathRoots()],
   // The display order from before the moves to bench/plugins (FW-18): list-arms and RUNTIMES stay the same.
   order: ['kiro-cli', 'opencode', 'claude-code'],
 });

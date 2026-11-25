@@ -3,7 +3,7 @@
 
 const crypto = require('node:crypto');
 const path = require('node:path');
-const { createRegistry } = require('../core/registry.js');
+const { createRegistry, pluginPathRoots } = require('../core/registry.js');
 
 // Which program asks the judge model. `kiro` is the default and the only one that existed before; `opencode` calls
 // the model on Amazon Bedrock through `opencode run` with the tools off and a one-line system prompt. More backends come
@@ -19,10 +19,11 @@ const DEFAULT_BACKEND = 'kiro';
 const PLUGINS_DIR = path.resolve(__dirname, '..', 'plugins');
 
 /**
- * The judge backends over the built-ins and the judge-backend plugins under `pluginRoots`: `ids()` in order,
+ * The judge backends over the built-ins and the judge-backend plugins under `pluginRoots` (default bench/plugins and
+ * the BENCH_PLUGIN_PATH roots): `ids()` in order,
  * `part(id)` the registry part (or undefined), `usdIds()` the backends that count spend in USD.
  */
-function backendRegistry(pluginRoots = [PLUGINS_DIR]) {
+function backendRegistry(pluginRoots = [PLUGINS_DIR, ...pluginPathRoots()]) {
   const reg = createRegistry({ builtins: BUILTIN_BACKENDS.map((meta) => ({ kind: 'judge-backend', meta })), pluginRoots });
   const parts = reg.parts('judge-backend');
   return Object.freeze({

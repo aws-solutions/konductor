@@ -169,10 +169,26 @@ proves the mount and pin are known and that the plant reader finds the calls in 
 the conveyor or the arm plant follows the same path: a harness plugin with `plant` set, plus a plant reader in
 `plant/stream-match.js` if its stream format is new.
 
+## A plugin outside this repo
+
+Set `BENCH_PLUGIN_PATH` to one or more folders outside this repo, joined by `:`. Each folder holds plugin folders the
+way `bench/plugins` does, and the bench reads them after `bench/plugins` for both harnesses and judge backends. A bad
+plugin there is refused with its reason, as in `bench/plugins`. An entry that is not an absolute path, or not a folder,
+stops the bench with an error. An outside plugin cannot reach the SDK by `../../sdk`, so it names your bench
+checkout's SDK folder: `require('/path/to/repo/bench/sdk')`.
+
+```bash
+BENCH_PLUGIN_PATH=/home/me/my-plugins node bench/runner/bench.js plugins
+```
+
+`runner/test/plugin-path.test.js` loads a judge backend this way from a temp folder. Every run still records each
+plugin's name, version and hash in `run-config.json`.
+
 ## Limits today
 
 Plugin API 1 covers harnesses and judge backends. Plants, scorers and unit kinds are still core code. A harness reads its
 own stream through `streams` (CONTRACT.md): `finalText`, plus `timeline` for trace and `stopEvent` for `--stop-on`.
 The plant readers stay core in `plant/stream-match.js`, because the plant scorer decides safety: a new stream format
-on a plant arm needs a reader added there by bench code. Some core files still name a runtime: the runtime branches
-in `run-cmd.js`, `cap/` and `report/`. `DEBT.md` rows D-201, D-205 and D-206 track the work to remove them.
+on a plant arm needs a reader added there by bench code. A few core files still name a runtime, among them `arms.js`,
+`skills.js` and the plant files; `runner/test/harness-coupling-baseline.json` lists each one and its count, and
+`DEBT.md` row D-212 tracks the work to remove them.

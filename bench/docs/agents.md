@@ -234,7 +234,8 @@ it passes. [Write a plugin](write-a-plugin.md) walks through it. Its descriptor 
 cost (`report`) and, if the `cap` commands should accept it, how they reach a capability (`capabilities`).
 
 **Where it is registered.** The plugin registry, `bench/core/registry.js`, is the one list of the parts bench can run:
-every `bench/plugins/<name>/plugin.json`, plus the two built-in judge backends. `node bench/runner/bench.js plugins`
+every `bench/plugins/<name>/plugin.json`, the plugin folders under each `BENCH_PLUGIN_PATH` root (see
+[write-a-plugin.md](write-a-plugin.md)), plus the two built-in judge backends. `node bench/runner/bench.js plugins`
 lists them. A manifest looks like this:
 
 ```json

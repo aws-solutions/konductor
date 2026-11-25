@@ -2,7 +2,8 @@
 'use strict';
 
 // The plugin registry: the one list of the parts the bench can run. It holds the built-ins the caller passes in, then
-// every bench/plugins/<name>/plugin.json. Core code asks the registry for a part instead of naming a runtime. This
+// every bench/plugins/<name>/plugin.json, then the plugin folders under each BENCH_PLUGIN_PATH root (pluginPathRoots).
+// Core code asks the registry for a part instead of naming a runtime. This
 // module requires nothing from the bench, so any layer can load it.
 //
 // A plugin folder holds plugin.json: { "benchApi": 1, "kind": "harness", "name", "version", "meta", "entry" }.
@@ -110,4 +111,20 @@ function createRegistry({ builtins = [], pluginRoots = [], order = [] } = {}) {
   });
 }
 
-module.exports = { PLUGIN_API, KINDS, createRegistry, readPlugin, folderHash };
+/**
+ * The extra plugin roots named in `env.BENCH_PLUGIN_PATH`, a `path.delimiter` list of folders outside this repo
+ * (B-015), each holding plugin folders as bench/plugins does. Empty entries are skipped. Throws on an entry that is
+ * not absolute or not a folder: a plugin root the user named and the bench silently skipped would run without it.
+ */
+function pluginPathRoots(env = process.env) {
+  const roots = [];
+  for (const entry of (env.BENCH_PLUGIN_PATH || '').split(path.delimiter)) {
+    if (!entry) continue;
+    if (!path.isAbsolute(entry)) throw new Error(`BENCH_PLUGIN_PATH entry "${entry}" is not an absolute path`);
+    if (!fs.statSync(entry, { throwIfNoEntry: false })?.isDirectory()) throw new Error(`BENCH_PLUGIN_PATH entry "${entry}" is not a folder`);
+    roots.push(path.resolve(entry));
+  }
+  return roots;
+}
+
+module.exports = { PLUGIN_API, KINDS, createRegistry, readPlugin, folderHash, pluginPathRoots };
