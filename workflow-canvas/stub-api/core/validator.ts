@@ -173,9 +173,14 @@ function readTopLevel(root: YAMLMap, ctx: Context): WorkflowView {
   const format = readFormat(entries.get('format'), root, ctx);
   const version = readVersion(entries.get('version'), root, ctx);
   const name = readWorkflowName(entries.get('name'), ctx);
-  const intent = readIntent(entries.get('intent'), root, ctx);
+  const { intent, checkIds } = readIntent(entries.get('intent'), root, ctx);
   const params = readParams(entries.get('params'), ctx);
-  const stages = readStages(entries.get('stages'), root, params, ctx);
+  const stages = readStages(
+    entries.get('stages'),
+    root,
+    { params, checkIds },
+    ctx,
+  );
   return {
     format,
     version,
@@ -359,15 +364,23 @@ function readWorkflowName(entry: MapEntry | undefined, ctx: Context): string {
   return name ?? ctx.workflowName;
 }
 
+/** The intent, and the check ids the file declares for `done_when` to name. */
+interface ReadIntent {
+  intent: Intent;
+  checkIds: ReadonlySet<string>;
+}
+
+const NO_INTENT: ReadIntent = { intent: { outcome: '' }, checkIds: new Set() };
+
 // The intent is a mapping with the outcome. The string form is planned.
 function readIntent(
   entry: MapEntry | undefined,
   root: YAMLMap,
   ctx: Context,
-): Intent {
+): ReadIntent {
   if (!entry) {
     reportMissing(root, [], 'intent', ctx);
-    return { outcome: '' };
+    return NO_INTENT;
   }
   const { value } = entry;
   if (isMap(value)) return readIntentMapping(value, ctx);
@@ -384,18 +397,22 @@ function readIntent(
     const message = '`intent` must be a mapping with an `outcome`.';
     ctx.reporter.report('WRONG_TYPE', ['intent'], valueSpanOf(entry), message);
   }
-  return { outcome: '' };
+  return NO_INTENT;
 }
 
-function readIntentMapping(map: YAMLMap, ctx: Context): Intent {
+function readIntentMapping(map: YAMLMap, ctx: Context): ReadIntent {
   const entries = readEntries(map, ['intent'], INTENT_KEYS, ctx);
   const outcomeEntry = entries.get('outcome');
   if (!outcomeEntry) reportMissing(map, ['intent'], 'outcome', ctx);
   const outcome = outcomeEntry
     ? readOutcome(outcomeEntry, ['intent', 'outcome'], ctx)
     : '';
-  const accept = readAccept(entries.get('accept'), ctx);
-  return accept === undefined ? { outcome } : { outcome, accept };
+  // Every id the file declares, a check whose value had a problem of its own
+  // included, so a `done_when` that names it is not reported a second time.
+  const checkIds = new Set<string>();
+  const accept = readAccept(entries.get('accept'), checkIds, ctx);
+  const intent = accept === undefined ? { outcome } : { outcome, accept };
+  return { intent, checkIds };
 }
 
 function readOutcome(entry: MapEntry, path: Segment[], ctx: Context): string {
@@ -420,6 +437,7 @@ function outcomeProblem(text: string): string | undefined {
 
 function readAccept(
   entry: MapEntry | undefined,
+  used: Set<string>,
   ctx: Context,
 ): Check[] | undefined {
   if (!entry) return undefined;
@@ -429,15 +447,13 @@ function readAccept(
     ctx.reporter.report('WRONG_TYPE', path, valueSpanOf(entry), message);
     return undefined;
   }
-  const used = new Set<string>();
   return entry.value.items.flatMap((item, index) => {
     const check = readCheck(item, [...path, index], used, ctx);
     return check ? [check] : [];
   });
 }
 
-// A check has an id and exactly one of `file` and `run`. This build reads
-// `file`, and `run` is named as a later key.
+// A check has an id and exactly one of `file` and `run`.
 function readCheck(
   item: unknown,
   path: Segment[],
@@ -455,12 +471,53 @@ function readCheck(
   const id = idEntry && readCheckId(idEntry, [...path, 'id'], used, ctx);
   const fileEntry = entries.get('file');
   const file = fileEntry && readPath(fileEntry, [...path, 'file'], ctx);
-  const hasRun = entriesOf(item).some((e) => e.keyText === 'run');
-  if ((fileEntry !== undefined) === hasRun) {
+  const runEntry = entries.get('run');
+  const run = runEntry && readArgv(runEntry, [...path, 'run'], ctx);
+  if ((fileEntry !== undefined) === (runEntry !== undefined)) {
     const message = 'A check needs exactly one of `file` and `run`.';
     ctx.reporter.report('INVALID_VALUE', path, spanOf(item), message);
   }
-  return id && file ? { id, file } : undefined;
+  if (id === undefined) return undefined;
+  if (file !== undefined) return { id, file };
+  return run === undefined ? undefined : { id, run };
+}
+
+// A `run` check is a command and its arguments, with at least one entry. The
+// stub never runs it: it reads the declaration only.
+function readArgv(
+  entry: MapEntry,
+  path: Segment[],
+  ctx: Context,
+): string[] | undefined {
+  const list = entry.value;
+  if (!isSeq(list)) {
+    const message = '`run` must be a list of strings.';
+    ctx.reporter.report('WRONG_TYPE', path, valueSpanOf(entry), message);
+    return undefined;
+  }
+  if (list.items.length < 1) {
+    const message = '`run` must have at least one entry.';
+    ctx.reporter.report('INVALID_VALUE', path, spanOf(list), message);
+    return undefined;
+  }
+  const words = list.items.map((item, index) =>
+    readWord(item, [...path, index], ctx),
+  );
+  return words.every((word) => word !== undefined) ? words : undefined;
+}
+
+// One word of a `run` command, or one id of a `done_when`, as it is written
+// in the list. A list entry has no key, so the label says what it is.
+function readWord(
+  item: unknown,
+  path: Segment[],
+  ctx: Context,
+  label = '`run`',
+): string | undefined {
+  if (isScalar(item) && typeof item.value === 'string') return item.value;
+  const message = `Every entry of ${label} must be a string.`;
+  ctx.reporter.report('WRONG_TYPE', path, spanOf(item), message);
+  return undefined;
 }
 
 function readCheckId(
@@ -592,10 +649,16 @@ function checkDefaultLength(
   ctx.reporter.report('INVALID_VALUE', [...path, 'default'], span, message);
 }
 
+/** What a stage is read against: the declared params and check ids. */
+interface Declared {
+  params: Record<string, Param> | undefined;
+  checkIds: ReadonlySet<string>;
+}
+
 function readStages(
   entry: MapEntry | undefined,
   root: YAMLMap,
-  params: Record<string, Param> | undefined,
+  declared: Declared,
   ctx: Context,
 ): Stage[] {
   if (!entry) {
@@ -614,10 +677,10 @@ function readStages(
   }
   const used = new Set<string>();
   const read = list.items.flatMap((item, index) => {
-    const stage = readStage(item, index, used, ctx);
+    const stage = readStage(item, index, used, declared.checkIds, ctx);
     return stage ? [stage] : [];
   });
-  checkReferences(read, params, ctx);
+  checkReferences(read, declared.params, ctx);
   return read.map(({ stage }) => stage);
 }
 
@@ -632,6 +695,7 @@ function readStage(
   item: unknown,
   index: number,
   used: Set<string>,
+  checkIds: ReadonlySet<string>,
   ctx: Context,
 ): ReadStage | undefined {
   const path = ['stages', index];
@@ -649,6 +713,7 @@ function readStage(
   const agent = agentEntry && readName(agentEntry, [...path, 'agent'], ctx);
   const prompts = readPrompts(entries, path, ctx);
   const outputs = readOutputs(entries.get('outputs'), path, ctx);
+  const doneWhen = readDoneWhen(entries.get('done_when'), path, checkIds, ctx);
   if (!name || !agent) return undefined;
   const range = lineRangeOf(item, ctx.source);
   const stage: Stage = {
@@ -657,6 +722,7 @@ function readStage(
     agent,
     ...prompts,
     ...(outputs === undefined ? {} : { outputs }),
+    ...(doneWhen === undefined ? {} : { done_when: doneWhen }),
     range,
   };
   const prompt = entries.get('prompt');
@@ -696,6 +762,42 @@ function readOutputs(
     if (file !== undefined) outputs[name] = file;
   }
   return outputs;
+}
+
+// `done_when` lists the check ids that must pass before the stage does. An id
+// that is no check of `intent.accept` is reported at the entry: the stage
+// would wait for a check that the file never declares.
+function readDoneWhen(
+  entry: MapEntry | undefined,
+  path: Segment[],
+  checkIds: ReadonlySet<string>,
+  ctx: Context,
+): string[] | undefined {
+  if (!entry) return undefined;
+  const donePath = [...path, 'done_when'];
+  const list = entry.value;
+  if (!isSeq(list)) {
+    const message = '`done_when` must be a list of check ids.';
+    ctx.reporter.report('WRONG_TYPE', donePath, valueSpanOf(entry), message);
+    return undefined;
+  }
+  const ids = list.items.flatMap((item, index) => {
+    const at = [...donePath, index];
+    const id = readWord(item, at, ctx, '`done_when`');
+    if (id === undefined) return [];
+    if (!isName(id)) {
+      const message = `A check id ${NAME_RULE}.`;
+      ctx.reporter.report('INVALID_NAME', at, spanOf(item), message);
+      return [];
+    }
+    if (!checkIds.has(id)) {
+      const message = `There is no check with the id ${quoteValue(id)} in \`intent.accept\`.`;
+      ctx.reporter.report('INVALID_VALUE', at, spanOf(item), message);
+      return [];
+    }
+    return [id];
+  });
+  return ids;
 }
 
 // From the line of the stage's first key to the last line that holds its text.

@@ -19,7 +19,7 @@ import type {
   WorkflowDocument,
   WorkflowView,
 } from './model.ts';
-import type { RunPlan, RunSimulator } from './runs.ts';
+import type { RunChecks, RunPlan, RunSimulator } from './runs.ts';
 import type { Behavior } from './sample.ts';
 import type { WorkflowStore } from './store.ts';
 import { checkWorkflowText } from './validator.ts';
@@ -179,6 +179,7 @@ export class WorkflowApi {
     const stageNames = view.stages.map((stage) => stage.name);
     this.runs.start(this.root, stageNames, goalOfOther(view), {
       neverEnds: true,
+      checks: checksOf(view),
     });
   }
 
@@ -219,10 +220,13 @@ export class WorkflowApi {
 
   private planOfRun(view: WorkflowView): RunPlan {
     const { blocks, unwrittenOutput } = this.behavior;
-    if (blocks) return { block: { at: blocks.stage, reason: blocks.reason } };
+    const checks = checksOf(view);
+    if (blocks) {
+      return { block: { at: blocks.stage, reason: blocks.reason }, checks };
+    }
     return declares(view, unwrittenOutput)
-      ? { unwritten: unwrittenOutput }
-      : {};
+      ? { unwritten: unwrittenOutput, checks }
+      : { checks };
   }
 
   // A missing name is the root; a malformed one is refused.
@@ -247,6 +251,21 @@ export class WorkflowApi {
 // stands in the workflow's default goal, or its outcome.
 function goalOfOther(view: WorkflowView): string {
   return view.params?.goal?.default ?? view.intent.outcome;
+}
+
+// The checks the run reports: every id of `intent.accept`, and the ids each
+// stage's `done_when` names. The validator has already held every `done_when`
+// id to a check the file declares.
+function checksOf(view: WorkflowView): RunChecks {
+  const named = view.stages.flatMap((stage) =>
+    stage.done_when === undefined
+      ? []
+      : [[stage.name, stage.done_when] as const],
+  );
+  return {
+    ids: (view.intent.accept ?? []).map((check) => check.id),
+    doneWhen: Object.fromEntries(named),
+  };
 }
 
 // A run takes the goal and the params the workflow declares, and nothing

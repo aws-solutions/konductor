@@ -33,7 +33,7 @@ import {
 import { ERROR_CODES, type ErrorCode } from './errors.ts';
 import { STAGE_FIELDS } from './fields.ts';
 import { KEY_TABLES } from './keys.ts';
-import { DIAGNOSTIC_CODES, STAGE_REASONS } from './model.ts';
+import { CHECK_STATES, DIAGNOSTIC_CODES, STAGE_REASONS } from './model.ts';
 
 type Json = Record<string, unknown>;
 
@@ -163,6 +163,21 @@ describe('the stub and api/openapi.yaml', () => {
     expect([...STAGE_REASONS].sort()).toEqual(
       [...(schemaOf('StageReason').enum as string[])].sort(),
     );
+  });
+
+  it('have the same check states', () => {
+    expect([...CHECK_STATES].sort()).toEqual(
+      [...(schemaOf('CheckState').enum as string[])].sort(),
+    );
+  });
+
+  it('name the checks of a run by a check id and give each a state', () => {
+    const checks = property(schemaOf('Run'), 'checks');
+    expect((checks.propertyNames as Json).pattern).toBe(NAME_PATTERN.source);
+    expect((checks.additionalProperties as Json).enum).toEqual([
+      ...CHECK_STATES,
+    ]);
+    expect(schemaOf('Run').required).toContain('checks');
   });
 
   it('report a harness that the contract names', () => {

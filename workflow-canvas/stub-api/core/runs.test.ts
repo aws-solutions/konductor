@@ -44,6 +44,7 @@ describe('a simulated run', () => {
       exit_code: null,
       order: ['draft', 'review'],
       stages: { draft: { status: 'running' }, review: { status: 'pending' } },
+      checks: {},
     });
   });
 
@@ -265,5 +266,71 @@ describe('a declared output that a run leaves unwritten', () => {
       status: 'blocked',
       reason: 'RESULT_MISSING',
     });
+  });
+});
+
+describe('the checks of a simulated run', () => {
+  const CHECKS = {
+    ids: ['tests-pass', 'readme-exists'],
+    doneWhen: { draft: ['readme-exists'] },
+  };
+
+  const checksOf = (runId: string) => runs.get(runId)?.checks;
+
+  it('reports every declared check, with the ids sorted', () => {
+    const runId = runs.start('hello', ['draft', 'review'], GOAL, {
+      checks: CHECKS,
+    });
+
+    expect(Object.keys(checksOf(runId) ?? {})).toEqual([
+      'readme-exists',
+      'tests-pass',
+    ]);
+  });
+
+  it('defers every check while the stage that names one is still running', () => {
+    const runId = runs.start('hello', ['draft', 'review'], GOAL, {
+      checks: CHECKS,
+    });
+
+    expect(checksOf(runId)).toEqual({
+      'readme-exists': 'deferred',
+      'tests-pass': 'deferred',
+    });
+  });
+
+  it('verifies a check once the stage whose done_when names it has passed', () => {
+    const runId = runs.start('hello', ['draft', 'review'], GOAL, {
+      checks: CHECKS,
+    });
+
+    clock.advance(STAGE_MS);
+
+    expect(checksOf(runId)).toEqual({
+      'readme-exists': 'verified',
+      'tests-pass': 'deferred',
+    });
+  });
+
+  it('leaves a check deferred when the stage that names it was blocked', () => {
+    const runId = runs.start('hello', ['draft', 'review'], GOAL, {
+      block: { at: 0, reason: 'RESULT_MISSING' },
+      checks: CHECKS,
+    });
+
+    clock.advance(STAGE_MS);
+
+    expect(checksOf(runId)).toEqual({
+      'readme-exists': 'deferred',
+      'tests-pass': 'deferred',
+    });
+  });
+
+  it('reports no check for a workflow that declares none', () => {
+    const runId = runs.start('hello', ['draft'], GOAL, {
+      checks: { ids: [], doneWhen: {} },
+    });
+
+    expect(checksOf(runId)).toEqual({});
   });
 });

@@ -1046,7 +1046,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.9.0');
+      expect(info.version).toBe('1.10.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1496,9 +1496,28 @@ describe('workflow canvas API contract', () => {
       expect(description).not.toMatch(/every run that/);
     });
 
-    it('says it reads the keys of slices 1 and 2', () => {
+    it('says it reads the keys of slices 1, 2 and 3a', () => {
       expect(words(spec.info.description)).toContain(
-        'This version reads the keys of slices 1 and 2.',
+        'This version reads the keys of slices 1, 2 and 3a.',
+      );
+    });
+
+    it('says what this version adds, and that it adds only', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.10\.0 only adds, in the same sense: it reads the keys of the checks, `intent\.accept\[\]\.run` and `stages\[\]\.done_when`, and a run gains `checks`/,
+      );
+    });
+
+    it('says what a check of each kind means and when its declaration is wrong', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /A `run` check is a command and its arguments as a list of strings, with at least one entry, run directly with no shell in the project root, and it passes when the command exits 0/,
+      );
+      expect(description).toMatch(
+        /An id that is no check of `intent\.accept` is `INVALID_VALUE` at the entry/,
+      );
+      expect(description).toMatch(
+        /A string as a `run` check is `WRONG_TYPE`, because `run` is a list of strings/,
       );
     });
 
