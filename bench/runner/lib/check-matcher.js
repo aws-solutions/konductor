@@ -248,6 +248,49 @@ function patternFail(check) {
   }
 }
 
+// The text of `file` passed to `read(text)`, or the failure when it is not a file or (with a pattern) the pattern is bad.
+function readText(file, check, read, { pattern = true } = {}) {
+  if (!isFile(file)) return { passed: false, detail: 'file missing' };
+  const bad = pattern && patternFail(check);
+  if (bad) return { passed: false, detail: bad };
+  return read(fs.readFileSync(file, 'utf8'));
+}
+
+function containsResult(file, check, want) {
+  return readText(file, check, (text) => {
+    const hit = new RegExp(check.pattern, PATTERN_FLAGS).test(text);
+    return { passed: hit === want, detail: hit ? 'matched' : 'no match' };
+  });
+}
+
+/**
+ * The read-only check types, one part each (docs/history/check-type-plugin-design-2026-11-24.md, step 1).
+ * `evaluate(file, check)` gets the check's file already resolved inside the workspace and free of symlinks,
+ * reads it and never runs a command; it returns {passed, detail}. `cmd`, `tests` and `fixture_unchanged` stay in evalCheck.
+ */
+const READ_TYPES = Object.freeze({
+  file_exists: Object.freeze({
+    evaluate(file) {
+      const ok = isFile(file);
+      return { passed: ok, detail: ok ? 'present' : 'missing' };
+    },
+  }),
+  contains: Object.freeze({ evaluate: (file, check) => containsResult(file, check, true) }),
+  not_contains: Object.freeze({ evaluate: (file, check) => containsResult(file, check, false) }),
+  min_matches: Object.freeze({
+    evaluate: (file, check) => readText(file, check, (text) => {
+      const n = (text.match(new RegExp(check.pattern, `g${PATTERN_FLAGS}`)) || []).length;
+      return { passed: n >= check.min, detail: `${n} matches, need ${check.min}` };
+    }),
+  }),
+  labelled_findings: Object.freeze({
+    evaluate: (file, check) => readText(file, check, (text) => {
+      const { count } = countLabelledFindings(text, check.labels);
+      return { passed: count >= check.min, detail: `${count} labelled findings, need ${check.min}` };
+    }, { pattern: false }),
+  }),
+});
+
 /**
  * Evaluates one check against `root`.
  * opts.pristineDir: pristine fixture copy, needed by fixture_unchanged.
@@ -264,10 +307,6 @@ function evalCheck(root, check, opts = {}) {
   const file = resolveInside(root, check.path);
   const link = symlinkOnPath(root, file);
   if (link) return { passed: false, detail: `path is a symlink: ${link}` };
-  if (check.type === 'file_exists') {
-    const ok = isFile(file);
-    return { passed: ok, detail: ok ? 'present' : 'missing' };
-  }
   if (check.type === 'fixture_unchanged') {
     if (!opts.pristineDir) return { passed: false, detail: 'no pristine fixture available' };
     const pristine = resolveInside(opts.pristineDir, check.path);
@@ -276,22 +315,7 @@ function evalCheck(root, check, opts = {}) {
     const why = diffPaths(file, pristine, { allowAdditions: check.allowAdditions === true });
     return { passed: why === null, detail: why ?? 'identical' };
   }
-
-  if (!isFile(file)) return { passed: false, detail: 'file missing' };
-  if (check.type === 'labelled_findings') {
-    const { count } = countLabelledFindings(fs.readFileSync(file, 'utf8'), check.labels);
-    return { passed: count >= check.min, detail: `${count} labelled findings, need ${check.min}` };
-  }
-  const bad = patternFail(check);
-  if (bad) return { passed: false, detail: bad };
-  const text = fs.readFileSync(file, 'utf8');
-  if (check.type === 'min_matches') {
-    const n = (text.match(new RegExp(check.pattern, `g${PATTERN_FLAGS}`)) || []).length;
-    return { passed: n >= check.min, detail: `${n} matches, need ${check.min}` };
-  }
-  const hit = new RegExp(check.pattern, PATTERN_FLAGS).test(text);
-  const passed = check.type === 'contains' ? hit : !hit;
-  return { passed, detail: hit ? 'matched' : 'no match' };
+  return READ_TYPES[check.type].evaluate(file, check);
 }
 
-module.exports = { withPerTestTimeout, parseTapPartial, PER_TEST_TIMEOUT_MS, evalCheck, resolveInside, diffPaths, parseNodeTestSummary, aggregateHidden, aggregateGroup, aggregateRegression, TESTS_TIMEOUT_MS, CHECK_TYPES, PATTERN_FLAGS, CMD_TIMEOUT_MS, ANSWER_KEY };
+module.exports = { withPerTestTimeout, parseTapPartial, PER_TEST_TIMEOUT_MS, evalCheck, resolveInside, diffPaths, parseNodeTestSummary, aggregateHidden, aggregateGroup, aggregateRegression, TESTS_TIMEOUT_MS, CHECK_TYPES, READ_TYPES, PATTERN_FLAGS, CMD_TIMEOUT_MS, ANSWER_KEY };
