@@ -1812,6 +1812,21 @@ def test_new_line_that_completes_a_split_link_with_existing_lines_is_rejected(
     assert "blocked external URL" in result.stderr, result.stderr
 
 
+@pytest.mark.parametrize(
+    "second",
+    ['[origin:agent] ">x</a>', '[origin:agent]">x</a>'],
+)
+def test_quoted_href_closed_on_a_line_that_is_only_an_entry_start_is_checked(tmp_path, second):
+    # The value runs to its closing quote, so it cannot end at the line
+    # break, and the next line's entry start is part of the URL.
+    first = '- [2026-11-25] [origin:agent] <a href="https://docs.example.com @evil.test/'
+    # In one write, or in two with either half already in the file.
+    for existing in (None, f"{first}\n", f"{second}\n"):
+        result = _write_verdict(tmp_path, f"{first}\n{second}\n", existing=existing)
+        assert result.returncode == 1, f"{second!r} {existing!r} was accepted: {result.stderr}"
+        assert "blocked external URL" in result.stderr, result.stderr
+
+
 def test_split_link_only_across_existing_lines_does_not_block_an_unrelated_write(tmp_path):
     existing = f"{_SPLIT_HEAD}\n{_SPLIT_TAIL}\n"
     proposed = f"{existing}\n- [2026-11-24] [origin:agent] New fact\n"

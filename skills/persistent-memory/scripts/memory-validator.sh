@@ -315,12 +315,14 @@ def links(text):
         else:
             is_link = len(slashes) >= 2 and (rest or len(slashes) > 2)
         if is_link:
-            yield scheme, m.group(0)[: m.start(3) - m.start()], rest, m.start(), end
+            yield scheme, m.group(0)[: m.start(3) - m.start()], rest, m.start(), end, end != m.end()
 
 # How an ordinary entry line begins: a list, quote or heading marker, or a
 # date or origin tag, each followed by whitespace. When a link seems to run
 # into the next line and the next line's part of it is only one of these, the
-# link ended at the line break and the next line is a new entry.
+# link ended at the line break and the next line is a new entry. A link read
+# to a closing quote or > cannot end at a line break, so this never applies
+# to it.
 NEW_ENTRY_START = re.compile(
     r"[-*+]|>+|#{1,6}|[0-9]+[.)]|\[[0-9]{4}-[0-9]{2}-[0-9]{2}\]|\[origin:(agent|user)\]"
 )
@@ -340,12 +342,12 @@ def joined_links(run):
         for i, piece in enumerate(pieces[:-1]):
             pos += len(piece)
             breaks.append((pos, run[i][1] or run[i + 1][1]))
-        for scheme, start, rest, a, b in links(text):
+        for scheme, start, rest, a, b, enclosed in links(text):
             crossed = [k for k, _ in breaks if a < k < b]
             if not any(touches_new for k, touches_new in breaks if a < k < b):
                 continue
             tail = text[crossed[0]:b]
-            if len(crossed) == 1 and NEW_ENTRY_START.fullmatch(tail):
+            if not enclosed and len(crossed) == 1 and NEW_ENTRY_START.fullmatch(tail):
                 continue
             yield scheme, start, rest
 
