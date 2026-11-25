@@ -23,7 +23,7 @@ tool list. Both give drafts for a person to read. Neither runs your agent.
    node bench/runner/bench.js cap scenarios --cap skill:NAME --dry-run --out /tmp/scn
    ```
 
-3. Draft 8 tasks that test the skill once it is loaded (one model call, under 1 credit).
+3. Draft 8 tasks that test the skill once it is loaded (one model call; it prints the credits it used).
 
    ```bash
    node bench/runner/bench.js cap scenarios --cap skill:NAME --n 8 --out /tmp/scn

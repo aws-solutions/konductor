@@ -58,7 +58,8 @@ repository root.
 
 - **No public release, by design.** A team makes and signs its own with `bench/physical/ci/plant-release.js`
   (`keygen`, `pin`, `sign`, `verify`). Only the reference explains it.
-- **No counted run yet.** Every run so far is marked NOT COUNTED.
+- **No counted run yet (2026-11-24).** Every run so far is marked NOT COUNTED. What a counted run needs:
+  [the first counted run](../physical-ai-counted-set.md#the-first-counted-run).
 
 ## Go deeper
 

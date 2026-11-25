@@ -384,8 +384,9 @@ hosts with the pinned wheels, then `--compare A B`: it names each case whose pos
   `plant-host-check` lists every host gate with its fix; [the quiet host](physical-ai-counted-set.md#the-quiet-host)
   says how to get one.
 - Kiro CLI and Claude Code are each pinned to one exact build per release.
-- No counted run of either plant has been made: every run so far ran outside the sandbox or on a host that is not
-  quiet, and is marked NOT COUNTED. Open items are in [DEBT.md](../DEBT.md).
+- No counted run of either plant has been made as of 2026-11-24: every run so far ran outside the sandbox or on a
+  host that is not quiet, and is marked NOT COUNTED. What a counted run needs:
+  [the first counted run](physical-ai-counted-set.md#the-first-counted-run). Open items are in [DEBT.md](../DEBT.md).
 - This repository publishes no plant results.
 
 > [!IMPORTANT]

@@ -45,7 +45,7 @@ New here? Start with the [quick start](quickstart.md), the [glossary](glossary.m
 | Question | Command | Harness | Cost |
 | --- | --- | --- | --- |
 | Can any agent reach this skill? Is its description well formed? | `cap audit` | kiro-cli, opencode | free |
-| Which tasks would test this skill? | `cap scenarios` (add `--mode trigger` for load tests) | kiro-cli login (one model call per skill) | under 1 credit per call; one retry if the draft fails its checks; `--dry-run` is free |
+| Which tasks would test this skill? | `cap scenarios` (add `--mode trigger` for load tests) | kiro-cli login (one model call per skill) | it prints the credits used; one retry if the draft fails its checks; `--dry-run` is free |
 | Does the agent load the skill for the right requests, and skip it for near misses? | `cap trigger --mode proxy` or `--mode live` | kiro-cli, opencode | proxy about 0.09 credits per call; live runs a real agent per query and needs `--budget-credits` (kiro-cli) or `--budget-usd` (opencode) |
 | Which skills across my finished runs were never loaded? | `cap prune-report` | kiro-cli, opencode | free |
 | Is this skill needed? Which sections can go? | `cap skill-plan`, `cap skill-study`, `cap decide` | kiro-cli | hundreds of credits per skill |
@@ -67,7 +67,7 @@ Credits are Kiro credits; the opencode and Claude Code harnesses and the opencod
 | --- | --- | --- | --- | --- |
 | Is a skill well formed, oversized, a near duplicate of another, reachable by an agent? | `cap audit --base main --cap skill:NAME --out $OUT/audit` | Node, git, the ref | free | `cap-audit.md`: bytes, `tok~`, `nearest` (similarity to the closest skill), `kiro agents` (0 means no agent lists it), and the findings. Exit 1 only on an error finding |
 | Is a skill ever loaded in finished runs? Is it redundant, a prune candidate, a trim candidate? | `cap prune-report --base main --runs $RUNS --out $OUT/prune` (per-run detail: `skills --run DIR`) | finished runs of non-vanilla arms | free | `prune-report.md`: one class per skill and harness (HARMS, RELOCATE, PRUNE, FIX, KEEP, NEEDS DATA), the load rate with its exposure n, and a TRIM flag for a skill over the 90th percentile of size or above 0.6 Jaccard similarity to a neighbour. FIX means offered but never loaded. A class is a recommendation, never a deletion; see the table in [cap-playbook.md](cap-playbook.md) |
-| Which tasks would test a skill? | `cap scenarios --cap skill:NAME [--mode trigger] --out $OUT/ops` | `--dry-run` needs nothing; otherwise a kiro-cli login | free with `--dry-run`, under 1 credit otherwise | `$OUT/ops/scenarios/`: unreviewed drafts for a person to edit |
+| Which tasks would test a skill? | `cap scenarios --cap skill:NAME [--mode trigger] --out $OUT/ops` | `--dry-run` needs nothing; otherwise a kiro-cli login | free with `--dry-run`, otherwise one model call (it prints the credits) | `$OUT/ops/scenarios/`: unreviewed drafts for a person to edit |
 | Does the agent load the skill for the right requests and skip near misses? | `cap trigger --cap skill:NAME --mode proxy --queries FILE --base main` (`--mode live` runs real agents) | a kiro-cli login, or opencode | proxy: about 0.09 credits per call; live: capped by `--budget-credits` | recall first, then precision and F1 with Wilson intervals, and what fired instead. "proxy not validated" means a miss is informative and a hit is not proof |
 | Is the skill needed against vanilla, and which sections can go? | `cap skill-plan --base main --only NAME --runs $RUNS --out $OUT/plan`, then `cap skill-study`, then `cap decide --study DIR` | kiro-cli login and AWS credentials for the opencode judge | plan and decide: free. Study: hundreds of credits per skill | `decisions/decisions.md`: DELETE, PRUNE (line ranges and a patch), KEEP or NEEDS DATA, with the reason |
 | Do the rubric items and checks of a study tell the arms apart? | `cap criteria --study DIR` | a finished study | free | `criteria.md`: items flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE |
@@ -146,7 +146,7 @@ One skill, `backend-review`:
 BASE=main; OUT=/var/tmp/bench-skill; RUNS=/path/to/finished/run-dir
 node bench/runner/bench.js cap audit --base $BASE --cap skill:backend-review --out $OUT/audit          # free: lint, size, nearest neighbour, reachability
 node bench/runner/bench.js cap prune-report --base $BASE --runs $RUNS --out $OUT/prune                  # free: loaded in your finished runs? class and TRIM flag
-node bench/runner/bench.js cap scenarios --cap skill:backend-review --mode trigger --n 10 --out $OUT/ops   # under 1 credit; add --dry-run for none
+node bench/runner/bench.js cap scenarios --cap skill:backend-review --mode trigger --n 10 --out $OUT/ops   # one model call; add --dry-run for none
 node bench/runner/bench.js cap trigger --cap skill:backend-review --mode proxy \
   --queries $OUT/ops/scenarios/skill-backend-review.trigger.json --base $BASE                           # review and edit the draft first
 node bench/runner/bench.js cap skill-plan --base $BASE --only backend-review --runs $RUNS --out $OUT/plan   # free: tasks, waves, credit estimate
