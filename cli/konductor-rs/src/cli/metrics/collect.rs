@@ -146,6 +146,20 @@ impl Record {
     }
 }
 
+/// Reads `path` only if it's a regular file (or a link to one). Sidecar
+/// files are read with this too: a FIFO would block forever, a device
+/// could stream without end. A non-regular file is `InvalidInput`, so
+/// callers can tell it apart from a missing one (`NotFound`).
+pub(crate) fn read_regular(path: &Path) -> std::io::Result<Vec<u8>> {
+    if !std::fs::metadata(path)?.is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    std::fs::read(path)
+}
+
 /// Drops the cloud-provider prefix (`global.anthropic.`, `us.anthropic.`)
 /// and the `[1m]` context suffix so one model groups as one row.
 pub(crate) fn normalize_model(raw: &str) -> String {
@@ -155,17 +169,35 @@ pub(crate) fn normalize_model(raw: &str) -> String {
 
 /// Reads a string field straight out of a JSONL line without parsing
 /// the whole line; transcript lines can carry megabytes of tool output.
-fn str_field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
-    let needle = format!("\"{key}\":\"");
-    let start = line.find(&needle)? + needle.len();
-    let rest = &line[start..];
-    let mut escaped = false;
-    for (i, c) in rest.char_indices() {
-        match c {
-            '\\' if !escaped => escaped = true,
-            '"' if !escaped => return Some(&rest[..i]),
-            _ => escaped = false,
+///
+/// Tolerates whitespace around `:`, since a serialization change must not
+/// silently drop fields, and decodes JSON escapes in the value. A `"key"`
+/// preceded by a backslash is inside another string, so it's skipped.
+fn str_field(line: &str, key: &str) -> Option<String> {
+    let needle = format!("\"{key}\"");
+    let mut from = 0;
+    while let Some(pos) = line[from..].find(&needle) {
+        let at = from + pos;
+        from = at + needle.len();
+        if at > 0 && line.as_bytes()[at - 1] == b'\\' {
+            continue;
         }
+        let Some(value) = line[from..].trim_start().strip_prefix(':') else {
+            continue;
+        };
+        let value = value.trim_start();
+        if !value.starts_with('"') {
+            continue;
+        }
+        let mut escaped = false;
+        for (i, c) in value.char_indices().skip(1) {
+            match c {
+                '\\' if !escaped => escaped = true,
+                '"' if !escaped => return serde_json::from_str(&value[..=i]).ok(),
+                _ => escaped = false,
+            }
+        }
+        return None;
     }
     None
 }
@@ -175,6 +207,14 @@ fn str_field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
 #[derive(Deserialize)]
 struct ClaudeLine {
     message: Option<ClaudeMessage>,
+}
+
+/// Only the top-level record type, so a non-assistant record whose fields
+/// happen to have other shapes is never parsed as one.
+#[derive(Deserialize)]
+struct ClaudeLineKind {
+    #[serde(rename = "type")]
+    kind: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -233,7 +273,7 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
 
     if subagents_dir.is_some() {
         let meta = path.with_extension("meta.json");
-        rec.agent = std::fs::read(&meta)
+        rec.agent = read_regular(&meta)
             .ok()
             .and_then(|b| serde_json::from_slice::<ClaudeSubagentMeta>(&b).ok())
             .and_then(|m| m.agent_type);
@@ -250,20 +290,31 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
         let Ok(line) = line else {
             return rec.unparsed();
         };
-        rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
+        rec.touch_ts(
+            str_field(&line, "timestamp")
+                .as_deref()
+                .and_then(parse_iso_secs),
+        );
         if rec.repo.is_none() {
-            rec.repo = str_field(&line, "cwd").map(str::to_string);
+            rec.repo = str_field(&line, "cwd");
         }
         if rec.harness_version.is_none() {
-            rec.harness_version = str_field(&line, "version").map(str::to_string);
+            rec.harness_version = str_field(&line, "version");
         }
         if rec.parent_session_id.is_none() {
             if let Some(agent) = str_field(&line, "agentSetting") {
-                rec.agent = Some(agent.to_string());
+                rec.agent = Some(agent);
             }
         }
-        if !line.contains("\"type\":\"assistant\"") || !line.contains("\"usage\"") {
+        // Cheap, formatting-independent prefilter; serde checks the shape.
+        if !line.contains("\"assistant\"") || !line.contains("\"usage\"") {
             continue;
+        }
+        match serde_json::from_str::<ClaudeLineKind>(&line) {
+            Ok(ClaudeLineKind { kind }) if kind.as_deref() != Some("assistant") => continue,
+            Ok(_) => {}
+            // Not even valid JSON, e.g. a truncated assistant line.
+            Err(_) => return rec.unparsed(),
         }
         match serde_json::from_str::<ClaudeLine>(&line) {
             Ok(ClaudeLine {
@@ -284,8 +335,8 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
             }) => return rec.unparsed(),
             // "usage" appeared elsewhere in the line, not as message usage.
             Ok(_) => {}
-            // Only usage-carrying lines get here, so one we can't read
-            // would silently undercount the session.
+            // An assistant line with usage we can't read would silently
+            // undercount the session.
             Err(_) => return rec.unparsed(),
         }
     }
@@ -440,7 +491,7 @@ struct V3SessionJson {
 /// isn't a JSON object. Each field is read on its own, so one field
 /// changing type loses only that field.
 fn read_v3_session_json(path: &Path) -> Result<V3SessionJson, ()> {
-    let bytes = match std::fs::read(path) {
+    let bytes = match read_regular(path) {
         Ok(b) => b,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(V3SessionJson::default()),
         Err(_) => return Err(()),
@@ -517,7 +568,11 @@ pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
         let Ok(line) = line else {
             return rec.unparsed();
         };
-        rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
+        rec.touch_ts(
+            str_field(&line, "timestamp")
+                .as_deref()
+                .and_then(parse_iso_secs),
+        );
         let interesting = [
             "\"session_start\"",
             "\"usage_summary\"",
@@ -705,6 +760,57 @@ mod tests {
     }
 
     #[test]
+    fn str_field_tolerates_whitespace_decodes_escapes_and_skips_nested_strings() {
+        assert_eq!(
+            str_field(r#"{"cwd" :  "/a/b"}"#, "cwd").as_deref(),
+            Some("/a/b")
+        );
+        assert_eq!(
+            str_field(r#"{"cwd":"/a \"q\" \\ café"}"#, "cwd").as_deref(),
+            Some("/a \"q\" \\ café")
+        );
+        // "cwd" inside another string value, then the real key.
+        assert_eq!(
+            str_field(r#"{"note":"x \"cwd\":\"/fake\"","cwd":"/real"}"#, "cwd").as_deref(),
+            Some("/real")
+        );
+        assert_eq!(str_field(r#"{"cwd":42,"x":1}"#, "cwd"), None);
+        assert_eq!(str_field(r#"{"cwd":"unterminated"#, "cwd"), None);
+    }
+
+    #[test]
+    fn claude_whitespace_formatted_json_is_still_counted() {
+        let d = tmp("claude-spaced");
+        let body = [
+            r#"{"type": "agent-setting", "agentSetting": "konductor", "cwd": "/repo/x", "timestamp": "2026-11-01T10:00:00Z"}"#,
+            r#"{"type": "assistant", "timestamp": "2026-11-01T10:00:05Z", "message": {"id": "m", "model": "claude-opus-5-5", "usage": {"input_tokens": 1, "output_tokens": 500}}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "proj/s.jsonl", &body);
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.status, Status::Ok);
+        assert_eq!(r.agent.as_deref(), Some("konductor"));
+        assert_eq!(r.repo.as_deref(), Some("/repo/x"));
+        assert_eq!(r.models[0].output_tokens, Some(500));
+        assert_eq!(r.last_ts.unwrap() - r.first_ts.unwrap(), 5);
+    }
+
+    #[test]
+    fn claude_non_assistant_line_with_usage_is_ignored() {
+        let d = tmp("claude-non-assistant");
+        let body = [
+            r#"{"type":"agent-setting","agentSetting":"konductor"}"#,
+            r#"{"type":"api-request","role":"assistant","message":{"id":"x","model":"m","usage":{"output_tokens":"not-a-number"}}}"#,
+            r#"{"type":"assistant","message":{"id":"a","model":"claude-opus-5-5","usage":{"output_tokens":3}}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "proj/s.jsonl", &body);
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.status, Status::Ok);
+        assert_eq!(r.models[0].output_tokens, Some(3));
+    }
+
+    #[test]
     fn claude_subagent_takes_agent_from_meta_and_parent_from_dir() {
         let d = tmp("claude-sub");
         write(
@@ -808,6 +914,37 @@ mod tests {
         let mut bytes = br#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#.to_vec();
         bytes.extend_from_slice(b"\n\xff\xfe not utf-8\n");
         std::fs::write(&p, bytes).unwrap();
+        assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    fn mkfifo(path: &Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        assert!(std::process::Command::new("mkfifo")
+            .arg(path)
+            .status()
+            .unwrap()
+            .success());
+    }
+
+    #[test]
+    fn fifo_sidecars_are_never_opened() {
+        let d = tmp("fifo-sidecars");
+        // Claude subagent: FIFO meta.json beside a regular transcript.
+        mkfifo(&d.join("proj/s/subagents/agent-a.meta.json"));
+        let p = write(
+            &d,
+            "proj/s/subagents/agent-a.jsonl",
+            r#"{"type":"assistant","message":{"id":"x","model":"m","usage":{"input_tokens":1}}}"#,
+        );
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!((r.status, r.agent), (Status::Ok, None));
+        // Kiro v3: FIFO session.json beside a regular messages.jsonl.
+        mkfifo(&d.join("ws/s/session.json"));
+        let p = write(
+            &d,
+            "ws/s/messages.jsonl",
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#,
+        );
         assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
     }
 

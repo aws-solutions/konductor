@@ -311,6 +311,12 @@ fn refresh(
             unreadable += 1;
             continue;
         };
+        // A FIFO would block open() forever, and a device could stream
+        // without end; only regular files (or links to them) are sessions.
+        if !meta.is_file() {
+            unreadable += 1;
+            continue;
+        }
         let mtime = meta
             .modified()
             .ok()
@@ -671,6 +677,36 @@ mod tests {
             !names.contains_key("k-researcher"),
             "plugin agents only match in <plugin>:<agent> form"
         );
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn non_regular_session_files_are_skipped_not_opened() {
+        let d = tmp("refresh-fifo");
+        let fifo = d.join("sessions/cli/fifo.json");
+        std::fs::create_dir_all(fifo.parent().unwrap()).unwrap();
+        let made = std::process::Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap();
+        assert!(made.success());
+        let dir = d.join("sessions/cli/dir.json");
+        std::fs::create_dir_all(&dir).unwrap();
+        let sources = vec![
+            Source {
+                harness: Harness::KiroCliV2,
+                path: fifo,
+            },
+            Source {
+                harness: Harness::KiroCliV2,
+                path: dir,
+            },
+        ];
+        let mut cache = HashMap::new();
+        // Would block forever on open() if the FIFO were read.
+        let outcome = refresh(&mut cache, &sources, 0, &agents());
+        assert_eq!(outcome.unreadable, 2);
+        assert!(cache.is_empty());
         std::fs::remove_dir_all(&d).ok();
     }
 
