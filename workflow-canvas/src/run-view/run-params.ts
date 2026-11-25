@@ -33,15 +33,19 @@ export interface ParamBox {
   readonly value: string;
   readonly description?: string;
   readonly required: boolean;
+  /**
+   * Whether the workflow declares a default for it. An empty box of a param
+   * with a default is not a missing value: the run takes the default.
+   */
+  readonly hasDefault: boolean;
   /** Why the value cannot be sent, as a sentence, or `undefined` when it can. */
   readonly problem?: string;
 }
 
 /**
  * Why a param value cannot be sent, as a sentence for a person, or
- * `undefined` when it can. A value of only white space is taken as no value:
- * the run would be given nothing for the param, so a required param with no
- * default says so instead.
+ * `undefined` when it can. Length is the only rule: the API takes any string
+ * within the limit.
  */
 export function paramProblem(value: string): string | undefined {
   return [...value].length > PARAM_MAX_LENGTH
@@ -49,9 +53,13 @@ export function paramProblem(value: string): string | undefined {
     : undefined;
 }
 
-/** Whether the box holds a value to send; white space alone is no value. */
+/*
+ * Whether the box holds a value to send. Only an empty box holds none: the
+ * API takes any other string, white space included, so trimming here would
+ * drop a value the server would have accepted.
+ */
 function hasValue(value: string): boolean {
-  return value.trim() !== '';
+  return value !== '';
 }
 
 /**
@@ -81,6 +89,7 @@ export function paramBoxes(
       name: param.name,
       value,
       required: param.required,
+      hasDefault: param.default !== undefined,
       ...(param.description === undefined
         ? {}
         : { description: param.description }),
@@ -102,14 +111,17 @@ export function withParam(
  * Why the params stop a run, as a sentence for the Run button, or `undefined`
  * when they do not. A required param with no value and no default is named,
  * and so is the first value that is too long: the server would refuse both,
- * so the button says why before the call is made.
+ * so the button says why before the call is made. An empty box of a param
+ * that has a default stops nothing, because the run takes that default.
  */
 export function paramsProblem(boxes: readonly ParamBox[]): string | undefined {
   const tooLong = boxes.find((box) => box.problem !== undefined);
   if (tooLong) {
     return `The value of ${tooLong.name} can have at most ${PARAM_MAX_LENGTH} characters.`;
   }
-  const missing = boxes.find((box) => box.required && !hasValue(box.value));
+  const missing = boxes.find(
+    (box) => box.required && !box.hasDefault && !hasValue(box.value),
+  );
   return missing ? `Enter a value for ${missing.name} to run.` : undefined;
 }
 

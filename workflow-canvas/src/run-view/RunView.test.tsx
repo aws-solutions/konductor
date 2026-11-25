@@ -864,6 +864,46 @@ describe('RunView, the params the workflow declares', () => {
     expect(isOff(runButton())).toBe(false);
   });
 
+  it('runs a required param cleared back to its default, with its key left out', async () => {
+    const required = { ...BRANCH, required: true };
+    const { start } = drawn({ declaredParams: [required] });
+
+    await typeParam('branch', '');
+
+    expect(isOff(runButton())).toBe(false);
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
+  });
+
+  it('sends a value of white space as it was typed', async () => {
+    const { start } = drawn({ declaredParams: [DIFF] });
+
+    await typeParam('diff_input', '   ');
+    await press();
+
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT, diff_input: '   ' },
+      expect.anything(),
+    );
+  });
+
+  it('says what an empty box gets only when the param has a default', () => {
+    drawn({
+      declaredParams: [DIFF, BRANCH, { name: 'note', required: false }],
+    });
+
+    expect(
+      screen.getByText(
+        'Left empty, the run takes the value the workflow declares.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('A value is needed to run.')).toBeTruthy();
+    expect(screen.getByText('Optional.')).toBeTruthy();
+  });
+
   it('takes a required param that the file gives a default', () => {
     drawn({ declaredParams: [{ ...BRANCH, required: true }] });
 

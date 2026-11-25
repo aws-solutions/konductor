@@ -61,6 +61,20 @@ describe('paramBoxes', () => {
     expect(box?.required).toBe(true);
   });
 
+  it('says whether the workflow declares a default for it', () => {
+    expect(paramBoxes([BRANCH], {})[0]?.hasDefault).toBe(true);
+    expect(paramBoxes([DIFF], {})[0]?.hasDefault).toBe(false);
+  });
+
+  it('counts an empty declared default as a default', () => {
+    const [box] = paramBoxes(
+      [{ name: 'note', default: '', required: true }],
+      {},
+    );
+
+    expect(box?.hasDefault).toBe(true);
+  });
+
   it('reads a typed text as an own key only', () => {
     const [box] = paramBoxes([{ name: 'constructor', required: false }], {});
 
@@ -104,10 +118,18 @@ describe('paramsProblem', () => {
     ).toBeUndefined();
   });
 
-  it('counts white space alone as no value', () => {
-    expect(paramsProblem(paramBoxes([DIFF], { diff_input: '   ' }))).toContain(
-      'diff_input',
-    );
+  it('takes white space as a value, as the API does', () => {
+    expect(
+      paramsProblem(paramBoxes([DIFF], { diff_input: '   ' })),
+    ).toBeUndefined();
+  });
+
+  it('takes a required param whose box was cleared back to its default', () => {
+    const cleared = paramBoxes([{ ...BRANCH, required: true }], {
+      branch: '',
+    });
+
+    expect(paramsProblem(cleared)).toBeUndefined();
   });
 
   it('names a value that is too long before a missing one', () => {
@@ -135,6 +157,32 @@ describe('runParams', () => {
 
     expect(runParams('Add a greeting', boxes)).toEqual({
       goal: 'Add a greeting',
+    });
+  });
+
+  it('omits the key of a required param cleared back to its default', () => {
+    const boxes = paramBoxes([{ ...BRANCH, required: true }], { branch: '' });
+
+    expect(runParams('Add a greeting', boxes)).toEqual({
+      goal: 'Add a greeting',
+    });
+  });
+
+  it('sends a value of white space as it was typed', () => {
+    const boxes = paramBoxes([DIFF], { diff_input: '   ' });
+
+    expect(runParams('Add a greeting', boxes)).toEqual({
+      goal: 'Add a greeting',
+      diff_input: '   ',
+    });
+  });
+
+  it('keeps the spaces around a value', () => {
+    const boxes = paramBoxes([DIFF], { diff_input: '  the.diff  ' });
+
+    expect(runParams('Add a greeting', boxes)).toEqual({
+      goal: 'Add a greeting',
+      diff_input: '  the.diff  ',
     });
   });
 

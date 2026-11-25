@@ -6,11 +6,17 @@ import type { ParamBox } from './run-params';
 
 const REQUIRED = 'A value is needed to run.';
 
-const OPTIONAL_WITH_DEFAULT =
+const TAKES_DEFAULT =
   'Left empty, the run takes the value the workflow declares.';
 
+const OPTIONAL = 'Optional.';
+
+// A box with a default says what an empty one gets, whether the param is
+// required or not. Without a default there is nothing to fall back on, so a
+// required param says a value is needed and any other one says it is optional.
 function constraintOf(box: ParamBox): string {
-  return box.required ? REQUIRED : OPTIONAL_WITH_DEFAULT;
+  if (box.hasDefault) return TAKES_DEFAULT;
+  return box.required ? REQUIRED : OPTIONAL;
 }
 
 /**

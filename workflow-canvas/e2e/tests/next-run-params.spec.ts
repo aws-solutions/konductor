@@ -81,6 +81,43 @@ test('leaves an empty box out, so the server applies the default', async ({
     });
 });
 
+test('runs a required param cleared back to its default', async ({ page }) => {
+  const canvas = await openDeclaringParams(page);
+  const started = await catchStart(page);
+  await canvas.page.getByLabel('diff_input').fill('the.diff');
+  // `branch` is declared with a default, so clearing it is not a missing
+  // value: the run leaves the key out and the server applies that default.
+  await canvas.page.getByLabel('branch').fill('');
+
+  await expect(canvas.runButton).toBeEnabled();
+  await canvas.runButton.click();
+
+  await expect
+    .poll(() => paramsOf(started()))
+    .toEqual({
+      goal: 'Add a greeting to the README',
+      diff_input: 'the.diff',
+    });
+});
+
+test('sends a value with its spaces, as the server takes it', async ({
+  page,
+}) => {
+  const canvas = await openDeclaringParams(page);
+  const started = await catchStart(page);
+  await canvas.page.getByLabel('diff_input').fill('  the.diff  ');
+
+  await canvas.runButton.click();
+
+  await expect
+    .poll(() => paramsOf(started()))
+    .toEqual({
+      goal: 'Add a greeting to the README',
+      diff_input: '  the.diff  ',
+      branch: 'main',
+    });
+});
+
 test('shows what the server says about a param it refuses', async ({
   page,
 }) => {
