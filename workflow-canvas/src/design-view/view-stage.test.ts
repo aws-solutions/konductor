@@ -302,3 +302,51 @@ describe('sourceStageOf', () => {
     expect(sourceStageOf(view, { kind: 'loaded', index: 5 })).toBeUndefined();
   });
 });
+
+describe('fieldValuesOf and a stage with no prompt', () => {
+  const bare = {
+    name: 'review',
+    kind: 'agent',
+    agent: 'k-quality-assurance',
+    range: { line: 9, end_line: 10 },
+  };
+  const draft = {
+    id: 's2',
+    name: 'review',
+    agent: 'k-quality-assurance',
+    prompt: '',
+  };
+
+  it('carries no prompt key at all', () => {
+    const values = fieldValuesOf(bare, draft);
+
+    expect(Object.hasOwn(values, 'prompt')).toBe(false);
+    expect(values).toEqual({ name: 'review', agent: 'k-quality-assurance' });
+  });
+
+  it('carries no prompt key once one is cleared', () => {
+    const had = checkStageOf(view, 'draft');
+    const cleared = {
+      id: 's1',
+      name: 'draft',
+      agent: 'k-developer',
+      prompt: '',
+    };
+
+    expect(Object.hasOwn(fieldValuesOf(had, cleared), 'prompt')).toBe(false);
+  });
+
+  it('keeps the file prompt when the editor cannot read it', () => {
+    const had = checkStageOf(view, 'draft');
+    const unread = {
+      id: 's1',
+      name: 'draft',
+      agent: 'k-developer',
+      prompt: '',
+    };
+
+    expect(fieldValuesOf(had, unread, { promptRead: false })).toMatchObject({
+      prompt: 'Write the greeting.',
+    });
+  });
+});
