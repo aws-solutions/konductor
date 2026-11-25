@@ -43,7 +43,7 @@ node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot -
 node bench/tasks/validate-tasks.js                                                            # the shipped tasks hold together
 node bench/runner/bench.js scenarios lint bench/scenarios --base main                         # no task prompt leaks the method
 node bench/runner/bench.js scenarios coverage bench/scenarios --base main --out /tmp/coverage  # what the pack covers
-node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"                     # the bench's own tests
+node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js" "bench/agenteval/test/*.test.js"                     # the bench's own tests
 ```
 
 The full test run takes about 20 minutes. The tests work with any `TMPDIR`: when it is inside your home, they make

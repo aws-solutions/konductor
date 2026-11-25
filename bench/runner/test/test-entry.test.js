@@ -18,10 +18,11 @@ const SCRIPT = path.join(BENCH, 'scripts', 'test.sh');
 function fakeRepo(t, { nodeBody, pyBody }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-entry-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  for (const d of ['bench/runner/test', 'bench/skilleval/test', 'bench/physical/test', 'bench/scripts']) fs.mkdirSync(path.join(root, d), { recursive: true });
+  for (const d of ['bench/runner/test', 'bench/skilleval/test', 'bench/agenteval/test', 'bench/physical/test', 'bench/scripts']) fs.mkdirSync(path.join(root, d), { recursive: true });
   const nodeTest = `const test = require('node:test');\n${nodeBody}\n`;
   fs.writeFileSync(path.join(root, 'bench/runner/test/a.test.js'), nodeTest);
   fs.writeFileSync(path.join(root, 'bench/skilleval/test/b.test.js'), "require('node:test')('b', () => {});\n");
+  fs.writeFileSync(path.join(root, 'bench/agenteval/test/c.test.js'), "require('node:test')('c-agenteval', () => {});\n");
   fs.writeFileSync(path.join(root, 'bench/physical/test/test_fake.py'), `import unittest\n\n\nclass Fake(unittest.TestCase):\n${pyBody}\n`);
   fs.copyFileSync(path.join(BENCH, 'scripts', 'unittest-tap.py'), path.join(root, 'bench/scripts/unittest-tap.py'));
   const armPy = path.join(root, 'arm-python');
@@ -48,7 +49,8 @@ test('no arm Python: node and Python tests run, the Python ones as TAP lines, ex
   const r = run(root);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /# no arm Python/);
-  assert.match(r.stdout, /^ok 1 - a/m);
+  assert.match(r.stdout, /^ok \d+ - a$/m);
+  assert.match(r.stdout, /^ok \d+ - c-agenteval$/m, 'the agenteval tests run in the entry point (B-012)');
   assert.match(r.stdout, /^ok 1 - py: test_fake\.Fake\.test_one$/m);
   assert.match(r.stdout, /^# py tests 1$/m);
   assert.match(r.stdout, /^# arm skips 0$/m);

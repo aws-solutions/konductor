@@ -22,7 +22,7 @@ LOCK_WAIT=${LOCK_WAIT:-3600}
 OUT_ROOT=${OUT_ROOT:-$WS/reports}
 LEAK_DIR=${LEAK_DIR:-/tmp}
 # The agreed command, from bench/test-base-set.txt.
-SUITE_CMD=${SUITE_CMD:-node --test --test-concurrency=1 --test-reporter=tap "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"}
+SUITE_CMD=${SUITE_CMD:-node --test --test-concurrency=1 --test-reporter=tap "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js" "bench/agenteval/test/*.test.js"}
 TS=$(date -u +%Y%m%d-%H%M%S)
 OUT=$OUT_ROOT/full-suite-$TS
 REPO=${R:-}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # One test entry point for the bench (FW-23, DEBT D-217). Runs, from the repo root:
-#   1. the node base set: bench/runner/test and bench/skilleval/test (the command bench/test-base-set.txt names);
+#   1. the node base set: bench/runner/test, bench/skilleval/test and bench/agenteval/test (the command bench/test-base-set.txt names);
 #   2. the Python unittest files in bench/physical/test, printed as TAP lines (bench/scripts/unittest-tap.py).
 # The arm Python is BENCH_ARM_PYTHON, else <repo>/.venv/bin/python. When it imports mujoco and cedarpy, both parts run
 # with it and BENCH_REQUIRE_ARM=1, and any arm test that still skips fails the run (debt review F1: a suite that
@@ -64,7 +64,7 @@ cd "$R"
 node_code=0
 # NODE_TEST_CONTEXT is set when this script runs under a node test; the inner run must report on its own.
 env -u NODE_TEST_CONTEXT node --test --test-concurrency=1 "${REPORTER[@]}" \
-  "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js" 2>&1 | tee "$LOGS/node.log" || node_code=$?
+  "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js" "bench/agenteval/test/*.test.js" 2>&1 | tee "$LOGS/node.log" || node_code=$?
 py_code=0
 "$PY" bench/scripts/unittest-tap.py bench/physical/test 2>"$LOGS/py.err" | tee "$LOGS/py.tap" || py_code=$?
 [ "$py_code" = 0 ] || cat "$LOGS/py.err" >&2
