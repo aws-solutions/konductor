@@ -13,6 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const toolchain = require('./toolchain.js');
+const { byKind } = require('./plant/kinds.js');
 
 const DEFAULT_WANT = '3.12';
 const PROBE = 'import sys; print(sys.executable); print("%d.%d.%d" % sys.version_info[:3])';
@@ -90,7 +91,7 @@ function rebuildHint(python) {
 }
 
 /** The modules each plant kind's gateway imports, and the exact wheels the arm test ran on (one list, DEBT D-179). */
-const GATEWAY_MODULES = Object.freeze({ 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'] });
+const GATEWAY_MODULES = Object.freeze(byKind((rec) => rec.gatewayModules));
 const GATEWAY_WHEELS = Object.freeze(require('../../physical/gateway-wheels.json'));
 
 /**
@@ -139,4 +140,4 @@ function pinPython({ tasks, scratchDir, benchDir, flag = null, plantPython = nul
   }
 }
 
-module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, checkGatewayModules, rebuildHint, GATEWAY_WHEELS, DEFAULT_WANT };
+module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, checkGatewayModules, rebuildHint, GATEWAY_MODULES, GATEWAY_WHEELS, DEFAULT_WANT };

@@ -9,6 +9,7 @@ const path = require('node:path');
 const { table } = require('./render.js');
 const { mainFailure } = require('../runner/lib/plant/score.js');
 const { ALL_MOTION_TOOLS } = require('../runner/lib/plant/meta.js');
+const { PLANT_KINDS } = require('../runner/lib/plant/kinds.js');
 
 // The side file each control writes (physical/controls/plant-control.js). Not imported: that module starts processes.
 const SIDE_FILE = 'plant-control.json';
@@ -71,8 +72,10 @@ const CONTROLS = {
   },
 };
 
-// The arm's controls (`arm-<control>-kiro`) must show the same as the conveyor's, except do-nothing, which is shared.
-for (const name of ['scripted-calls', 'careful-operator', 'path', 'unsafe-agent']) CONTROLS[`arm-${name}`] = CONTROLS[name];
+// A kind's shared controls (kinds.js: the arm's `arm-<control>-kiro`) must show the same as the conveyor's; do-nothing is one for all.
+for (const { sharedControls: { prefix, names } } of Object.values(PLANT_KINDS)) {
+  for (const name of names) CONTROLS[`${prefix}${name}`] = CONTROLS[name];
+}
 
 /**
  * The control a row's suite ran, by a file name in its run config: `--kiro-bin` (`<control>-kiro`), `--claude-bin`

@@ -5,11 +5,9 @@
 // `metaOfKind` gives one kind's facts; the ALL_* names are unions over every kind. Never changes a file.
 
 const fs = require('node:fs');
-const path = require('node:path');
+const { PLANT_KINDS, byKind } = require('./kinds.js');
 
-const SCHEMAS = path.join(__dirname, '..', '..', '..', 'physical', 'schemas');
-const META_PATH = path.join(SCHEMAS, 'plant-meta-v1.json');
-const ARM_META_PATH = path.join(SCHEMAS, 'plant-meta-arm-v1.json');
+const META_PATH = PLANT_KINDS['conveyor-sim'].metaFile;
 const KNOWN_MAJOR = 1;
 
 class PlantMetaError extends Error {}
@@ -43,7 +41,7 @@ function loadKind(file) {
   };
 }
 
-const KIND_META = { 'conveyor-sim': loadKind(META_PATH), 'arm-sim': loadKind(ARM_META_PATH) };
+const KIND_META = byKind((rec) => loadKind(rec.metaFile));
 const union = (key) => [...new Set(Object.values(KIND_META).flatMap((m) => [...m[key]]))];
 /** Every tool name of every plant kind: what a stream's tool call is checked against before it is called a plant call. */
 const ALL_TOOLS = union('TOOLS');

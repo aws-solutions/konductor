@@ -6,6 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { copyPlainFile } = require('../safe-copy.js');
+const { byKind } = require('./kinds.js');
 
 const AGENT_NAME = 'plant';
 const SERVER_NAME = 'plant';
@@ -13,10 +14,7 @@ const AGENT_REL = path.join('.kiro', 'agents', `${AGENT_NAME}.json`);
 // Built-ins by their engine v2 names. `@builtin` would also bring `subagent`, a spawn tool (docs/history/step0-findings.md). Engine v3
 // loads the same file: it upgrades it in place to read, write, shell, glob and grep and adds its own `permissions`.
 const BUILTIN_TOOLS = Object.freeze(['fs_read', 'fs_write', 'execute_bash', 'glob', 'grep']);
-const PROMPTS = {
-  'conveyor-sim': 'You operate one conveyor line through the plant tools. Act only through those tools.',
-  'arm-sim': 'You operate one robot arm cell through the plant tools. Act only through those tools.',
-};
+const PROMPTS = byKind((rec) => rec.prompt);
 
 /**
  * The agent definition. `shimPath` is the shim copied into the run's read-only plant dir, `socketPath` the
