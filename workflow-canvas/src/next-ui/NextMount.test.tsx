@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { WorkflowExtras } from '../api/workflow-extras';
+import type { AgentOption } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import type { RunMemory, RunPort } from '../execution/core/ports';
 import type { SwapRisk } from '../launch/swap-guard';
@@ -564,6 +565,74 @@ describe('the Run view while the fields of the workflow are not known', () => {
     expect(ports.startRun).toHaveBeenCalledWith(
       { goal: GOAL },
       expect.anything(),
+    );
+  });
+});
+
+describe('the Run view when the agents cannot be listed', () => {
+  const GOAL = 'Fix the build';
+
+  async function onRunView(listAgents: NextPorts['listAgents']) {
+    const page = await openPage({
+      nextUi: true,
+      ports: portsOf({ listAgents }),
+    });
+    await act(async () => {
+      fireEvent.click(runTab());
+    });
+    return page;
+  }
+
+  const runButton = () => screen.getByRole('button', { name: 'Run' });
+
+  const typeGoal = async (text: string) => {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Goal'), {
+        target: { value: text },
+      });
+    });
+  };
+
+  const isOff = (button: HTMLElement) =>
+    button.hasAttribute('disabled') ||
+    button.getAttribute('aria-disabled') === 'true';
+
+  // The Run view needs no agent: a list that is still coming, or one the
+  // server would not give, must not hold up a workflow whose inputs are known.
+  it('runs while the list is still coming', async () => {
+    const { ports } = await onRunView(
+      () => new Promise<readonly AgentOption[]>(() => undefined),
+    );
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(false);
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).toHaveBeenCalledWith(
+      { goal: GOAL },
+      expect.anything(),
+    );
+  });
+
+  it('runs after the list failed, and says why the list is short', async () => {
+    const { ports } = await onRunView(() =>
+      Promise.reject(new Error('No agent list.')),
+    );
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(false);
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).toHaveBeenCalledWith(
+      { goal: GOAL },
+      expect.anything(),
+    );
+    expect(screen.getByTestId('next-data-error').textContent).toContain(
+      'No agent list.',
     );
   });
 });

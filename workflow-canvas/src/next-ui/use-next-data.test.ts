@@ -2,6 +2,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowExtras } from '../api/workflow-extras';
+import type { AgentOption } from '../designer-view/field-rules';
 import { KNOWN_AGENTS } from '../designer/core';
 import type { NextPorts } from './next-http';
 import { useNextData } from './use-next-data';
@@ -73,9 +74,10 @@ describe('useNextData', () => {
     expect(ports.loadExtras).toHaveBeenCalledTimes(2);
   });
 
-  it('has nothing while the read for a new reload value is in flight', async () => {
+  it('has no fields while the read for a new reload value is in flight', async () => {
     // The fields of the workflow as it was before the save are not the ones
-    // it has now, so no view may draw from them while the reread is out.
+    // it has now, so no view may draw from them while the reread is out. The
+    // agents are read apart and answer for themselves.
     let answer: (extras: WorkflowExtras) => void = () => undefined;
     const held = new Promise<WorkflowExtras>((resolve) => {
       answer = resolve;
@@ -95,7 +97,7 @@ describe('useNextData', () => {
     await act(async () => {});
 
     expect(result.current.extras).toEqual({ stageFields: {} });
-    expect(result.current.agents).toBe(KNOWN_AGENTS);
+    expect(result.current.ready).toBe(false);
     expect(result.current.failure).toBeUndefined();
 
     // Once it answers, the fields of the workflow as it is now are there.
@@ -184,5 +186,48 @@ describe('useNextData, whether what it holds is what the server said', () => {
     const { result } = renderHook(() => useNextData({ ports: undefined }));
 
     expect(result.current.ready).toBe(false);
+  });
+});
+
+describe('useNextData, when one read answers and the other does not', () => {
+  const heldAgents = () => new Promise<readonly AgentOption[]>(() => undefined);
+
+  it('is ready on the fields while the agents are still coming', async () => {
+    const ports = portsOf({ listAgents: heldAgents });
+    const { result } = renderHook(() => useNextData({ ports }));
+    await act(async () => {});
+
+    expect(result.current.ready).toBe(true);
+    expect(result.current.extras).toEqual(EXTRAS);
+    expect(result.current.agents).toBe(KNOWN_AGENTS);
+    expect(result.current.failure).toBeUndefined();
+    expect(result.current.agentsFailure).toBeUndefined();
+  });
+
+  it('is ready on the fields after the agents failed, and says why', async () => {
+    const ports = portsOf({
+      listAgents: () => Promise.reject(new Error('No agent list.')),
+    });
+    const { result } = renderHook(() => useNextData({ ports }));
+    await act(async () => {});
+
+    expect(result.current.ready).toBe(true);
+    expect(result.current.extras).toEqual(EXTRAS);
+    expect(result.current.agents).toBe(KNOWN_AGENTS);
+    expect(result.current.failure).toBeUndefined();
+    expect(result.current.agentsFailure).toBe('No agent list.');
+  });
+
+  it('keeps the agents the server listed when the fields failed', async () => {
+    const ports = portsOf({
+      loadExtras: () => Promise.reject(new Error('No fields.')),
+    });
+    const { result } = renderHook(() => useNextData({ ports }));
+    await act(async () => {});
+
+    expect(result.current.ready).toBe(false);
+    expect(result.current.failure).toBe('No fields.');
+    expect(result.current.agents).toEqual(AGENTS);
+    expect(result.current.agentsFailure).toBeUndefined();
   });
 });

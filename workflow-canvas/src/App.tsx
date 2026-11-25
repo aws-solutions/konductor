@@ -67,6 +67,16 @@ function paramsState(next: NextData): ParamsState {
 }
 
 /**
+ * What could not be read of the workflow, each as its own notice. The fields
+ * and the agents are read apart, so one may fail while the other answers.
+ */
+function dataFailures(next: NextData): readonly string[] {
+  return [next.failure, next.agentsFailure].filter(
+    (reason): reason is string => reason !== undefined,
+  );
+}
+
+/**
  * True when the Run view draws a workflow, so it has a Run button. A load
  * can succeed with no view: no file yet, or a file with errors.
  */
@@ -303,11 +313,11 @@ export function App({
             }
           >
             {notice}
-            {next.failure !== undefined && (
-              <Alert type="warning" data-testid="next-data-error">
-                {next.failure}
+            {dataFailures(next).map((reason) => (
+              <Alert key={reason} type="warning" data-testid="next-data-error">
+                {reason}
               </Alert>
-            )}
+            ))}
             {nextViews ? (
               <NextRunAnnouncements run={nextRun} />
             ) : (
