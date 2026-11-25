@@ -22,8 +22,9 @@ const RUN_EVENTS = [
 ];
 
 /**
- * Opens the Run view with those states declared and runs the workflow, which
- * is what makes the page read them: a page with no run reads no run.
+ * Opens the Run view with the checks declared, answers the run's read with
+ * the states given and runs the workflow, which is what makes the page read
+ * them: a page with no run reads no run.
  */
 async function ranWithChecks(
   page: Page,
