@@ -12,10 +12,11 @@ const { spawnSync } = require('node:child_process');
 const { countLabelledFindings } = require('./findings.js');
 const { runRealTests, scoreReal } = require('./realtests.js');
 const { addSharedHelpers } = require('./hidden-lib.js');
+const { BUILTIN_TYPES, defaultCheckTypes } = require('./check-types.js');
 
 const PATTERN_FLAGS = 'im';
 const CMD_TIMEOUT_MS = 60000;
-const CHECK_TYPES = ['file_exists', 'contains', 'not_contains', 'min_matches', 'fixture_unchanged', 'cmd', 'labelled_findings', 'tests'];
+const CHECK_TYPES = BUILTIN_TYPES;
 const TESTS_TIMEOUT_MS = 60000;
 // Each hidden test gets its own limit, so one hung test fails one test and the others still count.
 const PER_TEST_TIMEOUT_MS = 15000;
@@ -296,11 +297,14 @@ const READ_TYPES = Object.freeze({
  * opts.pristineDir: pristine fixture copy, needed by fixture_unchanged.
  * opts.env / opts.wrapCmd: environment and command wrapper for `cmd` and `tests` checks.
  * opts.hiddenDir / opts.scratchDir / opts.testsTimeoutMs: overlay directory, scratch parent and timeout for `tests` checks.
+ * opts.checkTypes: the check-type registry for types that are not built in (default: check-types.js defaultCheckTypes).
  * Returns {passed, detail}; cmd checks add {exit, stderr, signal}.
  * Throws only for paths that escape root, which callers treat as a failed check.
  */
 function evalCheck(root, check, opts = {}) {
-  if (!CHECK_TYPES.includes(check.type)) return { passed: false, detail: `unknown check type ${check.type}` };
+  // A type that is not built in may come from a check-type plugin (check-types.js); the registry is read only then.
+  const plugin = CHECK_TYPES.includes(check.type) ? null : (opts.checkTypes ?? defaultCheckTypes()).plugin(check.type);
+  if (!CHECK_TYPES.includes(check.type) && !plugin) return { passed: false, detail: `unknown check type ${check.type}` };
   if (check.type === 'cmd') return cmdResult(root, check, opts);
   if (check.type === 'tests') return testsResult(root, check, opts);
 
@@ -315,7 +319,18 @@ function evalCheck(root, check, opts = {}) {
     const why = diffPaths(file, pristine, { allowAdditions: check.allowAdditions === true });
     return { passed: why === null, detail: why ?? 'identical' };
   }
+  if (plugin) return pluginResult(plugin, file, check);
   return READ_TYPES[check.type].evaluate(file, check);
+}
+
+// A plugin's result, kept to {passed, detail}: a throw or a non-true `passed` fails the check instead of the run.
+function pluginResult(plugin, file, check) {
+  try {
+    const r = plugin.evaluate(file, check);
+    return { passed: r?.passed === true, detail: String(r?.detail ?? '') };
+  } catch (e) {
+    return { passed: false, detail: `check type ${plugin.name} threw: ${e.message}` };
+  }
 }
 
 module.exports = { withPerTestTimeout, parseTapPartial, PER_TEST_TIMEOUT_MS, evalCheck, resolveInside, diffPaths, parseNodeTestSummary, aggregateHidden, aggregateGroup, aggregateRegression, TESTS_TIMEOUT_MS, CHECK_TYPES, READ_TYPES, PATTERN_FLAGS, CMD_TIMEOUT_MS, ANSWER_KEY };
