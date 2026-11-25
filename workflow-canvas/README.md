@@ -602,8 +602,9 @@ breaks.
   replaces it with nothing kept. Note such a change down before loading the
   file again.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
-  a stage can be selected, but the name is read-only and Add stage, Delete
-  stage, the agent list and Save are off. A note above the graph says why, and
+  a stage can be selected, but the name is read-only and the add button
+  (**Add agent-N**, or **Add stage** and **Delete stage** in the classic
+  Designer), the agent list and Save are off. A note above the graph says why, and
   the buttons carry the reason in a tooltip.
 - **A save whose answer is lost** (no answer, a server error, or a 200 that the
   page cannot read) may still have written the file. The page reads the file
@@ -616,11 +617,12 @@ breaks.
   proxy), the sentence adds that the changes on the page are lost when the
   launch address is opened again. A check that meets a lost session says so at
   once, under "The session is lost", as no save can work then.
-- **Focus and keys.** Everything above works with the keyboard: Tab to **Add
-  stage** and press Enter; the new stage's name has focus. A button that is off
-  (Save, Add stage, Delete stage) stays focusable and gives the reason in a
-  tooltip, so focus stays on the button that was pressed, for instance Save
-  while it saves.
+- **Focus and keys.** Everything above works with the keyboard: Tab to the
+  add button (**Add agent-N**, or **Add stage** in the classic Designer) and
+  press Enter; the new stage's name has focus. A button that is off (Save, the
+  add button, or **Delete stage** in the classic Designer) stays focusable and
+  gives the reason in a tooltip, so focus stays on the button that was
+  pressed, for instance Save while it saves.
 - **The two views.** The draft lives in `App`, so it is kept when you switch
   views. A run uses the saved file, not the draft. The Execution tab behind
   `?ui=classic` says so when the Designer holds changes that are not saved.
