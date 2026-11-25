@@ -494,6 +494,55 @@ describe('DesignView, a read-only workflow', () => {
     expect(yaml.readOnly).toBe(true);
     expect(panelOf('YAML').textContent).toContain(READ_ONLY_REASON);
   });
+
+  it('keeps history controls off when a reload makes the workflow read-only', async () => {
+    const { edits, editorOf } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+
+    edits.reload.mockResolvedValue({ ...HELLO_DOCUMENT, readOnly: true });
+    await act(async () => {
+      editorOf().reload();
+    });
+    await settle();
+
+    for (const label of ['Undo', 'Redo']) {
+      const control = button(label);
+      expect(isOff(control)).toBe(true);
+      await act(async () => control.focus());
+      const cloudscape = wrapper()
+        .findAllButtons()
+        .find((one) => one.getElement() === control);
+      expect(
+        cloudscape?.findDisabledReason()?.getElement().textContent,
+      ).toContain(READ_ONLY_REASON);
+    }
+
+    await openYaml();
+    const yaml = screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+    expect(yaml.value).toBe(HELLO_TEXT);
+
+    for (const label of ['Undo', 'Redo']) {
+      await act(async () => {
+        fireEvent.click(button(label));
+      });
+      expect(yaml.value).toBe(HELLO_TEXT);
+    }
+
+    for (const modifiers of [
+      { ctrlKey: true },
+      { metaKey: true },
+      { ctrlKey: true, shiftKey: true },
+      { metaKey: true, shiftKey: true },
+    ]) {
+      await act(async () => {
+        fireEvent.keyDown(yaml, { key: 'z', ...modifiers });
+      });
+      expect(yaml.value).toBe(HELLO_TEXT);
+    }
+  });
 });
 
 describe('DesignView, the YAML tab', () => {

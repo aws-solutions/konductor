@@ -129,7 +129,6 @@ test('keeps every workflow control read-only when the server says so', async ({
     properties.getByRole('button', { name: 'Delete stage' }),
   ).toBeDisabled();
 });
-});
 
 test('shows the text of the workflow under YAML', async ({ canvas }) => {
   const yaml = canvas.page.getByRole('tabpanel', { name: 'YAML' });

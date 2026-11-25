@@ -558,9 +558,11 @@ breaks.
   replaces it with nothing kept. Note such a change down before loading the
   file again.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
-  a stage can be selected, but the name is read-only and Add stage, Delete
-  stage, the agent list and Save are off. A note above the graph says why, and
-  the buttons carry the reason in a tooltip.
+  a stage can be selected. Its name and agent cannot be changed. Prompt fields
+  and YAML stay readable and copyable but cannot be changed. **Add stage**,
+  **Delete stage**, **Save**, **Undo**, **Redo**, and their shortcuts are off.
+  A note says why, and each disabled button stays focusable and gives the same
+  reason in a tooltip.
 - **A save whose answer is lost** (no answer, a server error, or a 200 that the
   page cannot read) may still have written the file. The page reads the file
   again: if it holds the text that was sent, the save counts as done. If it

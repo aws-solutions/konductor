@@ -394,12 +394,23 @@ export function DesignView({
       const undoing = asked === 'undo';
       const next = undoing ? undoText : redoText;
       const adopts = undoing ? undoAdopts : redoAdopts;
-      if (next === undefined || (adopts && blocked !== undefined)) return;
+      if (!editable || next === undefined || (adopts && blocked !== undefined))
+        return;
       if (adopts) editor.setText(next);
       if (undoing) undo();
       else redo();
     },
-    [blocked, editor, redo, redoAdopts, redoText, undo, undoAdopts, undoText],
+    [
+      blocked,
+      editable,
+      editor,
+      redo,
+      redoAdopts,
+      redoText,
+      undo,
+      undoAdopts,
+      undoText,
+    ],
   );
 
   const onKeyDown = useCallback(
@@ -561,8 +572,11 @@ export function DesignView({
               <Button
                 iconName="undo"
                 disabled={
-                  !history.canUndo || (undoAdopts && blocked !== undefined)
+                  !editable ||
+                  !history.canUndo ||
+                  (undoAdopts && blocked !== undefined)
                 }
+                disabledReason={editable ? undefined : READ_ONLY_REASON}
                 onClick={onUndo}
               >
                 Undo
@@ -570,8 +584,11 @@ export function DesignView({
               <Button
                 iconName="redo"
                 disabled={
-                  !history.canRedo || (redoAdopts && blocked !== undefined)
+                  !editable ||
+                  !history.canRedo ||
+                  (redoAdopts && blocked !== undefined)
                 }
+                disabledReason={editable ? undefined : READ_ONLY_REASON}
                 onClick={onRedo}
               >
                 Redo
