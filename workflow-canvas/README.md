@@ -422,9 +422,9 @@ replaced are still in the bundle, behind a query:
 - No `ui` in the address, as the launch address the server prints has it,
   opens the two views the page now opens with.
 - `?ui=classic` opens the views they replaced: the Designer tab and the
-  Execution tab, with the graph on both and the run state on each node. Two
-  controls are theirs alone today: the **prompt** text area in Properties, and
-  the dialog a Run opens when the workflow is not trusted.
+  Execution tab, with the graph on both and the run state on each node. Three
+  controls are theirs alone today: **Delete stage**, the **prompt** text area
+  in Properties, and the dialog a Run opens when the workflow is not trusted.
 - Any other value of `ui` opens the views the page opens with, so an older
   `?ui=next` link, from when they were the ones behind a query, still lands
   on them. A query the browser cannot read is no ask either.
@@ -462,8 +462,8 @@ keeps.
 
 - **Add agent-N** (**Add stage** in the classic Designer) adds a stage at the
   end, named `agent-1` (the first free `agent-N`) with the agent
-  `k-developer`, selects it and moves focus to its name. It is off at 40
-  stages, the most the API allows.
+  `k-developer`, and selects it. The classic Designer also moves focus to its
+  name. It is off at 40 stages, the most the API allows.
 - Typing in **name** renames the stage, and the node changes at once. The name
   is taken as typed; the API is what says whether it is a good name. The
   **Complete** or **Needs a fix** mark of a stage shows only for a draft that a
@@ -493,8 +493,8 @@ keeps.
 - Choosing a stage by its node (click, or Enter or Space) selects it and moves
   focus to its name. Enter or Space on the stage that is already selected also
   moves focus to its name; a click on it changes nothing. Escape on a node
-  leaves focus on it. A polite live region says what was added, deleted or
-  selected.
+  leaves focus on it. In the classic Designer, a polite live region also says
+  what was added, deleted or selected.
 
 Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
@@ -602,10 +602,11 @@ breaks.
   replaces it with nothing kept. Note such a change down before loading the
   file again.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
-  a stage can be selected, but the name is read-only and the add button
-  (**Add agent-N**, or **Add stage** and **Delete stage** in the classic
-  Designer), the agent list and Save are off. A note above the graph says why, and
-  the buttons carry the reason in a tooltip.
+  a stage can be selected. In the classic Designer the name is read-only and
+  **Add stage**, **Delete stage**, the agent list and Save are off; a note
+  above the graph says why, and the buttons carry the reason in a tooltip. The
+  Design view does not mark it yet: only Save is off, with the reason in its
+  tooltip.
 - **A save whose answer is lost** (no answer, a server error, or a 200 that the
   page cannot read) may still have written the file. The page reads the file
   again: if it holds the text that was sent, the save counts as done. If it
@@ -619,7 +620,7 @@ breaks.
   once, under "The session is lost", as no save can work then.
 - **Focus and keys.** Everything above works with the keyboard: Tab to the
   add button (**Add agent-N**, or **Add stage** in the classic Designer) and
-  press Enter; the new stage's name has focus. A button that is off (Save, the
+  press Enter; in the classic Designer the new stage's name has focus. A button that is off (Save, the
   add button, or **Delete stage** in the classic Designer) stays focusable and
   gives the reason in a tooltip, so focus stays on the button that was
   pressed, for instance Save while it saves.
@@ -633,7 +634,7 @@ handler that is on only then), because the draft lives in the page. A change
 that is put back, so the draft equals the file again, does not ask, and nor
 does a draft that has been saved.
 
-The code follows the split of the Run view:
+The code follows the split of the Execution tab:
 
 - `src/designer/core/` is the core and does no IO: the draft of the stages, the
   text that a save writes (`stage-text.ts`, `prompt-text.ts`), the findings put on the stage and
@@ -734,10 +735,11 @@ box.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
-  used for that run. `GET /api/runs` gives the goal of each run, but the Run
-  view does not call `listRuns` yet, so while the tab follows a run that was
-  already going the Goal box is empty, says "Not known" and is labelled so. When that run ends, the status line still says it was
-  already in progress.
+  used for that run. `GET /api/runs` gives the goal of each run, but the
+  Execution tab does not call `listRuns`, so while the tab follows a run that
+  was already going the Goal box is empty, says "Not known" and is labelled
+  so. When that run ends, the status line still says it was already in
+  progress.
 - Resume works after a reload, though the launch code works once: the page
   resumes from the session it kept (see above). If the server was started
   again, the kept token is refused and the page tells the user to start
