@@ -60,7 +60,7 @@ test('six briefs, two per added phase, each a scripted doc task with three facts
   assert.deepStrictEqual(perPhase, { documentation: 2, triage: 2, 'log-analysis': 2 });
 });
 
-test('the author prompt is T8 doc prompt plus the scripted section with the exact facts', () => {
+test('the author prompt is the doc prompt plus the scripted section with the exact facts', () => {
   for (const id of briefIds) {
     const b = brief(id);
     const p = render(cfg, id);
@@ -72,6 +72,20 @@ test('the author prompt is T8 doc prompt plus the scripted section with the exac
     for (const f of b.scriptedUser.facts) assert.ok(p.includes(f.answer), `${id}: ${f.id} answer missing from the prompt`);
     assert.ok(p.includes(cfg.DEFAULT_REPLY));
     assert.ok(p.includes('Public inspiration'), `${id}: source line missing`);
+  }
+});
+
+test('the author prompt is document-shaped: its own kind section, no incident example items, the key audit rules (D-255)', () => {
+  const steps = (id) => (brief(id).twoStep ? ['a', 'b'] : [null]);
+  for (const id of briefIds) {
+    const all = steps(id).map((s) => render(cfg, id, s)).join('\n');
+    assert.doesNotMatch(all, /operations and reliability work/, `${id}: T8's ops intro`);
+    assert.match(all, /documentation, triage and log-analysis work/, `${id}: no T13 intro`);
+    const key = render(cfg, id, brief(id).twoStep ? 'b' : null);
+    for (const t8Item of ['"cause-named"', '"fence-first"', 'rootCause.summary']) assert.ok(!key.includes(t8Item), `${id}: T8 incident example ${t8Item}`);
+    for (const rule of [/never add a field the request does not name/, /not the element's JSON text/, /no exact-string pattern beside a tolerance/, /no length cap/i, /do not copy an incident report/i]) {
+      assert.match(key, rule, `${id}: key audit rule ${rule} missing`);
+    }
   }
 });
 

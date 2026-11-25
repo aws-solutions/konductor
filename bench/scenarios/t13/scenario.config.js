@@ -2,8 +2,9 @@
 'use strict';
 
 // T13's batch config: the three types of work the pack had no task for (documentation, triage, log analysis), six
-// document tasks written from reports/new-task-briefs-2026-11-24/ (the workspace) through T8's doc pipeline: the same
-// author prompts, block-kit key and stage steps. Two things are T13's own:
+// document tasks written from reports/new-task-briefs-2026-11-24/ (the workspace) through T8's doc pipeline: T8's
+// author prompts with T13's own `prompts/kind-doc.md` (document-shaped key examples and the key audit rules, D-255) and
+// intro line, the same block-kit key and stage steps. Two more things are T13's own:
 //   - every task has a scripted user (`questions: scripted`): 3 facts the folder does not hold, listed in the brief
 //     (`scriptedUser`), that the agent must ask for; prompts/scripted.md tells the author how to wire them, and
 //     taskErrors checks the reference asks unlock every fact and the request repeats none;
@@ -24,6 +25,8 @@ const DIR = __dirname;
 const T8_DIR = t8.dir;
 const GENERIC_ASK = 'Is there anything else I should know before I start?';
 const DEFAULT_REPLY = "I'm not sure, use your judgement.";
+const T8_INTRO_WORK = 'operations and reliability work';
+const T13_INTRO_WORK = 'documentation, triage and log-analysis work';
 
 /** T8's prompt renderer with T13's files first: `prompts/X` is read here when it exists, else from T8. */
 function render(id, lib, step = null) {
@@ -32,7 +35,8 @@ function render(id, lib, step = null) {
     return fs.readFileSync(fs.existsSync(own) ? own : path.join(T8_DIR, rel), 'utf8');
   };
   const b = lib.brief(id);
-  const base = t8.prompt.render(id, { ...lib, read }, step);
+  // T8's intro names ops work; T13's own kind-doc.md replaces T8's incident-shaped key examples (D-255).
+  const base = t8.prompt.render(id, { ...lib, read }, step).replaceAll(T8_INTRO_WORK, T13_INTRO_WORK);
   if (b.questions !== 'scripted') return base;
   const facts = (b.scriptedUser?.facts || []).map((f) => `   - ${f.id}: topics ${JSON.stringify(f.topics)}; answer: ${f.answer}`).join('\n');
   return base.replace('## Task file', `${lib.fill(read('prompts/scripted.md'), { FACTS: facts, DEFAULTREPLY: DEFAULT_REPLY })}\n\n## Task file`);

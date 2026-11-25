@@ -15,7 +15,9 @@ The six tasks were written on 2026-11-24 (owner approval: cap 300 counted credit
 
 ## How it is built
 
-T13 runs on T8's document pipeline: the same author prompts (`t8/prompts/`, read through this batch's config so the two cannot drift), the same block-kit key over a JSON block at the end of the document, the same stage steps (`audit`, `log-author`, `normalize`, `map`, `review`, `variants`, `assemble`) and the same free dry run. Two things are T13's own:
+T13 runs on T8's document pipeline: T8's author prompts (`t8/prompts/`, read through this batch's config so the two cannot drift), the same block-kit key over a JSON block at the end of the document, the same stage steps (`audit`, `log-author`, `normalize`, `map`, `review`, `variants`, `assemble`) and the same free dry run. Three things are T13's own:
+
+- Its own `prompts/kind-doc.md` (added 2026-11-24, D-255, after the first batch was written): document-shaped key examples in place of T8's incident items, a line against gluing an incident report onto a document, and the key audit rules every first-batch key broke once (fields the request does not name, matches over an element's JSON text, exact strings beside a tolerance, unstated length caps, narrow wording). The config also swaps T8's "operations and reliability work" intro for T13's. The six tasks here were written with T8's file.
 
 - Every task has a scripted user. The brief fixes three facts the folder does not hold (`scriptedUser.facts`: id, topics, answer); `prompts/scripted.md` tells the author to copy them into `task-draft.json`, give each a key item that accepts every word and number form, and write `solution/ASKS.json` with the reference's questions. `taskErrors` refuses a task whose reference asks do not unlock every fact, whose generic ask unlocks one, or whose request repeats an answer. The two-step and twin flows of T8 are not used here.
 - The two triage tasks have no matching konductor skill by design, and the batch-slowdown task only a weak one. They measure what konductor costs where it has nothing to offer.
