@@ -600,3 +600,156 @@ test('fits every stage in the graph after stages are added to it', async ({
     );
   }
 });
+
+test('edits the prompt of a hello-plan stage written with >- and changes no other byte', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(request, HELLO_PLAN_TEXT);
+  await canvas.page.reload();
+  await expect(designer.name).toHaveValue('plan');
+  await expect(designer.prompt).toHaveValue(
+    'Write a short plan for the goal to PLAN.md: three to five numbered steps. Do not change any other file.',
+  );
+
+  await designer.prompt.fill('Write a plan of three steps to PLAN.md.');
+  await designer.expectStatus('Unsaved changes');
+  await designer.save.click();
+  await designer.expectStatus('Saved');
+
+  const old =
+    '      Write a short plan for the goal to PLAN.md: three to five numbered steps. Do not change any other file.\n';
+  expect(HELLO_PLAN_TEXT).toContain(`prompt: >-\n${old}`);
+  expect((await currentWorkflow(request)).text).toBe(
+    HELLO_PLAN_TEXT.replace(
+      old,
+      '      Write a plan of three steps to PLAN.md.\n',
+    ),
+  );
+});
+
+test('writes a literal block for a prompt with line breaks where a >- stage was', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(request, HELLO_PLAN_TEXT);
+  await canvas.page.reload();
+  await expect(designer.name).toHaveValue('plan');
+
+  await designer.prompt.fill(
+    'Write a plan to PLAN.md.\nKeep it to three steps.',
+  );
+  await designer.save.click();
+  await designer.expectStatus('Saved');
+
+  const old =
+    'prompt: >-\n      Write a short plan for the goal to PLAN.md: three to five numbered steps. Do not change any other file.\n';
+  expect((await currentWorkflow(request)).text).toBe(
+    HELLO_PLAN_TEXT.replace(
+      old,
+      'prompt: |-\n      Write a plan to PLAN.md.\n      Keep it to three steps.\n',
+    ),
+  );
+});
+
+test('keeps Save off for a prompt that the check refuses, and writes nothing', async ({
+  designer,
+  request,
+}) => {
+  await designer.prompt.fill('Read {plan.design} first.');
+
+  await expect(designer.problems).toBeVisible();
+  await designer.expectSaveEnabled(false);
+  expect((await currentWorkflow(request)).text).toBe(SAMPLE_TEXT);
+});
+
+test('adds a prompt to a stage that has none, and the next Run answers trust_required', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await designer.prompt.fill('Write the greeting to README.md.');
+  await designer.save.click();
+  await designer.expectStatus('Saved');
+
+  expect((await currentWorkflow(request)).text).toBe(
+    SAMPLE_TEXT.replace(
+      '    agent: k-developer\n',
+      '    agent: k-developer\n    prompt: Write the greeting to README.md.\n',
+    ),
+  );
+  await canvas.selectTab('Run');
+  await canvas.runButton.click();
+
+  await expect(canvas.page.getByRole('dialog')).toContainText(
+    'Trust the workflow to run it',
+  );
+  await expect(canvas.page.getByTestId('trust-command')).toHaveText(
+    'konductor flow trust hello',
+  );
+});
+
+test('refuses a prompt save when the file changed, and writes nothing', async ({
+  designer,
+  request,
+}) => {
+  await designer.prompt.fill('Say hello.');
+  const other = SAMPLE_TEXT.replace('k-developer', 'k-tpm');
+  await overwriteWorkflow(request, other);
+
+  await designer.save.click();
+
+  await expect(designer.conflict).toContainText('The file changed on disk');
+  expect((await currentWorkflow(request)).text).toBe(other);
+});
+
+test('shows a prompt as plain text and keeps it as typed', async ({
+  designer,
+  request,
+}) => {
+  const typed = '<script>alert(1)</script> {severity, file, line}';
+  await designer.prompt.fill(typed);
+  await designer.save.click();
+  await designer.expectStatus('Saved');
+
+  await expect(designer.prompt).toHaveValue(typed);
+  expect((await currentWorkflow(request)).text).toContain(`prompt: "${typed}"`);
+});
+
+test('keeps the text area of a stage that reads a file off, and shows the path', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(
+    request,
+    SAMPLE_TEXT.replace(
+      '    agent: k-quality-assurance\n',
+      '    agent: k-quality-assurance\n    prompt_file: review.md\n',
+    ),
+  );
+  await canvas.page.reload();
+  await expect(designer.name).toHaveValue('draft');
+  await designer.stage('review').click();
+
+  await expect(designer.name).toHaveValue('review');
+  await expect(designer.prompt).toBeDisabled();
+  await expect(designer.promptFile).toHaveValue('review.md');
+  await expect(
+    designer.page.getByText('This stage reads its prompt from a file.'),
+  ).toBeVisible();
+  await expectNoAccessibilityViolations(designer.page);
+});
+
+test('Designer tab has no axe violations with a prompt over the limit', async ({
+  designer,
+}) => {
+  await designer.prompt.fill('x'.repeat(32769));
+
+  await expect(
+    designer.page.getByText('32769 of 32768 characters'),
+  ).toBeVisible();
+  await expectNoAccessibilityViolations(designer.page);
+});

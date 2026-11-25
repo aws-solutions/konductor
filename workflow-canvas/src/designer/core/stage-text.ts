@@ -1,34 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { StageKeys } from '../../api/types';
+import { withPrompts, type Written } from './prompt-text';
+import { scalar } from './scalar-text';
 
 /** The stages of a view: all the writer reads of it. */
 export interface ViewStages {
   readonly stages: readonly StageKeys[];
 }
 
-// A value that a plain YAML scalar reads back as the same text: it starts
-// with a letter, has no character that YAML gives a meaning, and does not end
-// in a space. Words that YAML 1.1 reads as booleans or null are left out, so
-// an editor on that version reads the same text.
-const PLAIN = /^[A-Za-z](?:[A-Za-z0-9 _.,()/-]*[A-Za-z0-9_.,()/-])?$/;
-const NOT_TEXT = /^(?:true|false|null|y|n|yes|no|on|off)$/i;
-
-// Characters that JSON leaves as they are and YAML does not take raw, so they
-// are written as escapes that JSON reads too. U+007F and U+0080 to U+009F are
-// not printable in YAML. U+0085, U+2028 and U+2029 are also line breaks to
-// YAML 1.1, which fold inside double quotes (libyaml reads U+0085 there as a
-// space).
-const ESCAPED = /[\u007F-\u009F\u2028\u2029]/gu;
-
-// The value as YAML text: plain when that is safe, double-quoted if not.
-function scalar(value: string): string {
-  return PLAIN.test(value) && !NOT_TEXT.test(value)
-    ? value
-    : JSON.stringify(value).replace(
-        ESCAPED,
-        (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`,
-      );
-}
+export type { Written };
 
 /** A stage to write: its name and agent, and the stage of the file it was. */
 export interface StageToWrite extends StageKeys {
@@ -37,14 +17,12 @@ export interface StageToWrite extends StageKeys {
    * out for a stage that the file does not have yet.
    */
   from?: number;
+  /**
+   * The prompt the stage is to have, as typed: the empty text for none. It is
+   * left out to keep the prompt the file has.
+   */
+  prompt?: string;
 }
-
-/**
- * What the writer made of a change: the new text, or the reason it cannot
- * write the change without rewriting more of the file than the change.
- */
-export type Written =
-  { ok: true; text: string } | { ok: false; reason: string };
 
 /** One line of a file and the line break that ends it (empty at the end). */
 interface Line {
@@ -401,10 +379,11 @@ function bodyOf(
 }
 
 /**
- * The text of the workflow with `stages` in place of its own, or the reason
- * the change cannot be written in place. A stage keeps every byte of its item
- * but the values of the keys that changed, so its other keys, such as
- * `prompt` and `prompt_file`, and its comments stay. A deleted stage takes
+ * The text of the workflow with the names, agents and order of `stages` in
+ * place of its own, or the reason the change cannot be written in place. A
+ * stage keeps every byte of its item but the values of the keys that changed,
+ * so its other keys, such as `prompt` and `prompt_file`, and its comments
+ * stay. A deleted stage takes
  * its item and the comments in front of it; a new stage is written with its
  * dashes where the file's own have them. Every byte outside the block of
  * stages stays: `format`, `version`, `params`, the comments and the line
@@ -413,7 +392,7 @@ function bodyOf(
  * why. The same goes for a stage or a value written in a form that cannot be
  * edited in place, when that stage or value changes.
  */
-export function withStages(
+function withNames(
   text: string,
   view: ViewStages,
   stages: readonly StageToWrite[],
@@ -446,6 +425,26 @@ export function withStages(
       .map((line) => line.text + line.eol)
       .join(''),
   };
+}
+
+/**
+ * The text of the workflow with `stages` in place of its own and their
+ * prompts as asked, or the reason the change cannot be written in place. The
+ * names and agents are written line by line (see `withNames`), and then the
+ * prompts are set with the `yaml` parser (see `withPrompts`), so a stage that
+ * has no `prompt` in `stages` keeps the one it has.
+ */
+export function withStages(
+  text: string,
+  view: ViewStages,
+  stages: readonly StageToWrite[],
+): Written {
+  const named = withNames(text, view, stages);
+  if (!named.ok) return named;
+  return withPrompts(
+    named.text,
+    stages.map(({ name, prompt }) => ({ name, prompt })),
+  );
 }
 
 /**

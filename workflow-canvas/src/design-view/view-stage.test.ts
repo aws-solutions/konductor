@@ -206,7 +206,7 @@ describe('markedStageOf', () => {
 });
 
 describe('fieldValuesOf', () => {
-  const draft = { id: 's1', name: 'draft', agent: 'k-developer' };
+  const draft = { id: 's1', name: 'draft', agent: 'k-developer', prompt: '' };
 
   it('takes the text keys of the stage in the view', () => {
     expect(fieldValuesOf(checkStageOf(view, 'draft'), draft)).toEqual({
@@ -229,6 +229,7 @@ describe('fieldValuesOf', () => {
         id: 's2',
         name: 'review',
         agent: 'k-quality-assurance',
+        prompt: '',
       }),
     ).not.toHaveProperty('outputs');
   });
@@ -239,6 +240,7 @@ describe('fieldValuesOf', () => {
         id: 's1',
         name: 'drafting',
         agent: 'k-architect',
+        prompt: '',
       }),
     ).toMatchObject({ name: 'drafting', agent: 'k-architect' });
   });

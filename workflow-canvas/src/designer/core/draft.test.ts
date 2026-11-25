@@ -12,6 +12,7 @@ import {
   renameStage,
   sameStages,
   setAgent,
+  setPrompt,
   stagesOf,
 } from './draft';
 
@@ -134,5 +135,34 @@ describe('sameStages', () => {
     expect(
       sameStages(TWO, [TWO[0]!, { ...TWO[1]!, agent: 'k-architect' }]),
     ).toBe(false);
+  });
+});
+
+describe('the prompt of a stage', () => {
+  it('starts as the prompts of the saved stages, with none for a stage that has no text', () => {
+    const draft = draftOf(TWO, ['Write it.']);
+
+    expect(draft.stages.map((stage) => stage.prompt)).toEqual([
+      'Write it.',
+      '',
+    ]);
+  });
+
+  it('is empty for a stage that is added', () => {
+    expect(addStage(draftOf(TWO)).stages.at(-1)?.prompt).toBe('');
+  });
+
+  it('is set as typed on one stage and leaves the rest of the draft alone', () => {
+    const draft = draftOf(TWO, ['a', 'b']);
+
+    const next = setPrompt(draft, 's2', ' c\nd ');
+
+    expect(next.stages.map((stage) => stage.prompt)).toEqual(['a', ' c\nd ']);
+    expect(stagesOf(next)).toEqual(TWO);
+    expect(next.nextId).toBe(draft.nextId);
+  });
+
+  it('is not part of what makes two lists of stages the same', () => {
+    expect(sameStages(stagesOf(draftOf(TWO, ['a'])), TWO)).toBe(true);
   });
 });

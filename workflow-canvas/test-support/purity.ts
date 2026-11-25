@@ -21,6 +21,11 @@ export interface PurityRules {
   dir: string;
   /** Packages that any file of the core may import. */
   allowedPackages: ReadonlySet<string>;
+  /**
+   * Packages that one file of the core may import, by its path under `dir`,
+   * and no other file.
+   */
+  allowedPackagesIn?: Readonly<Record<string, ReadonlySet<string>>>;
   /** A module that is otherwise not allowed, with the names it may give. */
   allowedNames: Readonly<Record<string, readonly string[]>>;
 }
@@ -42,7 +47,9 @@ function isAllowedImport(
   if (allowed)
     return names !== undefined && names.every((n) => allowed.includes(n));
   return (
-    rules.allowedPackages.has(specifier) || isOwnModule(specifier, file, rules)
+    rules.allowedPackages.has(specifier) ||
+    (rules.allowedPackagesIn?.[file]?.has(specifier) ?? false) ||
+    isOwnModule(specifier, file, rules)
   );
 }
 

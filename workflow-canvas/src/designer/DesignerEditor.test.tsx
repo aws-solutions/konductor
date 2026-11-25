@@ -1383,3 +1383,205 @@ describe('the verdict on a stage', () => {
     expect(screen.queryByText('Needs a fix')).toBeNull();
   });
 });
+
+describe('the prompt of a stage', () => {
+  const promptBox = () =>
+    screen.getByRole('textbox', { name: 'prompt' }) as HTMLTextAreaElement;
+  const typePrompt = (value: string) =>
+    fireEvent.change(promptBox(), { target: { value } });
+  const PROMPT = 'Write the greeting to README.md.';
+
+  it('shows the prompt of the first stage and the count against the limit', async () => {
+    await openDesigner();
+
+    expect(promptBox().value).toBe(PROMPT);
+    expect(
+      screen.getByText(`${PROMPT.length} of 32768 characters`),
+    ).toBeTruthy();
+  });
+
+  it('counts a character outside the BMP as one', async () => {
+    await openDesigner();
+
+    typePrompt('a\u{1F600}');
+
+    expect(screen.getByText('2 of 32768 characters')).toBeTruthy();
+  });
+
+  it('marks the draft unsaved and saves only the value of the prompt', async () => {
+    const { edits } = await openDesigner();
+
+    typePrompt('Say hello.');
+
+    expect(status()).toBe('Unsaved changes');
+    fireEvent.click(saveButton());
+    expect(edits.save).toHaveBeenCalledWith(
+      HELLO_TEXT.replace(PROMPT, 'Say hello.'),
+      HELLO_HASH,
+    );
+    await waitFor(() => expect(status()).toBe('Saved'));
+    expect(promptBox().value).toBe('Say hello.');
+  });
+
+  it('is unsaved no more when the prompt is typed back', async () => {
+    await openDesigner();
+
+    typePrompt('Say hello.');
+    typePrompt(PROMPT);
+
+    expect(status()).toBe('No changes');
+    expect(isOff(saveButton())).toBe(true);
+  });
+
+  it('saves text with line breaks as a block scalar', async () => {
+    const { edits } = await openDesigner();
+
+    typePrompt('One.\nTwo.');
+    fireEvent.click(saveButton());
+
+    expect(edits.save).toHaveBeenCalledWith(
+      HELLO_TEXT.replace(
+        `prompt: ${PROMPT}`,
+        'prompt: |-\n      One.\n      Two.',
+      ),
+      HELLO_HASH,
+    );
+  });
+
+  it('removes the prompt of a stage when its text is cleared', async () => {
+    const { edits } = await openDesigner();
+
+    typePrompt('');
+    fireEvent.click(saveButton());
+
+    expect(edits.save).toHaveBeenCalledWith(
+      HELLO_TEXT.replace(`    prompt: ${PROMPT}\n`, ''),
+      HELLO_HASH,
+    );
+  });
+
+  it('adds a prompt line to a new stage that gets one', async () => {
+    const { edits } = await openDesigner();
+
+    fireEvent.click(addButton());
+    typePrompt('Do it.');
+    fireEvent.click(saveButton());
+
+    expect(edits.save).toHaveBeenCalledWith(
+      `${HELLO_TEXT}  - name: agent-1\n    agent: k-developer\n    prompt: Do it.\n`,
+      HELLO_HASH,
+    );
+  });
+
+  it('shows the path of a stage that reads a file, and keeps the text area off with the reason', async () => {
+    await openDesigner();
+
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+
+    await waitFor(() => expect(nameInput().value).toBe('review'));
+    expect(promptBox().disabled).toBe(true);
+    expect(promptBox().value).toBe('');
+    const file = screen.getByRole('textbox', {
+      name: 'prompt_file',
+    }) as HTMLInputElement;
+    expect(file.value).toBe('review.md');
+    expect(file.readOnly).toBe(true);
+    expect(
+      screen.getByText('This stage reads its prompt from a file.'),
+    ).toBeTruthy();
+    expect(status()).toBe('No changes');
+  });
+
+  it('says why when the change cannot be written in place, and leaves Save off', async () => {
+    const flow = HELLO_TEXT.replace(
+      `  - name: draft\n    agent: k-developer\n    prompt: ${PROMPT}\n`,
+      '  - {name: draft, agent: k-developer, prompt: Hi}\n',
+    );
+    await openDesigner(acceptingEdits(), { ...HELLO_DOCUMENT, text: flow });
+
+    typePrompt('');
+
+    expect(isOff(saveButton())).toBe(true);
+    expect(screen.getByTestId('not-in-place').textContent).toContain(
+      'flow form',
+    );
+  });
+
+  it('shows the finding of the check under the prompt', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: HELLO_VIEW,
+      diagnostics: [
+        finding(
+          'stages.draft.prompt',
+          '`prompt` must have 1 to 32768 characters.',
+        ),
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+
+    typePrompt(' ');
+    await checkNow(scheduler);
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText(/must have 1 to 32768 characters/).length,
+      ).toBeGreaterThan(0),
+    );
+    expect(promptBox().getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('does not write a prompt that the server refuses, and shows its finding', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValue(
+      new SaveRefused('The workflow has errors.', [
+        finding(
+          'stages.draft.prompt',
+          'A reference such as `{plan.design}` is not supported by this build.',
+        ),
+      ]),
+    );
+    await openDesigner(edits);
+    typePrompt('See {plan.design}.');
+
+    fireEvent.click(saveButton());
+
+    const problems = await screen.findByTestId('problems');
+    expect(
+      within(problems).getByText(/is not supported by this build/),
+    ).toBeTruthy();
+    expect(edits.save).toHaveBeenCalledOnce();
+    expect(status()).toBe('Unsaved changes');
+    expect(promptBox().value).toBe('See {plan.design}.');
+  });
+
+  it('does not send a save while the check of the prompt has an error', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: HELLO_VIEW,
+      diagnostics: [
+        finding(
+          'stages.draft.prompt',
+          '`prompt` must have 1 to 32768 characters.',
+        ),
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+    typePrompt('x');
+    await checkNow(scheduler);
+    await screen.findByTestId('problems');
+
+    fireEvent.click(saveButton());
+
+    expect(isOff(saveButton())).toBe(true);
+    expect(edits.save).not.toHaveBeenCalled();
+  });
+
+  it('says near the text area that saving a prompt ends trust', async () => {
+    await openDesigner();
+
+    expect(
+      screen.getByText('Saving a prompt ends trust. The next Run asks again.'),
+    ).toBeTruthy();
+  });
+});
