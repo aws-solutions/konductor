@@ -129,7 +129,7 @@ function requireTasks(taskIds, tasks, benchDir = BENCH_DIR) {
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR, suitesDir = null) {
   const defaults = defaultsFor(name);
-  if (!defaults) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, complex, references-read, constraints-probe, canary-layers or pack; or a skilleval-* suite file in ${suiteDirs(benchDir, suitesDir).join(' or ')})`);
+  if (!defaults) throw new Error(`unknown suite "${name}" (expected ${SUITE_NAMES.join(', ')}; or a skilleval-* suite file in ${suiteDirs(benchDir, suitesDir).join(' or ')})`);
   const file = suiteFile(name, benchDir, suitesDir);
   const fromFile = file ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks

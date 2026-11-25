@@ -95,3 +95,10 @@ test('only run accepts --suites-dir', () => {
   assert.ok(FLAGS.run.includes('suites-dir'));
   for (const [cmd, flags] of Object.entries(FLAGS)) if (cmd !== 'run') assert.equal(flags.includes('suites-dir'), false, cmd);
 });
+
+test('the unknown-suite message names every suite in SUITE_NAMES', () => {
+  const { SUITE_NAMES } = require('../lib/tasks.js');
+  let message = '';
+  try { loadSuite('nope', new Map()); } catch (e) { message = e.message; }
+  for (const name of SUITE_NAMES) assert.ok(message.includes(name), `${name} missing from: ${message}`);
+});
