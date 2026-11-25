@@ -1,0 +1,458 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// metrics/collect.rs — per-harness session-file parsers producing one
+// `Record` per file. Read-only against harness files; anything that
+// can't be read as the expected shape becomes `Status::Unparsed`.
+
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+
+use crate::cli::time::parse_iso_secs;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum Harness {
+    Claude,
+    KiroCliV2,
+    KiroV3,
+}
+
+impl Harness {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Harness::Claude => "claude",
+            Harness::KiroCliV2 => "kiro-cli-v2",
+            Harness::KiroV3 => "kiro-v3",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Status {
+    Ok,
+    Unparsed,
+}
+
+/// Token fields are `None` when the harness doesn't record them (Kiro),
+/// never 0, so averages aren't dragged down by missing data.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub(crate) struct ModelUsage {
+    pub model: String,
+    pub requests: u64,
+    pub input_tokens: Option<u64>,
+    pub cache_write_tokens: Option<u64>,
+    pub cache_read_tokens: Option<u64>,
+    pub output_tokens: Option<u64>,
+    pub thinking_tokens: Option<u64>,
+    pub web_search_requests: Option<u64>,
+    pub credits: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub(crate) struct Record {
+    pub path: String,
+    pub mtime: u64,
+    pub size: u64,
+    pub harness: Harness,
+    pub session_id: String,
+    pub parent_session_id: Option<String>,
+    pub agent: Option<String>,
+    pub repo: Option<String>,
+    pub first_ts: Option<i64>,
+    pub last_ts: Option<i64>,
+    pub harness_version: Option<String>,
+    pub status: Status,
+    pub subagent_runs: Option<u64>,
+    pub models: Vec<ModelUsage>,
+    /// The Konductor agent `agent` resolved to when the file was parsed
+    /// (plugin `<plugin>:<agent>` names resolve to the bare agent). `None`
+    /// means not Konductor: the record is kept without usage so the file
+    /// isn't re-parsed every run.
+    #[serde(default)]
+    pub konductor_agent: Option<String>,
+}
+
+impl Record {
+    fn new(harness: Harness, path: &Path, mtime: u64, size: u64, session_id: String) -> Self {
+        Record {
+            path: path.to_string_lossy().into_owned(),
+            mtime,
+            size,
+            harness,
+            session_id,
+            parent_session_id: None,
+            agent: None,
+            repo: None,
+            first_ts: None,
+            last_ts: None,
+            harness_version: None,
+            status: Status::Ok,
+            subagent_runs: None,
+            models: Vec::new(),
+            konductor_agent: None,
+        }
+    }
+
+    fn unparsed(mut self) -> Self {
+        self.status = Status::Unparsed;
+        self.models.clear();
+        self
+    }
+
+    fn touch_ts(&mut self, ts: Option<i64>) {
+        let Some(ts) = ts else { return };
+        self.first_ts = Some(self.first_ts.map_or(ts, |t| t.min(ts)));
+        self.last_ts = Some(self.last_ts.map_or(ts, |t| t.max(ts)));
+    }
+}
+
+/// Drops the cloud-provider prefix (`global.anthropic.`, `us.anthropic.`)
+/// and the `[1m]` context suffix so one model groups as one row.
+pub(crate) fn normalize_model(raw: &str) -> String {
+    let base = raw.rsplit_once("anthropic.").map_or(raw, |(_, rest)| rest);
+    base.trim_end_matches("[1m]").to_string()
+}
+
+/// Reads a string field straight out of a JSONL line without parsing
+/// the whole line; transcript lines can carry megabytes of tool output.
+fn str_field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
+    let needle = format!("\"{key}\":\"");
+    let start = line.find(&needle)? + needle.len();
+    let rest = &line[start..];
+    let mut escaped = false;
+    for (i, c) in rest.char_indices() {
+        match c {
+            '\\' if !escaped => escaped = true,
+            '"' if !escaped => return Some(&rest[..i]),
+            _ => escaped = false,
+        }
+    }
+    None
+}
+
+// ── Claude Code ─────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct ClaudeLine {
+    message: Option<ClaudeMessage>,
+}
+
+#[derive(Deserialize)]
+struct ClaudeMessage {
+    id: Option<String>,
+    model: Option<String>,
+    usage: Option<ClaudeUsage>,
+}
+
+#[derive(Deserialize, Default, Clone)]
+#[serde(default)]
+struct ClaudeUsage {
+    input_tokens: u64,
+    cache_creation_input_tokens: u64,
+    cache_read_input_tokens: u64,
+    output_tokens: u64,
+    output_tokens_details: Option<ClaudeOutputDetails>,
+    server_tool_use: Option<ClaudeServerToolUse>,
+}
+
+#[derive(Deserialize, Default, Clone)]
+#[serde(default)]
+struct ClaudeOutputDetails {
+    thinking_tokens: u64,
+}
+
+#[derive(Deserialize, Default, Clone)]
+#[serde(default)]
+struct ClaudeServerToolUse {
+    web_search_requests: u64,
+}
+
+#[derive(Deserialize)]
+struct ClaudeSubagentMeta {
+    #[serde(rename = "agentType")]
+    agent_type: Option<String>,
+}
+
+/// One Claude Code transcript: a main session
+/// (`<proj>/<session>.jsonl`) or a subagent
+/// (`<proj>/<session>/subagents/agent-<id>.jsonl`).
+pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let subagents_dir = path
+        .parent()
+        .filter(|p| p.file_name().is_some_and(|n| n == "subagents"));
+    let parent_session = subagents_dir
+        .and_then(Path::parent)
+        .and_then(Path::file_name)
+        .map(|n| n.to_string_lossy().into_owned());
+    let mut rec = Record::new(Harness::Claude, path, mtime, size, stem);
+    rec.parent_session_id = parent_session;
+
+    if subagents_dir.is_some() {
+        let meta = path.with_extension("meta.json");
+        rec.agent = std::fs::read(&meta)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<ClaudeSubagentMeta>(&b).ok())
+            .and_then(|m| m.agent_type);
+    }
+
+    let Ok(file) = File::open(path) else {
+        return rec.unparsed();
+    };
+    // Last write per message id wins: records repeat per content block.
+    let mut by_message: HashMap<String, (String, ClaudeUsage)> = HashMap::new();
+    for line in BufReader::new(file).lines() {
+        // A line we can't read may have carried usage; skipping it would
+        // silently undercount the session.
+        let Ok(line) = line else {
+            return rec.unparsed();
+        };
+        rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
+        if rec.repo.is_none() {
+            rec.repo = str_field(&line, "cwd").map(str::to_string);
+        }
+        if rec.harness_version.is_none() {
+            rec.harness_version = str_field(&line, "version").map(str::to_string);
+        }
+        if rec.parent_session_id.is_none() {
+            if let Some(agent) = str_field(&line, "agentSetting") {
+                rec.agent = Some(agent.to_string());
+            }
+        }
+        if !line.contains("\"type\":\"assistant\"") || !line.contains("\"usage\"") {
+            continue;
+        }
+        match serde_json::from_str::<ClaudeLine>(&line) {
+            Ok(ClaudeLine {
+                message:
+                    Some(ClaudeMessage {
+                        id: Some(id),
+                        model: Some(model),
+                        usage: Some(usage),
+                    }),
+            }) => {
+                if model != "<synthetic>" {
+                    by_message.insert(id, (normalize_model(&model), usage));
+                }
+            }
+            // Usage we can't key by message id and model can't be counted.
+            Ok(ClaudeLine {
+                message: Some(ClaudeMessage { usage: Some(_), .. }),
+            }) => return rec.unparsed(),
+            // "usage" appeared elsewhere in the line, not as message usage.
+            Ok(_) => {}
+            // Only usage-carrying lines get here, so one we can't read
+            // would silently undercount the session.
+            Err(_) => return rec.unparsed(),
+        }
+    }
+
+    let mut models: HashMap<String, ModelUsage> = HashMap::new();
+    for (model, u) in by_message.into_values() {
+        let m = models.entry(model.clone()).or_insert_with(|| ModelUsage {
+            model,
+            input_tokens: Some(0),
+            cache_write_tokens: Some(0),
+            cache_read_tokens: Some(0),
+            output_tokens: Some(0),
+            thinking_tokens: Some(0),
+            web_search_requests: Some(0),
+            ..Default::default()
+        });
+        m.requests += 1;
+        add(&mut m.input_tokens, u.input_tokens);
+        add(&mut m.cache_write_tokens, u.cache_creation_input_tokens);
+        add(&mut m.cache_read_tokens, u.cache_read_input_tokens);
+        add(&mut m.output_tokens, u.output_tokens);
+        add(
+            &mut m.thinking_tokens,
+            u.output_tokens_details.map_or(0, |d| d.thinking_tokens),
+        );
+        add(
+            &mut m.web_search_requests,
+            u.server_tool_use.map_or(0, |s| s.web_search_requests),
+        );
+    }
+    let mut models = sorted(models);
+    // Claude Code writes placeholder `output_tokens` (single digits per
+    // message) into subagent transcripts; unavailable beats undercounted.
+    if subagents_dir.is_some() {
+        for m in &mut models {
+            m.output_tokens = None;
+            m.thinking_tokens = None;
+        }
+    }
+    rec.models = models;
+    rec
+}
+
+fn add(slot: &mut Option<u64>, v: u64) {
+    *slot = Some(slot.unwrap_or(0) + v);
+}
+
+fn sorted(models: HashMap<String, ModelUsage>) -> Vec<ModelUsage> {
+    let mut v: Vec<ModelUsage> = models.into_values().collect();
+    v.sort_by(|a, b| a.model.cmp(&b.model));
+    v
+}
+
+#[cfg(test)]
+pub(crate) mod tests_support {
+    use super::*;
+
+    pub(crate) fn record(agent: &str) -> Record {
+        let mut r = Record::new(Harness::Claude, Path::new("/x"), 0, 0, "s".to_string());
+        r.agent = Some(agent.to_string());
+        r.konductor_agent = Some(agent.to_string());
+        r
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write as _;
+
+    fn write(dir: &Path, rel: &str, body: &str) -> std::path::PathBuf {
+        let p = dir.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::File::create(&p)
+            .unwrap()
+            .write_all(body.as_bytes())
+            .unwrap();
+        p
+    }
+
+    fn tmp(name: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!(
+            "konductor-metrics-{name}-{}",
+            crate::cli::atomic_write::unique_suffix()
+        ));
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn normalizes_model_ids() {
+        assert_eq!(
+            normalize_model("global.anthropic.claude-opus-5-5"),
+            "claude-opus-5-5"
+        );
+        assert_eq!(normalize_model("claude-opus-5-5[1m]"), "claude-opus-5-5");
+        assert_eq!(normalize_model("claude-sonnet-5-5"), "claude-sonnet-5-5");
+    }
+
+    #[test]
+    fn claude_dedupes_by_message_id_and_reads_agent() {
+        let d = tmp("claude");
+        let line = |id: &str, out: u64| {
+            format!(
+                r#"{{"type":"assistant","timestamp":"2026-11-01T10:00:00Z","cwd":"/repo","version":"2.1.316","message":{{"id":"{id}","model":"claude-opus-5-5[1m]","usage":{{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":1000,"output_tokens":{out},"output_tokens_details":{{"thinking_tokens":3}}}}}}}}"#
+            )
+        };
+        let body = [
+            r#"{"type":"agent-setting","agentSetting":"konductor","sessionId":"s1"}"#.to_string(),
+            line("m1", 10),
+            line("m1", 20),
+            line("m2", 7),
+            r#"{"type":"assistant","message":{"id":"m3","model":"<synthetic>","usage":{"output_tokens":9}}}"#.to_string(),
+        ]
+        .join("\n");
+        let p = write(&d, "proj/s1.jsonl", &body);
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.status, Status::Ok);
+        assert_eq!(r.agent.as_deref(), Some("konductor"));
+        assert_eq!(r.repo.as_deref(), Some("/repo"));
+        assert_eq!(r.models.len(), 1);
+        let m = &r.models[0];
+        assert_eq!(m.model, "claude-opus-5-5");
+        assert_eq!(m.requests, 2);
+        assert_eq!(m.output_tokens, Some(27));
+        assert_eq!(m.cache_read_tokens, Some(2000));
+        assert_eq!(m.thinking_tokens, Some(6));
+        assert_eq!(m.credits, None);
+    }
+
+    #[test]
+    fn claude_unreadable_usage_line_marks_record_unparsed() {
+        let d = tmp("claude-bad-usage");
+        let body = [
+            r#"{"type":"assistant","timestamp":"2026-11-01T10:00:00Z","message":{"id":"a","model":"claude-opus-5-5","usage":{"output_tokens":5}}}"#,
+            r#"{"type":"assistant","message":{"id":"b","model":"claude-opus-5-5","usage":{"output_tokens":"many"}}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "proj/s.jsonl", &body);
+        assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn claude_usage_without_message_id_or_model_marks_record_unparsed() {
+        let d = tmp("claude-no-id");
+        for (name, message) in [
+            (
+                "no-id",
+                r#"{"model":"claude-opus-5-5","usage":{"output_tokens":5}}"#,
+            ),
+            ("no-model", r#"{"id":"a","usage":{"output_tokens":5}}"#),
+        ] {
+            let p = write(
+                &d,
+                &format!("proj/{name}.jsonl"),
+                &format!(r#"{{"type":"assistant","message":{message}}}"#),
+            );
+            assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed, "{name}");
+        }
+    }
+
+    #[test]
+    fn claude_usage_mentioned_outside_message_is_ignored() {
+        let d = tmp("claude-usage-text");
+        let p = write(
+            &d,
+            "proj/s.jsonl",
+            r#"{"type":"assistant","meta":{"usage":"n/a"},"message":{"id":"a","model":"claude-opus-5-5"}}"#,
+        );
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.status, Status::Ok);
+        assert!(r.models.is_empty());
+    }
+
+    #[test]
+    fn claude_unreadable_line_marks_record_unparsed() {
+        let d = tmp("claude-bad-utf8");
+        let p = d.join("proj/s.jsonl");
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        let mut bytes = br#"{"type":"assistant","timestamp":"2026-11-01T10:00:00Z","message":{"id":"a","model":"claude-opus-5-5","usage":{"output_tokens":5}}}"#.to_vec();
+        bytes.extend_from_slice(b"\n\xff\xfe not utf-8\n");
+        std::fs::write(&p, bytes).unwrap();
+        assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn claude_subagent_takes_agent_from_meta_and_parent_from_dir() {
+        let d = tmp("claude-sub");
+        write(
+            &d,
+            "proj/s1/subagents/agent-a1.meta.json",
+            r#"{"agentType":"k-researcher"}"#,
+        );
+        let p = write(
+            &d,
+            "proj/s1/subagents/agent-a1.jsonl",
+            r#"{"type":"assistant","timestamp":"2026-11-01T10:00:00Z","message":{"id":"x","model":"claude-sonnet-5-5","usage":{"input_tokens":1,"output_tokens":2}}}"#,
+        );
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.agent.as_deref(), Some("k-researcher"));
+        assert_eq!(r.parent_session_id.as_deref(), Some("s1"));
+        assert_eq!(r.models[0].input_tokens, Some(1));
+        assert_eq!(r.models[0].output_tokens, None);
+    }
+}

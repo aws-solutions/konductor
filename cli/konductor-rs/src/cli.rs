@@ -40,6 +40,9 @@ pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
 mod logging;
+#[allow(dead_code)]
+// Not reachable until `konductor metrics` is wired up later in this PR stack.
+mod metrics;
 mod orchestration_hook;
 pub(crate) mod orchestration_mode;
 pub(crate) mod output;
