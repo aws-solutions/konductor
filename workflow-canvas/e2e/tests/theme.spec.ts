@@ -154,7 +154,11 @@ test('switches with the keyboard', async ({ canvas }) => {
 // The view switch sits in the header band, on the row of the title, with the
 // selected segment filled.
 async function expectSwitchOnBand(canvas: WorkflowCanvasPage) {
-  const list = canvas.page.getByRole('tablist');
+  // The Design view has a tab list of its own, so the switch is the one named
+  // for the views of the page.
+  const list = canvas.page.getByRole('tablist', {
+    name: 'Workflow canvas views',
+  });
   const [title, switcher] = await Promise.all([
     canvas.title.boundingBox(),
     list.boundingBox(),

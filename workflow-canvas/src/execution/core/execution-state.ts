@@ -21,7 +21,7 @@ export interface TrustRefusal extends TrustNeeded {
   closed?: true;
 }
 
-/** Where the Execution tab is in the life of a run. */
+/** Where the page is in the life of a run. */
 export type ExecutionState =
   | { phase: 'idle' }
   | {

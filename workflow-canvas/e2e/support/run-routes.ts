@@ -3,86 +3,6 @@ import type { Page } from '@playwright/test';
 
 const RUN_ID = '20261024-0412-a7b3c';
 
-/** The stages of the sample workflow, in order, and what a run says of them. */
-export type StageStatuses = readonly [
-  'pending' | 'running' | 'passed' | 'blocked',
-  'pending' | 'running' | 'passed' | 'blocked',
-];
-
-// A stage of a run as the contract has it: a blocked stage has a reason.
-function stageOf(status: StageStatuses[number], reason: string) {
-  return status === 'blocked' ? { status, reason } : { status };
-}
-
-/**
- * A reply of `GET /api/runs/{id}` for the sample workflow. A blocked stage
- * has `reason`, `RESULT_MISSING` unless it is given.
- */
-export function runReply(
-  status: 'running' | 'passed' | 'halted',
-  [draft, review]: StageStatuses,
-  reason = 'RESULT_MISSING',
-) {
-  const finished = status !== 'running';
-  return {
-    run: {
-      run_id: RUN_ID,
-      workflow: 'hello',
-      harness: 'kiro-cli',
-      status,
-      started_at: '2026-10-24T04:12:05Z',
-      finished_at: finished ? '2026-10-24T04:12:49Z' : null,
-      exit_code: finished ? (status === 'passed' ? 0 : 1) : null,
-      order: ['draft', 'review'],
-      stages: {
-        draft: stageOf(draft, reason),
-        review: stageOf(review, reason),
-      },
-    },
-  };
-}
-
-type RunReply = ReturnType<typeof runReply>;
-
-async function acceptRuns(page: Page): Promise<void> {
-  await page.route('**/api/run', (route) =>
-    route.fulfill({ status: 202, json: { run_id: RUN_ID } }),
-  );
-}
-
-/**
- * Makes the page's calls to start a run and to read it answer with `reply`,
- * without a run on the server. For states the stub never reaches, such as a
- * failed stage, and so that the stub, which runs one run at a time, is left
- * for the tests that run on it.
- */
-export async function answerRunsWith(
-  page: Page,
-  reply: RunReply,
-): Promise<void> {
-  await acceptRuns(page);
-  await page.route('**/api/runs/*', (route) => route.fulfill({ json: reply }));
-}
-
-/**
- * Like `answerRunsWith`, but each read of the run gets the next reply, and
- * the last one is repeated. `reads()` says how many reads the page has made,
- * so a test can wait for one without a fixed pause.
- */
-export async function answerRunsInTurn(
-  page: Page,
-  replies: readonly RunReply[],
-): Promise<{ reads(): number }> {
-  await acceptRuns(page);
-  let reads = 0;
-  await page.route('**/api/runs/*', (route) => {
-    const reply = replies[Math.min(reads, replies.length - 1)];
-    reads += 1;
-    return route.fulfill({ json: reply });
-  });
-  return { reads: () => reads };
-}
-
 /** Makes the page's call to start a run fail with the status and body. */
 export async function refuseRunsWith(
   page: Page,
@@ -94,39 +14,95 @@ export async function refuseRunsWith(
   );
 }
 
-/**
- * Makes the page's call to start a run answer 409 `already_running` with the
- * id of a run, and its reads answer with `reply`, as a server does while a
- * run from an earlier page load is still going.
- */
-export async function joinActiveRunWith(
-  page: Page,
-  reply: ReturnType<typeof runReply>,
-): Promise<void> {
-  await page.route('**/api/run', (route) =>
-    route.fulfill({
-      status: 409,
-      json: {
-        error: 'A run is already active.',
-        code: 'already_running',
-        run_id: RUN_ID,
-      },
-    }),
-  );
-  await page.route('**/api/runs/*', (route) => route.fulfill({ json: reply }));
+/** One event of a run, as `GET /api/runs/{id}/events` sends it. */
+export type RunEventBody = Record<string, unknown> & { seq: number };
+
+/** The `stage_state` event of a stage that passed. */
+export const passed = (seq: number, stage: string): RunEventBody => ({
+  seq,
+  type: 'stage_state',
+  stage,
+  status: 'passed',
+});
+
+/** The `stage_state` event of a stage that is at work. */
+export const running = (seq: number, stage: string): RunEventBody => ({
+  seq,
+  type: 'stage_state',
+  stage,
+  status: 'running',
+});
+
+/** The `stage_state` event of a stage that stopped the run. */
+export const blocked = (
+  seq: number,
+  stage: string,
+  reason: string,
+): RunEventBody => ({
+  seq,
+  type: 'stage_state',
+  stage,
+  status: 'blocked',
+  reason,
+});
+
+/** The `run_finished` event of a run that ended with the status. */
+export const runFinished = (
+  seq: number,
+  status: 'passed' | 'halted',
+): RunEventBody => ({
+  seq,
+  type: 'run_finished',
+  at: '2026-10-24T04:12:49Z',
+  status,
+  exit_code: status === 'passed' ? 0 : 1,
+});
+
+/** The `run_finished` event of a run that passed. */
+export const runPassed = (seq: number): RunEventBody =>
+  runFinished(seq, 'passed');
+
+/** One row of `GET /api/runs`. */
+export function runRow(status: 'running' | 'passed' | 'halted' = 'passed') {
+  return {
+    run_id: RUN_ID,
+    started_at: '2026-10-24T04:12:05Z',
+    status,
+    goal: 'Add a greeting to the README',
+    goal_truncated: false,
+  };
 }
 
 /**
- * Makes the first read of a run fail as if the connection dropped, then
- * answers every read with `reply`.
+ * Answers the calls of a run with fixed replies: the start is accepted, the
+ * events come in one page, the past runs are the rows given and the run's
+ * check states are the map given. The stub
+ * runs one run at a time, so this leaves it for the tests that run on it,
+ * and a run here never waits the three seconds a stage takes there.
  */
-export async function dropFirstReadThenAnswerWith(
+export async function answerRunWith(
   page: Page,
-  reply: ReturnType<typeof runReply>,
+  events: readonly RunEventBody[],
+  runs: readonly ReturnType<typeof runRow>[] = [runRow()],
+  {
+    finished = true,
+    checks = {},
+  }: {
+    readonly finished?: boolean;
+    readonly checks?: Readonly<Record<string, string>>;
+  } = {},
 ): Promise<void> {
-  let reads = 0;
-  await page.route('**/api/runs/*', (route) => {
-    reads += 1;
-    return reads === 1 ? route.abort() : route.fulfill({ json: reply });
-  });
+  await page.route('**/api/run', (route) =>
+    route.fulfill({ status: 202, json: { run_id: RUN_ID } }),
+  );
+  await page.route('**/api/runs', (route) => route.fulfill({ json: { runs } }));
+  await page.route('**/api/runs/*', (route) =>
+    route.fulfill({ json: { run: { checks } } }),
+  );
+  // Registered last, so it wins over the list route above for this path.
+  await page.route('**/api/runs/*/events*', (route) =>
+    route.fulfill({
+      json: { events, next: events.at(-1)?.seq ?? 0, finished },
+    }),
+  );
 }

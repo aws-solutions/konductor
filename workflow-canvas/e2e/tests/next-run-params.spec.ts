@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test, type Page, type Request } from '@playwright/test';
-import { openDeclaringParams } from '../support/next-fixtures';
+import { openDeclaringParams } from '../support/fixtures';
 
 const RUN_ID = '20261024-0412-a7b3c';
 
