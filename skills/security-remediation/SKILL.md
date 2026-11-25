@@ -1,7 +1,7 @@
 ---
 name: security-remediation
-description: Analyzes security findings and generates remediation plans with prioritized fixes. Use when addressing security tickets, vulnerability reports, or application security review findings. Produces remediation steps with effort estimates and risk context.
-version: 1.0.0
+description: Analyzes security findings and plans prioritized fixes. Use when addressing security tickets, vulnerability reports, or application security review findings. Gives remediation steps with effort estimates and risk context.
+version: 1.1.0
 tags: [skill, security, remediation, vulnerability, operations, aws]
 ---
 
@@ -31,26 +31,7 @@ Every remediation step includes a verification command or test to confirm the fi
 
 ## Execution
 
-When this skill is activated, use the following as your full instruction set for analyzing security findings and generating remediation plans. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-## Security Finding Analyzer
-
-<role>
-You are an expert security remediation assistant helping developers analyze and fix security findings from application security reviews or penetration tests.
-</role>
-
-<context>
-- You are operating within the code repository of the affected project
-- You have access to the surrounding code context and relevant files
-- You need to suggest specific code changes and security improvements
-- You must maintain strict data privacy requirements
-</context>
-
-<task>
-Analyze the security ticket information provided and develop a comprehensive remediation plan that addresses the security finding while preserving data privacy.
-</task>
+Work from the code repository of the affected project, reading the surrounding code and relevant files. Suggest specific code and configuration changes. Apply the Quality Gate before presenting output.
 
 <analysis_framework>
 
@@ -62,13 +43,18 @@ Analyze the security ticket information provided and develop a comprehensive rem
 - Code-based vulnerability (e.g., input validation, authentication, authorization)
 - AWS configuration issue
 
-- Identify affected code patterns or configuration components
-- Explain the security concern and potential impact
+- Identify affected code patterns or configuration components, citing `file:line` for each vulnerable call
+- Trace the untrusted input from where it enters (route, handler, CLI argument) to the vulnerable call
+- Explain the security concern and the concrete attacker impact
 
 ### Step 2: Remediation Planning
 
 - Provide step-by-step remediation guidance with specific code examples
 - Ensure code examples follow security best practices
+- Fix the root cause and keep behavior the code already supports, unless the finding requires removing it. For input validation, prefer canonicalizing the value and checking it stays inside the allowed boundary over narrowing what input is accepted. Call out any behavior change in the plan
+- Tests cover the bypass variants for the vulnerability class, not just the reported payload (for path traversal: `../`, absolute paths, a sibling directory sharing the prefix)
+- Prefer unit tests on the fixed functions. A test that starts a server must close it and its open connections, or the test run hangs
+- Run the tests if you have a shell. If you cannot, say so instead of claiming they pass
 - Include additional security considerations or defensive measures
 
 ### Step 3: False Positive Assessment for AWS Configuration Findings
@@ -112,10 +98,11 @@ CRITICAL: When suggesting code changes, you MUST:
 - Remove any trace of the security review process from suggested code
 - Remember that all code suggestions may be committed to open source repositories
 - Focus only on the technical fix without references to internal processes
+- Apply the same rule to any plan file you write in the repository: it may be committed with the fix, so name the finding by its title, not its ticket ID, reporter, or review name
   </data_privacy_requirements>
 
 <input>
-Security Ticket URL: {{SECURITY_TICKET_URL}}
+Input: the finding text, scanner output, or ticket the user provides.
 </input>
 
 <output_format>
@@ -135,9 +122,12 @@ Please provide your analysis in the following structure:
 
 1. **Remediation Plan**
 
-- Step-by-step fix instructions
-- Code examples showing before/after changes
+- Step-by-step fix instructions, CRITICAL findings first, related findings grouped
+- Code examples showing before/after changes, with exact versions or commands. Include them even when you also apply the fix
 - Implementation considerations
+- Effort estimate for each fix (for example, hours or S/M/L)
+- Verification: a command or test that shows the fix works
+- Rollback plan for any fix that could cause a regression
 
 1. **Security Best Practices**
 
@@ -146,7 +136,7 @@ Please provide your analysis in the following structure:
 - Prevention strategies for similar issues
   </output_format>
 
-Based on the security ticket information, provide a complete assessment and remediation plan that addresses the security finding while maintaining strict data privacy requirements. Present only the requested analysis and remediation plan without any preamble or additional explanations.
+Present only the analysis and remediation plan, with no preamble.
 
 ---
 
@@ -169,20 +159,4 @@ Based on the security ticket information, provide a complete assessment and reme
 - Could add automated scanning to CI pipeline to prevent recurrence
 - Could link to internal security guidance for the vulnerability type
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]"
-
-## Required Closing Prompt
-
-You MUST end every security-remediation response with EXACTLY this text (no substitutions):
-
-```text
-Fix these issues? [y/n]
-```
-
-Do NOT replace this with:
-
-- "Would you like me to spawn a developer subagent..."
-- "Shall I implement these changes?"
-- Any other question or offer
-
-The exact text `Fix these issues? [y/n]` is required by the maker-checker pattern.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. End with that exact line, not an offer to spawn a developer or any other question. Put it only in the reply, never inside a plan file or code.

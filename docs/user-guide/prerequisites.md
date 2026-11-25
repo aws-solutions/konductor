@@ -61,18 +61,18 @@ fail *silently* rather than with an error, so it is worth doing up front. Both a
   requires whatever your organisation configures.
 - **No administrator privileges.** The CLI writes only to your project directory (`.konductor/`,
   `dist/`), your home directory (`~/.konductor/`), and your runtime's own configuration directory.
-- **AWS credentials are optional** — needed only for the AWS documentation integration below.
+- **AWS credentials are optional** — needed only for AWS MCP calls that act on an AWS account.
 
 ---
 
 ## Optional integrations
 
-Four agents can use external tool servers. Two are pre-configured and need only a local dependency;
+Five agents can use external tool servers. Two are pre-configured and need only a local dependency;
 two are opt-in and need an account.
 
 | Agent | Integration | Pre-configured? | What you need |
 | --- | --- | --- | --- |
-| `k-architect`, `k-developer` | AWS documentation and region/service lookups | Yes | `uvx` installed, plus AWS credentials in `~/.aws/credentials` or environment variables. Both agents work without credentials, just without AWS lookups. |
+| `konductor`, `k-architect`, `k-developer` | AWS documentation and region/service lookups | Yes | `uvx` installed. The proxy needs Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed. Documentation search and skills work without AWS credentials; calls that act on an AWS account need credentials in `~/.aws/credentials` or environment variables. |
 | `k-browser` | Playwright browser automation | Yes | The Chromium binary |
 | `k-researcher` | Slack search | No — opt-in | Your own Slack app. See [Slack integration](../guides/slack-integration.md). |
 | `k-product-manager` | Asana sprint planning | No — opt-in | An Asana OAuth2 app. See [Asana integration](../guides/asana-integration.md). |

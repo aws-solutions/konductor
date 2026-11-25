@@ -13,7 +13,7 @@ config, not something Konductor ships.
 The launch definition for an allowlisted server comes straight from the
 agent specs' own dependencies.mcpRegistry entry -- there is no separate
 override file. k-architect and k-developer each declare the pinned
-`mcp-proxy-for-aws-cli==1.7.0` command directly, and must declare it
+`mcp-proxy-for-aws-cli==2.0.0` command directly, and must declare it
 identically (see test_bundled_server_definitions_are_byte_identical_across_
 agent_specs and test_direct_pinned_definition_reaches_rendered_mcp_output
 below).
@@ -61,7 +61,7 @@ def _run(tmp_path: Path, bundled_mcp_servers=None):
     _write_agent_spec(
         agent_specs_dir / "k-architect.agent-spec.json",
         "k-architect",
-        {"aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}},
+        {"aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==2.0.0"]}},
     )
     _write_agent_spec(
         agent_specs_dir / "k-browser.agent-spec.json",
@@ -151,7 +151,7 @@ def test_direct_pinned_definition_reaches_rendered_mcp_output(tmp_path):
     assert result.returncode == 0, result.stderr
 
     rendered = json.loads(mcp_output.read_text(encoding="utf-8"))
-    assert rendered["mcpServers"]["aws-mcp"]["args"] == ["mcp-proxy-for-aws-cli==1.7.0"], rendered
+    assert rendered["mcpServers"]["aws-mcp"]["args"] == ["mcp-proxy-for-aws-cli==2.0.0"], rendered
 
 
 def test_conflicting_definitions_still_error_even_when_filtered_out(tmp_path):
@@ -234,5 +234,41 @@ def test_shipped_bundled_aws_proxy_is_exactly_pinned():
     )
 
     assert (
-        spec["dependencies"]["mcpRegistry"]["aws-mcp"]["args"][0] == "mcp-proxy-for-aws-cli==1.7.0"
+        spec["dependencies"]["mcpRegistry"]["aws-mcp"]["args"][0] == "mcp-proxy-for-aws-cli==2.0.0"
     )
+
+
+def _render_with_template(tmp_path: Path, extra: dict) -> subprocess.CompletedProcess:
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "k-example.md").write_text("---\nname: k-example\n---\n", encoding="utf-8")
+    template = tmp_path / "template.json"
+    template.write_text(json.dumps({**json.loads(TEMPLATE.read_text(encoding="utf-8")), **extra}), encoding="utf-8")
+    version_file = tmp_path / "VERSION"
+    version_file.write_text("9.9.9\n", encoding="utf-8")
+    out = tmp_path / "plugin.json"
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--template",
+            str(template),
+            "--version-file",
+            str(version_file),
+            "--agents-dir",
+            str(agents_dir),
+            "--output",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_template_with_agents_or_skills_is_rejected(tmp_path):
+    for key, value in (("agents", ["./agents/k-example.md"]), ("skills", ["./skills/"])):
+        case = tmp_path / key
+        case.mkdir()
+        result = _render_with_template(case, {key: value})
+        assert result.returncode == 1
+        assert f"sets `{key}`" in result.stderr

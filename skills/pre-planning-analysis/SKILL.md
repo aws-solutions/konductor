@@ -1,6 +1,6 @@
 ---
 name: pre-planning-analysis
-description: Structured analysis framework for ambiguous requests. Classifies intent into 6 types, identifies ambiguities, bounds scope, and recommends an agent chain. Use when you cannot determine which specialist agent handles a request.
+description: Use when a request is vague, spans several SDLC phases, or mixes refactoring with enhancements, to bound scope and pick the agent chain before work starts. Classifies intent into 6 types, flags ambiguities and AI failure patterns, and recommends an agent chain.
 version: 1.0.0
 tags: [skill, pre-planning, analysis, intent-classification, scope, orchestration]
 ---
@@ -39,41 +39,43 @@ Classify the request into one of 6 types:
 
 ## Phase 1: Intent-Specific Analysis
 
+The acting agent does the phase itself and loads the skills the owner would; an orchestrator spawns the named agent only as its direct-work rules allow.
+
 ### Refactoring
 
 Questions: What behavior must be preserved? Rollback strategy? Propagation scope? Hidden dependencies?
 Directives: Pre-refactor verification, verify after EACH change, document preserved behavior. Do NOT combine with feature changes.
-Route to: `k-developer`
+Owner: `k-developer`
 
 ### Build from Scratch
 
 Questions: Similar existing code? Codebase conventions? Existing utilities? Testing strategy?
 Directives: Research patterns BEFORE implementation, reference specific files, define "done" criteria. Do NOT invent new patterns.
-Route to: `k-product-manager` (if new product) or `k-developer` (if new module)
+Owner: `k-product-manager` (if new product) or `k-developer` (if new module)
 
 ### Mid-sized Task
 
 Questions: Exact deliverables? Explicit exclusions? Assumptions? Verification criteria?
 Directives: List deliverables and exclusions explicitly, define acceptance criteria per deliverable. Do NOT expand scope.
-Route to: `k-developer`
+Owner: `k-developer`
 
 ### Collaborative
 
 Questions: Most important thing to get right? Timeline? Constraints? Options vs recommendation?
 Directives: Present choices at decision points, confirm understanding, break into checkpoints. Do NOT make major decisions without user input.
-Route to: Depends on domain — ask one clarifying question to determine
+Owner: depends on domain; ask one clarifying question to determine it
 
 ### Architecture
 
 Questions: Long-term implications? Optimizing for what? Constraints? Alternatives considered?
 Directives: Involve `k-architect` (has architecture-advisor skill), document trade-offs. Do NOT optimize prematurely.
-Route to: `k-architect`
+Owner: `k-architect`
 
 ### Research
 
 Questions: Specific question to answer? "Good enough" criteria? Time budget? What to do with findings?
 Directives: Define exit criteria, set time bounds, specify output format. Do NOT research indefinitely.
-Route to: `k-researcher`
+Owner: `k-researcher`
 
 ## Phase 2: Anti-Pattern Detection
 
@@ -86,7 +88,7 @@ Flag these common AI failure patterns:
 | Assumption Cascade     | Building on unvalidated assumptions | Validate assumptions first     |
 | Premature Optimization | Optimizing before it works          | Focus on "working" first       |
 | Analysis Paralysis     | Researching forever                 | Set time bounds, exit criteria |
-| Hero Syndrome          | Trying to do everything             | Delegate to specialists        |
+| Hero Syndrome          | Trying to do everything             | Route to the owner your orchestration rules name |
 
 ## Escalation to Socratic Elicitation
 

@@ -54,6 +54,17 @@ pub(in crate::cli::install) fn install_context(
     harness_dir: &Path,
     target_dir: &Path,
 ) -> Result<Vec<ManifestFile>, String> {
+    install_context_into(harness_dir, target_dir, KIRO_DESTINATION_ROOT)
+}
+
+/// `install_context` into `<target_dir>/<destination_root>/context/`.
+/// Claude Code uses `.konductor`, where the orchestration hook finds the
+/// routing rules file through the manifest.
+pub(in crate::cli::install) fn install_context_into(
+    harness_dir: &Path,
+    target_dir: &Path,
+    destination_root: &str,
+) -> Result<Vec<ManifestFile>, String> {
     let source_dir = harness_dir.join(CONTEXT_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
     if entries.is_empty() {
@@ -61,15 +72,14 @@ pub(in crate::cli::install) fn install_context(
     }
 
     let destination = target_dir
-        .join(KIRO_DESTINATION_ROOT)
+        .join(destination_root)
         .join(CONTEXT_CONTENT_TYPE_DIR);
     std::fs::create_dir_all(&destination)
         .map_err(|e| format!("failed to create {}: {e}", destination.display()))?;
 
     let mut files = copy_agent_files(&source_dir, &destination, entries)?;
     for file in &mut files {
-        file.path =
-            content_manifest_path(KIRO_DESTINATION_ROOT, CONTEXT_CONTENT_TYPE_DIR, &file.path);
+        file.path = content_manifest_path(destination_root, CONTEXT_CONTENT_TYPE_DIR, &file.path);
     }
     Ok(files)
 }
@@ -127,10 +137,9 @@ pub(in crate::cli::install) fn install_sops(
 /// `skill-lookup-mcp` itself never scans `.kiro/skills/`.
 ///
 /// Thin wrapper around `install::claude::install_sop_skills_into`
-/// (`destination_root: KIRO_DESTINATION_ROOT`, `disable_model_invocation:
-/// false` -- Kiro CLI has no documented equivalent to Claude Code's
-/// `disable-model-invocation` frontmatter key, so it is omitted
-/// entirely). Returns an empty `Vec` (not an error) when the source
+/// (`destination_root: KIRO_DESTINATION_ROOT`, `claude_frontmatter:
+/// false` -- Claude Code's `arguments` key is not part of Kiro's skill
+/// schema, so it is omitted). Returns an empty `Vec` (not an error) when the source
 /// directory is missing or empty, matching `install_sops`'s contract.
 pub(in crate::cli::install) fn install_kiro_sop_skills(
     harness_dir: &Path,
@@ -201,6 +210,13 @@ pub(in crate::cli::install) fn install_agents(
     let bin_dir = target_dir
         .join(KONDUCTOR_DESTINATION_ROOT)
         .join(super::super::mcp_server::BIN_CONTENT_TYPE_DIR);
+    let install_info_path = super::super::resource_rewrite::install_info_arg(target_dir);
+    let server_supports_install_info =
+        super::super::resource_rewrite::installed_server_supports_install_info(
+            &bin_dir,
+            bin_files,
+            no_telemetry,
+        );
 
     // Read once, before the per-agent install loop below, so every
     // agent this run installs sees the same scoping snapshot.
@@ -216,14 +232,12 @@ pub(in crate::cli::install) fn install_agents(
         bin_files,
         agent_sop_names: &agent_sop_names,
         agent_skill_names: &agent_skill_names,
-    };
-    let (mut files, any_mcp_server_injected) = copy_agent_files_rewriting_resources(
-        &source_dir,
-        &destination,
-        &ctx,
-        entries,
         no_telemetry,
-    )?;
+        install_info_path: &install_info_path,
+        server_supports_install_info,
+    };
+    let (mut files, any_mcp_server_injected) =
+        copy_agent_files_rewriting_resources(&source_dir, &destination, &ctx, entries)?;
     for file in &mut files {
         file.path =
             content_manifest_path(KIRO_DESTINATION_ROOT, AGENTS_CONTENT_TYPE_DIR, &file.path);
@@ -480,9 +494,10 @@ pub(in crate::cli::install) fn copy_agent_files(
 /// before writing it: rewrites `file://context/<name>` and
 /// `skill://skills/<name>/SKILL.md` resources to absolute paths, and
 /// injects an `mcpServers.konductor-skills` entry for a skill-bearing
-/// agent when the MCP binary was installed, and, unless `no_telemetry`,
-/// adds the `hooks.agentSpawn` telemetry hook. See `resource_rewrite`'s
-/// module doc comment for how the passes are ordered.
+/// agent when the MCP binary was installed, and, unless
+/// `ctx.no_telemetry`, adds the `hooks.agentSpawn` telemetry hook. See
+/// `resource_rewrite`'s module doc comment for how the passes are
+/// ordered.
 ///
 /// Always reads `src` fresh from `dist/`, so a rewritten value is
 /// never actually re-encountered. After the pipeline runs, every
@@ -494,9 +509,8 @@ fn copy_agent_files_rewriting_resources(
     destination: &Path,
     ctx: &super::super::resource_rewrite::RewriteContext<'_>,
     file_names: Vec<String>,
-    no_telemetry: bool,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
-    let passes = super::super::resource_rewrite::standard_passes(no_telemetry);
+    let passes = super::super::resource_rewrite::standard_passes(ctx.no_telemetry);
 
     let mut files = Vec::with_capacity(file_names.len());
     let mut any_mcp_server_injected = false;
@@ -527,19 +541,23 @@ fn copy_agent_files_rewriting_resources(
         // unaffected agent stays byte-identical to synth's `dist/`
         // output.
         //
-        // `no_telemetry` is required in this condition:
+        // `ctx.no_telemetry` is required in this condition:
         // `TelemetryHookPass::matches` is unconditionally `true`, so
         // without this clause an agent matching none of the other
         // conditions would take this fast path and never reach
         // `apply_all` when telemetry is enabled, silently skipping hook
-        // injection for exactly the agents that most need it.
+        // injection for exactly the agents that most need it. The
+        // `konductor` agent always takes the rewrite path for the same
+        // reason: `OrchestrationHookPass` wires it whatever the telemetry
+        // choice.
         let contents = String::from_utf8(original_bytes.clone())
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
-        if no_telemetry
+        if ctx.no_telemetry
             && !contents.contains(CONTEXT_RESOURCE_PREFIX)
             && !contents.contains(super::super::resource_rewrite::SKILL_RESOURCE_PREFIX)
             && !agent_has_sop_names
             && !agent_has_skill_names
+            && agent_name != crate::cli::orchestration_hook::MODE_AGENT
         {
             crate::cli::atomic_write::write_atomic(&dst, &original_bytes)
                 .map_err(|e| format!("failed to write {}: {e}", dst.display()))?;

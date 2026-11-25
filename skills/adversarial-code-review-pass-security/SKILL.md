@@ -1,7 +1,7 @@
 ---
 name: adversarial-code-review-pass-security
-description: 'Reviews a diff through the lens of security concerns — information disclosure, authorization, injection, secrets. One pass of the parallelized adversarial review; the coordinator spawns this alongside integrity and schema passes.'
-version: 1.0.0
+description: 'Reviews a diff through the lens of security concerns: information disclosure, authorization, injection, secrets. Use only when the adversarial-code-review coordinator spawns a session naming it, alongside the integrity and schema passes.'
+version: 1.1.0
 tags: [skill, security, code-review, adversarial, pass]
 ---
 
@@ -9,17 +9,17 @@ tags: [skill, security, code-review, adversarial, pass]
 
 ## Overview
 
-Reviews a diff through the lens of security concerns. This is one of three parallel review passes spawned by an adversarial-review coordinator SOP. The framing is neutral by design: review through the lens of security, do not assume any specific issue exists.
+Reviews a diff through the lens of security concerns. This is one of three parallel review passes that an adversarial-review coordinator SOP spawns as separate `k-developer` sessions. The framing is neutral by design: review through the lens of security, do not assume any specific issue exists.
 
 ## Usage
 
-Spawned by an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) as one of three parallel subagent passes. May also be run directly against a diff.
+Runs in a `k-developer` session that an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) spawns, as one of three parallel passes. The coordinator never runs a pass itself; a pass that fails twice is recorded as MISSING in the report, which caps the verdict.
 
 ## What to look for
 
 Review through the lens of security. In this diff, does anything:
 
-- Surface stack traces, internal IDs, table names, partition keys, or raw exception messages to the caller
+- Surface stack traces, internal IDs, table names, partition keys, internal error codes, or raw exception messages to the caller
 - Log request payloads, response bodies, or auth headers at info or debug level
 - Decode a pagination token, opaque cursor, or user-supplied ID and use it in a query without validation
 - Cross an abstraction boundary — internal service details reaching a public API surface
@@ -45,11 +45,11 @@ Before flagging a missing implementation, check whether the codebase already pro
 
 ## Checker handoff
 
-Findings produced by this pass are candidates, not verdicts. The coordinator forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the CR. Do not soften findings for the checker — produce your honest read; the checker's job is to filter, not to nudge.
+Findings produced by this pass are candidates, not verdicts. The coordinator forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything is posted to the PR. Do not soften findings for the checker — produce your honest read; the checker's job is to filter, not to nudge.
 
 ## Severity guidance
 
-- **CRITICAL** — stack trace or internal ID surfaced to caller; unvalidated input used in a query; hardcoded credential; widened IAM policy on a production role
+- **CRITICAL** — stack trace, internal ID, internal error code, or raw exception message surfaced to caller; unvalidated input used in a query; hardcoded credential; widened IAM policy on a production role
 - **IMPORTANT** — request payload logged at info/debug; opaque token decoded inline where a utility exists; new auth path not wired into existing middleware
 - **SUGGESTION** — abstraction boundary leak that does not directly expose sensitive data; log field that could be sensitive under some inputs
 

@@ -129,7 +129,8 @@ def test_assembled_tree_grants_are_prefixed_and_name_shipped_agents(tmp_path):
     assert result.returncode == 0, result.stderr
 
     plugin = json.loads((out / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    shipped = {f"{plugin['name']}:{Path(path).stem}" for path in plugin["agents"]}
+    assert "agents" not in plugin, "plugin.json must leave agents to the default agents/ scan"
+    shipped = {f"{plugin['name']}:{path.stem}" for path in (out / "agents").glob("*.md")}
     names = []
     for agent_file in sorted((out / "agents").glob("*.md")):
         for match in AGENT_GRANT_RE.finditer(_frontmatter(agent_file.read_text(encoding="utf-8"))):

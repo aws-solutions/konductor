@@ -15,35 +15,54 @@
 // pointers, and its `skills:` frontmatter already carries the resolved
 // skill content synth produced.
 //
-// Context has no separate install phase or on-disk directory on this
-// runtime: context content is spliced into the agent's rendered body at
-// synth time (see `synth/claude.rs`'s `render_agent_md`), not written as
-// a sibling file.
+// Context content is spliced into the agent's rendered body at synth
+// time (see `synth/claude.rs`'s `render_agent_md`). The context files are
+// also copied to `.konductor/context/`, where the orchestration hook finds
+// the routing rules and coordinator digest; no agent loads them from there.
 //
 // SOPs ARE in scope, via `install_sop_skills`: each staged `<name>.sop.md`
 // is converted into a `sop-<name>/SKILL.md` under `.claude/skills/`, not
 // copied verbatim -- Claude Code has no MCP-prompt equivalent to serve
-// `.sop.md` files directly, so each SOP becomes its own slash-invokable,
-// non-model-triggered skill instead (`disable-model-invocation: true`).
+// `.sop.md` files directly, so each SOP becomes its own skill instead,
+// invocable by the user (`/sop-<name>`) and by the model (`Skill` tool),
+// the same reach Kiro CLI gives its `.kiro/skills/sop-<name>` copy.
+//
+// When a staged agent declares the `aws-mcp` server or grants one of its
+// tools in frontmatter `tools`, install merges Claude Code permission rules
+// into `<target_dir>/.claude/settings.json`:
+// `permissions.ask` for every tool outside the read-only set
+// (`aws_mcp_ask_tools`), and `permissions.allow` for the agents' Kiro
+// `allowedTools` that are read-only tools, read from synth's
+// `_mcp_allowed_tools.json`. The manifest records the entries it appended
+// so uninstall can remove exactly those.
 //
 // `ClaudeTransformer`, the synth side that produces `dist/claude/...`,
 // lives on a separate, unmerged branch and is not imported here.
 // `CLAUDE_HARNESS_DIR` below is a hand-kept copy of its `name()` value;
 // tests seed a `dist/claude/...` fixture tree directly instead.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use super::kiro_cli::{
-    attach_provenance, copy_agent_files, copy_skill_dir_recursive, list_agent_files_like,
-    list_skill_dirs, plan_claude_hooks_file, plan_skill_dir_recursive, reject_unsafe_file_name,
-    PlannedFile,
+    attach_provenance, copy_agent_files, copy_skill_dir_recursive, install_context_into,
+    list_agent_files_like, list_skill_dirs, plan_claude_hooks_file, plan_context_files_into,
+    plan_skill_dir_recursive, reject_unsafe_file_name, PlannedFile, KONDUCTOR_DESTINATION_ROOT,
 };
-use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
+use super::manifest::{
+    classify_provenance, AddedPermissionRules, AwsMcpRulesRecord, ManifestFile, Status,
+    StrategyManifest,
+};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
-use super::resource_rewrite::apply_claude_settings_hooks_only;
+use super::resource_rewrite::{
+    apply_claude_settings_hooks_only, apply_claude_settings_mcp_rules, aws_mcp_ask_tools,
+    mcp_tool_rule, AppliedMcpRules, McpPermissionRules, AWS_MCP_READ_ONLY_TOOLS,
+    AWS_MCP_SERVER_NAME, CLAUDE_SETTINGS_RELATIVE_PATH,
+};
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 use super::InstallStrategy;
+use crate::cli::synth::claude::{is_mcp_rule_safe_name, MCP_ALLOWED_TOOLS_SIDECAR_FILE};
 use crate::cli::synth::kiro_cli_v2::{
     AGENTS_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR, SOPS_CONTENT_TYPE_DIR,
 };
@@ -64,9 +83,12 @@ pub(crate) const CLAUDE_DESTINATION_ROOT: &str = ".claude";
 /// writes `.konductor/manifest`.
 pub struct ClaudeInstallStrategy;
 
+/// The strategy's manifest name and `--harness` value.
+pub(crate) const STRATEGY_NAME: &str = "claude";
+
 impl InstallStrategy for ClaudeInstallStrategy {
     fn name(&self) -> &'static str {
-        "claude"
+        STRATEGY_NAME
     }
 
     fn harness_dir(&self) -> &'static str {
@@ -148,7 +170,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 repo_root.display()
             )));
         }
-        // Additive telemetry-hook wiring, scoped to its own plan
+        // Additive hook wiring, scoped to its own plan
         // function (not folded into `plan_all_files` above): that
         // function also backs `would_fail_as_noop`'s "nothing to
         // install" check, which must stay empty whenever there is
@@ -156,9 +178,32 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // check above, so it can never mask a real no-op.
         plan.extend(plan_claude_settings_hooks_only(
             target_dir,
-            no_telemetry,
             prior_manifest.as_ref(),
         ));
+        // Computed before anything is written, so a malformed sidecar
+        // fails the install up front like a planning error.
+        let aws_mcp = claude_aws_mcp_permission_rules(&harness_dir)?;
+        let prior_aws_mcp_rules = prior_manifest
+            .as_ref()
+            .and_then(|prior| prior.aws_mcp_rules.clone());
+        let previously_added = prior_aws_mcp_rules
+            .as_ref()
+            .map(|record| record.added.clone())
+            .unwrap_or_default();
+        if !(aws_mcp.rules.is_empty() && previously_added.is_empty())
+            && !plan
+                .iter()
+                .any(|planned| planned.manifest_path == CLAUDE_SETTINGS_RELATIVE_PATH)
+        {
+            plan.push(PlannedFile {
+                manifest_path: CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
+                provenance: classify_provenance(
+                    &target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH),
+                    CLAUDE_SETTINGS_RELATIVE_PATH,
+                    prior_manifest.as_ref(),
+                ),
+            });
+        }
 
         let in_progress_files: Vec<ManifestFile> = plan
             .iter()
@@ -168,7 +213,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 provenance: planned.provenance,
             })
             .collect();
-        let write_ahead = StrategyManifest::new(
+        let mut write_ahead = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -176,6 +221,9 @@ impl InstallStrategy for ClaudeInstallStrategy {
             Status::InProgress,
             in_progress_files,
         );
+        // Keeps the record of entries earlier installs appended, so an
+        // interrupted run still lets uninstall remove them.
+        write_ahead.aws_mcp_rules = prior_aws_mcp_rules;
         super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
         let mut raw_files = run_all_phases(
@@ -187,9 +235,9 @@ impl InstallStrategy for ClaudeInstallStrategy {
             no_telemetry,
         )?;
 
-        // Additive, gated only on `!no_telemetry`: writes the
-        // `SessionStart`/`SubagentStart` telemetry hooks into this
-        // target's hooks settings file. See
+        // Additive: writes the Konductor hooks (the orchestration hook
+        // alone under `--no-telemetry`) into this target's hooks
+        // settings file. See
         // `apply_claude_settings_hooks_only`'s own doc comment for
         // what it covers and why it is separate from the combined
         // grant+hooks function the Kiro CLI V2/V3 dual-marker paths use.
@@ -202,17 +250,47 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // target where Konductor previously created this file is
         // recorded as `ReplacedOurs`, not hardcoded to `Created`. Every
         // run first strips an earlier release's hooks from the shared
-        // `.claude/settings.json`; under `--no-telemetry` it instead
-        // strips a prior install's hooks and writes none.
+        // `.claude/settings.json`; under `--no-telemetry` it also
+        // strips a prior install's telemetry hooks.
         if let Some(claude_settings_file) =
             apply_claude_settings_hooks_only(target_dir, no_telemetry)
         {
             raw_files.push(claude_settings_file);
         }
 
+        // The `aws-mcp` ask/allow rules go into `.claude/settings.json`.
+        // On a `$HOME` install that is also the hooks file, so this later
+        // write's hash replaces the hooks entry. A failed write does not
+        // fail the install: the manifest records it, and the install
+        // report lists the rules to add by hand.
+        let rules_result =
+            apply_claude_settings_mcp_rules(target_dir, &aws_mcp.rules, &previously_added);
+        let aws_mcp_rules_record =
+            aws_mcp_rules_record(&aws_mcp.rules, &rules_result, previously_added);
+        if let Ok(AppliedMcpRules {
+            file: Some(settings_file),
+            ..
+        }) = rules_result
+        {
+            raw_files.retain(|file| file.path != settings_file.path);
+            raw_files.push(settings_file);
+            if aws_mcp.sidecar_missing {
+                eprintln!(
+                    "konductor install: {} not found (synthed by an older konductor); wrote \
+                     only the AWS MCP ask rules to {}; re-run konductor synth to add the AWS \
+                     MCP allow rules",
+                    harness_dir
+                        .join(AGENTS_CONTENT_TYPE_DIR)
+                        .join(MCP_ALLOWED_TOOLS_SIDECAR_FILE)
+                        .display(),
+                    target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH).display()
+                );
+            }
+        }
+
         let files = attach_provenance(raw_files, &plan)?;
 
-        let complete = StrategyManifest::new(
+        let mut complete = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -220,6 +298,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
             Status::Complete,
             files,
         );
+        complete.aws_mcp_rules = aws_mcp_rules_record;
         super::manifest::upsert_strategy(target_dir, complete)?;
 
         // Same call, same rationale, as `kiro_cli.rs`'s own identical
@@ -243,8 +322,37 @@ pub(super) fn standard_claude_install_phases() -> Vec<Box<dyn InstallPhase>> {
     vec![
         Box::new(ClaudeSkillInstallPhase),
         Box::new(SopInstallPhase),
+        Box::new(ClaudeContextInstallPhase),
         Box::new(ClaudeAgentInstallPhase),
     ]
+}
+
+// ── Phase: context ─────────────────────────────────────────────────────────
+
+/// Copies `<staged_root>/context/*.md` into `<target_dir>/.konductor/context/`
+/// for the orchestration hook. A missing source directory installs nothing.
+pub(super) struct ClaudeContextInstallPhase;
+
+impl InstallPhase for ClaudeContextInstallPhase {
+    fn name(&self) -> &'static str {
+        "claude-context"
+    }
+
+    fn run(
+        &self,
+        staged_root: &Path,
+        target_dir: &Path,
+        _repo_root: Option<&Path>,
+        _prior_manifest: Option<&StrategyManifest>,
+        _phase_outputs: &PhaseOutputs,
+        _no_telemetry: bool,
+    ) -> Result<Vec<ManifestFile>, InstallError> {
+        Ok(install_context_into(
+            staged_root,
+            target_dir,
+            KONDUCTOR_DESTINATION_ROOT,
+        )?)
+    }
 }
 
 // ── Phase: skills ──────────────────────────────────────────────────────────
@@ -300,20 +408,208 @@ impl InstallPhase for ClaudeAgentInstallPhase {
 }
 
 /// Predicts the write-ahead-plan entry for `apply_claude_settings_hooks_only`
-/// (the target's hooks settings file) when `!no_telemetry`, without
-/// touching disk. Kept out of `plan_all_files`: that function backs
+/// (the target's hooks settings file), without touching disk. Always
+/// planned: the orchestration hook is wired even under `--no-telemetry`. Kept out of `plan_all_files`: that function backs
 /// `would_fail_as_noop`'s "nothing to install" check, which must stay
 /// empty whenever there is genuinely nothing to install.
 fn plan_claude_settings_hooks_only(
     target_dir: &Path,
-    no_telemetry: bool,
     prior_manifest: Option<&StrategyManifest>,
 ) -> Vec<PlannedFile> {
     let mut plan = Vec::new();
-    if !no_telemetry {
-        plan_claude_hooks_file(&mut plan, target_dir, prior_manifest);
-    }
+    plan_claude_hooks_file(&mut plan, target_dir, prior_manifest);
     plan
+}
+
+// ── AWS MCP permission rules ───────────────────────────────────────────────
+
+/// The `aws-mcp` permission rules for the staged agents, and whether the
+/// synth sidecar that supplies the allow list was missing.
+struct AwsMcpRulePlan {
+    rules: McpPermissionRules,
+    sidecar_missing: bool,
+}
+
+/// Per agent, per MCP server, the Kiro `allowedTools` tool names synth
+/// recorded in `_mcp_allowed_tools.json`.
+type McpAllowedTools = BTreeMap<String, BTreeMap<String, Vec<String>>>;
+
+/// Builds the rules from the staged agents under `<harness_dir>/agents/`.
+/// Empty when no agent's frontmatter uses `aws-mcp` (see
+/// `agent_uses_mcp_server`). Otherwise `ask`
+/// holds the `aws_mcp_ask_tools` rules and `allow` the union of those
+/// agents' sidecar tools that are in `AWS_MCP_READ_ONLY_TOOLS`.
+fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan, String> {
+    let agents_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
+    let mut aws_agents = Vec::new();
+    for file_name in list_agent_files_md(&agents_dir)? {
+        let path = agents_dir.join(&file_name);
+        let md = std::fs::read_to_string(&path)
+            .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+        match agent_uses_mcp_server(&md, AWS_MCP_SERVER_NAME) {
+            Ok(true) => aws_agents.push(file_name.trim_end_matches(".md").to_string()),
+            Ok(false) => {}
+            Err(reason) => eprintln!(
+                "konductor install: warning: could not read the frontmatter of {}: {reason}; \
+                 it is not checked for {AWS_MCP_SERVER_NAME}, so it adds no AWS MCP \
+                 permission rules",
+                path.display()
+            ),
+        }
+    }
+
+    let mut rules = McpPermissionRules {
+        server: AWS_MCP_SERVER_NAME.to_string(),
+        ..Default::default()
+    };
+    if aws_agents.is_empty() {
+        return Ok(AwsMcpRulePlan {
+            rules,
+            sidecar_missing: false,
+        });
+    }
+    rules.ask = aws_mcp_ask_tools()
+        .iter()
+        .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
+        .collect();
+
+    let Some(sidecar) = read_mcp_allowed_tools_sidecar(&agents_dir)? else {
+        return Ok(AwsMcpRulePlan {
+            rules,
+            sidecar_missing: true,
+        });
+    };
+    let sidecar_tools: BTreeSet<&str> = aws_agents
+        .iter()
+        .filter_map(|agent| sidecar.get(agent)?.get(AWS_MCP_SERVER_NAME))
+        .flatten()
+        .map(String::as_str)
+        .collect();
+    let (allowed, refused): (BTreeSet<&str>, BTreeSet<&str>) = sidecar_tools
+        .into_iter()
+        .partition(|tool| AWS_MCP_READ_ONLY_TOOLS.contains(tool));
+    for tool in refused {
+        eprintln!(
+            "konductor install: warning: {} lists {AWS_MCP_SERVER_NAME} tool {tool:?}, which is \
+             not one of the read-only tools install pre-approves; it gets no allow rule",
+            agents_dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE).display()
+        );
+    }
+    rules.allow = allowed
+        .into_iter()
+        .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
+        .collect();
+    Ok(AwsMcpRulePlan {
+        rules,
+        sidecar_missing: false,
+    })
+}
+
+/// The manifest record of this run's rules merge, `None` when there were
+/// no rules to merge and no earlier appended entries to keep track of. A
+/// failed merge keeps `previously_added`, since nothing was removed.
+fn aws_mcp_rules_record(
+    rules: &McpPermissionRules,
+    result: &Result<AppliedMcpRules, String>,
+    previously_added: AddedPermissionRules,
+) -> Option<AwsMcpRulesRecord> {
+    let added = match result {
+        Ok(applied) => applied.added.clone(),
+        Err(_) => previously_added,
+    };
+    if rules.is_empty() && added.is_empty() {
+        return None;
+    }
+    Some(AwsMcpRulesRecord {
+        written: result.is_ok(),
+        reason: result.as_ref().err().cloned(),
+        ask: rules.ask.clone(),
+        allow: rules.allow.clone(),
+        added,
+    })
+}
+
+/// Whether the agent Markdown's YAML frontmatter uses `server`: it lists the
+/// server under `mcpServers` (a sequence of single-key maps, as synth renders
+/// it), or its `tools` grants `mcp__<server>` or any `mcp__<server>__<tool>`.
+/// The tools check covers a custom synth that bundled no MCP servers, where
+/// the agent keeps its tool grant. `Err` describes frontmatter that is
+/// missing, unclosed or not YAML. CRLF line endings are accepted.
+fn agent_uses_mcp_server(md: &str, server: &str) -> Result<bool, String> {
+    let md = md.replace("\r\n", "\n");
+    let rest = md
+        .strip_prefix("---\n")
+        .ok_or("no YAML frontmatter (the file does not start with a '---' line)")?;
+    let end = if rest.starts_with("---\n") {
+        0
+    } else {
+        rest.find("\n---\n")
+            .map(|newline| newline + 1)
+            .ok_or("the YAML frontmatter has no closing '---' line")?
+    };
+    let frontmatter = serde_yaml::from_str::<serde_yaml::Value>(&rest[..end])
+        .map_err(|e| format!("the YAML frontmatter does not parse: {e}"))?;
+
+    let declares_server = frontmatter
+        .get("mcpServers")
+        .and_then(serde_yaml::Value::as_sequence)
+        .is_some_and(|servers| {
+            servers.iter().any(|entry| {
+                entry
+                    .as_mapping()
+                    .is_some_and(|map| map.contains_key(server))
+            })
+        });
+    Ok(declares_server || frontmatter_tools_grant_mcp_server(&frontmatter, server))
+}
+
+/// Whether the frontmatter `tools` (a YAML sequence, or Claude Code's
+/// comma-separated string form) names `mcp__<server>` or a tool under it.
+fn frontmatter_tools_grant_mcp_server(frontmatter: &serde_yaml::Value, server: &str) -> bool {
+    let whole_server = format!("mcp__{server}");
+    let tool_prefix = format!("{whole_server}__");
+    let grants = |tool: &str| {
+        let tool = tool.trim();
+        tool == whole_server || tool.starts_with(&tool_prefix)
+    };
+    match frontmatter.get("tools") {
+        Some(serde_yaml::Value::Sequence(tools)) => tools
+            .iter()
+            .filter_map(serde_yaml::Value::as_str)
+            .any(grants),
+        Some(serde_yaml::Value::String(tools)) => tools.split(',').any(grants),
+        _ => false,
+    }
+}
+
+/// Reads `<agents_dir>/_mcp_allowed_tools.json`. `Ok(None)` when the file
+/// is absent (a dist synthed by an older konductor). Every server and tool
+/// name must match `[A-Za-z0-9_-]+`, since each becomes part of a rule
+/// written into the user's settings file.
+fn read_mcp_allowed_tools_sidecar(agents_dir: &Path) -> Result<Option<McpAllowedTools>, String> {
+    let path = agents_dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+    let sidecar: McpAllowedTools = serde_json::from_str(&text)
+        .map_err(|e| format!("failed to parse {}: {e}", path.display()))?;
+    for (agent, servers) in &sidecar {
+        for (server, tools) in servers {
+            if let Some(bad) = std::iter::once(server)
+                .chain(tools)
+                .find(|name| !is_mcp_rule_safe_name(name))
+            {
+                return Err(format!(
+                    "{} lists {bad:?} for agent '{agent}'; MCP server and tool names may only \
+                     contain letters, digits, '_' and '-'",
+                    path.display()
+                ));
+            }
+        }
+    }
+    Ok(Some(sidecar))
 }
 
 /// Builds the full write-ahead plan across both content types (skills,
@@ -331,6 +627,12 @@ fn plan_all_files(
     plan.extend(plan_sop_skill_files(
         harness_dir,
         target_dir,
+        prior_manifest,
+    )?);
+    plan.extend(plan_context_files_into(
+        harness_dir,
+        target_dir,
+        KONDUCTOR_DESTINATION_ROOT,
         prior_manifest,
     )?);
     plan.extend(plan_agent_files(harness_dir, target_dir, prior_manifest)?);
@@ -601,8 +903,8 @@ pub(super) fn install_sop_skills(
 /// `<name>.sop.md` file under `<harness_dir>/sops/` into a
 /// `sop-<name>/SKILL.md` file under `<target_dir>/<destination_root>/skills/`,
 /// parameterized over the destination root and whether the rendered
-/// frontmatter carries Claude Code's `disable-model-invocation: true`
-/// key (see `render_sop_skill_md`'s own doc comment for why
+/// frontmatter carries Claude Code-only keys (`arguments`; see
+/// `render_sop_skill_md_with_options`'s own doc comment for why
 /// Kiro-targeted callers pass `false`).
 ///
 /// `pub(super)`: `kiro_cli` reuses this directly for its own
@@ -613,7 +915,7 @@ pub(super) fn install_sop_skills_into(
     harness_dir: &Path,
     target_dir: &Path,
     destination_root: &str,
-    disable_model_invocation: bool,
+    claude_frontmatter: bool,
 ) -> Result<Vec<ManifestFile>, String> {
     let source_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
@@ -625,20 +927,27 @@ pub(super) fn install_sop_skills_into(
         .join(destination_root)
         .join(SKILLS_CONTENT_TYPE_DIR);
 
-    let mut files = Vec::with_capacity(entries.len());
-    for file_name in entries {
+    // Read and check every SOP before writing any, so a malformed
+    // `Invocation:` line fails the install without a partial write.
+    let mut sops = Vec::with_capacity(entries.len());
+    for file_name in &entries {
         let Some(sop_name) = file_name.strip_suffix(".sop.md") else {
             // Not shaped like a SOP file -- skip rather than error.
             continue;
         };
         reject_unsafe_sop_name(sop_name)?;
-        let skill_dir_name = format!("sop-{sop_name}");
-        reject_unsafe_skill_name(&skill_dir_name)?;
-
-        let src = source_dir.join(&file_name);
+        reject_unsafe_skill_name(&format!("sop-{sop_name}"))?;
+        let src = source_dir.join(file_name);
         let body = std::fs::read_to_string(&src)
             .map_err(|e| format!("failed to read {}: {e}", src.display()))?;
-        let rendered = render_sop_skill_md_with_options(sop_name, &body, disable_model_invocation);
+        reject_malformed_invocation_line(sop_name, &body)?;
+        sops.push((sop_name, body));
+    }
+
+    let mut files = Vec::with_capacity(sops.len());
+    for (sop_name, body) in sops {
+        let skill_dir_name = format!("sop-{sop_name}");
+        let rendered = render_sop_skill_md_with_options(sop_name, &body, claude_frontmatter);
 
         let skill_dir = destination_root_path.join(&skill_dir_name);
         std::fs::create_dir_all(&skill_dir)
@@ -674,9 +983,13 @@ pub(super) fn install_sop_skills_into(
 ///   break frontmatter parsing
 /// - an optional frontmatter `arguments: [...]` array, scraped from a
 ///   `## Parameters` section (see `scrape_sop_parameters`), emitted only
-///   when `disable_model_invocation` is `true` (Claude Code's own
+///   when `claude_frontmatter` is `true` (Claude Code's own
 ///   schema, not Kiro's)
-/// - frontmatter `disable-model-invocation: true`
+/// - no `disable-model-invocation` key, so both the user (`/sop-<name>`)
+///   and the model (`Skill` tool) can invoke it, as on Kiro CLI, unless
+///   the SOP carries the `Invocation: user-only` marker line (see
+///   `is_user_only_sop`); then the key is emitted and the model cannot
+///   load it through `Skill`
 /// - a body wrapping the original SOP text in
 ///   `<agent-sop name="...">`/`<content>`/`<user-input>` tags, with
 ///   `sop_name` XML-attribute-escaped and the body guarded against a
@@ -700,32 +1013,31 @@ fn render_sop_skill_md(sop_name: &str, body: &str) -> String {
 const MAX_DESCRIPTION_CHARS: usize = 400;
 
 /// Generalized form of `render_sop_skill_md`: identical frontmatter/body
-/// wrapping, but `disable_model_invocation` controls whether the
-/// `disable-model-invocation: true` frontmatter key, and the `arguments`
-/// array, are emitted at all.
+/// wrapping, but `claude_frontmatter` controls whether the Claude
+/// Code-only `arguments` array is emitted at all.
 ///
-/// Claude Code's own callers always pass `true` -- these SOP-derived
-/// skills are meant to be explicitly `/`-selectable, not autonomously
-/// invoked by the model.
+/// Claude Code's own callers always pass `true`. A SOP-derived skill is
+/// reachable by the model on Claude Code (`Skill` tool) as it already is
+/// on Kiro CLI (native discovery of `.kiro/skills/sop-<name>`), and by
+/// the user on both. The exception is a SOP marked `Invocation:
+/// user-only` (it commits and pushes, opens pull requests, or acts on a
+/// live app): on Claude Code it gets `disable-model-invocation: true`,
+/// which the harness enforces on the `Skill` tool, so the model cannot
+/// load it on its own, from the main thread or from a subagent that has
+/// no one to ask. The user starts it, directly or through a parent SOP's
+/// scope question (`k-full-sdlc` Step 9). Kiro has no per-skill key to
+/// emit, so the Kiro path never writes it.
 ///
-/// Kiro has no `disable-model-invocation`-equivalent frontmatter key:
-/// its skill frontmatter schema is limited to `name`, `description`,
+/// Kiro's skill frontmatter schema is limited to `name`, `description`,
 /// `license`, `compatibility`, `metadata`, and the unrelated
-/// `allowed-tools`, and none of them gate autonomous invocation.
-/// `kiro_cli::install_kiro_sop_skills` therefore passes `false` here,
-/// and no such key is emitted -- inventing an unrecognized key could
-/// cause Kiro to ignore it or skip the skill entirely. The `arguments`
-/// array is gated the same way, for the same "not part of Kiro's
-/// schema" reason.
-///
-/// A Kiro-rendered SOP skill carries no advisory guard text discouraging
-/// self-invocation: there is no enforcement mechanism on Kiro that
-/// could gate this, and prose asking a model not to self-invoke has
-/// proven unreliable in practice.
+/// `allowed-tools`. `kiro_cli::install_kiro_sop_skills` therefore
+/// passes `false` here, so no `arguments` array is emitted --
+/// inventing an unrecognized key could cause Kiro to ignore it or skip
+/// the skill entirely.
 fn render_sop_skill_md_with_options(
     sop_name: &str,
     body: &str,
-    disable_model_invocation: bool,
+    claude_frontmatter: bool,
 ) -> String {
     let base_description = extract_overview_description(body)
         .unwrap_or_else(|| format!("Standard operating procedure: {sop_name}."));
@@ -736,13 +1048,15 @@ fn render_sop_skill_md_with_options(
         yaml_double_quote(&format!("sop-{sop_name}")),
         yaml_double_quote(&description)
     );
-    // `arguments` is gated on `disable_model_invocation`: it is not
+    // `arguments` is gated on `claude_frontmatter`: it is not
     // part of Kiro's schema, see this function's own doc comment.
-    if disable_model_invocation {
+    if claude_frontmatter {
         if let Some(arguments) = scrape_sop_parameters(body) {
             frontmatter.push_str(&format!("arguments: [{}]\n", arguments.join(", ")));
         }
-        frontmatter.push_str("disable-model-invocation: true\n");
+        if is_user_only_sop(body) {
+            frontmatter.push_str("disable-model-invocation: true\n");
+        }
     }
     frontmatter.push_str("---\n\n");
 
@@ -751,6 +1065,56 @@ fn render_sop_skill_md_with_options(
     format!(
         "{frontmatter}<agent-sop name=\"{escaped_name}\"><content>\n{guarded_body}\n</content><user-input>$ARGUMENTS</user-input></agent-sop>\n"
     )
+}
+
+/// Marker a SOP carries, at the start of a line, when the model must not
+/// start it: `Invocation: user-only (<what it does>)`. The opening
+/// parenthesis is part of the marker, so `user-only-ish` or `user only`
+/// is not one. `tests/test_skill_listing_budget.py` and
+/// `tests/test_sop_user_only_marker.py` mirror this text.
+const USER_ONLY_MARKER: &str = "Invocation: user-only (";
+
+/// The lines of `body` outside fenced code blocks, so a marker quoted in
+/// an example is neither honoured nor flagged.
+fn lines_outside_fences(body: &str) -> impl Iterator<Item = &str> {
+    let mut in_fence = false;
+    body.lines().filter(move |line| {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            in_fence = !in_fence;
+            return false;
+        }
+        !in_fence
+    })
+}
+
+/// True when `body` has a line starting with `USER_ONLY_MARKER`.
+fn is_user_only_sop(body: &str) -> bool {
+    lines_outside_fences(body).any(|line| line.starts_with(USER_ONLY_MARKER))
+}
+
+/// True for a line that reads as an `Invocation:` marker (any case,
+/// indented or quoted) but is not the exact `USER_ONLY_MARKER`.
+fn is_malformed_invocation_line(line: &str) -> bool {
+    let text = line.trim_start().trim_start_matches('>').trim_start();
+    let lower = text.to_ascii_lowercase();
+    let is_invocation_label = lower
+        .strip_prefix("invocation")
+        .is_some_and(|rest| rest.trim_start().starts_with(':'));
+    is_invocation_label && !line.starts_with(USER_ONLY_MARKER)
+}
+
+/// Fails the install of a SOP whose `Invocation:` line is not the exact
+/// marker. A typo there would otherwise make the SOP model-invocable
+/// without a word, which is the failure the marker exists to prevent.
+fn reject_malformed_invocation_line(sop_name: &str, body: &str) -> Result<(), String> {
+    match lines_outside_fences(body).find(|line| is_malformed_invocation_line(line)) {
+        Some(line) => Err(format!(
+            "SOP {sop_name} has an Invocation line that is not the exact marker \
+             `{USER_ONLY_MARKER}<what it does>)`: {line:?}"
+        )),
+        None => Ok(()),
+    }
 }
 
 /// Extracts the generated skill's `description:` from `body`'s own
@@ -1370,8 +1734,11 @@ mod tests {
             serde_json::json!([{
                 "matcher": "startup|clear",
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
+            }, {
+                "matcher": "startup|clear|resume|compact",
+                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root} --harness claude")}]
             }]),
-            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
+            "SessionStart must carry the telemetry and orchestration hooks"
         );
         assert_eq!(
             claude_settings["hooks"]["SubagentStart"],
@@ -1407,12 +1774,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The `--no-telemetry` regression counterpart: the same fresh
-    /// Claude-only install, run end to end with `no_telemetry: true`,
-    /// must still copy the agent (unaffected -- not a telemetry side
-    /// effect) but must write neither Claude settings file.
+    /// The `--no-telemetry` counterpart: the same fresh Claude-only
+    /// install still copies the agent and wires the orchestration hook
+    /// alone into `.claude/settings.local.json`, planned and tracked in
+    /// the manifest, with no telemetry hook anywhere.
     #[test]
-    fn install_from_local_no_telemetry_skips_claude_hook_wiring_for_claude_only_install() {
+    fn install_from_local_no_telemetry_wires_only_the_orchestration_hook() {
         let target_dir = scratch_dir("install-no-telemetry-hooks-target");
         let repo_root = scratch_dir("install-no-telemetry-hooks-repo");
         seed_synthed_agent(
@@ -1430,19 +1797,65 @@ mod tests {
             )
             .expect("install must succeed with --no-telemetry");
 
-        assert!(
-            target_dir.join(".claude/agents/k-example.md").is_file(),
-            "the agent copy is unaffected by --no-telemetry"
+        assert!(target_dir.join(".claude/agents/k-example.md").is_file());
+        assert!(!target_dir.join(".claude/settings.json").exists());
+        let settings: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".claude/settings.local.json")).unwrap(),
+        )
+        .unwrap();
+        let hooks = settings["hooks"].to_string();
+        assert!(hooks.contains("__orchestration-hook"), "{hooks}");
+        assert!(!hooks.contains("__telemetry-hook"), "{hooks}");
+
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .unwrap();
+        let entry = manifest.strategies[0]
+            .files
+            .iter()
+            .find(|f| f.path == ".claude/settings.local.json")
+            .expect("the hooks file must be tracked under --no-telemetry");
+        assert_eq!(
+            entry.provenance,
+            super::super::manifest::Provenance::Created
         );
-        assert!(
-            !target_dir.join(".claude/settings.json").exists(),
-            "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
-             wiring entirely, leaving no .claude/settings.json at all on this install path"
-        );
-        assert!(
-            !target_dir.join(".claude/settings.local.json").exists(),
-            "--no-telemetry must not write the hooks settings file either"
-        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_from_local_copies_context_files_under_konductor() {
+        let target_dir = scratch_dir("install-context-target");
+        let repo_root = scratch_dir("install-context-repo");
+        seed_synthed_agent(&repo_root, "konductor", b"---\nname: konductor\n---\n");
+        let context = repo_root
+            .join("dist")
+            .join(CLAUDE_HARNESS_DIR)
+            .join("context");
+        fs::create_dir_all(&context).unwrap();
+        fs::write(context.join("k-orchestrator-routing-rules.md"), "# Rules\n").unwrap();
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("install must succeed");
+
+        let installed = target_dir.join(".konductor/context/k-orchestrator-routing-rules.md");
+        assert_eq!(fs::read_to_string(&installed).unwrap(), "# Rules\n");
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .unwrap();
+        let entry = manifest.strategies[0]
+            .files
+            .iter()
+            .find(|f| f.path == ".konductor/context/k-orchestrator-routing-rules.md")
+            .expect("the context file must be tracked");
+        assert!(entry.sha256.is_some());
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1586,6 +1999,521 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    // ── AWS MCP permission rules ──────────────────────────────────────
+
+    const AWS_AGENT_MD: &[u8] =
+        b"---\nname: k-x\nmcpServers:\n- aws-mcp:\n    command: uvx\n---\n\nBody\n";
+    const ASK_RULES: [&str; 3] = [
+        "mcp__aws-mcp__aws___get_presigned_url",
+        "mcp__aws-mcp__aws___get_tasks",
+        "mcp__aws-mcp__aws___run_script",
+    ];
+
+    fn seed_mcp_allowed_tools_sidecar(repo_root: &Path, sidecar: serde_json::Value) {
+        let dir = repo_root
+            .join("dist")
+            .join(CLAUDE_HARNESS_DIR)
+            .join("agents");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE),
+            serde_json::to_vec(&sidecar).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn install(target_dir: &Path, repo_root: &Path) -> Result<(), InstallError> {
+        ClaudeInstallStrategy.install_from_local(
+            target_dir,
+            Some(repo_root.to_str().unwrap()),
+            "2026-01-01T00:00:00Z",
+            false,
+        )
+    }
+
+    fn read_project_settings(target_dir: &Path) -> serde_json::Value {
+        serde_json::from_slice(&fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap())
+            .unwrap()
+    }
+
+    fn settings_manifest_entry(target_dir: &Path) -> Option<ManifestFile> {
+        super::super::manifest::read_manifest(target_dir)
+            .unwrap()
+            .expect("manifest must exist after install")
+            .strategies[0]
+            .files
+            .iter()
+            .find(|file| file.path == CLAUDE_SETTINGS_RELATIVE_PATH)
+            .cloned()
+    }
+
+    #[test]
+    fn install_writes_aws_mcp_ask_and_allow_rules_and_tracks_the_file() {
+        let target_dir = scratch_dir("aws-rules-install-target");
+        let repo_root = scratch_dir("aws-rules-install-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        let settings = read_project_settings(&target_dir);
+        assert_eq!(settings["permissions"]["ask"], serde_json::json!(ASK_RULES));
+        assert_eq!(
+            settings["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+        let entry = settings_manifest_entry(&target_dir).expect("settings.json must be tracked");
+        assert_eq!(
+            entry.sha256,
+            Some(super::super::artifact::sha256_hex(
+                &fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap()
+            ))
+        );
+        assert_eq!(
+            entry.provenance,
+            super::super::manifest::Provenance::Created
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_without_the_sidecar_writes_only_the_ask_rules() {
+        let target_dir = scratch_dir("aws-rules-no-sidecar-target");
+        let repo_root = scratch_dir("aws-rules-no-sidecar-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        let settings = read_project_settings(&target_dir);
+        assert_eq!(settings["permissions"]["ask"], serde_json::json!(ASK_RULES));
+        assert!(settings["permissions"].get("allow").is_none());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_without_aws_mcp_agents_writes_no_project_settings_file() {
+        let target_dir = scratch_dir("aws-rules-none-target");
+        let repo_root = scratch_dir("aws-rules-none-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-example": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert!(!target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH).exists());
+        assert!(settings_manifest_entry(&target_dir).is_none());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_allows_only_tools_of_staged_agents_that_declare_aws_mcp() {
+        let target_dir = scratch_dir("aws-rules-scope-target");
+        let repo_root = scratch_dir("aws-rules-scope-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_synthed_agent(&repo_root, "k-plain", b"---\nname: k-plain\n---\nBody\n");
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({
+                "k-x": {"aws-mcp": ["aws___list_regions"]},
+                "k-plain": {"aws-mcp": ["aws___read_documentation"]},
+                "k-not-staged": {"aws-mcp": ["aws___search_documentation"]}
+            }),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            read_project_settings(&target_dir)["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_never_allows_a_sidecar_tool_outside_the_read_only_set() {
+        let target_dir = scratch_dir("aws-rules-read-only-target");
+        let repo_root = scratch_dir("aws-rules-read-only-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": [
+                "aws___run_script",
+                "aws___get_presigned_url",
+                "aws___some_future_tool",
+                "aws___list_regions"
+            ]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        let settings = read_project_settings(&target_dir);
+        assert_eq!(
+            settings["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+        assert_eq!(settings["permissions"]["ask"], serde_json::json!(ASK_RULES));
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn reinstall_keeps_the_record_of_appended_entries() {
+        let target_dir = scratch_dir("aws-rules-reinstall-record-target");
+        let repo_root = scratch_dir("aws-rules-reinstall-record-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+
+        install(&target_dir, &repo_root).expect("first install must succeed");
+        let first = recorded_aws_mcp_rules(&target_dir).unwrap().added;
+        install(&target_dir, &repo_root).expect("second install must succeed");
+
+        assert_eq!(first.ask, ASK_RULES.map(String::from).to_vec());
+        assert_eq!(recorded_aws_mcp_rules(&target_dir).unwrap().added, first);
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_fails_on_a_sidecar_tool_name_unsafe_for_a_rule() {
+        let target_dir = scratch_dir("aws-rules-bad-name-target");
+        let repo_root = scratch_dir("aws-rules-bad-name-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___run_script(x)"]}}),
+        );
+
+        let err = install(&target_dir, &repo_root).expect_err("an unsafe tool name must fail");
+        assert!(err.contains(MCP_ALLOWED_TOOLS_SIDECAR_FILE), "{err}");
+        assert!(!target_dir.join(".claude/agents/k-x.md").exists());
+        assert!(!target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH).exists());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn reinstall_leaves_the_settings_file_unchanged_and_records_replaced_ours() {
+        let target_dir = scratch_dir("aws-rules-reinstall-target");
+        let repo_root = scratch_dir("aws-rules-reinstall-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("first install must succeed");
+        let before = fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap();
+        install(&target_dir, &repo_root).expect("second install must succeed");
+
+        assert_eq!(
+            fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap(),
+            before
+        );
+        assert_eq!(
+            settings_manifest_entry(&target_dir).unwrap().provenance,
+            super::super::manifest::Provenance::ReplacedOurs
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    fn recorded_aws_mcp_rules(target_dir: &Path) -> Option<AwsMcpRulesRecord> {
+        super::super::manifest::read_manifest(target_dir)
+            .unwrap()
+            .expect("manifest must exist after install")
+            .strategies[0]
+            .aws_mcp_rules
+            .clone()
+    }
+
+    #[test]
+    fn install_records_written_aws_mcp_rules_in_the_manifest() {
+        let target_dir = scratch_dir("aws-rules-record-target");
+        let repo_root = scratch_dir("aws-rules-record-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            recorded_aws_mcp_rules(&target_dir),
+            Some(AwsMcpRulesRecord {
+                written: true,
+                reason: None,
+                ask: ASK_RULES.map(String::from).to_vec(),
+                allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+                added: AddedPermissionRules {
+                    ask: ASK_RULES.map(String::from).to_vec(),
+                    allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+                },
+            })
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_succeeds_and_records_the_reason_when_settings_json_cannot_take_the_rules() {
+        for (name, settings) in [
+            ("malformed", "{not json".to_string()),
+            (
+                "ask-not-array",
+                r#"{"permissions": {"ask": "mcp__aws-mcp__*"}}"#.to_string(),
+            ),
+            (
+                "allow-not-array",
+                r#"{"permissions": {"allow": "mcp__aws-mcp__*"}}"#.to_string(),
+            ),
+        ] {
+            let target_dir = scratch_dir(&format!("aws-rules-unwritable-{name}-target"));
+            let repo_root = scratch_dir(&format!("aws-rules-unwritable-{name}-repo"));
+            seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+            fs::create_dir_all(target_dir.join(".claude")).unwrap();
+            fs::write(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH), &settings).unwrap();
+
+            install(&target_dir, &repo_root)
+                .unwrap_or_else(|err| panic!("{name}: install must still succeed: {err}"));
+
+            let record = recorded_aws_mcp_rules(&target_dir).expect("the outcome must be recorded");
+            assert!(!record.written, "{name}");
+            assert!(
+                record
+                    .reason
+                    .as_deref()
+                    .is_some_and(|reason| reason.contains("settings.json")),
+                "{name}: {record:?}"
+            );
+            assert_eq!(record.ask, ASK_RULES.map(String::from).to_vec(), "{name}");
+            assert_eq!(
+                fs::read_to_string(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap(),
+                settings,
+                "{name}: the file must be left as it was"
+            );
+            assert!(target_dir.join(".claude/agents/k-x.md").is_file(), "{name}");
+
+            fs::remove_dir_all(&target_dir).ok();
+            fs::remove_dir_all(&repo_root).ok();
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_records_a_symlinked_settings_file_as_not_written() {
+        let target_dir = scratch_dir("aws-rules-symlink-target");
+        let repo_root = scratch_dir("aws-rules-symlink-repo");
+        let elsewhere = scratch_dir("aws-rules-symlink-elsewhere");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        fs::create_dir_all(target_dir.join(".claude")).unwrap();
+        fs::write(elsewhere.join("settings.json"), "{}").unwrap();
+        std::os::unix::fs::symlink(
+            elsewhere.join("settings.json"),
+            target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH),
+        )
+        .unwrap();
+
+        install(&target_dir, &repo_root).expect("install must still succeed");
+
+        let record = recorded_aws_mcp_rules(&target_dir).expect("the outcome must be recorded");
+        assert!(!record.written);
+        assert!(record.reason.unwrap().contains("symlink"));
+        assert_eq!(
+            fs::read_to_string(elsewhere.join("settings.json")).unwrap(),
+            "{}"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+        fs::remove_dir_all(&elsewhere).ok();
+    }
+
+    #[test]
+    fn install_without_aws_mcp_agents_records_no_aws_mcp_rules() {
+        let target_dir = scratch_dir("aws-rules-no-record-target");
+        let repo_root = scratch_dir("aws-rules-no-record-repo");
+        seed_synthed_agent(&repo_root, "k-plain", b"---\nname: k-plain\n---\nBody\n");
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(recorded_aws_mcp_rules(&target_dir), None);
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn agent_uses_mcp_server_reads_the_frontmatter_only() {
+        let md = std::str::from_utf8(AWS_AGENT_MD).unwrap();
+        assert_eq!(agent_uses_mcp_server(md, "aws-mcp"), Ok(true));
+        assert_eq!(agent_uses_mcp_server(md, "other"), Ok(false));
+        assert_eq!(
+            agent_uses_mcp_server(
+                "---\nname: k\n---\nmcpServers:\n- aws-mcp: {}\ntools: [mcp__aws-mcp__*]\n",
+                "aws-mcp"
+            ),
+            Ok(false)
+        );
+    }
+
+    #[test]
+    fn agent_uses_mcp_server_accepts_crlf_frontmatter() {
+        let md = std::str::from_utf8(AWS_AGENT_MD)
+            .unwrap()
+            .replace('\n', "\r\n");
+        assert_eq!(agent_uses_mcp_server(&md, "aws-mcp"), Ok(true));
+    }
+
+    #[test]
+    fn agent_uses_mcp_server_detects_a_tools_only_grant() {
+        for md in [
+            "---\nname: k\ntools:\n- Read\n- mcp__aws-mcp__*\n---\nBody\n",
+            "---\nname: k\ntools:\n- mcp__aws-mcp__aws___list_regions\n---\nBody\n",
+            "---\nname: k\ntools:\n- mcp__aws-mcp\n---\nBody\n",
+            "---\nname: k\ntools: Read, mcp__aws-mcp__aws___run_script\n---\nBody\n",
+        ] {
+            assert_eq!(agent_uses_mcp_server(md, "aws-mcp"), Ok(true), "{md}");
+        }
+        assert_eq!(
+            agent_uses_mcp_server(
+                "---\nname: k\ntools:\n- mcp__aws-mcp-other__x\n---\nBody\n",
+                "aws-mcp"
+            ),
+            Ok(false)
+        );
+    }
+
+    #[test]
+    fn agent_uses_mcp_server_reports_unreadable_frontmatter() {
+        for md in [
+            "no frontmatter\n",
+            "---\nname: k\nBody without a closing line\n",
+            "---\nmcpServers: [aws-mcp: {\n---\nBody\n",
+        ] {
+            assert!(agent_uses_mcp_server(md, "aws-mcp").is_err(), "{md}");
+        }
+    }
+
+    #[test]
+    fn install_writes_the_ask_rules_for_a_tools_only_aws_mcp_grant() {
+        let target_dir = scratch_dir("aws-rules-tools-only-target");
+        let repo_root = scratch_dir("aws-rules-tools-only-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-x",
+            b"---\r\nname: k-x\r\ntools:\r\n- mcp__aws-mcp__*\r\n---\r\nBody\r\n",
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            read_project_settings(&target_dir)["permissions"]["ask"],
+            serde_json::json!(ASK_RULES)
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_succeeds_past_an_agent_with_malformed_frontmatter() {
+        let target_dir = scratch_dir("aws-rules-malformed-target");
+        let repo_root = scratch_dir("aws-rules-malformed-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_synthed_agent(
+            &repo_root,
+            "k-broken",
+            b"---\nmcpServers: [aws-mcp: {\n---\nBody\n",
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            read_project_settings(&target_dir)["permissions"]["ask"],
+            serde_json::json!(ASK_RULES)
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The allow rules come from the real agent specs: the union of the
+    /// aws-mcp agents' Kiro `allowedTools`, none of which may be an ask tool.
+    /// A spec that starts allowing a new tool fails here until the tool is
+    /// classified in `AWS_MCP_KNOWN_TOOLS`.
+    #[test]
+    fn real_agent_specs_allow_five_read_only_aws_mcp_tools_and_never_an_ask_tool() {
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let model = crate::cli::synth::parse_canonical::parse_canonical(&repo_root)
+            .expect("the repo's own specs must parse");
+
+        let mut allowed = BTreeSet::new();
+        for agent in &model.agents {
+            let kiro_allowed = agent
+                .client_config
+                .kiro_cli
+                .as_ref()
+                .map(|kiro| kiro.allowed_tools.clone())
+                .unwrap_or_default();
+            for ask_tool in aws_mcp_ask_tools() {
+                assert!(
+                    !kiro_allowed.contains(&format!("@{AWS_MCP_SERVER_NAME}/{ask_tool}")),
+                    "agent '{}' allows the ask-only tool {ask_tool}",
+                    agent.name
+                );
+            }
+            if !agent
+                .dependencies
+                .mcp_registry
+                .contains_key(AWS_MCP_SERVER_NAME)
+            {
+                continue;
+            }
+            let prefix = format!("@{AWS_MCP_SERVER_NAME}/");
+            allowed.extend(
+                kiro_allowed
+                    .iter()
+                    .filter_map(|entry| entry.strip_prefix(&prefix).map(str::to_string)),
+            );
+        }
+
+        assert_eq!(
+            allowed,
+            BTreeSet::from(
+                [
+                    "aws___get_regional_availability",
+                    "aws___list_regions",
+                    "aws___read_documentation",
+                    "aws___retrieve_skill",
+                    "aws___search_documentation",
+                ]
+                .map(String::from)
+            )
+        );
+    }
+
     #[test]
     fn install_from_local_is_idempotent_across_two_installs() {
         let target_dir = scratch_dir("install-idempotent-target");
@@ -1625,15 +2553,16 @@ mod tests {
     }
 
     #[test]
-    fn standard_claude_install_phases_returns_three_phases_with_unique_names() {
+    fn standard_claude_install_phases_returns_four_phases_with_unique_names() {
         let phases = standard_claude_install_phases();
         let names: Vec<&str> = phases.iter().map(|p| p.name()).collect();
-        assert_eq!(names.len(), 3);
+        assert_eq!(names.len(), 4);
         let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
         assert_eq!(names.len(), unique.len());
         assert!(names.contains(&"claude-skills"));
         assert!(names.contains(&"claude-agents"));
         assert!(names.contains(&"sops"));
+        assert!(names.contains(&"claude-context"));
     }
 
     #[test]
@@ -1665,7 +2594,7 @@ mod tests {
     /// -- exactly the shape that broke the pre-fix parser, since a
     /// nested bullet's text is not a valid identifier and would have
     /// invalidated the whole array.
-    const ADVERSARIAL_PR_REVIEW_EXCERPT: &str = "# Adversarial CR Review\n\n## Overview\n\nRuns an adversarial review of code changes. Not a replacement for standard code review.\n\n## Parameters\n\n- **diff_input** (required on ASDLC): The changes to review. Accepts:\n  - Git diff output (`git diff` or `git diff HEAD~N`)\n  - File paths to read directly\n  - Raw pull request diff content\n- **pr_url** (optional, context only on ASDLC): Pull request URL. **Diff auto-fetch from `pr_url` is unsupported on ASDLC**.\n- **output_file** (optional, default: `adversarial-review-report.md`): Path to write the findings report\n\n**Constraints for parameter acquisition:**\n\n- You MUST have `diff_input`\n";
+    const ADVERSARIAL_PR_REVIEW_EXCERPT: &str = "# Adversarial CR Review\n\n## Overview\n\nRuns an adversarial review of code changes. Not a replacement for standard code review.\n\n## Parameters\n\n- **diff_input** (required in Konductor): The changes to review. Accepts:\n  - Git diff output (`git diff` or `git diff HEAD~N`)\n  - File paths to read directly\n  - Raw pull request diff content\n- **pr_url** (optional, context only in Konductor): Pull request URL. **Diff auto-fetch from `pr_url` is unsupported in Konductor**.\n- **output_file** (optional, default: `adversarial-review-report.md`): Path to write the findings report\n\n**Constraints for parameter acquisition:**\n\n- You MUST have `diff_input`\n";
 
     /// Excerpt of `k-e2e-test-generation.sop.md`: the table-shaped
     /// `## Parameters` convention, header row + separator row + data
@@ -1681,7 +2610,10 @@ mod tests {
         assert!(rendered.starts_with("---\n"));
         assert!(rendered.contains("name: \"sop-ticket-sync\"\n"));
         assert!(rendered.contains("description: \"Syncs tickets.\"\n"));
-        assert!(rendered.contains("disable-model-invocation: true\n"));
+        assert!(
+            !rendered.contains("disable-model-invocation"),
+            "a SOP skill must stay model-invocable on Claude Code, got: {rendered}"
+        );
         assert!(
             !rendered.contains("arguments:"),
             "no Parameters section -> no arguments key at all"
@@ -1691,9 +2623,10 @@ mod tests {
         assert!(rendered.contains("</content><user-input>$ARGUMENTS</user-input></agent-sop>"));
     }
 
-    /// Kiro has no `disable-model-invocation`-equivalent frontmatter key
-    /// and carries no advisory guard text either: the Kiro path renders
-    /// the same plain description and body with no advisory prose.
+    /// Without the user-only marker, neither path emits
+    /// `disable-model-invocation`, and neither
+    /// carries advisory guard text: the Kiro path renders the same
+    /// plain description and body as the Claude path.
     #[test]
     fn render_sop_skill_md_with_options_kiro_path_carries_no_advisory_guard() {
         let body = "# Ticket Sync\n\n## Overview\n\nSyncs tickets.\n\nBody text.\n";
@@ -1721,7 +2654,127 @@ mod tests {
             !claude_rendered.contains("Run only when explicitly invoked"),
             "the Claude path must never have carried this text either, got: {claude_rendered}"
         );
-        assert!(claude_rendered.contains("disable-model-invocation: true\n"));
+        assert!(!claude_rendered.contains("disable-model-invocation"));
+    }
+
+    /// A SOP marked `Invocation: user-only` gets the key on Claude Code,
+    /// where the harness enforces it, and never on Kiro, which has no such key.
+    #[test]
+    fn render_sop_skill_md_with_options_marks_user_only_sops_for_claude_only() {
+        let body = "# Pusher\n\nInvocation: user-only (pushes)\n\n## Overview\n\nPushes.\n";
+
+        let claude = render_sop_skill_md_with_options("pusher", body, true);
+        assert!(
+            claude.contains("disable-model-invocation: true\n---\n"),
+            "the key must be inside the frontmatter, got: {claude}"
+        );
+
+        let kiro = render_sop_skill_md_with_options("pusher", body, false);
+        assert!(!kiro.contains("disable-model-invocation"), "got: {kiro}");
+    }
+
+    /// The marker is exact: a near miss must not read as user-only, and an
+    /// `Invocation:` line that is not the marker fails the install, so a
+    /// typo cannot turn a user-only SOP into a model-invocable one.
+    #[test]
+    fn invocation_marker_is_exact_and_a_near_miss_is_an_error() {
+        let valid = "# S\n\nInvocation: user-only (pushes)\n\n## Overview\n\nX.\n";
+        assert!(is_user_only_sop(valid));
+        assert!(reject_malformed_invocation_line("s", valid).is_ok());
+
+        let fenced = "# S\n\n```\nInvocation: user-only (pushes)\n```\n";
+        assert!(
+            !is_user_only_sop(fenced),
+            "a fenced example is not a marker"
+        );
+        assert!(reject_malformed_invocation_line("s", fenced).is_ok());
+
+        for bad in [
+            "Invocation: user only (pushes)",
+            "Invocation: user-only",
+            "invocation: user-only (pushes)",
+            "  Invocation: user-only (pushes)",
+            "> Invocation: user-only (pushes)",
+            "Invocation : user-only (pushes)",
+            "Invocation: user-onlyish (pushes)",
+        ] {
+            let body = format!("# S\n\n{bad}\n\n## Overview\n\nX.\n");
+            assert!(
+                !is_user_only_sop(&body),
+                "{bad:?} must not read as user-only"
+            );
+            assert!(
+                reject_malformed_invocation_line("s", &body).is_err(),
+                "{bad:?} must fail the install"
+            );
+        }
+
+        let prose = "# S\n\nInvocation of the tool happens in Step 2.\n";
+        assert!(reject_malformed_invocation_line("s", prose).is_ok());
+    }
+
+    /// A malformed marker stops the whole install before any skill is
+    /// written, on the Claude path and the Kiro path alike.
+    #[test]
+    fn install_sop_skills_rejects_a_malformed_marker_before_writing_anything() {
+        let dir = scratch_dir("install-sop-skills-bad-marker");
+        let harness_dir = dir.join("harness");
+        let sops_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
+        fs::create_dir_all(&sops_dir).unwrap();
+        fs::write(
+            sops_dir.join("a-fine.sop.md"),
+            b"# A\n\n## Overview\n\nFine.\n",
+        )
+        .unwrap();
+        fs::write(
+            sops_dir.join("z-typo.sop.md"),
+            b"# Z\n\nInvocation: user only (pushes)\n\n## Overview\n\nZ.\n",
+        )
+        .unwrap();
+
+        for (root, claude_frontmatter) in [(".claude", true), (".kiro", false)] {
+            let target_dir = dir.join(format!("target{root}"));
+            let result =
+                install_sop_skills_into(&harness_dir, &target_dir, root, claude_frontmatter);
+            let err = result.expect_err("a malformed Invocation line must fail the install");
+            assert!(err.contains("z-typo"), "the error names the SOP: {err}");
+            assert!(
+                !target_dir.join(root).join("skills").exists(),
+                "nothing is written for {root} once one SOP is rejected"
+            );
+        }
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A marked SOP gets the key in the Claude skills and never in the
+    /// Kiro ones, through the real install functions (Kiro has no such key).
+    #[test]
+    fn a_marked_sop_installs_with_the_key_for_claude_and_without_it_for_kiro() {
+        let dir = scratch_dir("install-sop-skills-marked-both");
+        let harness_dir = dir.join("harness");
+        let sops_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
+        fs::create_dir_all(&sops_dir).unwrap();
+        fs::write(
+            sops_dir.join("pusher.sop.md"),
+            b"# P\n\nInvocation: user-only (pushes)\n\n## Overview\n\nPushes.\n",
+        )
+        .unwrap();
+        let target_dir = dir.join("target");
+
+        install_sop_skills(&harness_dir, &target_dir).unwrap();
+        super::super::kiro_cli::install_kiro_sop_skills(&harness_dir, &target_dir).unwrap();
+
+        let claude =
+            fs::read_to_string(target_dir.join(".claude/skills/sop-pusher/SKILL.md")).unwrap();
+        let kiro = fs::read_to_string(target_dir.join(".kiro/skills/sop-pusher/SKILL.md")).unwrap();
+        assert!(
+            claude.contains("disable-model-invocation: true\n---\n"),
+            "{claude}"
+        );
+        assert!(!kiro.contains("disable-model-invocation"), "{kiro}");
+
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
@@ -2024,6 +3077,18 @@ mod tests {
         assert_eq!(extract_overview_description("# Title\n\nBody.\n"), None);
     }
 
+    /// Gated SOPs carry their orchestration marker paragraph between the title
+    /// and `## Overview`; it must not leak into the skill description.
+    #[test]
+    fn render_sop_skill_md_ignores_a_marker_line_above_the_overview() {
+        let body = "# Full SDLC\n\nOrchestration: strict (phase-gated SOP)\nStrict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP's own round-cap rule says to proceed; record which.\n\nRecorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.\n\n## Overview\n\nTakes a feature end to end.\n";
+        let rendered = render_sop_skill_md("k-full-sdlc", body);
+        assert!(
+            rendered.contains("description: \"Takes a feature end to end.\"\n"),
+            "got: {rendered}"
+        );
+    }
+
     /// `render_sop_skill_md`'s end-to-end output must never end mid-word
     /// or mid-clause, verified against the real `about-konductor.sop.md`
     /// wrapping shape.
@@ -2207,6 +3272,44 @@ mod tests {
         assert!(code_review.contains("name: \"sop-code-review\""));
 
         fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Every SOP this repo ships renders as a skill both the user and the
+    /// model can invoke on Claude Code, matching Kiro CLI, except the SOPs
+    /// with external side effects, which are user-only. Pinning the list
+    /// makes adding or dropping a user-only SOP a deliberate change.
+    #[test]
+    fn every_shipped_sop_is_model_invocable_unless_user_only() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let sops_dir = manifest_dir.join("../../agent-sops");
+        let mut count = 0;
+        let mut user_only = Vec::new();
+        for entry in fs::read_dir(&sops_dir).unwrap() {
+            let path = entry.unwrap().path();
+            let file_name = path.to_string_lossy().into_owned();
+            let Some(stem) = file_name.strip_suffix(".sop.md") else {
+                continue;
+            };
+            let sop_name = stem.rsplit('/').next().unwrap_or(stem);
+            let body = fs::read_to_string(&path).unwrap();
+            let rendered = render_sop_skill_md(sop_name, &body);
+            assert_eq!(
+                rendered.contains("disable-model-invocation: true\n"),
+                is_user_only_sop(&body),
+                "{sop_name}: the key must be present exactly when the SOP is marked user-only"
+            );
+            if is_user_only_sop(&body) {
+                user_only.push(sop_name.to_string());
+            }
+            count += 1;
+        }
+        assert!(count >= 19, "expected every shipped SOP, found {count}");
+        user_only.sort();
+        assert_eq!(
+            user_only,
+            ["k-e2e-test-generation", "k-full-sdlc", "k-light-ui-testing"],
+            "the SOPs that commit, push, open pull requests or act on a live app"
+        );
     }
 
     #[test]

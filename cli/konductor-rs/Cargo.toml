@@ -1,6 +1,6 @@
 [package]
 name = "konductor"
-version = "1.2.0"
+version = "2.0.0"
 edition = "2021"
 description = "Konductor CLI — placeholder skeleton for build pipeline validation"
 license = "Apache-2.0"
@@ -55,7 +55,7 @@ name = "konductor"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "=4.6.2", features = ["derive"] }
+clap = { version = "=4.6.9", features = ["derive"] }
 # Exact-pinned (repo convention: no open ranges). Used by the hidden
 # `__dump_schema` command (see src/cli.rs) and by synth's transformers.
 # `preserve_order` keeps JSON object key order as parsed/inserted (backed
@@ -81,7 +81,7 @@ clap = { version = "=4.6.2", features = ["derive"] }
 # (kiro_cli_v2.rs) normalizes `Number` leaves in the agent JSON it emits
 # before serializing, to keep that output's numeric formatting
 # independent of this feature.
-serde_json = { version = "=1.0.150", features = ["preserve_order", "arbitrary_precision"] }
+serde_json = { version = "=1.0.154", features = ["preserve_order", "arbitrary_precision"] }
 # Exact-pinned per repo convention. Already resolved transitively via
 # serde_json's `preserve_order` feature (same crate, same version) --
 # promoted to a direct dependency so typed map fields (e.g.
@@ -91,14 +91,14 @@ serde_json = { version = "=1.0.150", features = ["preserve_order", "arbitrary_pr
 # (distinct from serde_json's preserve_order, which only affects
 # serde_json::Value::Object). Verified mirror-fetchable: already present
 # in Cargo.lock.
-indexmap = { version = "=2.14.0", features = ["serde"] }
+indexmap = { version = "=2.14.2", features = ["serde"] }
 # Added for M1 (declarative contract): the config loader (src/config.rs)
 # derives Serialize/Deserialize on its Config struct to parse
 # `.konductor/config.yml` / the preset `cli/gate-config/config.yml`.
 # Exact-pinned per repo convention. Version bumped past serde_json's own
 # `^1.0.220` transitive requirement (1.0.215 conflicts; verified against
 # the internal crates.io mirror).
-serde = { version = "=1.0.228", features = ["derive"] }
+serde = { version = "=1.0.229", features = ["derive"] }
 # YAML (de)serialization for the config loader. `serde_yaml` is
 # unmaintained upstream (archived by its author in 2024) but is still the
 # most mirror-compatible/widely-used option and has no known advisories;
@@ -118,10 +118,6 @@ serde_yaml = "=0.9.34"
 # `unlock` API is exactly the small, stable surface this needs. Exact-
 # pinned per repo convention.
 fs2 = "=0.4.3"
-# SHA-256 artifact-checksum verification for `konductor install` (task
-# 3.1). Exact-pinned per repo convention; verified fetchable against
-# the internal crates.io mirror.
-sha2 = "=0.10.8"
 # Unicode canonical (NFC) normalization for the case-insensitive
 # collision-detection fold shared by `parse_canonical.rs`/`path_safety.rs`
 # (see `path_safety::case_insensitive_fold_key`). `str::to_lowercase`
@@ -130,7 +126,7 @@ sha2 = "=0.10.8"
 # vs. NFD-decomposed) fold to different strings and bypass the collision
 # check outright. Exact-pinned per repo convention; verified fetchable
 # via `cargo add --dry-run` against the mirror-backed registry.
-unicode-normalization = "=0.1.25"
+unicode-normalization = "=0.1.26"
 # Host-allowlist DNS classification, DNS-rebinding pin construction,
 # the timeout-vs-failure resolution decision (`telemetry/report.rs`),
 # and shared identity primitives (nil-UUID sentinel, UUID-shape
@@ -159,7 +155,7 @@ tar = "=0.4.46"
 # combination (e.g. `cargo package` itself uses this same pairing).
 # Exact-pinned per repo convention; verify fetchable against the
 # internal crates.io mirror before merging.
-flate2 = "=1.1.5"
+flate2 = "=1.1.11"
 # Sync HTTP client for `install::github`'s GitHub Release fetch/download.
 # Deliberately not `reqwest` -- no async runtime in this crate, and `ureq`
 # fits the existing sync I/O style (see `install/remote.rs`). Exact-pinned
@@ -167,11 +163,11 @@ flate2 = "=1.1.5"
 # crates.io mirror.
 ureq = "=2.10.1"
 # Direct dependency pinning `ureq`'s transitive `rustls` (open range) to
-# the newest patch confirmed on the internal mirror, so both resolve to
-# one build instead of two. Features match what `ureq` itself requests.
-# Exact-pinned per repo convention; verified fetchable against the
-# internal crates.io mirror.
-rustls = { version = "=0.23.45", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+# one patch release, so both resolve to one build instead of two. Features
+# match what `ureq` itself requests. Exact-pinned per repo convention;
+# 0.23.46 fixes the advisories against 0.23.45. Confirm a new pin is
+# fetchable from the crates.io mirror before merging.
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 # Percent-encoding for path segments in `install::github_branch`'s GitHub
 # Contents API URLs. Already resolved transitively via `url`; promoted to
 # a direct dependency rather than hand-rolling escaping. Exact-pinned per
@@ -179,13 +175,13 @@ rustls = { version = "=0.23.45", default-features = false, features = ["ring", "
 percent-encoding = "=2.3.2"
 # ANSI color styling for CLI output (src/cli/output.rs). Exact-pinned
 # per repo convention.
-owo-colors = "=4.2.2"
+owo-colors = "=4.4.0"
 # Terminal-width-aware text wrapping for doctor.rs's fix:/detail: lines
 # (src/cli/output.rs's `wrap_indented`). Only the `terminal_size`
 # feature is enabled; the default features add Unicode-aware line
 # breaking this crate's plain-ASCII output doesn't need. Exact-pinned
 # per repo convention.
-textwrap = { version = "=0.16.2", default-features = false, features = ["terminal_size"] }
+textwrap = { version = "=0.16.4", default-features = false, features = ["terminal_size"] }
 
 # The workflow engine: the format, its checks, the stage prompt and the runner
 # (`workflow-core`, which does no IO), and the file source, the run store, the

@@ -35,9 +35,11 @@ pub mod claude;
 pub mod kiro_cli_v2;
 pub mod kiro_cli_v3;
 pub mod model;
+mod orchestrator_names;
 pub mod parse_canonical;
 pub mod parser;
 pub mod registry;
+pub(crate) mod spawn_policy;
 
 mod content_writers;
 mod frontmatter;
@@ -50,6 +52,7 @@ pub(crate) mod package;
 // path-containment predicate.
 pub(crate) mod path_safety;
 mod sidecar;
+mod skill_index;
 mod staging;
 
 #[allow(unused_imports)]
@@ -57,7 +60,7 @@ pub use model::{AgentSpec, AuxiliaryFile, CanonicalModel, SkillDef, SopDef};
 pub use parse_canonical::parse_canonical;
 
 /// Every failure path in `dispatch_synth` maps to this exit code -- never
-/// exit code 2, which is reserved for the "unresolved CRITICAL gate"
+/// exit code 2, which is reserved for the "unresolved finding"
 /// signal (see dispatch.rs's module docstring).
 const EXIT_USAGE_ERROR: u8 = 64;
 
@@ -209,8 +212,8 @@ pub fn dispatch_synth_with(
         }
     };
 
-    // Only explicitly bundled MCP servers reach rendered Claude agents.
-    // Apply the allowlist once before transformers run.
+    // Only explicitly bundled MCP servers reach rendered Claude and Kiro
+    // agents. Apply the allowlist once before transformers run.
     let bundled_mcp_allowlist: std::collections::HashSet<String> = claude_bundled_mcp_servers
         .as_deref()
         .unwrap_or("")
@@ -606,11 +609,21 @@ fn format_artifact_summary_line(output_root: &Path, artifact_path: &Path) -> Str
 /// and context file name, each prefixed with its content type. An agent
 /// skipped by every transformer (not written -- see `agent_is_written`)
 /// is not listed, matching the summary count. Empty when the model has
-/// nothing written of that type -- never a line for a zero count.
+/// nothing written of that type -- never a line for a zero count. After
+/// the agent lines comes one `claude preload:` line per agent with a
+/// `claudeCli` section (see `claude_preloads`).
 fn format_verbose_lines(model: &CanonicalModel) -> Vec<String> {
     let mut lines = Vec::new();
     for agent in model.agents.iter().filter(|a| agent_is_written(a)) {
         lines.push(format!("  agent: {}", agent.name));
+    }
+    for preload in claude_preloads(model) {
+        lines.push(format!(
+            "  claude preload: {} {} B, {} skill(s)",
+            preload.agent,
+            parse_canonical::group_thousands(preload.bytes),
+            preload.skills
+        ));
     }
     for skill in &model.skills {
         lines.push(format!("  skill: {}", skill.name));
@@ -647,8 +660,38 @@ fn format_summary_json(
         "nothing_to_build": counts.total() == 0,
         "artifact_path": artifact_path.display().to_string(),
         "sidecar_path": sidecar_path.display().to_string(),
+        "claude_preload": claude_preloads(model)
+            .into_iter()
+            .map(|p| serde_json::json!({"agent": p.agent, "bytes": p.bytes, "skills": p.skills}))
+            .collect::<Vec<_>>(),
     })
     .to_string()
+}
+
+/// One agent's Claude Code skill preload: bytes injected into each
+/// spawned subagent and the distinct name count.
+struct AgentClaudePreload {
+    agent: String,
+    bytes: usize,
+    skills: usize,
+}
+
+/// Measures every agent with a `claudeCli` section, in model order, with
+/// the same function the preload budget warning uses.
+fn claude_preloads(model: &CanonicalModel) -> Vec<AgentClaudePreload> {
+    model
+        .agents
+        .iter()
+        .filter_map(|agent| {
+            let claude_cli = agent.client_config.claude_cli.as_ref()?;
+            let preload = parse_canonical::claude_preload(&claude_cli.skills, &model.skills);
+            Some(AgentClaudePreload {
+                agent: agent.name.clone(),
+                bytes: preload.bytes,
+                skills: preload.names.len(),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -703,7 +746,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "clientConfig": {"kiroCli": {}}
             }"#,
         )
@@ -767,7 +810,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {
                     "mcpRegistry": {
                         "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]},
@@ -819,7 +862,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {
                     "mcpRegistry": {
                         "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]}
@@ -838,6 +881,82 @@ mod tests {
             !written.contains("mcpServers:"),
             "expected no mcpServers: key when --claude-bundled-mcp-servers is omitted, got:\n{written}"
         );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    fn write_kiro_agent_with_aws_and_playwright_registry(root: &Path) {
+        fs::create_dir_all(root.join("agents")).unwrap();
+        fs::write(
+            root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
+                "dependencies": {
+                    "mcpRegistry": {
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]},
+                        "playwright-mcp": {"command": "npx", "args": ["-y", "@playwright/mcp@latest"]}
+                    }
+                },
+                "clientConfig": {"kiroCli": {}}
+            }"#,
+        )
+        .unwrap();
+    }
+
+    fn kiro_mcp_server_names(root: &Path, harness: &str) -> Vec<String> {
+        let path = root.join(format!("dist/{harness}/agents/k-example.json"));
+        let agent: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+        agent["mcpServers"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    #[test]
+    fn dispatch_synth_with_bundled_mcp_servers_gives_kiro_agents_only_the_allowlisted_entry() {
+        let root = scratch_dir("bundled-mcp-allowlist-kiro");
+        write_kiro_agent_with_aws_and_playwright_registry(&root);
+
+        let code = dispatch_synth_with(
+            &root,
+            None,
+            Some("aws-mcp".to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        for harness in ["kiro-cli-v2", "kiro-v3"] {
+            assert_eq!(
+                kiro_mcp_server_names(&root, harness),
+                ["aws-mcp"],
+                "{harness} agent mcpServers"
+            );
+        }
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn dispatch_synth_with_no_bundled_mcp_servers_flag_gives_kiro_agents_no_registry_entry() {
+        let root = scratch_dir("bundled-mcp-allowlist-absent-kiro");
+        write_kiro_agent_with_aws_and_playwright_registry(&root);
+
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+
+        for harness in ["kiro-cli-v2", "kiro-v3"] {
+            assert!(
+                kiro_mcp_server_names(&root, harness).is_empty(),
+                "{harness} agent mcpServers"
+            );
+        }
 
         fs::remove_dir_all(&root).ok();
     }
@@ -1056,11 +1175,11 @@ mod tests {
             }],
             sops: vec![
                 model::SopDef {
-                    name: "asdlc-plan".to_string(),
+                    name: "k-plan".to_string(),
                     body: String::new(),
                 },
                 model::SopDef {
-                    name: "asdlc-verify".to_string(),
+                    name: "k-verify".to_string(),
                     body: String::new(),
                 },
             ],
@@ -1134,14 +1253,63 @@ mod tests {
             vec![
                 "  agent: k-example",
                 "  skill: code-review",
-                "  sop: asdlc-plan",
-                "  sop: asdlc-verify",
+                "  sop: k-plan",
+                "  sop: k-verify",
                 "  context: routing-rules.md",
             ]
         );
         assert!(
             lines.len() > 1,
             "-v must add more than the single summary line"
+        );
+    }
+
+    fn model_with_claude_preload() -> CanonicalModel {
+        let skill = |name: &str, body_len: usize| model::SkillDef {
+            name: name.to_string(),
+            raw_frontmatter: format!("name: {name}"),
+            body: "x".repeat(body_len),
+            auxiliary_files: vec![],
+        };
+        let mut agent = minimal_agent("k-claude");
+        agent.client_config.claude_cli = Some(crate::cli::synth::parser::ClaudeCliConfig {
+            skills: vec!["alpha".to_string(), "beta".to_string(), "alpha".to_string()],
+            ..Default::default()
+        });
+        CanonicalModel {
+            agents: vec![agent, minimal_agent("k-kiro-only")],
+            // Rendered SKILL.md is `---\nname: <n>\n---\n\n<body>`: 21 B
+            // of framing for a 5-letter name, 20 B for a 4-letter one.
+            skills: vec![skill("alpha", 1_979), skill("beta", 980)],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn format_verbose_lines_reports_claude_preload_per_claude_agent() {
+        let lines = format_verbose_lines(&model_with_claude_preload());
+        let preload_lines: Vec<&String> = lines
+            .iter()
+            .filter(|l| l.contains("claude preload"))
+            .collect();
+        assert_eq!(
+            preload_lines,
+            vec!["  claude preload: k-claude 3,000 B, 2 skill(s)"]
+        );
+    }
+
+    #[test]
+    fn format_summary_json_reports_claude_preload_per_claude_agent() {
+        let rendered = format_summary_json(
+            &model_with_claude_preload(),
+            Path::new("/tmp/example/dist"),
+            Path::new("/tmp/example/a.tar.gz"),
+            Path::new("/tmp/example/a.tar.gz.sha256"),
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&rendered).unwrap();
+        assert_eq!(
+            parsed["claude_preload"],
+            serde_json::json!([{"agent": "k-claude", "bytes": 3000, "skills": 2}])
         );
     }
 
@@ -1330,7 +1498,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {"context": {"contextNames": ["notes.md"]}},
                 "clientConfig": {"kiroCli": {"resources": ["file://AGENTS.md"]}}
             }"#,
@@ -1463,7 +1631,13 @@ mod tests {
             "konductor synth: wrote 1 agent(s), 0 skill(s), 0 SOP(s), 0 context file(s) to /tmp/example/dist"
         );
         let lines = format_verbose_lines(&model);
-        assert_eq!(lines, vec!["  agent: k-claude-only".to_string()]);
+        assert_eq!(
+            lines,
+            vec![
+                "  agent: k-claude-only".to_string(),
+                "  claude preload: k-claude-only 0 B, 0 skill(s)".to_string(),
+            ]
+        );
     }
 
     /// Cross-transformer partial-failure regression guard: drives the
@@ -1670,10 +1844,10 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {
                     "mcpRegistry": {
-                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==2.0.0"]}
                     }
                 },
                 "clientConfig": {"claudeCli": {}}
@@ -1693,7 +1867,7 @@ mod tests {
 
         let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
         assert!(
-            written.contains("mcp-proxy-for-aws-cli==1.7.0"),
+            written.contains("mcp-proxy-for-aws-cli==2.0.0"),
             "expected the agent spec's own pinned command to render \
              unchanged, got:\n{written}"
         );

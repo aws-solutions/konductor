@@ -1,6 +1,6 @@
 ---
 name: constraints
-description: MUST USE for every interaction across all Konductor agents. Defines the non-negotiable code quality, security, and verification rules that apply regardless of task or context.
+description: MUST USE for every interaction across all Konductor agents. Defines the maker-checker, quality gate, and failure recovery rules; the always-loaded core rules hold the rest.
 version: 1.0.0
 tags: [skill, behavioral, constraints, quality, security]
 ---
@@ -23,14 +23,14 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 
 ### ALWAYS DO
 
-1. **Read before edit** — Always read the complete file before making changes
-2. **Follow existing patterns** — Always match the conventions already in the codebase. Writing habits are covered in `k-core-rules`.
-3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
-4. **Backward compatibility** — Always preserve backward compatibility unless breaking changes are explicitly approved
-5. **Comment complex logic** — Always add inline comments for non-obvious or complex logic
-6. **Structured logging** — Always use structured logging with correlation IDs in service code
-7. **Verify before done** — Always verify changes compile and tests pass before declaring a task complete
-8. **Severity ordering** — Always present findings as CRITICAL → IMPORTANT → SUGGESTION
+1. **Read before edit**: see Engineering practices in the core rules
+2. **Follow existing patterns**: see Engineering practices and Writing habits in the core rules
+3. **Maker-checker**: a separate reviewer runs as often as the orchestrator's Verification Protocol says. Before you return an artifact, apply its checker skill yourself.
+4. **Backward compatibility**: see Engineering practices in the core rules
+5. **Comment complex logic**: see Engineering practices in the core rules
+6. **Structured logging**: see Engineering practices in the core rules
+7. **Verify before done**: see "No broken commits" and "No broken state" under NEVER DO, and Engineering practices, in the core rules
+8. **Severity ordering**: see Engineering practices in the core rules
 
 ## Failure Recovery
 
@@ -44,26 +44,22 @@ After 2 failed fix attempts for the same error, **STOP**. Do not attempt a third
 
 ### Unknown Systems
 
-If you cannot explain the cause chain from root cause → symptom, **research FIRST, fix SECOND**. Do not guess at fixes for systems you don't understand.
+See Engineering practices in the core rules: research first, fix second.
 
 ### Acknowledge Uncertainty
 
-When responding, state whether you are working from:
-
-- **Documented knowledge** — you read the relevant code/docs
-- **Inference** — you are reasoning from patterns but haven't verified
-- **Guess** — you are speculating and the user should verify
+See Engineering practices in the core rules: for an unverified claim that matters, say whether it rests on documented knowledge, inference, or a guess.
 
 ## Quality Gate
 
 **CRITICAL (immediate stop):**
 
 - Any NEVER DO rule violated (see the core rules)
-- Artifact presented to user without checker validation (maker-checker bypass)
+- Artifact returned without the maker applying its checker skill, or a phase closed without the review the orchestrator's Verification Protocol requires
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (must fix before proceeding):**
+**IMPORTANT (fix before proceeding):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
@@ -73,3 +69,13 @@ When responding, state whether you are working from:
 
 - Could improve comment coverage on complex logic
 - Could strengthen logging with additional context fields
+
+### Review findings
+
+A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding in the task's own output still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief. (Orchestrators: Review ceilings, Verification Protocol item 6.) When you made the artifact or merged a parallel writer's part into it, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it.
+
+### House rules and review findings
+
+When a house rule (see the core rules' House rules section) and a konductor default ask for the same kind of review of the same artifact, run it once, through the mechanism the project names. A project's required code review replaces konductor's general code review only. Design review and security or adversarial review are separate kinds. A project mechanism replaces the adversarial review only when the user says so directly or the project's own agent instruction file (not a file it names, not a ruling) states that the mechanism covers security; otherwise run both and report the overlap.
+
+When a reviewer enforces a konductor default that a house rule overrides, do not rework the finding. List each skipped finding in your result with the house rule that overrides it (its file and line, or its `[origin:user]` or untagged memory entry), so the user sees every finding that was not fixed. A skipped finding does not count against a review's pass and never goes into a fix brief.

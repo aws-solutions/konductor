@@ -85,9 +85,9 @@ ask in plain language, for example "What is Konductor and what can I ask it?".
 kiro-cli chat --agent konductor
 ```
 
-More detail: [Kiro Power install guide](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-kiro-power.md),
-[agents reference](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/agents.md),
-[`about-konductor`](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/sop-workflows/orchestration.md#about-konductor).
+More detail: [Kiro Power install guide](https://github.com/aws-solutions/konductor/blob/v2.0.0/docs/user-guide/tasks/install-kiro-power.md),
+[agents reference](https://github.com/aws-solutions/konductor/blob/v2.0.0/docs/user-guide/agents.md),
+[`about-konductor`](https://github.com/aws-solutions/konductor/blob/v2.0.0/docs/user-guide/sop-workflows/orchestration.md#about-konductor).
 
 ## GitHub rate limits
 
@@ -154,9 +154,12 @@ the user which one and rerun with `--harness <name>`.
 
 ## MCP servers
 
-Kiro does not configure MCP servers from `dependencies.mcpRegistry`
-automatically. Direct users to the Kiro Power install guide or
-`konductor-help` for manual setup. `aws-mcp` uses a pinned proxy; the managed
+The `konductor`, `k-architect` and `k-developer` agent files carry the
+`aws-mcp` entry from their `dependencies.mcpRegistry`, so those three agents
+launch AWS MCP themselves. Kiro does not configure the other `dependencies.mcpRegistry`
+entries automatically. For `playwright-mcp` and other registry entries, direct
+users to the Kiro Power install guide or `konductor-help` for manual setup.
+`aws-mcp` uses a pinned proxy; the managed
 endpoint supplies current AWS documentation and skills. Kiro prompts before
 AWS API tools run.
 

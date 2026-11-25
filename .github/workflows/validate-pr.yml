@@ -16,7 +16,13 @@ name: Validate PR
 
 on:
   pull_request:
-    branches: [main]
+    # The stacked verify-run/gate PRs target feat/sop-gates-* branches, not main.
+    # feat/** covers every feature-branch base, so coverage is explicit rather than
+    # resting on behaviour nobody can account for: a run fired on a PR whose base was
+    # feat/claude-preload-docs, which neither pattern below matched, even though this
+    # filter matches the base branch name as a string. feat/sop-gates-* is redundant
+    # under feat/** and stays put; removing it is a separate decision.
+    branches: [main, 'feat/sop-gates-*', 'feat/**']
     types: [opened, edited, reopened, synchronize]
 
 permissions:
@@ -57,6 +63,37 @@ jobs:
         # the tests/ files import yaml.
         run: python3 -m pip install --user pytest pyyaml
 
+      - name: Reject a skill-quality baseline that grew
+        # tests/skill-quality-baseline.json may only shrink. The pytest gate
+        # enforces "skill <= its entry"; this step enforces "entry <= what the
+        # base branch had" so a PR cannot raise or add a ceiling to pass.
+        # The working tree is the PR's test merge commit, so it already holds any
+        # slimming that landed on the base branch, and OLD could be base.sha or
+        # the merge-base. The merge-base is used to match the dist/ and CHANGELOG
+        # steps. The checker also comes from the merge-base when it exists there,
+        # so a PR cannot weaken the ratchet it is judged by.
+        run: |
+          set -e
+          MERGE_BASE="$(git merge-base "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+          # With the commit confirmed, a failed `cat-file -e` on a path means the
+          # file is absent there; any other git error fails the step.
+          git cat-file -e "${MERGE_BASE}^{commit}"
+          if git cat-file -e "${MERGE_BASE}:tests/skill-quality-baseline.json" 2>/dev/null; then
+            git show "${MERGE_BASE}:tests/skill-quality-baseline.json" > /tmp/base-baseline.json
+            # The checker reads the new baseline from its own directory.
+            RATCHET_DIR="$(mktemp -d)"
+            mkdir "${RATCHET_DIR}/tests"
+            cp tests/skill-quality-baseline.json "${RATCHET_DIR}/tests/"
+            if git cat-file -e "${MERGE_BASE}:tests/skill_quality.py" 2>/dev/null; then
+              git show "${MERGE_BASE}:tests/skill_quality.py" > "${RATCHET_DIR}/tests/skill_quality.py"
+            else
+              cp tests/skill_quality.py "${RATCHET_DIR}/tests/"
+            fi
+            python3 "${RATCHET_DIR}/tests/skill_quality.py" --check-ratchet /tmp/base-baseline.json
+          else
+            echo "notice: no baseline at the merge-base; skipping ratchet diff" >&2
+          fi
+
       - name: Validate the Kiro Power (powers/konductor/)
         # Users import the Power from the tagged release matching VERSION
         # (github.com/aws-solutions/konductor/tree/v<VERSION>/powers/konductor),
@@ -70,6 +107,16 @@ jobs:
         # ubuntu-latest) -- no Rust toolchain required, so this runs before
         # the toolchain setup below rather than depending on it.
         run: make kiro-power-check
+
+      - name: Check the SOP orchestration list (make sop-orchestration-check)
+        # Fails when cli/gate-config/sop-orchestration.yml, the marker lines
+        # and agent-sops/ disagree. Needs python3 and PyYAML (installed above).
+        run: make sop-orchestration-check
+
+      - name: Check gate facts in phase-gated SOP text (make sop-gate-facts-check)
+        # Fails when a gated SOP's text and its gate boundaries in
+        # cli/gate-config/sop-orchestration.yml disagree. Needs PyYAML.
+        run: make sop-gate-facts-check
 
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,
@@ -98,11 +145,25 @@ jobs:
             scripts/validate-version-semver.sh "$RAW_VERSION"
           fi
 
+      - name: Check every crate, lockfile and CHANGELOG.md match VERSION
+        # Runs on every PR, not only VERSION bumps, so a crate or lockfile left
+        # behind by an earlier bump is caught too.
+        run: make version-check
+
       - name: Run the skill shell tests (make test-skills-sh)
         run: make test-skills-sh
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Check NOTICE.txt lists every shipped third-party crate
+        # generate-notice.js pins cargo to cli/konductor-rs's rust-version, so
+        # install that toolchain first.
+        run: |
+          set -e
+          RUST_VERSION="$(sed -n 's/^rust-version = "\(.*\)"/\1/p' cli/konductor-rs/Cargo.toml)"
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          make notice-check
 
       - name: Build konductor and run synth (produces dist/)
         run: make synth
@@ -122,6 +183,9 @@ jobs:
 
       - name: Run the Python test suite (make test-py)
         # After synth so the tests that need build/cli/konductor run instead of skipping.
+        # KONDUCTOR_REQUIRE_FULL_BIN makes a missing binary or capability fail them.
+        env:
+          KONDUCTOR_REQUIRE_FULL_BIN: "1"
         run: make test-py
 
       - name: Run the Rust tests for cli, mcp and shared
@@ -214,3 +278,14 @@ jobs:
             echo "FATAL: packaged tarball's version segment ($TARBALL_VERSION, from Cargo.toml) does not match the root VERSION file ($EXPECTED_TARBALL_VERSION). This will fail release.yml's build job after merge. Bump Cargo.toml's version to match VERSION before merging. Failing closed." >&2
             exit 1
           fi
+
+      - name: Lint the Rust crates (clippy -D warnings and rustfmt)
+        # Lint runs on a pinned toolchain so a new Rust release can't add clippy
+        # lints that fail every PR under -D warnings. Builds and tests stay on
+        # stable, like release.yml. Bump the pin deliberately in its own PR, and
+        # update the user guide with it (`make guide-check` compares them).
+        env:
+          RUST_LINT_TOOLCHAIN: 1.100.0
+        run: |
+          rustup toolchain install "$RUST_LINT_TOOLCHAIN" --profile minimal -c clippy -c rustfmt
+          make lint CARGO="cargo +$RUST_LINT_TOOLCHAIN"

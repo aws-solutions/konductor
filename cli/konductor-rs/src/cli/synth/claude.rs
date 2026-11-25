@@ -9,8 +9,12 @@
 //
 // The renderer intentionally preserves the distinction between omitted tools
 // (inherit defaults) and an empty tools list (no tools).
+//
+// `agents/_mcp_allowed_tools.json` records each agent's Kiro `allowedTools`
+// per bundled MCP server, so `konductor install --harness claude` can write
+// matching Claude Code `permissions.allow` rules.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -24,10 +28,13 @@ use super::kiro_cli_v2::SOP_SCOPES_SIDECAR_FILE;
 use super::model::CanonicalModel;
 #[cfg(test)]
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
+use super::parse_canonical::distinct_preload_names;
 use super::parser::{ClaudeCliConfig, McpServerDef};
 use super::path_safety::reject_unsafe_agent_name;
+use super::spawn_policy::{is_claude_spawn_tool, is_specialist, CLAUDE_SPAWN_TOOLS};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
+use crate::cli::install::resource_rewrite::{AWS_MCP_READ_ONLY_TOOLS, AWS_MCP_SERVER_NAME};
 
 /// Content-type segment of the agent output directory. Joined onto
 /// `name()` to form the full path relative to `output_root`.
@@ -74,6 +81,8 @@ struct ClaudeAgentFrontmatter<'a> {
     skills: &'a [String],
     #[serde(rename = "allowedTools", skip_serializing_if = "is_empty_str_slice")]
     allowed_tools: &'a [String],
+    #[serde(rename = "disallowedTools", skip_serializing_if = "<[_]>::is_empty")]
+    disallowed_tools: &'a [&'static str],
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
     hooks: IndexMap<String, serde_yaml::Value>,
     #[serde(rename = "mcpServers", skip_serializing_if = "Vec::is_empty")]
@@ -157,7 +166,7 @@ fn json_value_to_yaml_value(value: &serde_json::Value) -> serde_yaml::Value {
 /// of something like `1e400`) hits a stricter case: `serde_json`'s
 /// `as_f64()` internally filters to `is_finite()` results only, so it
 /// returns `None` here rather than a saturated infinity -- verified
-/// directly against the pinned `serde_json = "=1.0.150"`. `n.as_f64()
+/// directly against the pinned `serde_json = "=1.0.154"`. `n.as_f64()
 /// .unwrap_or(0.0)` would silently substitute `0.0` for such a value:
 /// a *qualitatively* worse outcome than the lossy-but-nonzero case
 /// above, since it reports "no timeout at all" for whatever enormous
@@ -241,34 +250,35 @@ fn render_mcp_servers(
 
 /// Merges `mcp_registry` (an agent's `dependencies.mcpRegistry` --
 /// cross-harness MCP server declarations every harness's transformer is
-/// meant to read) with `claude_mcp_servers` (an agent's
-/// `clientConfig.claudeCli.mcpServers` -- a Claude-specific override or
-/// addition) into the single map `render_agent_md` actually renders. See
-/// this module's own docstring for why this merge exists at all.
+/// meant to read) with `harness_mcp_servers` (an agent's
+/// `clientConfig.claudeCli.mcpServers` or `clientConfig.kiroCli.mcpServers`
+/// -- a harness-specific override or addition) into the single map the
+/// harness renders. Claude Code and both Kiro transformers share it so
+/// every harness applies the same precedence. See this module's own
+/// docstring for why this merge exists at all.
 ///
 /// `mcp_registry` entries are inserted first, in `BTreeMap`'s own sorted-
 /// by-server-name order (deterministic regardless of the source JSON's
 /// declaration order, since `AgentDependencies.mcp_registry` is itself a
-/// `BTreeMap`, not an order-preserving map). `claude_mcp_servers` entries
+/// `BTreeMap`, not an order-preserving map). `harness_mcp_servers` entries
 /// are then applied on top: a same-named entry REPLACES the registry-
-/// derived one in place (an author who explicitly sets
-/// `clientConfig.claudeCli.mcpServers` for a server name already in the
-/// registry is customizing that server's Claude-specific launch config,
-/// not adding a duplicate), while any new name is appended after every
-/// registry entry, in its own declared order. `IndexMap::insert`'s own
-/// semantics make this fallout naturally: inserting an already-present
-/// key updates its value without moving its position; only a genuinely
-/// new key extends the tail.
-fn merge_mcp_servers(
+/// derived one in place (an author who explicitly sets a harness's
+/// `mcpServers` for a server name already in the registry is customizing
+/// that server's harness-specific launch config, not adding a duplicate),
+/// while any new name is appended after every registry entry, in its own
+/// declared order. `IndexMap::insert`'s own semantics make this fallout
+/// naturally: inserting an already-present key updates its value without
+/// moving its position; only a genuinely new key extends the tail.
+pub(crate) fn merge_mcp_servers(
     mcp_registry: &BTreeMap<String, McpServerDef>,
-    claude_mcp_servers: &IndexMap<String, McpServerDef>,
+    harness_mcp_servers: &IndexMap<String, McpServerDef>,
 ) -> IndexMap<String, McpServerDef> {
     let mut merged: IndexMap<String, McpServerDef> =
-        IndexMap::with_capacity(mcp_registry.len() + claude_mcp_servers.len());
+        IndexMap::with_capacity(mcp_registry.len() + harness_mcp_servers.len());
     for (name, def) in mcp_registry {
         merged.insert(name.clone(), def.clone());
     }
-    for (name, def) in claude_mcp_servers {
+    for (name, def) in harness_mcp_servers {
         merged.insert(name.clone(), def.clone());
     }
     merged
@@ -300,23 +310,33 @@ impl HarnessTransformer for ClaudeTransformer {
         let base_dir = output_root.join(self.name());
 
         stage_content_type(&base_dir, AGENTS_CONTENT_TYPE_DIR, |staging_dir| {
-            let skill_names: HashSet<&str> = model.skills.iter().map(|s| s.name.as_str()).collect();
+            let packaged: HashSet<&str> = model.skills.iter().map(|s| s.name.as_str()).collect();
             for agent in &model.agents {
                 let Some(claude) = &agent.client_config.claude_cli else {
                     continue;
                 };
+                if agent.client_config.kiro_cli.is_some() {
+                    check_model_shared_with_kiro(&agent.name, &agent.config.model)?;
+                }
                 let rendered = render_agent_md(
                     &agent.name,
                     &agent.config,
                     claude,
                     &agent.dependencies.context.context_names,
                     &model.context,
-                    &skill_names,
+                    AgentSkills {
+                        packaged: &packaged,
+                        declared: &super::parse_canonical::skill_names_from_dependencies(
+                            &agent.dependencies.skills,
+                        )
+                        .collect::<Vec<_>>(),
+                    },
                     &agent.dependencies.mcp_registry,
                 )?;
                 write_agent_file(staging_dir, &agent.name, &rendered)?;
             }
             write_sop_scopes_sidecar(staging_dir, &model.agents)?;
+            write_mcp_allowed_tools_sidecar(staging_dir, &model.agents)?;
             Ok(())
         })?;
 
@@ -336,6 +356,216 @@ impl HarnessTransformer for ClaudeTransformer {
     }
 }
 
+/// File name of the per-agent MCP allowed-tools sidecar in
+/// `dist/claude/agents/`. Install reads it back; it never collides with an
+/// agent file because Claude agent files end in `.md`.
+pub(crate) const MCP_ALLOWED_TOOLS_SIDECAR_FILE: &str = "_mcp_allowed_tools.json";
+
+/// Whether `name` may become part of a Claude Code permission rule
+/// (`mcp__<server>__<tool>`): one or more letters, digits, `_` or `-`.
+/// Install applies the same check to every sidecar name it reads.
+pub(crate) fn is_mcp_rule_safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+/// Writes `{ "<agent>": { "<server>": ["<tool>", ...] } }` for every Claude
+/// agent with a (bundled-filtered) `mcpRegistry`. The tools come from the
+/// agent's Kiro `allowedTools` entries of the form `@<server>/<tool>`. Agent
+/// specs are not shipped in a release `dist/`, so install cannot read
+/// `allowedTools` any other way.
+fn write_mcp_allowed_tools_sidecar(
+    staging_dir: &Path,
+    agents: &[super::parser::ParsedAgentSpec],
+) -> Result<(), String> {
+    let (allowed, warnings) = mcp_allowed_tools_by_agent(agents);
+    for warning in warnings {
+        eprintln!("konductor: warning: {warning}");
+    }
+
+    let mut rendered = serde_json::to_string_pretty(&allowed)
+        .map_err(|e| format!("failed to serialize {MCP_ALLOWED_TOOLS_SIDECAR_FILE}: {e}"))?;
+    rendered.push('\n');
+    let path = staging_dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE);
+    fs::write(&path, rendered).map_err(|e| format!("failed to write {}: {e}", path.display()))
+}
+
+type McpAllowedToolsByAgent<'a> = BTreeMap<&'a str, BTreeMap<&'a str, BTreeSet<&'a str>>>;
+
+/// The sidecar content, plus one warning per registry-server `allowedTools`
+/// entry left out of it. A whole-server (`@aws-mcp`) or wildcard
+/// (`@aws-mcp/*`) entry is left out because, as a Claude Code allow rule, it
+/// would also cover the ask tools. An `aws-mcp` tool outside
+/// `AWS_MCP_READ_ONLY_TOOLS` is left out because only read-only tools may be
+/// pre-approved. Any other server or tool name that is not rule-safe is left
+/// out because install would reject the whole sidecar.
+fn mcp_allowed_tools_by_agent(
+    agents: &[super::parser::ParsedAgentSpec],
+) -> (McpAllowedToolsByAgent<'_>, Vec<String>) {
+    let mut allowed: McpAllowedToolsByAgent = BTreeMap::new();
+    let mut warnings = Vec::new();
+    for agent in agents {
+        if agent.client_config.claude_cli.is_none() || agent.dependencies.mcp_registry.is_empty() {
+            continue;
+        }
+        let mut per_server: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+        for server in agent.dependencies.mcp_registry.keys() {
+            if is_mcp_rule_safe_name(server) {
+                per_server.insert(server.as_str(), BTreeSet::new());
+            } else {
+                warnings.push(format!(
+                    "agent '{}': MCP server {server:?} left out of \
+                     {MCP_ALLOWED_TOOLS_SIDECAR_FILE}; only names of letters, digits, \
+                     '_' and '-' become Claude Code allow rules",
+                    agent.name
+                ));
+            }
+        }
+        let kiro_allowed = agent
+            .client_config
+            .kiro_cli
+            .as_ref()
+            .map(|kiro| kiro.allowed_tools.as_slice())
+            .unwrap_or_default();
+        for entry in kiro_allowed {
+            let Some(rest) = entry.strip_prefix('@') else {
+                continue;
+            };
+            let (server, tool) = rest.split_once('/').unwrap_or((rest, ""));
+            let Some(tools) = per_server.get_mut(server) else {
+                continue;
+            };
+            if server == AWS_MCP_SERVER_NAME
+                && is_mcp_rule_safe_name(tool)
+                && !AWS_MCP_READ_ONLY_TOOLS.contains(&tool)
+            {
+                warnings.push(format!(
+                    "agent '{}': allowedTools entry {entry:?} left out of \
+                     {MCP_ALLOWED_TOOLS_SIDECAR_FILE}; only the read-only {AWS_MCP_SERVER_NAME} \
+                     tools ({}) become Claude Code allow rules",
+                    agent.name,
+                    AWS_MCP_READ_ONLY_TOOLS.join(", ")
+                ));
+            } else if is_mcp_rule_safe_name(tool) {
+                tools.insert(tool);
+            } else {
+                warnings.push(format!(
+                    "agent '{}': allowedTools entry {entry:?} left out of \
+                     {MCP_ALLOWED_TOOLS_SIDECAR_FILE}; only single named tools \
+                     (letters, digits, '_' and '-') become Claude Code allow rules",
+                    agent.name
+                ));
+            }
+        }
+        allowed.insert(agent.name.as_str(), per_server);
+    }
+    (allowed, warnings)
+}
+
+const CLAUDE_MODEL_FAMILIES: &[&str] = &["opus", "sonnet", "haiku", "fable"];
+const CLAUDE_CODE_MODEL_ALIASES: &[&str] = &["inherit", "sonnet", "opus", "haiku"];
+
+/// Converts an agent spec's model ID to the form Claude Code accepts: a Kiro
+/// dotted ID becomes the dashed form (`claude-sonnet-5.5` to `claude-sonnet-5-5`)
+/// and `auto` becomes `inherit`. Anything else passes through, so a Claude-only
+/// agent can use Claude Code's own IDs and aliases.
+fn claude_model_id(model: &str) -> String {
+    if model == "auto" {
+        "inherit".to_string()
+    } else if is_kiro_model_id(model) {
+        model.replace('.', "-")
+    } else {
+        model.to_string()
+    }
+}
+
+/// An agent with both kiroCli and claudeCli config shares one `config.model`,
+/// which Kiro CLI writes verbatim and Claude Code silently ignores if it doesn't
+/// recognize it. So it must be a value both understand: a Kiro dotted ID,
+/// `claude-<family>-<major>[.<minor>][-<yyyymmdd>]`, or `auto`. This can't tell
+/// whether a well-formed ID names a model that exists.
+fn check_model_shared_with_kiro(agent: &str, model: &str) -> Result<(), String> {
+    if model == "auto" || is_kiro_model_id(model) {
+        return Ok(());
+    }
+    let reason = if CLAUDE_CODE_MODEL_ALIASES.contains(&model) {
+        "that is a Claude Code alias, which Kiro CLI does not recognize; use 'auto' to let the \
+         runtime choose, or a Kiro CLI model ID"
+            .to_string()
+    } else if let Some(dotted) = kiro_form_of_dashed_id(model) {
+        format!(
+            "that is the Claude Code form, which Kiro CLI does not recognize; use '{dotted}' \
+             and synth converts it for Claude Code"
+        )
+    } else {
+        format!(
+            "expected a Kiro CLI model ID of the form claude-<family>-<major>[.<minor>][-<yyyymmdd>] \
+             (family one of {CLAUDE_MODEL_FAMILIES:?}) or 'auto'"
+        )
+    };
+    Err(format!(
+        "agent '{agent}' declares model '{model}' for both Kiro CLI and Claude Code: {reason}"
+    ))
+}
+
+fn is_kiro_model_id(id: &str) -> bool {
+    let parts: Vec<&str> = id.split('-').collect();
+    let [claude, family, version, date @ ..] = parts.as_slice() else {
+        return false;
+    };
+    if *claude != "claude" || !CLAUDE_MODEL_FAMILIES.contains(family) {
+        return false;
+    }
+    let version_ok = match version.split_once('.') {
+        Some((major, minor)) => is_version_number(major) && is_version_number(minor),
+        None => is_version_number(version),
+    };
+    version_ok
+        && match date {
+            [] => true,
+            [date] => is_date(date),
+            _ => false,
+        }
+}
+
+/// The dotted equivalent of a Claude Code ID with a minor version, such as
+/// `claude-sonnet-5-5`. IDs without a minor version are already valid Kiro IDs.
+fn kiro_form_of_dashed_id(id: &str) -> Option<String> {
+    let parts: Vec<&str> = id.split('-').collect();
+    let [claude, family, major, minor, date @ ..] = parts.as_slice() else {
+        return None;
+    };
+    let well_formed = *claude == "claude"
+        && CLAUDE_MODEL_FAMILIES.contains(family)
+        && is_version_number(major)
+        && is_version_number(minor);
+    match date {
+        [] if well_formed => Some(format!("claude-{family}-{major}.{minor}")),
+        [date] if well_formed && is_date(date) => {
+            Some(format!("claude-{family}-{major}.{minor}-{date}"))
+        }
+        _ => None,
+    }
+}
+
+fn is_version_number(part: &str) -> bool {
+    (1..=2).contains(&part.len()) && part.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn is_date(part: &str) -> bool {
+    part.len() == 8 && part.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// The skill names `render_agent_md` needs for one agent.
+struct AgentSkills<'a> {
+    /// Every packaged skill's name.
+    packaged: &'a HashSet<&'a str>,
+    /// The agent's `dependencies.skills.skillNames`, in declared order.
+    declared: &'a [&'a str],
+}
+
 /// Renders one agent's YAML frontmatter + system prompt body. The body
 /// starts as the verbatim `system_prompt` text with no inserted heading
 /// (see module docstring), then has each of `context_names`' matching
@@ -343,7 +573,7 @@ impl HarnessTransformer for ClaudeTransformer {
 /// `append_context_blocks` -- see that function's own doc comment for
 /// the exact marker convention.
 ///
-/// `skill_names` (every packaged skill's name) validates each
+/// `skills.packaged` (every packaged skill's name) validates each
 /// `claude.skills` entry before rendering: without this, a renamed,
 /// removed, or typo'd skill name would synth successfully and ship a
 /// `skills:` entry pointing at nothing under `dist/claude/skills/`,
@@ -364,17 +594,25 @@ impl HarnessTransformer for ClaudeTransformer {
 /// `merge_mcp_servers` (see that function's own doc comment for the
 /// precedence rule) before rendering, so the frontmatter's `mcpServers:`
 /// key reflects both sources rather than only the Claude-specific one.
+///
+/// `skills.declared` is the agent's `dependencies.skills.skillNames` in
+/// declared order; the ones not in `claude.skills` are listed in a
+/// trailing block (see `render_on_demand_skills_block`).
+///
+/// For a specialist (any agent that is not one of the three orchestrators), spawn
+/// tools are dropped from `tools` and `disallowedTools` denies them, whether or
+/// not a `tools` list exists.
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,
     claude: &ClaudeCliConfig,
     context_names: &[String],
     context_defs: &[super::model::ContextDef],
-    skill_names: &HashSet<&str>,
+    skills: AgentSkills<'_>,
     mcp_registry: &BTreeMap<String, McpServerDef>,
 ) -> Result<String, String> {
     for skill_name in &claude.skills {
-        if !skill_names.contains(skill_name.as_str()) {
+        if !skills.packaged.contains(skill_name.as_str()) {
             return Err(format!(
                 "agent '{name}' declares claudeCli skill '{skill_name}', but no skill named \
                  '{skill_name}' exists under skills/"
@@ -382,32 +620,81 @@ fn render_agent_md(
         }
     }
 
+    let model = claude_model_id(&config.model);
     let merged_mcp_servers = merge_mcp_servers(mcp_registry, &claude.mcp_servers);
+    // Ship the same distinct list the preload lint measures, so its name
+    // cap counts exactly what Claude Code reads.
+    let preload_names: Vec<String> = distinct_preload_names(&claude.skills)
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let specialist = is_specialist(name);
+    let tools: Option<Vec<String>> = claude.tools.as_ref().map(|tools| {
+        tools
+            .iter()
+            .filter(|tool| !(specialist && is_claude_spawn_tool(tool)))
+            .cloned()
+            .collect()
+    });
+    // Spawn tools are dropped from `tools` and denied here. With no `tools`
+    // list a specialist inherits every default tool, so the deny is the only
+    // block; it also covers a list filtered down to empty.
+    let disallowed_tools: &[&str] = if specialist { &CLAUDE_SPAWN_TOOLS } else { &[] };
     let frontmatter = ClaudeAgentFrontmatter {
         name,
         description: &config.description,
-        model: &config.model,
-        tools: claude.tools.as_deref(),
-        skills: &claude.skills,
+        model: &model,
+        tools: tools.as_deref(),
+        skills: &preload_names,
         allowed_tools: &claude.allowed_tools,
+        disallowed_tools,
         hooks: hooks_to_yaml(&claude.hooks),
         mcp_servers: render_mcp_servers(&merged_mcp_servers),
     };
     let yaml = serde_yaml::to_string(&frontmatter)
         .map_err(|e| format!("failed to serialize frontmatter for agent '{name}': {e}"))?;
-    // Trimmed before appending context blocks (only when there's at
-    // least one to append) so the prompt-to-first-block transition gets
-    // exactly one blank line, matching the live materialization's own
-    // spacing, rather than an extra one from the source prompt's own
-    // trailing newline. The no-context case is untouched -- the body is
+    // Trimmed before appending context blocks or the on-demand skills
+    // block (only when there's at least one to append) so the prompt is
+    // followed by exactly one blank line, matching the live
+    // materialization's own spacing, rather than an extra one from the
+    // source prompt's own trailing newline. With neither, the body is
     // exactly `system_prompt`, unmodified.
+    let on_demand_block = render_on_demand_skills_block(skills.declared, &claude.skills);
     let mut body = config.system_prompt.clone();
-    if !context_names.is_empty() {
+    if !context_names.is_empty() || on_demand_block.is_some() {
         let trimmed_len = body.trim_end().len();
         body.truncate(trimmed_len);
     }
     append_context_blocks(&mut body, name, context_names, context_defs)?;
+    if let Some(block) = on_demand_block {
+        body.push_str("\n\n");
+        body.push_str(&block);
+    }
     Ok(format!("---\n{yaml}---\n\n{body}"))
+}
+
+/// Lists the agent's declared skills that are not in the Claude Code
+/// preload, so a spawned subagent knows what it can load. `None` when
+/// every declared skill is preloaded.
+fn render_on_demand_skills_block(declared: &[&str], preloaded: &[String]) -> Option<String> {
+    let preloaded = distinct_preload_names(preloaded);
+    let on_demand: indexmap::IndexSet<&str> = declared
+        .iter()
+        .copied()
+        .filter(|name| !preloaded.contains(name))
+        .collect();
+    if on_demand.is_empty() {
+        return None;
+    }
+    let names = on_demand
+        .iter()
+        .map(|name| format!("`{name}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    Some(format!(
+        "## Skills you can load\n\nThese skills are yours but are not preloaded. Load one by \
+         name with the `Skill` tool when the task or your brief calls for it: {names}."
+    ))
 }
 
 /// Appends one `<Context: {name}>\n{content}\n</Context: {name}>` block
@@ -553,7 +840,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &skill_names,
+            AgentSkills {
+                packaged: &skill_names,
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -606,7 +896,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -644,7 +937,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -674,7 +970,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -761,7 +1060,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -814,7 +1116,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -834,6 +1139,73 @@ mod tests {
             Some(10),
             "expected timeout to parse back as a plain integer, got: {frontmatter_yaml}"
         );
+    }
+
+    fn render_frontmatter(name: &str, tools: Option<Vec<&str>>) -> serde_yaml::Value {
+        let claude = ClaudeCliConfig {
+            tools: tools.map(|t| t.into_iter().map(String::from).collect()),
+            ..Default::default()
+        };
+        let agent = agent_with_claude(name, claude);
+        let rendered = render_agent_md(
+            name,
+            &agent.config,
+            agent.client_config.claude_cli.as_ref().unwrap(),
+            &[],
+            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        let frontmatter = rendered.splitn(3, "---\n").nth(1).unwrap();
+        serde_yaml::from_str(frontmatter).unwrap()
+    }
+
+    #[test]
+    fn render_agent_md_strips_spawn_tools_from_specialist() {
+        let parsed = render_frontmatter(
+            "k-example",
+            Some(vec![
+                "Read",
+                "Agent(k-developer, k-browser)",
+                "Task",
+                "Workflow",
+                "Skill",
+            ]),
+        );
+        assert_eq!(
+            parsed["tools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Read, Skill]").unwrap()
+        );
+        assert_eq!(
+            parsed["disallowedTools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Agent, Task, Workflow]").unwrap()
+        );
+    }
+
+    #[test]
+    fn render_agent_md_denies_spawn_tools_for_specialist_without_tools_list() {
+        let parsed = render_frontmatter("k-example", None);
+        assert!(parsed.get("tools").is_none());
+        assert_eq!(
+            parsed["disallowedTools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Agent, Task, Workflow]").unwrap()
+        );
+    }
+
+    #[test]
+    fn render_agent_md_keeps_spawn_tools_for_orchestrator() {
+        let parsed = render_frontmatter("konductor", Some(vec!["Workflow", "Agent(k-developer)"]));
+        assert_eq!(
+            parsed["tools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Workflow, Agent(k-developer)]").unwrap()
+        );
+        assert!(render_frontmatter("konductor", None)
+            .get("disallowedTools")
+            .is_none());
     }
 
     /// Regression guard: an agent whose `claudeCli` sets
@@ -872,7 +1244,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -928,12 +1303,15 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
 
-        assert!(!rendered.contains("allowedTools:"), "got: {rendered}");
+        assert!(!rendered.contains("\nallowedTools:"), "got: {rendered}");
         assert!(!rendered.contains("hooks:"), "got: {rendered}");
         assert!(!rendered.contains("mcpServers:"), "got: {rendered}");
     }
@@ -966,7 +1344,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1024,7 +1405,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &mcp_registry,
         )
         .unwrap();
@@ -1100,7 +1484,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &mcp_registry,
         )
         .unwrap();
@@ -1160,7 +1547,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &mcp_registry,
         )
         .unwrap();
@@ -1194,7 +1584,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1259,7 +1652,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         );
         let err = match result {
@@ -1452,7 +1848,10 @@ mod tests {
             claude_cfg,
             &context_names,
             &context_defs,
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1497,7 +1896,10 @@ mod tests {
             claude_cfg,
             &context_names,
             &context_defs,
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1527,12 +1929,157 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
         assert!(!rendered.contains("<Context:"));
         assert!(rendered.ends_with("You are a test agent."));
+    }
+
+    #[test]
+    fn render_agent_md_emits_each_preload_name_once_in_first_occurrence_order() {
+        let claude = ClaudeCliConfig {
+            skills: ["b", "a", "b", "a"].iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        };
+        let agent = agent_with_claude("k-example", claude);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let skill_names: HashSet<&str> = ["a", "b"].into_iter().collect();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            AgentSkills {
+                packaged: &skill_names,
+                declared: &[],
+            },
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        let frontmatter_yaml = rendered.splitn(3, "---\n").nth(1).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(frontmatter_yaml).unwrap();
+        assert_eq!(
+            parsed["skills"],
+            serde_yaml::to_value(vec!["b", "a"]).unwrap()
+        );
+    }
+
+    fn preloaded(names: &[&str]) -> Vec<String> {
+        names.iter().map(|n| n.to_string()).collect()
+    }
+
+    #[test]
+    fn on_demand_skills_block_lists_declared_minus_preloaded_in_declared_order() {
+        let block = render_on_demand_skills_block(
+            &["constraints", "zeta", "alpha", "backend-review", "zeta"],
+            &preloaded(&["constraints", "backend-review", "claude-teams-behavior"]),
+        )
+        .unwrap();
+        assert_eq!(
+            block,
+            "## Skills you can load\n\nThese skills are yours but are not preloaded. Load one by \
+             name with the `Skill` tool when the task or your brief calls for it: `zeta`, `alpha`."
+        );
+        assert!(!block.contains("claude-teams-behavior"));
+    }
+
+    #[test]
+    fn on_demand_skills_block_is_none_when_everything_declared_is_preloaded() {
+        assert!(render_on_demand_skills_block(&["a"], &preloaded(&["a", "b"])).is_none());
+        assert!(render_on_demand_skills_block(&[], &preloaded(&["a"])).is_none());
+    }
+
+    #[test]
+    fn on_demand_skills_block_contains_no_em_or_en_dashes() {
+        let block = render_on_demand_skills_block(&["a", "b"], &[]).unwrap();
+        assert!(!block.contains('\u{2014}') && !block.contains('\u{2013}'));
+    }
+
+    #[test]
+    fn render_agent_md_puts_skills_block_one_blank_line_after_last_context_block() {
+        let agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let context_names = vec!["rules.md".to_string()];
+        let context_defs = vec![ContextDef {
+            name: "rules.md".to_string(),
+            body: "Rules.\n".to_string(),
+        }];
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &context_names,
+            &context_defs,
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &["backend-review"],
+            },
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.ends_with(
+                "</Context: rules.md>\n\n## Skills you can load\n\nThese skills are yours but are \
+                 not preloaded. Load one by name with the `Skill` tool when the task or your \
+                 brief calls for it: `backend-review`."
+            ),
+            "got:\n{rendered}"
+        );
+    }
+
+    #[test]
+    fn render_agent_md_without_context_trims_prompt_before_skills_block() {
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.config.system_prompt = "prompt text\n".to_string();
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &["backend-review"],
+            },
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.contains("prompt text\n\n## Skills you can load"),
+            "got:\n{rendered}"
+        );
+        assert!(!rendered.contains("\n\n\n"), "got:\n{rendered}");
+    }
+
+    #[test]
+    fn render_agent_md_without_context_or_skills_block_keeps_prompt_verbatim() {
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.config.system_prompt = "prompt text\n".to_string();
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.ends_with("---\n\nprompt text\n"),
+            "got:\n{rendered}"
+        );
     }
 
     /// End-to-end through `transform`, not just `render_agent_md`
@@ -1838,5 +2385,322 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn agent_with_mcp_server(
+        name: &str,
+        server: &str,
+        kiro_allowed_tools: &[&str],
+    ) -> ParsedAgentSpec {
+        let mut agent = agent_with_claude(name, ClaudeCliConfig::default());
+        agent
+            .dependencies
+            .mcp_registry
+            .insert(server.to_string(), McpServerDef::default());
+        agent.client_config.kiro_cli = Some(crate::cli::synth::parser::KiroCliConfig {
+            allowed_tools: kiro_allowed_tools.iter().map(|t| t.to_string()).collect(),
+            ..Default::default()
+        });
+        agent
+    }
+
+    fn read_mcp_allowed_tools_sidecar(dir: &Path) -> serde_json::Value {
+        let sidecar = dir
+            .join(expected_output_dir())
+            .join(MCP_ALLOWED_TOOLS_SIDECAR_FILE);
+        serde_json::from_str(&fs::read_to_string(&sidecar).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_keeps_only_registry_server_tools_sorted() {
+        let dir = temp_dir("mcp-allowed-tools-sidecar");
+        let model = CanonicalModel {
+            agents: vec![agent_with_mcp_server(
+                "k-x",
+                "aws-mcp",
+                &[
+                    "@aws-mcp/aws___search_documentation",
+                    "@aws-mcp/aws___list_regions",
+                    "@builtin",
+                    "fs_read",
+                    "@other/x",
+                ],
+            )],
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        assert_eq!(
+            read_mcp_allowed_tools_sidecar(&dir),
+            serde_json::json!({"k-x": {"aws-mcp": [
+                "aws___list_regions",
+                "aws___search_documentation"
+            ]}})
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_keeps_only_read_only_aws_mcp_tools() {
+        let agents = vec![agent_with_mcp_server(
+            "k-x",
+            "aws-mcp",
+            &[
+                "@aws-mcp/aws___run_script",
+                "@aws-mcp/aws___get_tasks",
+                "@aws-mcp/aws___not_a_known_tool",
+                "@aws-mcp/aws___read_documentation",
+            ],
+        )];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___read_documentation"]}})
+        );
+        assert_eq!(warnings.len(), 3, "{warnings:?}");
+        for entry in [
+            "@aws-mcp/aws___run_script",
+            "@aws-mcp/aws___get_tasks",
+            "@aws-mcp/aws___not_a_known_tool",
+        ] {
+            assert!(
+                warnings
+                    .iter()
+                    .any(|w| w.contains(&format!("{entry:?}")) && w.contains("read-only")),
+                "no read-only warning for {entry}: {warnings:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_does_not_restrict_other_servers_to_the_aws_mcp_set() {
+        let agents = vec![agent_with_mcp_server("k-x", "other", &["@other/run"])];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {"other": ["run"]}})
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_skips_wildcard_whole_server_and_unsafe_entries_with_warnings() {
+        let dir = temp_dir("mcp-allowed-tools-sidecar-unsafe");
+        let agents = vec![agent_with_mcp_server(
+            "k-x",
+            "aws-mcp",
+            &[
+                "@aws-mcp/*",
+                "@aws-mcp",
+                "@aws-mcp/aws___run_script(x)",
+                "@aws-mcp/aws___list_regions",
+                "@other/*",
+            ],
+        )];
+
+        let (_, warnings) = mcp_allowed_tools_by_agent(&agents);
+        assert_eq!(warnings.len(), 3, "{warnings:?}");
+        for entry in ["@aws-mcp/*", "@aws-mcp", "@aws-mcp/aws___run_script(x)"] {
+            assert!(
+                warnings
+                    .iter()
+                    .any(|w| w.contains("'k-x'") && w.contains(&format!("{entry:?}"))),
+                "no warning names agent k-x and entry {entry}: {warnings:?}"
+            );
+        }
+
+        let model = CanonicalModel {
+            agents,
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+        assert_eq!(
+            read_mcp_allowed_tools_sidecar(&dir),
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}})
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_skips_a_registry_server_name_unsafe_for_a_rule() {
+        let agents = vec![agent_with_mcp_server(
+            "k-x",
+            "bad.server",
+            &["@bad.server/a"],
+        )];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {}})
+        );
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(warnings[0].contains("\"bad.server\""), "{warnings:?}");
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_omits_agents_without_registry_or_claude_config() {
+        let dir = temp_dir("mcp-allowed-tools-sidecar-omits");
+        let mut kiro_only = agent_with_mcp_server("kiro-only", "aws-mcp", &["@aws-mcp/a"]);
+        kiro_only.client_config.claude_cli = None;
+        let mut filtered_out = agent_with_mcp_server("filtered-out", "aws-mcp", &["@aws-mcp/a"]);
+        filtered_out.dependencies.mcp_registry.clear();
+        let model = CanonicalModel {
+            agents: vec![kiro_only, filtered_out],
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        assert_eq!(read_mcp_allowed_tools_sidecar(&dir), serde_json::json!({}));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn claude_model_id_converts_kiro_dotted_form() {
+        for (kiro, claude) in [
+            ("claude-sonnet-5.5", "claude-sonnet-5-5"),
+            ("claude-haiku-4.5", "claude-haiku-4-5"),
+            ("claude-fable-5.1", "claude-fable-5-1"),
+            ("claude-sonnet-5", "claude-sonnet-5"),
+            ("claude-sonnet-4.5-20250929", "claude-sonnet-4-5-20250929"),
+            ("claude-opus-4-20250514", "claude-opus-4-20250514"),
+        ] {
+            assert_eq!(claude_model_id(kiro), claude);
+        }
+    }
+
+    #[test]
+    fn claude_model_id_passes_claude_code_ids_and_aliases_through() {
+        for id in [
+            "sonnet",
+            "inherit",
+            "opus",
+            "claude-opus-4-1",
+            "claude-sonnet-5-5",
+        ] {
+            assert_eq!(claude_model_id(id), id);
+        }
+    }
+
+    #[test]
+    fn shared_model_accepts_kiro_ids_and_auto() {
+        for id in ["claude-sonnet-5.5", "claude-sonnet-5", "auto"] {
+            assert!(
+                check_model_shared_with_kiro("k-example", id).is_ok(),
+                "{id}"
+            );
+        }
+    }
+
+    #[test]
+    fn claude_only_agent_keeps_a_claude_code_alias_and_shared_agent_rejects_it() {
+        let claude_only = |model: &str| ParsedAgentSpec {
+            config: AgentConfig {
+                model: model.to_string(),
+                ..agent_with_claude("k-claude-only", ClaudeCliConfig::default()).config
+            },
+            ..agent_with_claude("k-claude-only", ClaudeCliConfig::default())
+        };
+        let mut shared = claude_only("sonnet");
+        shared.client_config.kiro_cli = Some(Default::default());
+        let model = |agents: Vec<ParsedAgentSpec>| CanonicalModel {
+            agents,
+            ..Default::default()
+        };
+
+        let out = temp_dir("claude-only-alias");
+        ClaudeTransformer
+            .transform(&model(vec![claude_only("sonnet")]), &out)
+            .unwrap();
+        let rendered = fs::read_to_string(out.join("claude/agents/k-claude-only.md")).unwrap();
+        assert!(rendered.contains("\nmodel: sonnet\n"), "{rendered}");
+
+        let err = ClaudeTransformer
+            .transform(&model(vec![shared]), &temp_dir("shared-alias"))
+            .unwrap_err();
+        assert!(err.contains("Claude Code alias"), "{err}");
+    }
+
+    #[test]
+    fn claude_model_id_maps_auto_to_inherit() {
+        assert_eq!(claude_model_id("auto"), "inherit");
+    }
+
+    #[test]
+    fn shared_model_rejects_dashed_form_with_dotted_hint() {
+        for (dashed, dotted) in [
+            ("claude-sonnet-5-5", "claude-sonnet-5.5"),
+            ("claude-sonnet-4-5-20250929", "claude-sonnet-4.5-20250929"),
+        ] {
+            let err = check_model_shared_with_kiro("k-example", dashed).unwrap_err();
+            assert!(err.contains("k-example"), "{err}");
+            assert!(err.contains("Kiro CLI does not recognize"), "{err}");
+            assert!(err.contains(&format!("use '{dotted}'")), "{err}");
+        }
+    }
+
+    #[test]
+    fn shared_model_rejects_claude_code_aliases() {
+        for alias in ["inherit", "sonnet", "opus", "haiku"] {
+            let err = check_model_shared_with_kiro("k-example", alias).unwrap_err();
+            assert!(err.contains("k-example"), "{err}");
+            assert!(err.contains("Claude Code alias"), "{err}");
+            assert!(err.contains("'auto'"), "{err}");
+        }
+    }
+
+    #[test]
+    fn shared_model_rejects_unknown_shapes() {
+        for id in [
+            "gpt-5",
+            "Auto",
+            "Claude-Sonnet-5.5",
+            "claude-sonnet-5.",
+            "claude-sonnet..5",
+            "claude-sonnet-5.5.5",
+            "",
+            "claude-sonet-5.5",
+            "claude-sonnet-555",
+            "claude-x",
+            "claude-3.7-sonnet",
+            "claude-sonnet-5.5-2026",
+            "claude-sonnet-5-5-2026",
+        ] {
+            let err = check_model_shared_with_kiro("k-example", id).unwrap_err();
+            assert!(err.contains("k-example"), "{err}");
+            assert!(err.contains("expected a Kiro CLI model ID"), "{err}");
+        }
+    }
+
+    #[test]
+    fn render_agent_md_writes_claude_code_model_id() {
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.config.model = "claude-sonnet-5.5".to_string();
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.contains("\nmodel: claude-sonnet-5-5\n"),
+            "{rendered}"
+        );
     }
 }

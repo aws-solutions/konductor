@@ -4,7 +4,7 @@
 
 [← Task guides](README.md) · [Guide index](../README.md)
 
-Registers the 11 agents, 82 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
+Registers the 11 agents, 79 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
 
 **Time required:** about 2 minutes.
 
@@ -14,7 +14,7 @@ Registers the 11 agents, 82 skills, 19 SOPs, the core rules, and the orchestrato
 
 | Requirement | Verify with |
 | --- | --- |
-| Kiro CLI installed | `kiro-cli --version` |
+| Kiro CLI (checked: 2.36.0, 3.0.0) | `kiro-cli --version` |
 | Git on your `PATH` | `git --version` |
 | The Konductor CLI | `konductor --version` — see [Quick Start step 1](../quick-start.md#step-1--download-the-cli) |
 
@@ -30,6 +30,8 @@ konductor install --harness kiro-cli-v2
 
 On success it reports a per-content-type count — agents, skills, SOPs and context files — and
 the command to start a session with. Exit code `0`.
+
+Install also wires a session-start hook for `konductor`: `.kiro/hooks/konductor-orchestration-hooks.json` on Kiro CLI v3, an `agentSpawn` entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `orchestration.mode: coordinator` relies on it, and `uninstall` removes it.
 
 `--harness` is **required**. There is no default and no auto-detection from the destination:
 every `install` says explicitly which synthed harness output it means. `--target` is the
@@ -83,7 +85,7 @@ You should get a list of `k-*` specialists: `k-developer`, `k-architect`,
 Run the k-code-review-workflow SOP against my current branch.
 ```
 
-The orchestrator routes this to `k-developer`, which is the agent that declares that SOP.
+`konductor` spawns `k-developer`, the agent that declares that SOP, to run it.
 
 ---
 
@@ -92,13 +94,14 @@ The orchestrator routes this to `k-developer`, which is the agent that declares 
 - [ ] `konductor doctor` reports all checks ok and exits `0`.
 - [ ] `kiro-cli chat --agent konductor` starts a session without an "agent not found" error.
 - [ ] Asking "what agents do you have available?" lists `k-*` specialists.
-- [ ] Giving it implementation work produces a **delegation** to a specialist, not the orchestrator
-      doing the work itself.
+- [ ] Giving it implementation work has `konductor` edit files itself, each write asking you first,
+      then spawn a `k-*` **reviewer** when the phase closes.
 
-That last point is the real signal. In Kiro CLI the orchestrator pre-approves `fs_read` alone, so
+That last point is the real signal. In Kiro CLI the orchestrator pre-approves only reads, so
 a write or a shell command surfaces a permission prompt instead of happening quietly — it is not
 refused, because `@builtin` grants both. (In Claude Code it is granted `Write` and `Bash` with no
-prompt gate of its own; only its routing rules stop it using them.) If it starts editing files
+prompt gate of its own; the reviewer at each phase gate is the check.) If you use
+`konductor-mux-orchestrator` or `konductor-cmux-orchestrator` and it starts editing files
 directly, its routing rules did not load — see
 [Troubleshooting](../troubleshooting.md#3-the-orchestrator-does-the-work-itself-instead-of-delegating).
 
@@ -116,7 +119,8 @@ directly, its routing rules did not load — see
 
 ## Which agent to invoke
 
-Start with `konductor` and let it route. That is the default for everything in this guide: it is
+Start with `konductor` and ask in plain language; it does the work itself (in `coordinator` mode it
+hands every change to a specialist) or spawns the agent that declares the SOP you need. That is the default for everything in this guide: it is
 the only entry point that verifies a handoff before moving on, and it does not require you to know
 who owns which workflow.
 
@@ -144,11 +148,19 @@ Choosing among the three orchestrators:
 
 ## Optional integrations
 
-Two are pre-configured in the agent specs and need only their local dependency.
+Two are declared in the agent specs.
 
-**AWS documentation lookups** — `k-architect` and `k-developer`. Install `uvx` and configure
-AWS credentials in `~/.aws/credentials` or environment variables. Both agents work without
-credentials, just without AWS lookups.
+**AWS documentation lookups** for `konductor`, `k-architect` and `k-developer`. Install `uvx`. The proxy needs Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed.
+Their agent files carry an `aws-mcp` entry in `mcpServers`, launched via
+`uvx mcp-proxy-for-aws-cli==2.0.0` with `--skip-auth`, so you do not add it to your own MCP config.
+Without `uvx` the server fails to start and the agents still work, just without AWS lookups. The
+first start downloads the proxy through `uvx`, which can delay the agent's first reply.
+
+With `--skip-auth`, documentation search and skills work without AWS credentials. Configure
+credentials in `~/.aws/credentials` or environment variables only for calls that act on an AWS
+account. `konductor` gets only the five read-only tools. For `k-architect` and `k-developer`,
+knowledge tools are pre-approved and AWS API tools ask first. Use the `aws:ViaAWSMCPService` and
+`aws:CalledViaAWSMCP` IAM condition keys to limit agent-initiated calls.
 
 **Browser automation** — `k-browser`. Install the browser binary:
 

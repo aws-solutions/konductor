@@ -1093,6 +1093,29 @@ mod tests {
     }
 
     #[test]
+    fn config_set_keeps_telemetry_opt_out() {
+        let dir = scratch_dir("config-set-keeps-opt-out");
+        let config_dir = dir.join(super::super::super::config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(
+            config_dir.join(super::super::super::config::CONFIG_FILE_NAME),
+            "tier: minor\ntelemetry:\n  enabled: false\n  endpoint: https://telemetry.example.com\n",
+        )
+        .unwrap();
+
+        super::super::super::config::set_config_value(&dir, "tier", "major")
+            .expect("set must succeed");
+
+        let section = read_telemetry_config(&dir).expect("telemetry section must survive");
+        assert_eq!(section.enabled, Some(false));
+        assert_eq!(
+            section.endpoint.as_deref(),
+            Some("https://telemetry.example.com")
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn resolve_endpoint_respects_fleet_wide_telemetry_off_env_var() {
         let _lock = lock_telemetry_env();
         let dir = scratch_dir("endpoint-fleet-off");
@@ -2326,6 +2349,34 @@ mod tests {
         fs::remove_dir_all(&home).ok();
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&source).ok();
+    }
+
+    /// A hook written by an earlier opted-in install stays in agent files
+    /// after an opt-out. With the record gone it must report nothing.
+    #[test]
+    fn stale_agent_hooks_record_nothing_when_install_info_is_absent() {
+        let _guard = lock_home();
+        let home = scratch_dir("stale-hook-absent-install-info-home");
+        let target = scratch_dir("stale-hook-absent-install-info-target");
+        assert!(!install_info::install_info_path(&target).exists());
+
+        let before = default_test_transport().recorded().len();
+        with_home(&home, || {
+            report_agent_invocation(&target, "k-example", Some("session".to_string()));
+            report_subagent_invocation(
+                &target,
+                "k-example",
+                Some("session".to_string()),
+                None,
+                Some("konductor".to_string()),
+            );
+        });
+        let after = default_test_transport().recorded().len();
+
+        assert_eq!(before, after, "no record means no hook event may be sent");
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
     }
 
     /// With NEITHER file present (the target was never installed, or

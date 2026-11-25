@@ -28,6 +28,7 @@ import json
 import os
 import re
 import subprocess
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -132,6 +133,32 @@ def test_assembled_tree_has_no_repo_root_plugin_layout_leftovers(assembled):
     assert (assembled / ".claude-plugin" / "plugin.json").is_file()
 
 
+def test_assembled_tree_ships_the_listing_icon(assembled):
+    """The directory listing icon is the committed brand PNG, copied as is."""
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    # The directory reads the icon from plugin.json, as a path from the plugin root.
+    assert plugin["icon"] == "./icon.png"
+    assert not (assembled / ".claude-plugin" / "icon.png").exists()
+    icon = assembled / plugin["icon"]
+    data = icon.read_bytes()
+    assert data == (REPO_ROOT / "docs" / "assets" / "konductor-icon.png").read_bytes()
+    # The directory accepts a square PNG of 512 to 2048 px under 2 MB.
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    assert width == height
+    assert 512 <= width <= 2048
+    assert len(data) < 2 * 1024 * 1024
+
+
+
+def test_assembled_plugin_json_sets_the_support_link(assembled):
+    """The directory reads supportUrl from plugin.json; it matches the README's Support section."""
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert plugin["supportUrl"] == "https://github.com/aws-solutions/konductor/issues"
+    assert plugin["supportUrl"] in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+
 def test_assembled_tree_ships_the_telemetry_hook(assembled):
     """The telemetry hook, its hooks.json, and the schema copy land in the
     flat tree, and the SubagentStart matcher covers every assembled agent."""
@@ -154,3 +181,90 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
         assert matcher.search(f"{plugin['name']}:{agent_file.stem}"), agent_file.name
         assert not matcher.search(agent_file.stem), agent_file.name
     assert not matcher.search("Explore")
+
+
+def test_assembled_tree_ships_the_dispatch_env_hook(assembled):
+    """The dispatch-environment hook lands in the flat tree and runs
+    synchronously on every session start, and plugin.json declares the
+    option it reads."""
+    assert (assembled / "hooks" / "konductor-dispatch-env.sh").read_bytes() == (
+        REPO_ROOT / "scripts" / "claude-plugin-dispatch-env-hook.sh"
+    ).read_bytes()
+    hooks = json.loads((assembled / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+    entry = hooks["SessionStart"][1]
+    assert entry["matcher"] == "startup|resume|clear|compact"
+    handler = entry["hooks"][0]
+    assert "async" not in handler
+    assert handler["command"] == 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh"'
+
+    option = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))[
+        "userConfig"
+    ]["dispatch_permission_mode"]
+    assert option["type"] == "string"
+    assert option["default"] == "interactive"
+    assert "options" not in option
+
+
+def test_assembled_agents_carry_no_ignored_mcp_servers_block(assembled):
+    for agent in (assembled / "agents").glob("*.md"):
+        frontmatter = agent.read_text(encoding="utf-8").split("---")[1]
+        assert not re.search(r"^mcpServers:", frontmatter, re.M), agent.name
+    assert (assembled / ".mcp.json").is_file()
+
+
+def test_plugin_json_leaves_agents_and_skills_to_default_scans(assembled):
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert "agents" not in plugin
+    assert "skills" not in plugin
+
+
+def test_assembled_agents_use_claude_code_model_ids(assembled):
+    for agent in (assembled / "agents").glob("*.md"):
+        model = re.search(r"^model: (.+)$", agent.read_text(encoding="utf-8"), re.M).group(1)
+        assert re.fullmatch(
+            r"claude-(?:opus|sonnet|haiku|fable)-\d{1,2}(?:-\d{1,2})?(?:-\d{8})?|inherit", model
+        ), f"{agent.name}: {model}"
+
+
+class _LinkAttrs(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.targets = []
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if name in ("src", "href") and value is not None:
+                self.targets.append(value)
+            elif name == "srcset" and value:
+                self.targets += [c.split()[0] for c in value.split(",") if c.strip()]
+
+
+def _readme_link_targets(readme):
+    # Found independently of the rewriter's regex, so a link form the rewriter
+    # misses still fails here.
+    prose = re.sub(r"^(```|~~~).*?^\1[ \t]*$", "", readme, flags=re.M | re.S)
+    attrs = _LinkAttrs()
+    attrs.feed(prose)
+    targets = list(attrs.targets)
+    for match in re.finditer(r"\]\(", prose):
+        rest = prose[match.end():]
+        if rest.startswith("<"):
+            targets.append(rest[1:rest.index(">")])
+        else:
+            targets.append(re.match(r"[^)\s]*", rest).group(0))
+    targets += re.findall(r"^ {0,3}\[[^\]\n]+\]:[ \t]*<?([^>\s]+)", prose, re.M)
+    return targets
+
+
+def test_assembled_tree_ships_notice_and_absolute_readme_links(assembled):
+    assert (assembled / "NOTICE.txt").is_file()
+    readme = (assembled / "README.md").read_text(encoding="utf-8")
+    targets = _readme_link_targets(readme)
+    shipped = {"LICENSE.txt", "NOTICE.txt"}
+    relative = [
+        t for t in targets
+        if not re.match(r"^(?:[a-z][a-z0-9+.-]*:|#|/)", t, re.I) and t.split("#", 1)[0] not in shipped
+    ]
+    assert targets, "expected links in the assembled README"
+    assert not relative, f"README links that point at files the plugin does not ship: {relative}"
+    assert "](LICENSE.txt)" in readme

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// install.rs — `konductor install` dispatch (Rust implementation).
+// install.rs - `konductor install` dispatch (Rust implementation).
 // Artifact fetch+verify lives in `install::artifact`; runtime
 // auto-detection in `install::runtime`; manifest read/write in
 // `install::manifest`; strategy registration in `install::registry`;
@@ -20,7 +20,14 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::cli::config::KONDUCTOR_DIR_NAME;
+use crate::cli::config_lock;
 use crate::cli::output::ColorMode;
+
+/// Serializes the opted-out check with the manifest and record writes of
+/// concurrent installs. Distinct from the manifest lock the strategies
+/// take inside, so the two never contend.
+pub(crate) const INSTALL_LOCK_FILE_NAME: &str = ".install.lock";
 
 pub mod artifact;
 pub mod bin_link;
@@ -296,9 +303,11 @@ pub(super) const NO_REMOTE_RELEASE_MESSAGE: &str =
 /// Records this target's telemetry opt-in, and warns when the global
 /// install's hooks predate per-install dedup. Best-effort: a failure
 /// here never unwinds an install that already succeeded. Clearing the
-/// record on `install --no-telemetry` happens in install's own dispatch,
-/// not here: `update --no-telemetry` shares this path but is a per-run
-/// override that keeps the target opted in.
+/// record on an explicit `--no-telemetry` happens in each dispatch's own
+/// caller, not here: `install.rs`'s own dispatch removes it after a
+/// successful install, and `update.rs`'s carry-forward block removes it
+/// before this function is ever reached, so a later plain `update` stays
+/// opted out too.
 pub(super) fn finalize_install_telemetry(
     target_dir: &Path,
     repo_root: &Path,
@@ -893,7 +902,9 @@ fn dispatch_install_with_remote_installer(
         // on the `None` ("latest") branch the pre-fetch itself is the
         // network call the skip decision depends on, so a match there
         // only avoids the larger download/re-copy that follows. `force`
-        // bypasses the skip either way. `use_github_token` authenticates
+        // bypasses the skip either way. An explicit `--no-telemetry` also
+        // bypasses it, so the opt-out removal, hook cleanup and any
+        // `--telemetry off` MCP arg always run. `use_github_token` authenticates
         // this pre-fetch exactly like the real install below it.
         //
         // `install-info.json` holds exactly one `agent_version` +
@@ -935,7 +946,7 @@ fn dispatch_install_with_remote_installer(
                 let incoming_version = incoming_tag.trim_start_matches('v');
                 let comparison =
                     content_version::compare_known_versions(incoming_version, &recorded);
-                if content_version::should_skip_write(&comparison, force) {
+                if content_version::should_skip_write(&comparison, force || no_telemetry) {
                     let version = comparison.matched_version().unwrap_or("").to_string();
                     // The index write-ahead below must still run on
                     // the skip path, same as the ordinary install path
@@ -1076,6 +1087,34 @@ fn dispatch_install_with_remote_installer(
         }
     };
 
+    // Held to the end of the function. The opted-out check reads "manifest
+    // tracks a harness, record absent", which a concurrent first install
+    // also looks like between its manifest write and its record write.
+    let _install_lock = match config_lock::acquire_named(
+        &destination.join(KONDUCTOR_DIR_NAME),
+        INSTALL_LOCK_FILE_NAME,
+    ) {
+        Ok(lock) => lock,
+        Err(err) => {
+            super::report::report_error(
+                "install",
+                "install.lock_failed",
+                &destination,
+                no_telemetry,
+                &format!(
+                    "could not lock install target {}: {err}",
+                    destination.display()
+                ),
+                Vec::new(),
+                json,
+                color,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+    };
+    let opt_out_carried_forward = !no_telemetry && target_is_opted_out(&destination);
+    let no_telemetry = no_telemetry || opt_out_carried_forward;
+
     let installed_at = crate::cli::time::utc_now_iso();
     // Cloned (not moved) into the write-ahead `IndexEntry` below --
     // `write_ahead_strategies` itself stays alive as the finalize
@@ -1183,15 +1222,18 @@ fn dispatch_install_with_remote_installer(
         Ok(()) => {
             // `install --no-telemetry` is the durable opt-out: clearing
             // the opt-in record here keeps a target installed earlier
-            // with telemetry on from reporting after it opts out.
-            if no_telemetry {
-                if let Err(err) = crate::cli::telemetry::remove_install_info(&destination) {
-                    eprintln!(
-                        "konductor install: warning: could not remove {}: {err}",
-                        crate::cli::telemetry::install_info_path(&destination).display()
-                    );
-                }
-            }
+            // with telemetry on from reporting after it opts out. A
+            // removal failure is a warning, not a failed install.
+            let telemetry_removal_warning = if no_telemetry {
+                remove_telemetry_record_for_no_telemetry_install(&destination)
+            } else {
+                None
+            };
+            let telemetry_note = opt_out_carried_forward
+                .then(|| carried_forward_opt_out_note(&destination))
+                .into_iter()
+                .chain(telemetry_removal_warning)
+                .reduce(|note, warning| format!("{note}; {warning}"));
             // Computed before `canonical_target_dir` is moved into the
             // index-finalize write below -- reuses the same
             // canonicalized target_dir string and the same
@@ -1247,6 +1289,7 @@ fn dispatch_install_with_remote_installer(
                 link_bin_result,
                 remote_source,
                 remote_outcome,
+                telemetry_note.as_deref(),
                 color,
             );
             0
@@ -1268,6 +1311,45 @@ fn dispatch_install_with_remote_installer(
     }
 }
 
+/// Whether a plain install should keep `destination` opted out: the
+/// manifest already tracks at least one harness and the target-wide
+/// install record is absent. A first install (no manifest entry) or a
+/// broken record keeps the default of writing the record. A record
+/// deleted by hand also reads as opted out, since absence is the only
+/// opt-out signal.
+fn target_is_opted_out(destination: &Path) -> bool {
+    let tracks_a_harness = manifest::read_manifest(destination)
+        .ok()
+        .flatten()
+        .is_some_and(|manifest| !manifest.strategy_names().is_empty());
+    tracks_a_harness
+        && matches!(
+            crate::cli::telemetry::read_install_info_detailed(destination),
+            Err(crate::cli::telemetry::InstallInfoAbsence::NotFound)
+        )
+}
+
+fn carried_forward_opt_out_note(destination: &Path) -> String {
+    format!(
+        "telemetry stays off: {dir} is opted out. Run `konductor update --target {dir} \
+         --enable-telemetry` to opt it back in",
+        dir = destination.display()
+    )
+}
+
+/// Removes an existing `install-info.json` for `install --no-telemetry`.
+/// Returns the warning to surface when the removal fails. Extracted so a
+/// test can assert on the warning text without capturing stdout.
+fn remove_telemetry_record_for_no_telemetry_install(destination: &Path) -> Option<String> {
+    let err = crate::cli::telemetry::remove_install_info(destination).err()?;
+    let record_path = crate::cli::telemetry::install_info_path(destination);
+    Some(format!(
+        "could not remove {path}: {err} -- telemetry may still be reported until {path} is \
+         removed",
+        path = record_path.display()
+    ))
+}
+
 /// Prints the success-path report: re-reads the manifest
 /// `install_from_local` just wrote at `destination` and formats it per
 /// `json`/`verbose`. A missing/unreadable manifest after a reported
@@ -1282,6 +1364,14 @@ fn dispatch_install_with_remote_installer(
 /// path, naming which remote source produced the install. `remote_outcome`
 /// is likewise `Some(..)` only on that path; its `mcp_binary_version`
 /// field is surfaced distinctly from `agent_version`.
+///
+/// `warning`, when `Some`, is an extra plain-text line / `--json`
+/// `"warning"` field, mirroring `update.rs`'s own
+/// `report_update_success`'s `warning` parameter. Covers an explicit
+/// `--no-telemetry`'s install-info removal failing after the install
+/// itself already succeeded, and the note that a carried-forward opt-out
+/// kept telemetry off -- never a hard failure on its own, only a
+/// non-fatal note.
 #[allow(clippy::too_many_arguments)]
 fn report_install_success(
     destination: &Path,
@@ -1293,6 +1383,7 @@ fn report_install_success(
     link_bin_result: Option<Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError>>,
     remote_source: Option<remote_orchestrate::RemoteInstallSource>,
     remote_outcome: Option<remote::RemoteInstallOutcome>,
+    warning: Option<&str>,
     color: ColorMode,
 ) {
     // The installed content's own version, read back from
@@ -1337,6 +1428,7 @@ fn report_install_success(
                     "replaced_foreign": 0,
                     "agent_version": agent_version,
                     "mcp_binary_version": mcp_binary_version,
+                    "aws_mcp_rules": serde_json::Value::Null,
                 });
                 if let Some(result) = &link_bin_result {
                     merge_link_bin_json(&mut value, result);
@@ -1345,6 +1437,9 @@ fn report_install_success(
                     if let Some(object) = value.as_object_mut() {
                         object.insert("source".to_string(), serde_json::json!(source.to_string()));
                     }
+                }
+                if let Some(warning) = warning {
+                    value["warning"] = serde_json::Value::String(warning.to_string());
                 }
                 println!("{value}");
             } else {
@@ -1357,6 +1452,12 @@ fn report_install_success(
                 );
                 if let Some(result) = &link_bin_result {
                     println!("{}", link_bin_report_line(result, color));
+                }
+                if let Some(warning) = warning {
+                    println!(
+                        "{} {warning}",
+                        crate::cli::output::status::warn(color, "konductor install: warning:")
+                    );
                 }
             }
             return;
@@ -1378,6 +1479,7 @@ fn report_install_success(
             mcp_binary_version.as_deref(),
             harness_dir,
         );
+        value["aws_mcp_rules"] = aws_mcp_rules_json(destination, slot.aws_mcp_rules.as_ref());
         if let Some(result) = &link_bin_result {
             merge_link_bin_json(&mut value, result);
         }
@@ -1386,7 +1488,11 @@ fn report_install_success(
                 object.insert("source".to_string(), serde_json::json!(source.to_string()));
             }
         }
+        if let Some(warning) = warning {
+            value["warning"] = serde_json::Value::String(warning.to_string());
+        }
         println!("{value}");
+        print_unwritten_aws_mcp_rules(destination, &slot);
         return;
     }
 
@@ -1408,11 +1514,118 @@ fn report_install_success(
     if let Some(result) = &link_bin_result {
         println!("{}", link_bin_report_line(result, color));
     }
+    if let Some(line) = checked_kiro_versions_line(destination, harness_dir) {
+        println!("{line}");
+    }
+    if let Some(warning) = warning {
+        println!(
+            "{} {warning}",
+            crate::cli::output::status::warn(color, "konductor install: warning:")
+        );
+    }
     if verbose {
         for line in format_install_verbose_lines(&slot) {
             println!("{line}");
         }
     }
+    print_unwritten_aws_mcp_rules(destination, &slot);
+}
+
+/// The record of this install's `aws-mcp` rules, `None` when it had none
+/// to merge (the record may still exist to track earlier appended entries).
+fn aws_mcp_rules_this_run(
+    record: Option<&manifest::AwsMcpRulesRecord>,
+) -> Option<&manifest::AwsMcpRulesRecord> {
+    record.filter(|record| !(record.ask.is_empty() && record.allow.is_empty()))
+}
+
+/// The `--json` `aws_mcp_rules` field: `null` when this install had no
+/// `aws-mcp` rules to merge.
+fn aws_mcp_rules_json(
+    destination: &Path,
+    record: Option<&manifest::AwsMcpRulesRecord>,
+) -> serde_json::Value {
+    let Some(record) = aws_mcp_rules_this_run(record) else {
+        return serde_json::Value::Null;
+    };
+    serde_json::json!({
+        "written": record.written,
+        "file": aws_mcp_rules_file(destination).display().to_string(),
+        "reason": record.reason,
+        "rules": aws_mcp_rules_settings_fragment(record),
+    })
+}
+
+fn aws_mcp_rules_file(destination: &Path) -> PathBuf {
+    destination.join(resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH)
+}
+
+/// `{"permissions": {"ask": [...], "allow": [...]}}`, leaving out an empty
+/// list, so the user can merge it into their settings file as is.
+fn aws_mcp_rules_settings_fragment(record: &manifest::AwsMcpRulesRecord) -> serde_json::Value {
+    let mut permissions = serde_json::Map::new();
+    for (key, rules) in [("ask", &record.ask), ("allow", &record.allow)] {
+        if !rules.is_empty() {
+            permissions.insert(key.to_string(), serde_json::json!(rules));
+        }
+    }
+    serde_json::json!({ "permissions": permissions })
+}
+
+/// The end-of-install block for `aws-mcp` rules the settings file could not
+/// take, `None` when they were written or there were none.
+fn format_unwritten_aws_mcp_rules(
+    destination: &Path,
+    record: Option<&manifest::AwsMcpRulesRecord>,
+) -> Option<String> {
+    let record = aws_mcp_rules_this_run(record).filter(|record| !record.written)?;
+    let fragment = serde_json::to_string_pretty(&aws_mcp_rules_settings_fragment(record))
+        .expect("a JSON value always serializes");
+    Some(format!(
+        "konductor install: AWS MCP permission rules were NOT written\n\
+         \x20 file:   {file}\n\
+         \x20 reason: {reason}\n\
+         Until you add these rules to that file by hand (merge them into its \"permissions\" \
+         object), nothing makes Claude Code ask before the AWS MCP tools that act on AWS:\n\
+         {fragment}",
+        file = aws_mcp_rules_file(destination).display(),
+        reason = record.reason.as_deref().unwrap_or("unknown"),
+    ))
+}
+
+fn print_unwritten_aws_mcp_rules(destination: &Path, slot: &manifest::StrategyManifest) {
+    if let Some(block) = format_unwritten_aws_mcp_rules(destination, slot.aws_mcp_rules.as_ref()) {
+        eprintln!("\n{block}");
+    }
+}
+
+/// One extra line after a Kiro CLI v2 install summary naming the kiro-cli
+/// versions whose v2 built-in list the agents' explicit tool lists were
+/// checked against, and the `/tools` command that re-checks it against the
+/// installed `k-developer` agent file (every install has one; a release
+/// install has no repo checkout to point at). Informs only: nothing is
+/// spawned, compared or gated. Other harnesses print nothing.
+fn checked_kiro_versions_line(destination: &Path, harness_dir: &str) -> Option<String> {
+    use crate::cli::synth::kiro_cli_v2::{
+        KiroCliV2Transformer, SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH,
+    };
+    use crate::cli::synth::HarnessTransformer as _;
+
+    if harness_dir != KiroCliV2Transformer.name() {
+        return None;
+    }
+    let versions = match SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH.split_last() {
+        Some((last, [])) => last.to_string(),
+        Some((last, rest)) => format!("{} and {last}", rest.join(", ")),
+        None => return None,
+    };
+    let agent_file = destination.join(".kiro/agents/k-developer.json");
+    Some(format!(
+        "konductor install: agent tool lists were checked against kiro-cli {versions}; on \
+         another version, run `/tools` in a `kiro-cli chat --agent-engine v2 --agent \
+         k-developer` session and compare with the `tools` list in {}",
+        agent_file.display()
+    ))
 }
 
 /// Reports the content-version skip-if-unchanged outcome: the target
@@ -1773,6 +1986,78 @@ mod tests {
         }
     }
 
+    /// On a `$HOME` install the telemetry hooks and the aws-mcp rules share
+    /// `~/.claude/settings.json`. Both must land, and the manifest must
+    /// track the file once, with the hash of its final content.
+    #[test]
+    fn claude_home_install_shares_settings_json_between_hooks_and_aws_mcp_rules() {
+        let home = HomeGuard::new("claude-home-shared-settings-home");
+        let target = home.scratch.clone();
+        let repo_root = scratch_dir("claude-home-shared-settings-repo");
+        let agents_dir = repo_root
+            .join("dist")
+            .join(claude::CLAUDE_HARNESS_DIR)
+            .join("agents");
+        fs::create_dir_all(&agents_dir).unwrap();
+        fs::write(
+            agents_dir.join("k-x.md"),
+            b"---\nname: k-x\nmcpServers:\n- aws-mcp:\n    command: uvx\n---\n\nBody\n",
+        )
+        .unwrap();
+        fs::write(
+            agents_dir.join("_mcp_allowed_tools.json"),
+            br#"{"k-x": {"aws-mcp": ["aws___list_regions"]}}"#,
+        )
+        .unwrap();
+
+        claude::ClaudeInstallStrategy
+            .install_from_local(
+                &target,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed");
+
+        let settings_path = target.join(".claude/settings.json");
+        let bytes = fs::read(&settings_path).unwrap();
+        let settings: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        for event in ["SessionStart", "SubagentStart"] {
+            assert!(
+                settings["hooks"][event]
+                    .to_string()
+                    .contains("__telemetry-hook"),
+                "{event} telemetry hook missing: {settings}"
+            );
+        }
+        assert_eq!(
+            settings["permissions"]["ask"],
+            serde_json::json!([
+                "mcp__aws-mcp__aws___get_presigned_url",
+                "mcp__aws-mcp__aws___get_tasks",
+                "mcp__aws-mcp__aws___run_script"
+            ])
+        );
+        assert_eq!(
+            settings["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+        assert!(!target.join(".claude/settings.local.json").exists());
+
+        let manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        let entries: Vec<&manifest::ManifestFile> = manifest
+            .get("claude")
+            .unwrap()
+            .files
+            .iter()
+            .filter(|file| file.path == ".claude/settings.json")
+            .collect();
+        assert_eq!(entries.len(), 1, "{entries:?}");
+        assert_eq!(entries[0].sha256, Some(artifact::sha256_hex(&bytes)));
+
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     #[test]
     fn install_no_telemetry_clears_an_earlier_opt_in() {
         let _home = HomeGuard::new("no-telemetry-clears-opt-in-home");
@@ -1805,6 +2090,719 @@ mod tests {
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
+    }
+
+    fn install_harness(repo_root: &Path, target: &Path, harness: &str, no_telemetry: bool) -> u8 {
+        dispatch_install_with(
+            Some(repo_root.display().to_string()),
+            Some(target.display().to_string()),
+            harness.to_string(),
+            false,
+            no_telemetry,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        )
+    }
+
+    fn kiro_agent_has_telemetry_hook(target: &Path) -> bool {
+        fs::read_to_string(target.join(".kiro/agents/k-example.json"))
+            .unwrap()
+            .contains("__telemetry-hook")
+    }
+
+    /// A plain install of a second harness on an opted-out target keeps
+    /// the opt-out: no record, and no telemetry hooks for the new harness.
+    #[test]
+    fn plain_install_of_another_harness_keeps_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("second-harness-keeps-opt-out-home");
+        let target = scratch_dir("second-harness-keeps-opt-out-target");
+        let repo_root = scratch_dir("second-harness-keeps-opt-out-repo");
+        seed_synthed_claude_agent(&repo_root, "k-example");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert_eq!(install_harness(&repo_root, &target, "claude", true), 0);
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+        assert!(target_is_opted_out(&target));
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "a plain install of another harness must not opt the target back in"
+        );
+        assert!(!kiro_agent_has_telemetry_hook(&target));
+        let note = carried_forward_opt_out_note(&target);
+        assert!(note.contains("konductor update --target"), "got: {note}");
+        assert!(note.contains("--enable-telemetry"), "got: {note}");
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A first install writes the record, and a plain reinstall of the
+    /// only tracked harness keeps an opted-out target opted out.
+    #[test]
+    fn plain_reinstall_of_the_only_tracked_harness_keeps_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("only-harness-keeps-opt-out-home");
+        let target = scratch_dir("only-harness-keeps-opt-out-target");
+        let repo_root = scratch_dir("only-harness-keeps-opt-out-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert!(!target_is_opted_out(&target));
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(crate::cli::telemetry::read_install_info(&target).is_some());
+        assert!(kiro_agent_has_telemetry_hook(&target));
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+        assert!(target_is_opted_out(&target));
+        for _ in 0..2 {
+            assert_eq!(
+                install_harness(&repo_root, &target, "kiro-cli-v2", false),
+                0
+            );
+            assert!(
+                !crate::cli::telemetry::install_info_exists(&target),
+                "a plain reinstall of the only tracked harness must not opt the target back in"
+            );
+            assert!(!kiro_agent_has_telemetry_hook(&target));
+        }
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A lock file left by a dead process holds no OS lock, so it must not
+    /// block or opt out the next install.
+    #[test]
+    fn leftover_install_lock_file_does_not_block_a_first_install() {
+        let _home = HomeGuard::new("stale-install-lock-home");
+        let target = scratch_dir("stale-install-lock-target");
+        let repo_root = scratch_dir("stale-install-lock-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        let konductor_dir = target.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(konductor_dir.join(INSTALL_LOCK_FILE_NAME), b"stale").unwrap();
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A lock that cannot be created is a usage error, like the other
+    /// install write failures.
+    #[test]
+    fn install_lock_failure_on_a_read_only_target_exits_with_usage_error() {
+        use std::os::unix::fs::PermissionsExt;
+        let _home = HomeGuard::new("lock-readonly-home");
+        let target = scratch_dir("lock-readonly-target");
+        let repo_root = scratch_dir("lock-readonly-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o555)).unwrap();
+        let can_still_write = fs::write(target.join("probe"), b"").is_ok();
+
+        if !can_still_write {
+            assert_eq!(
+                install_harness(&repo_root, &target, "kiro-cli-v2", false),
+                EXIT_USAGE_ERROR
+            );
+        }
+
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o755)).unwrap();
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A record deleted by hand reads the same as an opt-out, so a plain
+    /// reinstall leaves it absent. `update --enable-telemetry` is the way
+    /// back in.
+    #[test]
+    fn plain_reinstall_after_the_record_is_deleted_by_hand_stays_opted_out() {
+        let _home = HomeGuard::new("deleted-record-stays-off-home");
+        let target = scratch_dir("deleted-record-stays-off-target");
+        let repo_root = scratch_dir("deleted-record-stays-off-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+        crate::cli::telemetry::remove_install_info(&target).unwrap();
+
+        assert!(target_is_opted_out(&target));
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    const ALL_HARNESSES: [&str; 3] = ["kiro-cli-v2", "kiro-v3", "claude"];
+
+    fn seed_every_harness(repo_root: &Path) {
+        seed_synthed_agent(repo_root, "k-example");
+        seed_synthed_kiro_v3_agent(repo_root, "k-example");
+        seed_synthed_claude_agent(repo_root, "k-example");
+    }
+
+    fn any_file_has_telemetry_hook(dir: &Path) -> bool {
+        fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|entry| {
+                let path = entry.path();
+                if path.is_dir() {
+                    any_file_has_telemetry_hook(&path)
+                } else {
+                    fs::read_to_string(&path).is_ok_and(|text| text.contains("__telemetry-hook"))
+                }
+            })
+    }
+
+    fn update_harness(
+        repo_root: &Path,
+        target: &Path,
+        harness: &str,
+        no_telemetry: bool,
+        enable_telemetry: bool,
+        dry_run: bool,
+    ) -> u8 {
+        crate::cli::update::dispatch_update_with(
+            Some(repo_root.display().to_string()),
+            Some(target.display().to_string()),
+            false,
+            Some(harness.to_string()),
+            no_telemetry,
+            enable_telemetry,
+            dry_run,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        )
+    }
+
+    fn uninstall_harness(target: &Path, harness: &str) -> u8 {
+        crate::cli::uninstall::dispatch_uninstall(
+            Some(target.display().to_string()),
+            false,
+            Some(harness.to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        )
+    }
+
+    fn assert_stays_opted_out(target: &Path, context: &str) {
+        assert!(
+            !crate::cli::telemetry::install_info_exists(target),
+            "{context}: a record was written"
+        );
+        assert!(
+            !any_file_has_telemetry_hook(target),
+            "{context}: a telemetry hook was written"
+        );
+        assert!(
+            target_is_opted_out(target),
+            "{context}: not read as opted out"
+        );
+    }
+
+    #[test]
+    fn opt_out_survives_three_plain_reinstalls_of_the_same_harness_for_every_harness() {
+        let _home = HomeGuard::new("three-reinstalls-home");
+        let repo_root = scratch_dir("three-reinstalls-repo");
+        seed_every_harness(&repo_root);
+
+        for harness in ALL_HARNESSES {
+            let target = scratch_dir(&format!("three-reinstalls-{harness}"));
+            assert_eq!(install_harness(&repo_root, &target, harness, true), 0);
+            for round in 1..=3 {
+                assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+                assert_stays_opted_out(&target, &format!("{harness} reinstall {round}"));
+            }
+            fs::remove_dir_all(&target).ok();
+        }
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn opt_out_holds_across_a_second_and_third_harness_and_a_reinstall_of_the_first() {
+        let _home = HomeGuard::new("three-harnesses-home");
+        let target = scratch_dir("three-harnesses-target");
+        let repo_root = scratch_dir("three-harnesses-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(install_harness(&repo_root, &target, "claude", true), 0);
+        for harness in ["kiro-cli-v2", "kiro-v3", "claude"] {
+            assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+            assert_stays_opted_out(&target, harness);
+        }
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn enable_telemetry_sticks_across_later_plain_installs_and_updates() {
+        let _home = HomeGuard::new("enable-sticks-home");
+        let target = scratch_dir("enable-sticks-target");
+        let repo_root = scratch_dir("enable-sticks-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        let harness = "kiro-cli-v2";
+
+        assert_eq!(install_harness(&repo_root, &target, harness, true), 0);
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, false, false, false),
+            0
+        );
+        assert_stays_opted_out(&target, "plain update");
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, true, false, false),
+            0
+        );
+        assert_stays_opted_out(&target, "update --no-telemetry");
+
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, false, true, false),
+            0
+        );
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+
+        assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "plain install after enable flipped back to off"
+        );
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, false, false, false),
+            0
+        );
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "plain update after enable flipped back to off"
+        );
+        assert!(kiro_agent_has_telemetry_hook(&target));
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn update_enable_telemetry_dry_run_leaves_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("enable-dry-run-home");
+        let target = scratch_dir("enable-dry-run-target");
+        let repo_root = scratch_dir("enable-dry-run-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert_eq!(
+            update_harness(&repo_root, &target, "kiro-cli-v2", false, true, true),
+            0
+        );
+        assert_stays_opted_out(&target, "update --enable-telemetry --dry-run");
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Uninstalling every harness removes the manifest, so the next
+    /// install has nothing tracked and is a first install: it opts in.
+    #[test]
+    fn full_uninstall_then_plain_install_is_a_first_install_that_writes_the_record() {
+        let _home = HomeGuard::new("uninstall-all-then-install-home");
+        let target = scratch_dir("uninstall-all-then-install-target");
+        let repo_root = scratch_dir("uninstall-all-then-install-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert_eq!(install_harness(&repo_root, &target, "claude", false), 0);
+        assert_eq!(uninstall_harness(&target, "claude"), 0);
+        assert_stays_opted_out(&target, "after uninstalling one of two");
+        assert_eq!(uninstall_harness(&target, "kiro-cli-v2"), 0);
+
+        assert!(manifest::read_manifest(&target).ok().flatten().is_none());
+        assert!(!target_is_opted_out(&target));
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(crate::cli::telemetry::read_install_info(&target).is_some());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    fn install_lock_path(target: &Path) -> PathBuf {
+        target.join(KONDUCTOR_DIR_NAME).join(INSTALL_LOCK_FILE_NAME)
+    }
+
+    #[test]
+    fn uninstalling_the_last_harness_removes_the_install_lock_and_a_reinstall_recreates_it() {
+        let _home = HomeGuard::new("lock-last-uninstall-home");
+        let target = scratch_dir("lock-last-uninstall-target");
+        let repo_root = scratch_dir("lock-last-uninstall-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(install_lock_path(&target).is_file());
+        assert_eq!(uninstall_harness(&target, "kiro-cli-v2"), 0);
+        assert!(!install_lock_path(&target).exists());
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(install_lock_path(&target).is_file());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn uninstalling_one_of_two_harnesses_keeps_the_install_lock() {
+        let _home = HomeGuard::new("lock-partial-uninstall-home");
+        let target = scratch_dir("lock-partial-uninstall-target");
+        let repo_root = scratch_dir("lock-partial-uninstall-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert_eq!(install_harness(&repo_root, &target, "claude", false), 0);
+        assert_eq!(uninstall_harness(&target, "claude"), 0);
+        assert!(install_lock_path(&target).is_file());
+        assert_eq!(uninstall_harness(&target, "kiro-cli-v2"), 0);
+        assert!(!install_lock_path(&target).exists());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn dry_run_uninstall_keeps_the_install_lock() {
+        let _home = HomeGuard::new("lock-dry-run-home");
+        let target = scratch_dir("lock-dry-run-target");
+        let repo_root = scratch_dir("lock-dry-run-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        let code = crate::cli::uninstall::dispatch_uninstall(
+            Some(target.display().to_string()),
+            false,
+            Some("kiro-cli-v2".to_string()),
+            true,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+        assert!(install_lock_path(&target).is_file());
+        assert!(manifest::read_manifest(&target).ok().flatten().is_some());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn reinstalling_a_harness_after_uninstalling_it_keeps_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("uninstall-one-reinstall-home");
+        let target = scratch_dir("uninstall-one-reinstall-target");
+        let repo_root = scratch_dir("uninstall-one-reinstall-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert_eq!(install_harness(&repo_root, &target, "claude", false), 0);
+        assert_eq!(uninstall_harness(&target, "claude"), 0);
+        for harness in ["claude", "kiro-cli-v2"] {
+            assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+            assert_stays_opted_out(&target, harness);
+        }
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Only a missing record is an opt-out. Anything else present at the
+    /// record path keeps the install's normal record handling.
+    #[test]
+    fn unusable_install_info_records_are_never_read_as_an_opt_out() {
+        let _home = HomeGuard::new("unusable-record-home");
+        let target = scratch_dir("unusable-record-target");
+        let repo_root = scratch_dir("unusable-record-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        fs::remove_file(&record_path).unwrap();
+        assert!(
+            target_is_opted_out(&target),
+            "sanity: absent record is an opt-out"
+        );
+
+        let unusable_contents = [
+            "",
+            "{not json",
+            r#"{"schema_version":99,"agent_version":null,"harness":"kiro-cli-v2","installed_at":"x"}"#,
+            r#"{"schema_version":0,"harness":"kiro-cli-v2"}"#,
+        ];
+        for contents in unusable_contents {
+            fs::write(&record_path, contents).unwrap();
+            assert!(
+                !target_is_opted_out(&target),
+                "read as opt-out: {contents:?}"
+            );
+        }
+
+        fs::remove_file(&record_path).unwrap();
+        fs::create_dir(&record_path).unwrap();
+        assert!(
+            !target_is_opted_out(&target),
+            "directory at the record path"
+        );
+        fs::remove_dir(&record_path).unwrap();
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Any current-schema record means opted in, whatever harness it
+    /// names and wherever it was copied from: the record has no root.
+    #[test]
+    fn a_present_record_means_opted_in_regardless_of_its_harness_or_origin() {
+        let _home = HomeGuard::new("record-origin-home");
+        let opted_out = scratch_dir("record-origin-opted-out");
+        let opted_in = scratch_dir("record-origin-opted-in");
+        let repo_root = scratch_dir("record-origin-repo");
+        seed_every_harness(&repo_root);
+        assert_eq!(
+            install_harness(&repo_root, &opted_out, "kiro-cli-v2", true),
+            0
+        );
+        assert_eq!(
+            install_harness(&repo_root, &opted_in, "kiro-cli-v2", false),
+            0
+        );
+        assert!(target_is_opted_out(&opted_out));
+        assert!(
+            !target_is_opted_out(&opted_in),
+            "targets must not affect each other"
+        );
+
+        let record_path = crate::cli::telemetry::install_info_path(&opted_in);
+        let other_harness = fs::read_to_string(&record_path)
+            .unwrap()
+            .replace("kiro-cli-v2", "claude");
+        fs::write(&record_path, other_harness).unwrap();
+        assert!(
+            !target_is_opted_out(&opted_in),
+            "record naming another harness"
+        );
+
+        let copied = crate::cli::telemetry::install_info_path(&opted_out);
+        fs::copy(&record_path, &copied).unwrap();
+        assert!(
+            !target_is_opted_out(&opted_out),
+            "record copied from another target"
+        );
+
+        fs::remove_dir_all(&opted_out).ok();
+        fs::remove_dir_all(&opted_in).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn opt_out_is_detected_through_symlinked_and_dotdot_target_paths() {
+        let _home = HomeGuard::new("path-identity-home");
+        let holder = scratch_dir("path-identity-holder");
+        let target = holder.join("real");
+        let symlink = holder.join("link");
+        let repo_root = scratch_dir("path-identity-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, &symlink).unwrap();
+
+        let alternate_spellings = [
+            symlink.clone(),
+            PathBuf::from(format!("{}/", symlink.display())),
+            PathBuf::from(format!("{}/../real", target.display())),
+        ];
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        for spelling in &alternate_spellings {
+            assert_eq!(
+                install_harness(&repo_root, spelling, "kiro-cli-v2", false),
+                0
+            );
+            assert_stays_opted_out(&target, &spelling.display().to_string());
+        }
+
+        fs::remove_dir_all(&holder).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn opting_out_through_a_symlink_is_seen_by_the_real_path() {
+        let _home = HomeGuard::new("symlink-first-home");
+        let holder = scratch_dir("symlink-first-holder");
+        let target = holder.join("real");
+        let symlink = holder.join("link");
+        let repo_root = scratch_dir("symlink-first-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, &symlink).unwrap();
+
+        assert_eq!(
+            install_harness(&repo_root, &symlink, "kiro-cli-v2", true),
+            0
+        );
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert_stays_opted_out(&target, "real path after opting out via symlink");
+
+        fs::remove_dir_all(&holder).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    // ── First-ever install --no-telemetry: no record to remove ──────────
+
+    #[test]
+    fn install_no_telemetry_on_a_target_with_no_existing_record_is_a_harmless_noop() {
+        let _home = HomeGuard::new("no-telemetry-no-record-home");
+        let target = scratch_dir("no-telemetry-no-record-target");
+        let repo_root = scratch_dir("no-telemetry-no-record-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "sanity check: a fresh target has no install-info.json before this run"
+        );
+
+        let exit_code = dispatch_install_with(
+            Some(repo_root.display().to_string()),
+            Some(target.display().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            true, /* no_telemetry: --no-telemetry on a first-ever install */
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        assert_eq!(
+            exit_code, 0,
+            "a first-ever --no-telemetry install must still succeed"
+        );
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "no record existed before this run, and none must be written by it either"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    // ── Removal failure: must warn, not be swallowed by a bare eprintln! ─
+
+    /// Asserted directly against
+    /// `remove_telemetry_record_for_no_telemetry_install`'s own return
+    /// value rather than captured `println!` output -- this crate's
+    /// tests do not capture stdout in-process (see `uninstall.rs`'s
+    /// `report_single_stale_message_differs_from_real_success_message`
+    /// for the same documented constraint) -- which is exactly why that
+    /// function was extracted on its own.
+    #[test]
+    fn no_telemetry_removal_failure_is_surfaced_as_a_warning_not_swallowed() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if bin_link::running_as_root() {
+            eprintln!(
+                "skipping no_telemetry_removal_failure_is_surfaced_as_a_warning_not_swallowed: \
+                 running as root, which bypasses the DAC permission denial this test depends on"
+            );
+            return;
+        }
+
+        let target = scratch_dir("removal-failure-target");
+        let source = scratch_dir("removal-failure-source");
+        seed_synthed_agent(&source, "k-example");
+        crate::cli::telemetry::write_install_info(
+            &target,
+            &source,
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+        )
+        .unwrap();
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        assert!(
+            record_path.is_file(),
+            "sanity check: the record must exist before the directory is locked down"
+        );
+
+        // Strip write permission from the target's own `.konductor/`
+        // directory -- `fs::remove_file` needs write permission on the
+        // PARENT directory, not the file's own permission bits, so
+        // this is what actually makes the removal fail.
+        let konductor_dir = target.join(".konductor");
+        let mut perms = fs::metadata(&konductor_dir).unwrap().permissions();
+        perms.set_mode(0o555);
+        fs::set_permissions(&konductor_dir, perms).unwrap();
+
+        let warning = remove_telemetry_record_for_no_telemetry_install(&target);
+
+        // Restore permissions before any assertion can panic and skip
+        // this cleanup, so a failing run never leaves a read-only
+        // directory behind for the next test using the same scratch
+        // root pattern.
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&konductor_dir, restored);
+
+        let warning = warning.expect(
+            "a removal failure must produce a warning for report_install_success to render, \
+             not be swallowed by a bare eprintln!",
+        );
+        assert!(
+            warning.contains(&record_path.display().to_string()),
+            "the warning must name the file that could not be removed; got: {warning}"
+        );
+        assert!(warning.contains("could not remove"), "got: {warning}");
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
     }
 
     #[test]
@@ -2431,6 +3429,44 @@ mod tests {
         assert!(
             summary.contains("(version: 0.1.1)"),
             "summary must report the installed content's own version, got: {summary:?}"
+        );
+    }
+
+    /// After a Kiro CLI v2 install the summary is followed by one line
+    /// naming every kiro-cli version in
+    /// `SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH`, the `/tools` re-check and
+    /// the installed `k-developer` agent file to compare against; the v3
+    /// and Claude harnesses print no such line.
+    #[test]
+    fn checked_kiro_versions_line_names_every_checked_version_on_v2_only() {
+        use crate::cli::synth::kiro_cli_v2::SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH;
+
+        let target = Path::new("/home/me");
+        let line = checked_kiro_versions_line(target, "kiro-cli-v2").expect("v2 prints the line");
+        for version in SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH {
+            assert!(line.contains(version), "missing {version} in {line:?}");
+        }
+        assert!(
+            line.contains("checked against kiro-cli 2.36.0 and 3.0.0"),
+            "{line:?}"
+        );
+        assert!(
+            line.contains(
+                "run `/tools` in a `kiro-cli chat --agent-engine v2 --agent k-developer`"
+            ),
+            "{line:?}"
+        );
+        assert!(
+            line.contains(
+                "compare with the `tools` list in /home/me/.kiro/agents/k-developer.json"
+            ),
+            "{line:?}"
+        );
+
+        assert_eq!(checked_kiro_versions_line(target, "kiro-v3"), None);
+        assert_eq!(
+            checked_kiro_versions_line(target, claude::CLAUDE_HARNESS_DIR),
+            None
         );
     }
 
@@ -3608,7 +4644,7 @@ mod tests {
     /// `install_sop_skills`), so the summary must say so -- never the
     /// Kiro-only "skipped ... no runtime discovery path yet" wording the
     /// test above pins for Kiro CLI. Mirrors
-    /// `generated/claude-plugin/README.md`'s former "Known gap" section
+    /// the plugin build README's former "Known gap" section
     /// (`konductor install --harness claude` printed "skipped 19 SOP(s)"
     /// while having, in the same run, correctly installed all 19).
     #[test]
@@ -3658,8 +4694,8 @@ mod tests {
             .join(harness_dir)
             .join(SOPS_CONTENT_TYPE_DIR);
         fs::create_dir_all(&sops_dir).unwrap();
-        fs::write(sops_dir.join("asdlc-plan.sop.md"), b"# Plan\n").unwrap();
-        fs::write(sops_dir.join("asdlc-verify.sop.md"), b"# Verify\n").unwrap();
+        fs::write(sops_dir.join("k-plan.sop.md"), b"# Plan\n").unwrap();
+        fs::write(sops_dir.join("k-verify.sop.md"), b"# Verify\n").unwrap();
         // A non-`.sop.md` file must not be counted.
         fs::write(sops_dir.join("README.md"), b"notes\n").unwrap();
 
@@ -3759,9 +4795,101 @@ mod tests {
         assert_eq!(value["mcp_binary_version"], "v0.2.0");
     }
 
+    fn unwritten_aws_mcp_rules() -> manifest::AwsMcpRulesRecord {
+        manifest::AwsMcpRulesRecord {
+            written: false,
+            reason: Some(
+                "failed to parse /tmp/example-target/.claude/settings.json as JSON".to_string(),
+            ),
+            ask: vec!["mcp__aws-mcp__aws___run_script".to_string()],
+            allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+            added: manifest::AddedPermissionRules::default(),
+        }
+    }
+
+    #[test]
+    fn unwritten_aws_mcp_rules_block_names_the_file_the_reason_and_the_rules() {
+        let block = format_unwritten_aws_mcp_rules(
+            Path::new("/tmp/example-target"),
+            Some(&unwritten_aws_mcp_rules()),
+        )
+        .expect("unwritten rules must produce the block");
+
+        assert_eq!(
+            block,
+            "konductor install: AWS MCP permission rules were NOT written\n  \
+             file:   /tmp/example-target/.claude/settings.json\n  \
+             reason: failed to parse /tmp/example-target/.claude/settings.json as JSON\n\
+             Until you add these rules to that file by hand (merge them into its \
+             \"permissions\" object), nothing makes Claude Code ask before the AWS MCP tools \
+             that act on AWS:\n\
+             {\n  \"permissions\": {\n    \"ask\": [\n      \
+             \"mcp__aws-mcp__aws___run_script\"\n    ],\n    \"allow\": [\n      \
+             \"mcp__aws-mcp__aws___list_regions\"\n    ]\n  }\n}"
+        );
+        let fragment = &block[block.find('{').unwrap()..];
+        let parsed: serde_json::Value =
+            serde_json::from_str(fragment).expect("the rules must be copy-pasteable JSON");
+        assert_eq!(
+            parsed["permissions"]["ask"],
+            serde_json::json!(["mcp__aws-mcp__aws___run_script"])
+        );
+    }
+
+    #[test]
+    fn unwritten_aws_mcp_rules_block_is_absent_when_written_or_not_applicable() {
+        let written = manifest::AwsMcpRulesRecord {
+            written: true,
+            reason: None,
+            ..unwritten_aws_mcp_rules()
+        };
+        let destination = Path::new("/tmp/example-target");
+        assert_eq!(
+            format_unwritten_aws_mcp_rules(destination, Some(&written)),
+            None
+        );
+        assert_eq!(format_unwritten_aws_mcp_rules(destination, None), None);
+    }
+
+    #[test]
+    fn aws_mcp_rules_json_field_carries_written_file_reason_and_rules() {
+        let destination = Path::new("/tmp/example-target");
+        assert_eq!(
+            aws_mcp_rules_json(destination, Some(&unwritten_aws_mcp_rules())),
+            serde_json::json!({
+                "written": false,
+                "file": "/tmp/example-target/.claude/settings.json",
+                "reason": "failed to parse /tmp/example-target/.claude/settings.json as JSON",
+                "rules": {"permissions": {
+                    "ask": ["mcp__aws-mcp__aws___run_script"],
+                    "allow": ["mcp__aws-mcp__aws___list_regions"]
+                }}
+            })
+        );
+        let written = manifest::AwsMcpRulesRecord {
+            written: true,
+            reason: None,
+            allow: Vec::new(),
+            ..unwritten_aws_mcp_rules()
+        };
+        assert_eq!(
+            aws_mcp_rules_json(destination, Some(&written)),
+            serde_json::json!({
+                "written": true,
+                "file": "/tmp/example-target/.claude/settings.json",
+                "reason": null,
+                "rules": {"permissions": {"ask": ["mcp__aws-mcp__aws___run_script"]}}
+            })
+        );
+        assert_eq!(
+            aws_mcp_rules_json(destination, None),
+            serde_json::Value::Null
+        );
+    }
+
     /// Companion to the test above, for the Claude harness: `sops_skipped`
     /// keeps its established numeric meaning (the count of staged
-    /// `.sop.md` files -- 19 in the real `generated/claude-plugin/`
+    /// `.sop.md` files -- 19 in the real plugin build
     /// case), and the new `sops_converted_to_skills` flag is `true`,
     /// disambiguating that those files were actually installed as
     /// `sop-<name>/SKILL.md` skills rather than genuinely skipped.
@@ -4285,6 +5413,61 @@ mod tests {
             "--force must bypass the version-match skip and reach the real fetch attempt"
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// `--no-telemetry` on a target already at exactly the requested
+    /// `--version` must bypass the skip, so the opt-out still removes
+    /// the existing record.
+    #[test]
+    fn dispatch_install_with_version_matching_recorded_version_with_no_telemetry_still_opts_out() {
+        let _home = HomeGuard::new("install-version-no-telemetry-bypass-home");
+        let target = scratch_dir("install-version-no-telemetry-bypass-target");
+        let repo_root = scratch_dir("install-version-no-telemetry-bypass-repo");
+        seed_dist_version(&repo_root, "1.5.0");
+        crate::cli::telemetry::write_install_info(
+            &target,
+            &repo_root,
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+        )
+        .unwrap();
+
+        let remote_installer_called = std::rc::Rc::new(std::cell::Cell::new(false));
+        let remote_installer_called_check = remote_installer_called.clone();
+        let code = dispatch_install_with_remote_installer(
+            None,
+            Some(target.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            true, // --no-telemetry
+            false,
+            Some("1.5.0".to_string()),
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+            move |_strategy, _destination, _installed_at, _no_telemetry| {
+                remote_installer_called_check.set(true);
+                Ok((
+                    remote_orchestrate::RemoteInstallSource::GithubRelease,
+                    remote::RemoteInstallOutcome {
+                        mcp_binary_version: None,
+                    },
+                ))
+            },
+        );
+        assert!(
+            remote_installer_called.get(),
+            "--no-telemetry must bypass the version-match skip and reach the install step"
+        );
+        assert_eq!(code, 0);
+        assert!(
+            !crate::cli::telemetry::install_info_path(&target).exists(),
+            "--no-telemetry must remove the existing record even at a matching version"
+        );
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();

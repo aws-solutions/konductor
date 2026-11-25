@@ -51,16 +51,14 @@ This does two things, in order:
    Code agent file with every declared skill's `SKILL.md` body inlined
    directly into it, and installs a copy into `~/.claude/agents/` (see
    [How agent files get generated](#how-agent-files-get-generated) below).
-2. Runs every scenario in `tests/asdlc-quality-assurance/` against that
+2. Runs every scenario in `tests/k-quality-assurance/` against that
    agent via `claude --agent k-quality-assurance -p ...`, writes results
    to `benchmark-results/k-quality-assurance.json`, and prints a
    pass/fail summary.
 
-The scenario directory is still named `asdlc-*` while the agent is `k-*`:
 `--agent` is matched against the subset's `name` in `tests/registry.json`, and
 the directory is read from that same entry's `datasetPath`. The two are
 independent, so you always pass the agent name and never the directory name.
-A later phase renames the directories and their `datasetPath` values together.
 
 Flags (all optional except `--agent`):
 
@@ -87,8 +85,8 @@ runtime limitation is resolved upstream.
 
 ### MCP servers are not configured by this harness
 
-`tools:` is emitted verbatim from the agent spec, so a glob like
-`mcp__aws-mcp__*` appears there — but no `mcpServers:` block is written, and
+`tools:` is emitted verbatim from the agent spec, so a grant like
+`mcp__aws-mcp__aws___search_documentation` appears there, but no `mcpServers:` block is written, and
 `dependencies.mcpRegistry` is not read. Konductor does not bundle MCP servers;
 install any server a scenario needs yourself. `requiredMcpServer` in
 `tests/registry.json` records that expectation, it does not provision anything.

@@ -26,15 +26,22 @@ Everything Konductor does is plain JSON and Markdown in the repository. There is
 behaviour, no database, no hidden state — so you can read exactly what an agent will do, and change
 it.
 
-Five files control five different things. Pick the smallest one that achieves what you want.
+Seven files control seven different things. Pick the smallest one that achieves what you want.
 
 | Change | Edit | Effect |
 | --- | --- | --- |
-| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules and writing habits, loaded at session start for every agent |
-| Which specialist handles which kind of request | `context/k-orchestrator-routing-rules.md` | Routing, loaded at session start for all three orchestrators |
+| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent |
+| Which specialist handles which kind of request | `context/k-orchestrator-routing-rules.md` | Routing, loaded at session start for the mux and cmux orchestrators |
+| What every orchestrator does with handoffs, splits, denials and briefs | `context/k-orchestrator-shared.md` | Shared orchestrator rules, loaded at session start for `konductor` and the mux and cmux orchestrators |
+| What `konductor` does itself and when it hands off | `context/k-direct-work.md` | Direct work, phase reviews, and handoffs, loaded at session start for `konductor` |
 | The steps of one workflow | `agent-sops/<name>.sop.md` | That SOP's steps, constraints, and quality gates |
 | How an agent reasons about one topic | `skills/<name>/SKILL.md` | Guidance that agent loads on demand |
 | An agent's prompt, model, tools, or dependencies | `agents/<name>.agent-spec.json` | That agent, in both runtimes |
+
+For an agent with both `kiroCli` and `claudeCli` config, write `config.model` as a Kiro CLI model ID
+in its dotted form (`claude-sonnet-5.5`), or `auto`. `konductor synth` converts it for Claude Code
+(`claude-sonnet-5-5`, or `inherit` for `auto`) and fails on anything else. A Claude-only agent can
+also use Claude Code's own IDs and aliases, such as `claude-opus-4-1` or `sonnet`.
 
 ### Routing lives in two places
 
@@ -46,8 +53,8 @@ the skill wins.
 
 ### Adding a skill to an agent
 
-A skill has to be named in **two** places or it will only load in one runtime — the dependency
-list `konductor synth` reads for either harness, and the Claude Code skill list:
+Name the skill in the agent's dependency list, which `konductor synth` reads for either harness.
+Both runtimes then load it on demand:
 
 ```json
 {
@@ -55,14 +62,27 @@ list `konductor synth` reads for either harness, and the Claude Code skill list:
     "skills": {
       "skillNames": ["my-new-skill"]
     }
-  },
-  "clientConfig": {
-    "claudeCli": {
-      "skills": ["my-new-skill"]
-    }
   }
 }
 ```
+
+On Claude Code the agent loads it through the `Skill` tool. If the spec sets
+`clientConfig.claudeCli.tools`, that list must include `Skill`, and `konductor synth` warns when it
+does not. Omitting the key grants every tool, `Skill` included.
+
+Add it to `clientConfig.claudeCli.skills` as well only if a Claude Code subagent needs it in
+context before its first turn. Claude Code injects every skill in that list into each spawned
+subagent, so `konductor synth` warns when an agent's list passes 32 KiB or 32 names. Claude Code
+silently drops the names past 32, and the warning lists them.
+
+`skillNames` is the set of skills the agent's own file lists as loadable. Kiro CLI holds the agent
+to that list, through the name filter it passes the bundled `skill-lookup` server. A Claude Code
+install copies every skill into `.claude/skills/` with no per-agent filter, so there any installed
+skill stays reachable through the `Skill` tool.
+`claudeCli.skills` is the Claude Code preload, so it is normally a subset of `skillNames`. The one
+exception is a skill that applies only on Claude Code and says so in its description, with the
+words "Claude Code only" or "only in Claude Code". It goes in `claudeCli.skills` alone and is not
+declared for Kiro CLI. Today that is `claude-teams-behavior` on `konductor`.
 
 There is no per-skill entry under `clientConfig.kiroCli.resources`. Kiro CLI reaches installed
 skills through the bundled `skill-lookup` MCP server, not through its own `.kiro/skills/` scan —
@@ -109,6 +129,28 @@ Create `agent-sops/<name>.sop.md` following the shape every existing SOP uses:
 ## Quality Gate      (optional) the conditions for done
 ## Troubleshooting   (optional)
 ```
+
+List the SOP in `cli/gate-config/sop-orchestration.yml`. A gated SOP, one that stops between steps
+for an approval, a threshold check or a loop exit, is a map with `gates` and `basis`. Any other SOP
+goes under `not_gated` as `name: reason`, one line of text. A gated SOP also needs the marker
+paragraph and the gate note between the title and `## Overview`:
+
+```text
+# Title
+
+Orchestration: strict (phase-gated SOP)
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP's own round-cap rule says to proceed; record which.
+
+Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.
+
+## Overview
+```
+
+A gated `basis` cites at least one step by its heading text in backticks, without the step or phase
+number, so it survives renumbering. Run `make sop-orchestration-check`; it fails on an unlisted SOP, a
+missing or misplaced marker or gate note, a basis that cites no heading (`uncited-basis`), or a cited
+heading that no longer exists. The check needs PyYAML and exits 3 without it. Run it again whenever
+you edit or renumber the steps of a listed SOP, and update `basis` if a gate moved.
 
 Use RFC 2119 wording deliberately — `MUST`, `MUST NOT`, `SHOULD`, `MAY`. It is how an agent tells a
 hard rule from a preference, and it is why the existing SOPs behave consistently.
@@ -198,15 +240,14 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ### Checks before you open a pull request
 
 ```bash
-cargo fmt --check
+TOOLCHAIN=1.100.0  # RUST_LINT_TOOLCHAIN in .github/workflows/validate-pr.yml
+rustup toolchain install "$TOOLCHAIN" --profile minimal -c clippy -c rustfmt
+make lint CARGO="cargo +$TOOLCHAIN"
 ```
 
-```bash
-cargo clippy -- -D warnings
-```
-
-Clippy is configured to treat every warning as an error, so a clean run is required rather than
-advisory.
+This runs `cargo clippy -- -D warnings` and `cargo fmt --check` on the `cli`, `mcp` and `shared`
+crates with the Rust version PR CI lints on. Clippy treats every warning as an error, so a clean
+run is required rather than advisory.
 
 ---
 
@@ -297,7 +338,7 @@ ls skills | wc -l
 ```
 
 ```text
-      82
+      79
 ```
 
 Compare that against the union of every spec's declared skills. A mismatch means a skill exists that
@@ -344,7 +385,7 @@ a security problem.
 ## Related
 
 - [Agents reference](../agents.md) — every agent's model, tools, access, and delegation targets
-- [Skills catalog](../skills.md) — all 82 skills and which agents declare each
+- [Skills catalog](../skills.md) — all 79 skills and which agents declare each
 - [SOP workflows](../sop-workflows/README.md) — the 19 procedures and their structure
 - [CLI reference](../reference.md) — the full command, flag, config, and exit-code contract
 

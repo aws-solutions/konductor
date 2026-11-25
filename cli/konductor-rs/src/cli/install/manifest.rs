@@ -299,6 +299,48 @@ pub struct StrategyManifest {
     #[serde(default)]
     pub status: Status,
     pub files: Vec<ManifestFile>,
+    /// The `claude` strategy's `aws-mcp` permission rules outcome for
+    /// `.claude/settings.json`. `None` when no installed agent uses
+    /// `aws-mcp`, for every other strategy, and in a manifest predating
+    /// the field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aws_mcp_rules: Option<AwsMcpRulesRecord>,
+}
+
+/// What a Claude Code install did with the `aws-mcp` `ask`/`allow` rules.
+/// `ask` and `allow` are the full `mcp__aws-mcp__<tool>` rules the install
+/// meant to merge. When `written` is false, `reason` says why the settings
+/// file could not take them, and none of them was written this run.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct AwsMcpRulesRecord {
+    pub written: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub ask: Vec<String>,
+    #[serde(default)]
+    pub allow: Vec<String>,
+    /// The entries Konductor itself appended to the settings file, over
+    /// this and earlier installs, and that are still there. Uninstall
+    /// removes exactly these, never an entry the user already had.
+    #[serde(default, skip_serializing_if = "AddedPermissionRules::is_empty")]
+    pub added: AddedPermissionRules,
+}
+
+/// `permissions.ask` and `permissions.allow` entries Konductor appended to
+/// a Claude Code settings file.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct AddedPermissionRules {
+    #[serde(default)]
+    pub ask: Vec<String>,
+    #[serde(default)]
+    pub allow: Vec<String>,
+}
+
+impl AddedPermissionRules {
+    pub fn is_empty(&self) -> bool {
+        self.ask.is_empty() && self.allow.is_empty()
+    }
 }
 
 impl StrategyManifest {
@@ -320,6 +362,7 @@ impl StrategyManifest {
             source,
             status,
             files,
+            aws_mcp_rules: None,
         }
     }
 }
@@ -373,6 +416,7 @@ impl From<LegacyManifestV1> for Manifest {
                 source: legacy.source,
                 status: legacy.status,
                 files: legacy.files,
+                aws_mcp_rules: None,
             }],
         }
     }
@@ -1218,6 +1262,74 @@ mod tests {
         let bytes = fs::read(&path).unwrap();
         assert!(bytes.ends_with(b"\n"));
         fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Producer side of the manifest contract shared with
+    /// `skill-lookup-core`, whose reader parses the same file. Slots and
+    /// files are built out of order so the writer's sorting is part of
+    /// what the fixture pins.
+    #[test]
+    fn serialized_manifest_matches_shared_contract_fixture() {
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../mcp/lib/skill-lookup-core/testdata/install-manifest.v2.json");
+        let expected = fs::read_to_string(&fixture_path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", fixture_path.display()));
+        let file = |path: &str, sha256: Option<&str>, provenance: Provenance| ManifestFile {
+            path: path.to_string(),
+            sha256: sha256.map(str::to_string),
+            provenance,
+        };
+        let slot = |strategy: &str, files: Vec<ManifestFile>| {
+            StrategyManifest::new(
+                strategy,
+                "2026-01-15T09:30:00Z",
+                ".",
+                Some("/src/konductor".to_string()),
+                Status::Complete,
+                files,
+            )
+        };
+        let manifest = Manifest {
+            schema_version: SCHEMA_VERSION,
+            strategies: vec![
+                slot(
+                    "kiro-cli-v2",
+                    vec![
+                        file(
+                            ".konductor/skills/code-review/references/checklist.md",
+                            None,
+                            Provenance::ReplacedForeign,
+                        ),
+                        file(
+                            ".konductor/skills/code-review/SKILL.md",
+                            Some(&"3".repeat(64)),
+                            Provenance::Created,
+                        ),
+                        file(
+                            ".kiro/agents/k-example.json",
+                            Some(&"1".repeat(64)),
+                            Provenance::ReplacedOurs,
+                        ),
+                    ],
+                ),
+                slot(
+                    "claude",
+                    vec![file(
+                        ".claude/skills/code-review/SKILL.md",
+                        Some(&"2".repeat(64)),
+                        Provenance::Created,
+                    )],
+                ),
+            ],
+        };
+        let actual = String::from_utf8(serialize(&manifest).unwrap()).unwrap();
+        assert_eq!(
+            actual,
+            expected,
+            "the installer's manifest output changed; update {} and check that \
+             skill-lookup-core's install_manifest reader still parses it",
+            fixture_path.display()
+        );
     }
 
     #[test]

@@ -35,24 +35,34 @@ if [ -e "$OUT" ]; then
   echo "assemble-claude-plugin-branch.sh: $OUT already exists; refusing to overwrite" >&2
   exit 1
 fi
-if [ ! -f README.md ] || [ ! -f LICENSE.txt ]; then
-  echo "error: [assemble-claude-plugin] README.md and/or LICENSE.txt not found at repo root" >&2
+if [ ! -f README.md ] || [ ! -f LICENSE.txt ] || [ ! -f NOTICE.txt ]; then
+  echo "error: [assemble-claude-plugin] README.md, LICENSE.txt and/or NOTICE.txt not found at repo root" >&2
   exit 1
 fi
 
-"$REPO_ROOT/scripts/generate-claude-plugin.sh"
+# Generator output is staged outside the repository and removed on exit.
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+"$REPO_ROOT/scripts/generate-claude-plugin.sh" --out "$STAGE"
 
 mkdir -p "$OUT/agents" "$OUT/skills" "$OUT/.claude-plugin"
-cp generated/claude-plugin/agents/*.md "$OUT/agents/"
+cp "$STAGE"/agents/*.md "$OUT/agents/"
 
 # Fails if a native skill and an SOP-derived skill share a name.
 "$REPO_ROOT/scripts/copy-skills-with-collision-guard.sh" \
   --native "$REPO_ROOT/skills" \
-  --sop "$REPO_ROOT/generated/claude-plugin/skills" \
+  --sop "$STAGE/skills" \
   --out "$OUT/skills"
 
 cp README.md "$OUT/README.md"
+# The plugin directory's listing icon, a 1024 px render of docs/assets/konductor-logo.svg.
+# It sits at the plugin root, where plugin.json's `icon` points.
+cp "$REPO_ROOT/docs/assets/konductor-icon.png" "$OUT/icon.png"
 cp LICENSE.txt "$OUT/LICENSE.txt"
+cp NOTICE.txt "$OUT/NOTICE.txt"
+python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-readme-links.py" \
+  --readme "$OUT/README.md" \
+  --version-file "$REPO_ROOT/VERSION"
 
 BUNDLED_MCP_SERVERS="$("$REPO_ROOT/scripts/read-bundled-mcp-servers.sh")"
 
@@ -60,7 +70,6 @@ python3 "$REPO_ROOT/scripts/render-claude-plugin-json.py" \
   --template "$REPO_ROOT/scripts/claude-plugin.template.json" \
   --version-file "$REPO_ROOT/VERSION" \
   --agents-dir "$OUT/agents" \
-  --path-prefix "./" \
   --agent-specs-dir "$REPO_ROOT/agents" \
   --mcp-output "$OUT/.mcp.json" \
   --bundled-mcp-servers "$BUNDLED_MCP_SERVERS" \
@@ -82,10 +91,11 @@ python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-agent-grants.py" \
   --agents-dir "$OUT/agents" \
   --plugin-json "$OUT/.claude-plugin/plugin.json"
 
-# Telemetry hook. hooks.json is generated from the assembled agents/ so the
-# SubagentStart matcher covers every agent shipped.
+# Telemetry and dispatch-environment hooks. hooks.json is generated from the
+# assembled agents/ so the SubagentStart matcher covers every agent shipped.
 mkdir -p "$OUT/hooks" "$OUT/docs"
 cp "$REPO_ROOT/scripts/claude-plugin-telemetry-hook.js" "$OUT/hooks/konductor-telemetry.js"
+cp "$REPO_ROOT/scripts/claude-plugin-dispatch-env-hook.sh" "$OUT/hooks/konductor-dispatch-env.sh"
 cp "$REPO_ROOT/docs/telemetry-schema.json" "$OUT/docs/telemetry-schema.json"
 python3 "$REPO_ROOT/scripts/render-claude-plugin-hooks-json.py" \
   --agents-dir "$OUT/agents" \

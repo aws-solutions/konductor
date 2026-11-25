@@ -23,18 +23,21 @@ konductor uninstall --dry-run
 ```text
 Would remove Konductor 1.0.0 from Kiro CLI:
   agents          11
-  skills          82
+  skills          79
   SOPs            19
   context files    2
 
-  skills/backend-review/SKILL.md   (local edits would be destroyed)
+  skills/backend-review/SKILL.md   (changed since install; kept)
 
 Project files under .konductor/ would be left in place.
 ```
 
-`--dry-run` touches the filesystem in no way at all. It flags each individual path whose
-content has diverged from the hash recorded in the manifest — that is, a file you hand-edited
-after install — in plain text as above, or as a per-path `"diverged"` boolean under `--json`.
+`--dry-run` touches the filesystem in no way at all. It marks each path whose content changed
+since install, a file you hand-edited, as `(changed since install; kept)`, and a Kiro agent file
+that `kiro-cli agent upgrade` rewrote as `(rewritten by Kiro; removed)`. It also lists the Kiro
+agent backups a real run would leave. Under `--json`, `would_delete` holds only the files a real
+run removes and `would_keep` the changed files it keeps, each with a count
+(`would_delete_count`, `would_keep_count`), and `kept_backups` lists the backups.
 
 ### Then remove it
 
@@ -46,15 +49,28 @@ konductor uninstall
 Removed. Project files under .konductor/ were left in place.
 ```
 
+The removal includes the session-start hook that install wired for `konductor`: the Kiro CLI v3 hooks document, the `agentSpawn` entry in the Kiro CLI v2 agent file, or the `SessionStart` block in the Claude Code hooks settings file. Your `orchestration` setting in `~/.konductor/config.yml` stays.
+
 Exit code `0`. `uninstall` removes every path listed in that target's `.konductor/manifest`,
 the manifest itself, any now-empty directories under the managed destinations, and the
 target's entry in `~/.konductor/installs`. `~/.konductor/installs` itself is never deleted,
 even when its last entry goes. If the install used `--link-bin`, the symlink at
 `$HOME/.local/bin/konductor` is removed too.
 
-A real run also names the specific files it deleted whose hash had diverged from the
-manifest. That is a disclosure after the fact, not a safeguard — it does not block the
-deletion, which is why `--dry-run` exists.
+A file you changed after install is kept. `uninstall` prints a warning naming it and still
+exits `0`. The kept file is still live, so your runtime keeps loading it, but it is no longer
+tracked: delete it yourself if you do not want it. For a kept Kiro CLI v3 hooks document, the
+warning also names the Konductor hook entries to remove from it.
+
+Kiro CLI's `kiro-cli agent upgrade` rewrites each `.kiro/agents/<name>.json` and saves the
+original as `<name>.json.bak`. When that backup matches what Konductor installed, `uninstall`
+removes the rewritten agent file. It never deletes a `.bak` file: it prints a warning listing
+each matching backup by full path, and you can remove them by hand. A backup that does not
+match is left alone and not listed.
+
+`uninstall` cannot tell Kiro's rewrite from an edit you made after running
+`kiro-cli agent upgrade`, because the backup still matches in both cases. An agent file you
+edited after the upgrade is removed too. Copy it somewhere else first if you want to keep it.
 
 ### Choosing which install to remove
 
@@ -142,6 +158,18 @@ Only if you set these for Konductor and want them gone. Edit `~/.claude/settings
 $EDITOR ~/.claude/settings.json
 ```
 
+You do not need to remove the AWS MCP rules `konductor install --harness claude` added. Those are
+`mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and
+`mcp__aws-mcp__aws___get_tasks` under `permissions.ask`, and `mcp__aws-mcp__<tool>` under
+`permissions.allow` for `aws___search_documentation`, `aws___retrieve_skill`,
+`aws___read_documentation`, `aws___list_regions` and `aws___get_regional_availability`. Install
+records the entries it appended, and `uninstall` removes exactly those, from
+`~/.claude/settings.json` or, with
+`--target`, `<target>/.claude/settings.json`. It keeps any entry you already had before install,
+even one identical to Konductor's, and leaves the file and its other content in place. It never
+follows a symlinked `.claude` or `settings.json`; then it warns and names the entries to remove by
+hand.
+
 Edit rather than delete the file — it very likely holds settings unrelated to Konductor.
 
 ---
@@ -178,6 +206,9 @@ For reference, so you can confirm nothing is left behind:
 | Location | Created by | Removed by |
 | --- | --- | --- |
 | Runtime agent directories | `konductor install` | `konductor uninstall` |
+| Session-start hook: `.kiro/hooks/konductor-orchestration-hooks.json` (Kiro CLI v3), the `agentSpawn` entry in `.kiro/agents/konductor.json` (Kiro CLI v2), the `SessionStart` block in the Claude Code hooks settings file | `konductor install` | `konductor uninstall` |
+| `.konductor/context/` under the install target (Claude Code installs only; `.konductor/memory/` is kept) | `konductor install` | `konductor uninstall` |
+| The AWS MCP `permissions.ask` and `permissions.allow` entries in `.claude/settings.json` (Claude Code installs only; entries you already had are kept) | `konductor install` | `konductor uninstall` |
 | `<project>/.konductor/config.yml` | `konductor init` | you, manually |
 | `<project>/dist/` | `konductor synth` | you, manually — gitignored |
 | `~/.konductor/logs/konductor.log` | every CLI invocation | you, manually |

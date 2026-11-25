@@ -111,16 +111,17 @@ fn mark_konductor_installed(root: &Path, records: &mut [SkillRecord]) {
         return;
     }
 
-    // The manifest's `files[].path` entries are relative to `target_dir`
-    // (the install root two directory levels above a `--skills-dir`
-    // root -- see `install_manifest::manifest_relative_path`'s doc
-    // comment), so the anchor to strip from each record's absolute path
-    // is `root`'s own canonical grandparent, not `root` itself. Computed
-    // from `canonical_root(root)` (the same canonicalization
-    // `scan_directory` already uses for its own containment checks),
-    // not from `root` directly, so a relative or symlinked-ancestor
-    // `--skills-dir` argument (see `scan_directory`'s doc comment for
-    // why that matters) doesn't wrongly fail every lookup under it.
+    // Every manifest file path (v2 strategies[].files[].path or v1
+    // files[].path) is relative to target_dir (the install root two
+    // directory levels above a `--skills-dir` root -- see
+    // `install_manifest::manifest_relative_path`'s doc comment), so the
+    // anchor to strip from each record's absolute path is `root`'s own
+    // canonical grandparent, not `root` itself. Computed from
+    // `canonical_root(root)` (the same canonicalization `scan_directory`
+    // already uses for its own containment checks), not from `root`
+    // directly, so a relative or symlinked-ancestor `--skills-dir`
+    // argument (see `scan_directory`'s doc comment for why that matters)
+    // doesn't wrongly fail every lookup under it.
     let canonical = canonical_root(root);
     let target_dir_anchor: Option<PathBuf> = canonical
         .as_deref()
@@ -1856,7 +1857,7 @@ mod tests {
             .map(|path| format!(r#"{{"path":"{path}","sha256":null,"provenance":"created"}}"#))
             .collect();
         let manifest = format!(
-            r#"{{"schema_version":1,"strategy":"kiro-cli","installed_at":"2026-01-01T00:00:00Z","destination":".","status":"complete","files":[{}]}}"#,
+            r#"{{"schema_version":2,"strategies":[{{"strategy":"kiro-cli-v2","installed_at":"2026-01-01T00:00:00Z","destination":".","source":null,"status":"complete","files":[{}]}}]}}"#,
             files_json.join(",")
         );
         fs::write(base.join(".konductor").join("manifest"), manifest).unwrap();
@@ -1972,6 +1973,9 @@ mod tests {
         // sibling manifest exists but is not valid JSON. Must fail open
         // exactly like the missing-manifest case above, never fail
         // closed (which would wrongly filter every skill in the root).
+        // The guard keeps the WARN this logs out of the real HOME and
+        // other tests' logs.
+        let _home = crate::test_home_lock::HomeGuard::new("manifest-scope-malformed-fails-open");
         let (base, skills_root) = manifest_scope_fixture("manifest-scope-malformed-fails-open");
         write_skill(
             &skills_root,

@@ -46,13 +46,106 @@ _DIAGRAM_DIR = {"agents": "agents", "skills": "skills", "SOPs": "agent-sops"}
 # for agents ("11 agent specs"), which is why this needs its own map.
 _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
-# Commands the CLI accepts but the guide deliberately does not document, with the
-# decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# Commands the CLI accepts but the guide deliberately does not document. `config`
+# is hidden (`#[command(hide = true)]` in cli/konductor-rs/src/cli.rs), so it is
+# not in cli/README.md's command list; the leak checks keep it out of the guide.
+WITHDRAWN_COMMANDS: set[str] = {"config"}
+
+_HIDDEN_COMMAND = re.compile(r"#\[command\(hide = true[^\]]*\]\s*\n\s*(\w+)\s*\{")
+
+
+STALE_DELEGATION_PHRASES = (
+    "can also spawn each other",
+    "carry Agent(...) tools",
+    "holds the subagent tool but can spawn nothing",
+    "via Agent(...)",
+    "adversarial handoff never fires",
+    "step 6 silently no-ops",
+    "Its step-6 adversarial pass never fires",
+    "Kiro CLI v2 is not covered",
+    "only the core rules stop",
+    "the core rules forbid it in Kiro CLI v2",
+    "cannot spawn the architect in either runtime",
+    "no spawn tool in either runtime",
+)
+# konductor's own delegation cell is the one place "via Agent(...)" is correct. The
+# Markdown source writes it as "the same 8, via `Agent(...)`"; the bundle drops the
+# comma and the backticks.
+KONDUCTOR_SPAWN_CELL = re.compile(r"the same 8,? via Agent\(\.\.\.\)")
+_INLINE_CODE = re.compile(r"`([^`\n]*)`")
+# kiro-cli 3.1.0 ships v2 as its default engine, and no minimum client version is
+# enforced; versions are checked, not required.
+STALE_VERSION_CLAIMS = ("last v2 release", "2.36.0 or later")
+KIRO_V2_SYNTH = Path("cli") / "konductor-rs" / "src" / "cli" / "synth" / "kiro_cli_v2.rs"
+
+
+def _flat(text: str) -> str:
+    """Collapse line wraps and indentation so a phrase split across Markdown or
+    doc-comment lines still matches."""
+    return " ".join(text.split())
+
+
+def stale_delegation_phrases(text: str) -> list[str]:
+    """Stale phrases in `text`, matched with inline-code backticks stripped so the
+    Markdown sources are checked by the same rule as the published bundle."""
+    plain = _flat(KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text)))
+    return [phrase for phrase in STALE_DELEGATION_PHRASES if phrase in plain]
+
+
+# `konductor` does the work itself; only the mux and cmux orchestrators are read-only
+# dispatchers. These describe the old all-dispatcher shape.
+STALE_DISPATCHER_PHRASES = (
+    "never implements",
+    "HUB \u2014 READ-ONLY",
+    "routing rules are always active",
+    "capability-to-agent routing table",
+    "routes each piece of work to the specialist that owns it",
+    "delegates all work",
+    "The orchestrators are dispatchers by design",
+    "its tool list has no",
+    "reads, synthesises, and routes",
+    "hands file edits and shell commands to",
+    "which routes design requests to",
+    "The orchestrator routes both to",
+    "The orchestrator routes this to",
+    "routes the design to",
+    "routes it to the owner",
+    "re-delegate, up to 2 cycles",
+    "which routes design work to",
+    "let it route",
+    "routing rules send code review to",
+    "which decides who owns it",
+)
+
+
+def hidden_commands(cli_rs_text: str) -> set[str]:
+    """Names of the clap variants marked `#[command(hide = true)]`, lower-cased."""
+    return {name.lower() for name in _HIDDEN_COMMAND.findall(cli_rs_text)}
+
+
+def withdrawn_command_problem(cmd: str, commands: list[str], hidden: set[str]) -> str | None:
+    if cmd in commands or cmd in hidden:
+        return None
+    return (f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md does not "
+            f"declare it and cli.rs has no hidden command of that name "
+            f"-- drop it from WITHDRAWN_COMMANDS")
+
+# The description wording that lets a skill sit in clientConfig.claudeCli.skills
+# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill to an agent").
+CLAUDE_ONLY_MARKER = re.compile(r"\bClaude Code only\b|\bonly in Claude Code\b")
+
+# A bundle roster row, in either of the two key spellings the published page
+# uses: `{ k: "name", v: "..." }` and `{"k":"name","v":"..."}`. Matching only
+# the unquoted form hid every row in the quoted one, which is where the
+# per-agent counts live.
+def ROSTER_ROW_RE_FOR(name: str) -> str:
+    return (r'\{\s*"?k"?\s*:\s*"' + re.escape(name)
+            + r'"\s*,\s*"?v"?\s*:\s*"(.*?)"\s*\}')
+
+
+# "38 · 2": declared skills, then the Claude Code preload. The rows in this
+# form state no unit, so a pattern anchored on the word "skills" skips them.
+ROSTER_COUNT_PAIR_RE = re.compile(r"\s*(\d+)\s*·\s*(\d+)\s*\Z")
 
 
 def html_pages_for_flags(root: Path):
@@ -85,6 +178,25 @@ def section(title: str) -> None:
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def find_lint_toolchain_pin(workflow: Path):
+    """Return (version, None) for the RUST_LINT_TOOLCHAIN pin, or (None, problem).
+
+    The pin is required, so a missing file, key, or non-literal value is a
+    problem rather than a skip. The guide comparison only understands X.Y.Z.
+    """
+    name = "validate-pr.yml"
+    if not workflow.is_file():
+        return None, f"{name} not found at {workflow.parent}; expected a RUST_LINT_TOOLCHAIN pin"
+    key = re.search(r"RUST_LINT_TOOLCHAIN:\s*(\S*)", read(workflow))
+    if key is None:
+        return None, f"{name} has no RUST_LINT_TOOLCHAIN key; the lint toolchain pin is required"
+    value = re.fullmatch(r"([\"']?)([0-9]+\.[0-9]+\.[0-9]+)\1", key.group(1))
+    if value is None:
+        return None, (f"RUST_LINT_TOOLCHAIN in {name} is {key.group(1)!r}; "
+                      "it must be a literal X.Y.Z version, optionally quoted")
+    return value.group(2), None
 
 
 def strip_md(cell: str) -> str:
@@ -170,21 +282,46 @@ def main() -> int:
             if "Skills" not in header or "Model" not in header:
                 continue
             i_agent, i_model, i_skills = 0, header.index("Model"), header.index("Skills")
+            # The preload column is the Claude Code subagent preload,
+            # clientConfig.claudeCli.skills, a subset of what the agent declares.
+            i_pre = next((header.index(h) for h in header if h.startswith("Preloaded")), None)
+            if i_pre is None:
+                fail(f"{page}: roster table has no Preloaded column")
             for row in rows:
                 name = strip_md(row[i_agent])
-                if name not in specs or len(row) <= max(i_model, i_skills):
+                # A row with fewer cells than the header declares used to be
+                # skipped, which turned a truncated roster row into a silent
+                # pass on every column it was missing. Report it instead.
+                if name not in specs:
+                    continue
+                if len(row) <= max(i_model, i_skills):
+                    fail(f"{page}: {name} roster row has {len(row)} cell(s), too few for the "
+                         f"Model and Skills columns the header declares")
                     continue
                 checked.add(name)
-                want_n = len(specs[name]["claude_skills"])
+                want_n = len(specs[name]["skill_names"])
                 if row[i_skills] != str(want_n):
-                    fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec has {want_n}")
+                    fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec declares {want_n}")
+                if i_pre is not None:
+                    if len(row) <= i_pre:
+                        fail(f"{page}: {name} roster row has {len(row)} cell(s), so it has no "
+                             f"Preloaded column cell")
+                    else:
+                        want_pre = len(specs[name]["claude_skills"])
+                        if row[i_pre] != str(want_pre):
+                            fail(f"{page}: {name} Preloaded column says {row[i_pre]!r}, "
+                                 f"spec preloads {want_pre}")
                 if row[i_model] != specs[name]["model"]:
                     fail(f"{page}: {name} Model says {row[i_model]!r}, spec says {specs[name]['model']!r}")
                 # SOP columns drift the same way the skill counts do -- one spec
                 # dropped a SOP as unusable and four places kept listing it.
                 # agents.md states a count; reference.md names them.
                 i_sops = next((header.index(h) for h in header if h.startswith("SOP")), None)
-                if i_sops is not None and len(row) > i_sops:
+                if i_sops is not None:
+                    if len(row) <= i_sops:
+                        fail(f"{page}: {name} roster row has {len(row)} cell(s), so it has no "
+                             f"SOP column cell")
+                        continue
                     want_sops = specs[name]["sops"]
                     cell = row[i_sops]
                     if header[i_sops] == "SOPs" and cell.isdigit():
@@ -209,19 +346,25 @@ def main() -> int:
     # skips it, which is how it kept five stale counts through a roster rewrite.
     skills_counts = {}
     for header, rows in parse_md_tables(read(guide / "skills.md")):
-        if header[:2] != ["Agent", "Skills preloaded (Claude Code)"]:
+        if header[:3] != ["Agent", "Skills declared", "Preloaded on Claude Code"]:
             continue
         for row in rows:
             name = strip_md(row[0])
-            if name in specs and len(row) > 1:
-                skills_counts[name] = row[1]
+            if name in specs and len(row) > 2:
+                skills_counts[name] = (row[1], row[2])
     if not skills_counts:
-        fail("skills.md: no 'Agent | Skills preloaded (Claude Code)' table found")
+        fail("skills.md: no 'Agent | Skills declared | Preloaded on Claude Code' table found")
     else:
-        bad = {n: v for n, v in skills_counts.items()
-               if v != str(len(specs[n]["claude_skills"]))}
-        for n, v in sorted(bad.items()):
-            fail(f"skills.md: {n} says {v}, spec has {len(specs[n]['claude_skills'])}")
+        bad = []
+        for n, (declared, preloaded) in sorted(skills_counts.items()):
+            if declared != str(len(specs[n]["skill_names"])):
+                bad.append(n)
+                fail(f"skills.md: {n} Skills declared says {declared}, "
+                     f"spec declares {len(specs[n]['skill_names'])}")
+            if preloaded != str(len(specs[n]["claude_skills"])):
+                bad.append(n)
+                fail(f"skills.md: {n} Preloaded on Claude Code says {preloaded}, "
+                     f"spec preloads {len(specs[n]['claude_skills'])}")
         if missing := set(specs) - set(skills_counts):
             fail(f"skills.md: per-agent table missing agents: {sorted(missing)}")
         elif not bad:
@@ -248,7 +391,7 @@ def main() -> int:
         m = re.search(r"^\|\s*\*\*Skills\*\*[^|]*\|\s*\**(\d+)\**", body, re.M)
         if not m:
             continue  # the card spells the list out instead of counting it
-        want = len(specs[name]["claude_skills"])
+        want = len(specs[name]["skill_names"])
         if m.group(1) != str(want):
             card_fails.append(
                 f"agents.md: {name} card says {m.group(1)} skills, spec has {want}"
@@ -262,14 +405,29 @@ def main() -> int:
             continue
         rel = page.relative_to(root)
         for name, spec in specs.items():
-            for m in re.finditer(
-                r'\{\s*k:\s*"' + re.escape(name) + r'",\s*v:\s*"(.*?)"\s*\}', rendered
-            ):
-                found = re.search(r"(\d+) skills", m.group(1))
-                if found and found.group(1) != str(len(spec["claude_skills"])):
+            for m in re.finditer(ROSTER_ROW_RE_FOR(name), rendered):
+                value = m.group(1)
+                # The eleven rows that carry the authoritative counts use the
+                # "declared · preloaded" form with no literal "skills", so the
+                # word-anchored pattern below never sees them.
+                pair = ROSTER_COUNT_PAIR_RE.match(value)
+                if pair:
+                    for got, want, what in (
+                        (pair.group(1), len(spec["skill_names"]), "declares"),
+                        (pair.group(2), len(spec["claude_skills"]), "preloads"),
+                    ):
+                        if got != str(want):
+                            card_fails.append(
+                                f"{rel}: {name} roster row says {got} for "
+                                f"{'declared' if what == 'declares' else 'preloaded'} skills, "
+                                f"spec {what} {want}"
+                            )
+                    continue
+                found = re.search(r"(\d+) skills", value)
+                if found and found.group(1) != str(len(spec["skill_names"])):
                     card_fails.append(
                         f"{rel}: {name} roster row says {found.group(1)} skills, "
-                        f"spec has {len(spec['claude_skills'])}"
+                        f"spec declares {len(spec['skill_names'])}"
                     )
 
     if card_fails:
@@ -278,6 +436,36 @@ def main() -> int:
     else:
         ok(f"per-agent skill counts agree outside the roster tables "
            f"({len(cards_seen)} agents.md cards, {len(guide_bundles)} bundle(s))")
+
+    # The prose sums up the per-agent preloads as a range ("1 to 4 skills").
+    # Nothing above reads that phrase, so a preload trim would leave it stale.
+    sizes = [len(spec["claude_skills"]) for spec in specs.values()]
+    want_range = f"{min(sizes)} to {max(sizes)}"
+    range_texts = [(f"docs/user-guide/{n}", read(guide / n)) for n in ("notes.md", "reference.md")]
+    for page in guide_bundles:
+        try:
+            range_texts.append((str(page.relative_to(root)), load_template(page)))
+        except (ValueError, json.JSONDecodeError):
+            continue
+    range_fails, range_seen = [], 0
+    for rel, text in range_texts:
+        seen_here = 0
+        for m in re.finditer(r"\b(\d+ to \d+) (?:skills|of them)\b", text):
+            if not re.search(r"preload|inject", text[max(0, m.start() - 120):m.end() + 120]):
+                continue
+            seen_here += 1
+            if m.group(1) != want_range:
+                range_fails.append(f"{rel}: preload range says {m.group(1)!r}, specs give "
+                                   f"{want_range!r}")
+        range_seen += seen_here
+        # A rewording the pattern misses must fail, not pass with nothing checked.
+        if seen_here == 0:
+            range_fails.append(f"{rel}: no preload range phrase found (\"N to M skills\"); "
+                               f"update this check if the prose changed")
+    for msg in range_fails:
+        fail(msg)
+    if not range_fails:
+        ok(f"preload range {want_range!r} matches the specs ({range_seen} mention(s))")
 
     # ---- 2. Named skills, not just counts -----------------------------------
     # Counts are not the whole story. Two renderings name INDIVIDUAL skills, and
@@ -289,10 +477,22 @@ def main() -> int:
     section("named skills agree with the specs, not just counts")
     named_fails = []
 
+    # Declared = skillNames plus any Claude-only preload in clientConfig.claudeCli.skills
+    # (see "Adding a skill to an agent" in docs/user-guide/appendix/contributing.md).
     declared_by = {}
     for name, spec in specs.items():
-        for skill in spec["claude_skills"]:
+        for skill in set(spec["skill_names"]) | set(spec["claude_skills"]):
             declared_by.setdefault(skill, set()).add(name)
+        # Only a skill whose description marks it Claude Code only may skip skillNames.
+        # A bare mention of Claude Code is not enough: general skills mention it too.
+        for skill in sorted(set(spec["claude_skills"]) - set(spec["skill_names"])):
+            skill_md = root / "skills" / skill / "SKILL.md"
+            desc = re.search(r"^description:\s*(.*)$", read(skill_md), re.M) if skill_md.is_file() else None
+            if not desc or not CLAUDE_ONLY_MARKER.search(desc.group(1)):
+                named_fails.append(
+                    f"agents/{name}.agent-spec.json: preloads `{skill}` on Claude Code without "
+                    f"declaring it in skillNames, and its description does not mark it Claude Code only"
+                )
 
     # (a) agents.md cards: every skill a card NAMES must be declared by that agent.
     #     The cards are samples ("and others"), so absence is fine; a wrong name is not.
@@ -416,12 +616,35 @@ def main() -> int:
     for rel, text in sources.items():
         if rel.name == "notes.md":
             continue  # records why the claim is wrong; naming it is the point
+        for phrase in stale_delegation_phrases(text):
+            perm_fails.append(
+                f"{rel}: says {phrase!r}: specialists hold no spawn tool "
+                f"in any runtime"
+            )
+        for phrase in STALE_DISPATCHER_PHRASES:
+            if phrase in text:
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: konductor does the work itself; only the "
+                    f"mux and cmux orchestrators are read-only dispatchers"
+                )
         low = text.lower()
         for phrase in FORBIDDEN_PERMISSION_CLAIMS:
             if phrase in low:
                 perm_fails.append(
                     f"{rel}: says {phrase!r} — `tools` grants the capability, "
                     f"`allowedTools` only pre-approves it"
+                )
+    version_sources = dict(sources)
+    version_sources[KIRO_V2_SYNTH] = read(root / KIRO_V2_SYNTH)
+    for rel, text in version_sources.items():
+        if rel.name == "notes.md":
+            continue
+        flat = _flat(text.replace("///", " "))
+        for phrase in STALE_VERSION_CLAIMS:
+            if phrase in flat:
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: state the checked kiro-cli versions, "
+                    f"not a last release or a minimum"
                 )
 
     if perm_fails:
@@ -628,10 +851,8 @@ def main() -> int:
     keys = re.findall(r"^([a-z][a-z0-9_]*):", cfg, re.MULTILINE)
     if not keys:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
-    # reference.md is the only page documenting the schema now. The task page that
-    # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # reference.md is the only page documenting the schema. The file is documented
+    # because `init` writes it and `doctor` validates it.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]
@@ -667,21 +888,18 @@ def main() -> int:
         commands = [
             c for c in re.findall(r"`([a-z][a-z-]*)`", first_para) if c not in subcommands
         ]
-    # `config` is a real command the CLI accepts and a deliberately undocumented
-    # one: it is not part of the customer-visible surface for the v1 launch, by
-    # reviewer decision. Excluding it here keeps this section
-    # meaningful rather than deleting it -- every OTHER command must still be
-    # documented, and the exclusion itself is asserted against cli/README.md, so
-    # a `config` that stops existing (or a second withdrawal nobody recorded)
-    # fails loudly instead of silently widening the carve-out.
+    # `config` is hidden in cli.rs and withheld from the guide. Every other command
+    # must be documented, and each withdrawn name must still be declared in
+    # cli/README.md or hidden with `#[command(hide = true)]` in cli.rs, so a
+    # deleted command fails loudly instead of widening the carve-out.
+    hidden = hidden_commands(read(root / "cli" / "konductor-rs" / "src" / "cli.rs"))
     documented = [c for c in commands if c not in WITHDRAWN_COMMANDS]
     for cmd in documented:
         if f"`konductor {cmd}" not in ref_md:
             fail(f"reference.md command table missing `konductor {cmd}`")
     for cmd in sorted(WITHDRAWN_COMMANDS):
-        if cmd not in commands:
-            fail(f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md "
-                 f"no longer declares it — drop it from WITHDRAWN_COMMANDS")
+        if problem := withdrawn_command_problem(cmd, commands, hidden):
+            fail(problem)
         elif f"`konductor {cmd}" in ref_md:
             fail(f"reference.md documents `konductor {cmd}`, which is withdrawn for v1")
     if documented:
@@ -992,6 +1210,25 @@ def main() -> int:
     else:
         for version, where in sorted(seen.items()):
             fail(f"version {version} appears in {sorted(set(where))}")
+
+    section("the pre-PR lint toolchain matches validate-pr.yml")
+    pin, pin_problem = find_lint_toolchain_pin(root / ".github" / "workflows" / "validate-pr.yml")
+    if pin_problem:
+        fail(pin_problem)
+    else:
+        lint_re = re.compile(r"(?:toolchain install|cargo \+|TOOLCHAIN=)\s*\"?([0-9]+\.[0-9]+\.[0-9]+)")
+        sources = [(str(md.relative_to(guide)), read(md)) for md in sorted(guide.rglob("*.md"))]
+        for page in html_pages_for_flags(root):
+            try:
+                sources.append((str(page.relative_to(root)), load_template(page)))
+            except (ValueError, json.JSONDecodeError):
+                continue
+        stale = sorted({where for where, text in sources
+                        for m in lint_re.finditer(text) if m.group(1) != pin})
+        if stale:
+            fail(f"lint toolchain differs from RUST_LINT_TOOLCHAIN={pin} in {stale}")
+        else:
+            ok(f"every lint toolchain mention says {pin}")
 
     # ---- 16. The toolchain's own prompts use shipped names --------------------
     # The rename sweep and every check above cover docs/user-guide/. The two

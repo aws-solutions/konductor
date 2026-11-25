@@ -519,8 +519,12 @@ async fn find_skills_result_fields_are_well_formed() {
     with_fixture_server("well-formed-fields", |mut stdin, mut reader| async move {
         complete_handshake(&mut stdin, &mut reader).await;
 
-        let response =
-            call_find_skills(&mut stdin, &mut reader, serde_json::json!({"name": "gamma"})).await;
+        let response = call_find_skills(
+            &mut stdin,
+            &mut reader,
+            serde_json::json!({"name": "gamma"}),
+        )
+        .await;
         let records = parse_find_skills_result(&response);
         assert_eq!(
             records.len(),

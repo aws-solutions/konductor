@@ -378,9 +378,7 @@ async fn tool_call_before_initialize_is_rejected_or_handled_gracefully() {
         .await
         .expect("timed out waiting for skill-lookup-mcp to exit")
         .expect("failed to wait on child process");
-    eprintln!(
-        "[pre-initialize tool call] final exit status: {status:?}; stderr:\n{stderr_buf}"
-    );
+    eprintln!("[pre-initialize tool call] final exit status: {status:?}; stderr:\n{stderr_buf}");
     // Not asserting `status.success()`: an unclean exit specifically
     // because stdin closed mid-handshake is a separate, already-tested
     // concern (see initialize_handshake.rs's own EOF-after-handshake

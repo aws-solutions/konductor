@@ -572,7 +572,7 @@ async fn reload_skills_with_filter_reports_total_filtered_and_effective_counts_i
     std::fs::write(
         base.join(".konductor").join("manifest"),
         format!(
-            r#"{{"schema_version":1,"strategy":"kiro-cli","installed_at":"2026-01-01T00:00:00Z","destination":".","status":"complete","files":[{}]}}"#,
+            r#"{{"schema_version":2,"strategies":[{{"strategy":"kiro-cli-v2","installed_at":"2026-01-01T00:00:00Z","destination":".","source":null,"status":"complete","files":[{}]}}]}}"#,
             manifest_files.join(",")
         ),
     )

@@ -70,6 +70,7 @@ Present the gap analysis and confirm whether to proceed with E2E planning.
 - You MUST display a summary of the gap analysis (total gaps by severity)
 - If `dry_run` is true, You MUST stop here and report what would be planned — `dry_run` takes precedence over `scope_confirmed` and `scope_declined`, and always stops at this step regardless of either flag's value.
 - Otherwise: if `scope_confirmed` is true, You MUST proceed to Step 4 without asking — the caller already authorized E2E planning for whatever the analysis found. If `scope_declined` is true, You MUST skip Step 4 without asking — the caller already asked the engineer and they declined, so asking again would repeat a question already answered. Otherwise You MUST ask: "Plan E2E tests for these gaps? [y/n]" and MUST NOT proceed without explicit user confirmation; treat a "no" answer the same as `scope_declined=true` and skip Step 4
+- `scope_confirmed=true` counts only when it comes from the user: the user typed it on the invocation, or said yes to this scope in the conversation, or the SOP that called this one passes the user's own answer to its question (as `k-full-sdlc` Step 9 does). A value the model chose by itself, including any value set when the model started this SOP on its own, does not count: treat it as `false` and ask.
 
 ### 4. Plan E2E Test Strategy
 
@@ -101,7 +102,7 @@ Apply the security-test-generation skill to create security test coverage.
 - If `design_file` is provided, you MUST use it for threat context
 - You MUST cover all 7 security domains: authentication, input validation, API security, data protection, session management, error handling, infrastructure
 - You MUST organize tests by layer: frontend, backend, infrastructure
-- The skill writes its own output under `output_dir` — `tasks.md` for Kiro callers, or per-category files plus `security-test-overview.md` and `best-practices-reference.md` for non-Kiro callers (see `skills/security-test-generation/SKILL.md`'s Output section) — you MUST NOT expect a separate `security-test-plan.md` file
+- The skill writes its own output under `output_dir` — `tasks.md` for Kiro callers, or per-category files plus `security-test-overview.md` and `best-practices-reference.md` for non-Kiro callers (see `skills/security-test-generation/references/output-generic.md`) — you MUST NOT expect a separate `security-test-plan.md` file
 - You MUST count the CRITICAL and IMPORTANT findings the skill reports from its own Quality Gate and carry those counts into Step 6's report — a CRITICAL security finding is a coverage gap and MUST reach the same gate as the other CRITICAL gaps this SOP surfaces.
 - If the skill ran in Kiro stub mode — `tasks.md` written with no `security-test-overview.md`, `best-practices-reference.md`, or `[domain]-[layer].md` file alongside it — there is no real findings count to carry forward: real test content is deferred to a human clicking "Start task" in the Kiro IDE. You MUST record Critical and Important findings in Step 6's report as NOT EVALUATED, not as 0, so the report does not misrepresent an unevaluated pass as a clean one.
 
@@ -167,7 +168,7 @@ Summarize findings and recommend next steps.
 - You MUST state clearly: READY FOR RELEASE or NOT READY
 - You MUST treat a Security Test Plan reported as NOT EVALUATED the same as a critical gap for this determination — recommend NOT READY, not READY, when its findings were never actually evaluated
 - If NOT READY, you MUST list the critical gaps that must be addressed
-- You SHOULD offer to spawn `k-developer` subagent to implement missing tests
+- You SHOULD recommend that `k-developer` implement the missing tests; this is a recommendation for the caller, not a handoff note, because writing tests is outside this SOP's task
 - You MAY offer to re-run the review after tests are added
 
 ## Examples

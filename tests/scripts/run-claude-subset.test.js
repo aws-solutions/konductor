@@ -30,13 +30,13 @@ test('loadRegistryEntry finds a known public subset with its requiredMcpServer',
 });
 
 test('loadRegistryEntry returns null for an unregistered subset', () => {
-  assert.equal(runSubsetModule.loadRegistryEntry('asdlc-does-not-exist'), null);
+  assert.equal(runSubsetModule.loadRegistryEntry('k-does-not-exist'), null);
 });
 
 // The regression this pins: the agent identifier and the scenario directory
 // used to be derived from the same `--agent` string, so once the Konductor
-// rename moved registry `name` to `k-*` while the directories stayed
-// `asdlc-*`, no value of `--agent` satisfied both. Each subset's registry
+// rename moved registry `name` to `k-*` while the directories kept their old
+// names, no value of `--agent` satisfied both. Each subset's registry
 // `name` must now resolve to a directory that exists on disk.
 test('every registry subset resolves to a scenario directory that exists', () => {
   const registryPath = path.join(__dirname, '..', 'registry.json');

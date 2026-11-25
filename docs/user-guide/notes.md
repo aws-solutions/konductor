@@ -29,26 +29,22 @@ drift checks, [`tools/build-user-guide/`](../../tools/build-user-guide/README.md
 
 ## Deliberate divergences from the source
 
-### `konductor`'s skill count is runtime-dependent
+### Declared skills and the Claude Code preload differ by design
 
-`konductor` lists 13 skills in `dependencies.skills.skillNames` and 13 in
-`clientConfig.claudeCli.skills`. Twelve are shared. `claude-teams-behavior` is only in the
-`claudeCli` list, and `humanize-writing` is only in `skillNames`. Six more agents (the mux and
-cmux orchestrators, `k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`)
-list `humanize-writing` in `skillNames` only. The other four agents' two lists agree.
-
-The roster tables state **13** (the `claudeCli` basis, which `check-guide-facts.py` asserts
-against) and footnote the difference. If the two lists are ever reconciled in the specs,
-drop the footnote.
+Every agent's `clientConfig.claudeCli.skills` is a short preload list (1 to 4 skills) that
+Claude Code injects into a spawned subagent; `dependencies.skills.skillNames` is what the agent's
+own file lists as loadable, and the list Kiro CLI holds it to. On Claude Code a subagent can still
+reach any installed skill. The roster tables give both: the Skills column is the `skillNames`
+count and the preload column is the `claudeCli` count, and `check-guide-facts.py` asserts each.
+The one name in a preload list but not in `skillNames` is `konductor`'s `claude-teams-behavior`.
 
 ### `metrics` is a stub
 
 It prints "not yet implemented". The guide says so rather than describing what it will report.
 
-### Exit code `2` is reserved
+### Exit code `2` is an unresolved gating finding
 
-`2` signals an unresolved CRITICAL gate and is owned by the run-engine, which is not yet
-started. Usage errors are `64`. The guide must never show `2` for a bad invocation.
+`2` signals an unresolved gating finding and is emitted by `verify-run`. Usage errors are `64`. The guide must never show `2` for a bad invocation.
 
 ### No published release exists, and the repository is not public
 
@@ -78,8 +74,8 @@ removing the file too would leave both of those pointing at something the guide 
 `check-guide-facts.py` records this in `WITHDRAWN_COMMANDS` rather than dropping its
 command-coverage check. That section asserts three things: every other command in
 `cli/README.md` is documented, every withdrawn command is **absent** from `reference.md`,
-`concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still exists in
-`cli/README.md`. So a second withdrawal nobody recorded, or a `config` command that gets deleted
+`concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` is still declared in
+`cli/README.md` or hidden with `#[command(hide = true)]` in `cli.rs`. So a second withdrawal nobody recorded, or a `config` command that gets deleted
 outright, both fail loudly instead of quietly widening the carve-out.
 
 **Adding a name to `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet the checker.**

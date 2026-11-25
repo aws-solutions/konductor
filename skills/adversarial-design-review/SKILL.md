@@ -1,7 +1,7 @@
 ---
 name: adversarial-design-review
-description: 'Takes an adversarial stance against a design document''s decisions, trade-offs, and architectural choices, classifying findings as CRITICAL/IMPORTANT/MINOR. Operates on design doc sections — not code diffs. Trigger phrases: "adversarial design review", "challenge my design", "devil''s advocate on design doc", "review design decisions".'
-version: 1.0.0
+description: 'Challenges a design doc''s decisions and trade-offs. Use to stress-test a design, not a code diff. Triggers: "adversarial design review", "challenge my design", "devil''s advocate".'
+version: 1.1.1
 tags: [skill, design, adversarial, review, architecture, checker]
 ---
 
@@ -43,11 +43,22 @@ Use `argumentation-reference` skill during this review to identify logical falla
 - Logical fallacy in a decision justification (use `argumentation-reference` to identify)
 - Unstated assumption that materially affects the design
 
-**MINOR:**
+**SUGGESTION:**
 
 - Style or clarity issue in a decision section
 - Minor omission (e.g., missing consequence in an ADR)
 - Weak rebuttal acknowledgment
+
+### Calibrating Severity
+
+- CRITICAL means the design as written breaks a stated requirement or matches a CRITICAL item above. That covers a design that contradicts a requirement (a synchronous call where the requirement says async), a required security boundary the document never states (PII with no encryption or access control counts as missing), a single point of failure with no mitigation, and a false technical claim. Name the requirement (e.g., R2) the finding breaks.
+- IMPORTANT covers a design element that is present but not shown to work: an unsourced load figure, an external dependency assumed to scale with no quota or failure mode, or a mechanism that needs implementation the document leaves out. Keep these IMPORTANT even when they are load-bearing.
+- The test: if the document is missing something the CRITICAL list requires, or says something false, it is CRITICAL. If it describes something without the evidence that it works, it is IMPORTANT.
+- Do not raise a CRITICAL because a design looks risky. A revised document that fixed earlier CRITICALs can still fail the gate on IMPORTANT findings alone.
+
+### Staying in the Document
+
+Every finding cites the section and the text it challenges. Do not add requirements, regulations, services, or numbers the document does not state, and do not pad with generic checklist items that have no anchor in the text. When a finding relies on outside knowledge (a service limit, a pricing figure), say so in the challenge.
 
 ### Fallacy Checking
 
@@ -98,7 +109,7 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
    > 1. Convene the deliberation panel (recommended for high-stakes designs)
    > 2. Proceed without the panel — apply the Classification and Fallacy Checking sections above directly, single-voice
    - If the user opts in, proceed to Step 3 with `consent_confirmed=true`.
-   - If the user declines or gives no confirmation, skip the panel entirely: apply the Classification and Fallacy Checking sections (above) directly to each decision from Step 1 — evaluate each justification against the Toulmin model, flag fallacies via `argumentation-reference`, and classify findings directly using the Classification table (CRITICAL architectural/factual, IMPORTANT, MINOR). Then skip to Step 6 (Architecture stress test).
+   - If the user declines or gives no confirmation, skip the panel entirely: apply the Classification and Fallacy Checking sections (above) directly to each decision from Step 1. Evaluate each justification against the Toulmin model, flag fallacies via `argumentation-reference`, and classify findings directly using the Classification section under Core Concepts (CRITICAL architectural/factual, IMPORTANT, SUGGESTION). Then skip to Step 6 (Architecture stress test).
 
 3. **Adversarial Panel — Axis-Derived Challenge** (panel path only, per Step 2) — Invoke the `deliberation-panel` skill with `decision_domain=design, stance=adversarial, consent_confirmed=true`. Pass the parsed design decisions and tradeoffs as the subject. The panel derives 3–6 axes specific to this document's decisions (Phase 0), then runs the adversarial challenge per axis (Phase 1 — each axis argues why the currently-favored option fails on that axis), the anonymous cross-examination round (Phase 2), and the arbiter synthesis (Phase 3).
 
@@ -110,12 +121,12 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
 
    Confidence is the `deliberation-panel` skill's own Axis-Weighted Convergence output (`stance=adversarial`) — this skill does not define a separate scale, only reinterprets what convergence means in the adversarial stance: "the same option" that axes converge on is agreement that the currently-favored option fails. See `deliberation-panel`'s Axis-Weighted Convergence table for the HIGH/MEDIUM/LOW thresholds themselves.
 
-   **Severity mapping (panel path only — the single-voice path classifies via the Classification table in Step 2, not this mapping):**
+   **Severity mapping (panel path only; the single-voice path classifies via the Classification section under Core Concepts, not this mapping):**
    - HIGH-confidence architectural flaw → **CRITICAL (architectural)**
    - HIGH-confidence factual claim error → **CRITICAL (factual)**
    - MEDIUM-confidence architectural or factual flaw → **IMPORTANT** (not yet corroborated enough for CRITICAL, but too load-bearing to leave unclassified)
    - HIGH or MEDIUM-confidence justification gap or logical fallacy → **IMPORTANT**
-   - LOW-confidence or stylistic observation → **MINOR**
+   - LOW-confidence or stylistic observation → **SUGGESTION**
 
 6. **Architecture stress test** — For the overall design:
    - Does it meet every stated NFR at stated load?
@@ -133,12 +144,14 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
    Fallacy (if any): {fallacy name from argumentation-reference}
    ```
 
-8. **Summary** — Report: N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N MINOR. Include axis attribution for all CRITICAL findings (or note "single-voice review — panel declined" if applicable).
+   Every finding, SUGGESTION included, gets a concrete `Rebuttal needed` line: the evidence, alternative, or design change that would answer it.
+
+8. **Summary**: report N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N SUGGESTION. Include axis attribution for all CRITICAL findings (or note "single-voice review, panel declined" if applicable).
 
 ## Quality Gate
 
 **CRITICAL findings require immediate resolution** — the document does not advance to PE review with any CRITICAL finding present.
 
-**Exit condition for pe-review loop:** 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR findings.
+**Exit condition for pe-review loop:** 0 CRITICAL + 0 IMPORTANT + fewer than 3 SUGGESTION findings.
 
-Present findings as: CRITICAL (architectural) → CRITICAL (factual) → IMPORTANT → MINOR.
+Present findings as: CRITICAL (architectural) → CRITICAL (factual) → IMPORTANT → SUGGESTION.

@@ -6,6 +6,10 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+Skill, agent and SOP names in an entry are the names they had when the entry was written. The
+entry that renames or removes one says so, so an old name in this file is history, not a live
+reference.
+
 ## [Unreleased]
 
 ### Added
@@ -39,6 +43,13 @@ not per individual commit.
   valid `KONDUCTOR_RESULT` line, a blocked stage halts the run with exit 1, and the run state is kept in
   `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is active per workspace, and a second one exits 75.
   The only harness so far is `fake`, which is test-only: it runs no agent, and the last line of its runs says so.
+- The orchestration-mode session-start hook now applies `orchestration.mode` to any installed
+  agent that loads the `k-direct-work.md` context, not only to `konductor`, so forks and custom
+  distributions that rename the orchestrator still get `coordinator` mode. On Kiro CLI v2 the
+  renamed agent's own file gets the hook, and `doctor` checks it in each one. Agents that load
+  the routing rules instead, like the mux and cmux orchestrators, are unchanged. An agent file
+  over 1 MiB that the hook cannot check gets `Orchestration: auto (fallback: ...)` under
+  `coordinator` instead of no output.
 
 ### Changed
 
@@ -46,33 +57,233 @@ not per individual commit.
 - The workflow canvas announces "Ready. Press Run to start." only once a workflow has loaded.
 - The workflow canvas draws run-order ports as small dots that show on hover, focus or select, in place of jigsaw tabs.
 - The workflow canvas API session response reports `konductor_version`, `capabilities` and `limits`.
-- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
-  may now read files, search the codebase, run read-only shell commands, and answer lookup
-  questions themselves instead of spawning a specialist for each. One table in
-  `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
-  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
-  `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
-  itself; for a request it will delegate, it reads only what routing and the brief need and
-  passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
-  specialists. The three orchestrator prompts also drop the
-  Ultrawork framing, state the parallel rule once, and remove rules already defined in the
-  `constraints` skill and the routing rules.
-- Orchestrators delegate a step they can't do to the owning specialist and may run independent
-  parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+
+## [2.0.0] - 2026-11-25
+
+### Upgrade notes
+
+Read these before upgrading from 1.2.0.
+
+- **Six skill names are gone, with no aliases.** `konductor synth` rejects a custom agent spec
+  that still declares one.
+  - Renamed: `asdlc-aspect-review` is now `k-aspect-review`, `asdlc-code-simplifier` is now
+    `k-code-simplifier`, and `document-formats` is now `docx-conversion`.
+  - Removed: `adr-generator` (use `decision-writing`'s ADR Mode), `asana-sprint-planning` (now
+    `sprint-planning`'s `references/asana.md`) and `dynamodb-validation` (use `dynamodb-design`'s
+    review gate).
+- **A custom cmux completion hook must read `KONDUCTOR_DONE_KEY`.** `cmux-dispatch` renamed the
+  variable it exports to the pane. The bundled hook still falls back to `CMUX_WORKSPACE_ID`.
+- **A group- or world-writable dispatch registry is refused**, such as one created under umask
+  002. Run `chmod 700` on it.
+- **Specialists no longer spawn other agents.** They finish their part and hand the next step,
+  or a proposed parallel split, back to the orchestrator. Spawn tools are blocked for
+  specialists on Kiro CLI v2, Kiro CLI v3 and Claude Code. A workflow that relied on a
+  specialist spawning must run through an orchestrator.
+- **On Claude Code, mux and cmux children no longer skip every permission check.** The default
+  dispatch mode is now `interactive`, which asks in the child's pane. For unattended runs, set
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE=headless` and allowlist your build and test commands, or use
+  `bypass` only in an isolated environment. The plugin's `dispatch_permission_mode` option sets
+  the same modes.
+- **Entries in `.konductor/memory/` are now followed as project instructions**, at the same level
+  as AGENTS.md, whether git tracks them or not. If your repository commits that directory, review
+  its untagged lines before upgrading and tag agent-written ones `[origin:agent]`. The memory
+  validator rejects a new or edited line without an `[origin:agent]` or `[origin:user]` tag;
+  existing untagged lines are kept.
+
+### Added
+
+- `konductor metrics [--since 7d] [--by agent|model|day|repo] [--json]` reports local usage of
+  Konductor sessions in Claude Code, Kiro CLI v2 and Kiro v3: tokens for Claude Code, credits for
+  Kiro. It counts only sessions run by installed Konductor agents.
+- `konductor verify-run --session <path> [--root <dir>]` checks a SOP session file against its
+  gates and exits through the existing exit-code contract. It writes nothing. Phase-gated SOPs
+  treat an open HIGH finding as unresolved even when the threshold is CRITICAL.
+  - `cli/gate-config/sop-orchestration.yml` lists every SOP as gated or not, with each gated
+    SOP's phases, gate boundaries and session keys. The four phase-gated SOPs, such as
+    `k-full-sdlc`, carry an `Orchestration: strict (phase-gated SOP)` line.
+  - `severity-schema.yml` maps the severity words checkers write (IMPORTANT, WARNING,
+    SUGGESTION, MINOR and others) to severity ids. An unknown word or a risk, priority or
+    confidence scale such as `High Risk` ranks as CRITICAL.
+  - `k-full-sdlc` records gate facts in its session file and reports a `verify-run` check in
+    `sdlc-summary.md`. Steps 4 and 9 stop on any open CRITICAL or IMPORTANT finding. The engineer
+    can resolve a finding or override it (recorded as `gate_<phase>_override`); an unattended run
+    stops and reports.
+- `orchestration.mode` (`auto` or `coordinator`) in `~/.konductor/config.yml`. Under
+  `coordinator`, `konductor` runs as a coordinator: `install` wires a session-start hook, even
+  under `--no-telemetry`, that points it at the routing rules, and Claude Code installs copy the
+  context files to `.konductor/context/` for it. `konductor doctor` reports the mode, whether
+  the hook is wired, and whether the config value is valid. The docs describe setting the mode
+  by hand and reading the mode line in the first reply. Kiro CLI v2 is not supported, and the
+  Claude Code plugin does not wire the hook.
+- `konductor synth` warns when an agent's Claude Code skill preload is over 32 KiB or 32 names
+  and names the skills Claude Code would drop (`-v` and `--json` report it per agent). Each
+  Claude Code agent file ends with a "Skills you can load" block listing its other declared
+  skills.
+- PR CI now runs `make lint` (clippy with `-D warnings` and `cargo fmt --check` on a pinned
+  toolchain), `make version-check` (crates, Konductor lockfile entries and the CHANGELOG heading
+  must match `VERSION`), `make sop-orchestration-check`, `make notice-check`, and a skill quality
+  gate in `make test-py` that checks every skill against a shrink-only baseline in
+  `tests/skill-quality-baseline.json`.
+
+### Changed
+
+#### Orchestration
+
+- `konductor` does the work itself and commits only when you ask. It spawns a specialist only
+  for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when a SOP
+  says so, and one fresh `k-*` reviewer per phase gate. Parallel parts reach your branch only
+  after it proposes the split to you, or uncommitted so you decide what to commit. It now
+  declares the AWS MCP server and `find-aws-skills`, granted only the five read-only tools.
+- All three orchestrators may read files, search the codebase, run read-only shell commands, and
+  answer lookups themselves, within a 10-file read budget. One table in
+  `context/k-orchestrator-routing-rules.md` defines what is allowed. Writes, state-changing git,
+  builds, tests and whole phases still go to specialists. They run the SOP check on every
+  request, and a request matches a SOP row when it asks for what the row's User intent
+  describes, including a single-procedure SOP such as `k-plan`.
+- Review ceilings: a CRITICAL or IMPORTANT finding gets one fix and one re-review. A finding in
+  the task's own output that is still open after that stops work on the artifact. A finding in
+  code the task did not touch, and the fix did not cause, is listed as pre-existing instead of
+  fixed. A SOP's own fix scope and round limit win.
+- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at
+  most 50 lines whose build, test and lint passed, and say so with the diff stat. The skip never
+  applies to auth, secrets, data or infrastructure. `konductor` closes a standalone document with
+  its checker skill instead, and a finding it would reject on an artifact it made goes to you
+  before it is dropped. A threat model, an auth or credential design, or a design that crosses
+  a network boundary or handles sensitive data always goes to a reviewer.
+- House rules: Konductor's defaults yield to the request, recorded rulings, the project's
+  instruction files and user-written memory, and the codebase's conventions, in that order. An
+  open collision is asked once and saved as a `Ruling:` entry. A quoted user decision in a brief
+  approves only the action it names, never a rule 9 confirmation or an irreversible action.
+- Every agent loads the engineering practices, the severity order and the no-secret-files rule
+  from the core rules instead of the `constraints` skill. Handoff, split, denial and brief rules
+  shared by the orchestrators live in `context/k-orchestrator-shared.md`. Handoff files go to a
+  self-ignoring `.konductor/handoff/`.
+- `k-adversarial-pull-request-review` is coordinated by the orchestrator, which spawns the four
+  passes and a fresh `k-architect` checker. A pass that fails twice is recorded as `MISSING` and
+  caps the verdict at APPROVE WITH COMMENTS. `k-code-review-workflow` ends by asking the
+  orchestrator to run it. `k-full-sdlc` runs it before writing a feature's status, and marks the
+  feature BLOCKED when a report leaves a CRITICAL or IMPORTANT finding open or the pass is
+  incomplete.
+- Each dispatched mux or cmux child gets its own 0700 directory for its brief, result and
+  `.done`, and is granted only that directory. A non-zero exit is always recorded as `error`.
+  `--brief <file>` passes a long brief.
+
+#### SOPs
+
+- On Claude Code, the installed `sop-<name>` skills can be loaded by Claude's `Skill` tool, as
+  on Kiro CLI. The three SOPs that commit and push, open pull requests, or act on a live app
+  (`k-e2e-test-generation`, `k-full-sdlc`, `k-light-ui-testing`) are marked
+  `Invocation: user-only`; start them with `/sop-<name>` or by saying yes to `k-full-sdlc`
+  Step 9's scope question.
+- The Kiro spec skills and the `kiro-spec-workflow` SOP write specs in Kiro's current format:
+  a Glossary and `**Source:**` story links in `requirements.md`, Kiro's seven design sections
+  with Correctness Properties, optional test tasks, checkpoints and a Task Dependency Graph in
+  `tasks.md`. The SOP takes `spec_type` (`feature` or `bugfix`) and `workflow`
+  (`requirements-first` or `design-first`) and writes `.config.kiro`.
+
+#### Skills
+
+- AWS guidance comes from the AWS MCP server's skills instead of local copies. `dynamodb-design`
+  is a short skill with a review gate that rates a hot partition or an unsharded
+  low-cardinality GSI key CRITICAL. `infra-validation` runs the server's CloudFormation, CDK and
+  Well-Architected checks read-only. `iam-policy-design` and `policy-validation` draw on the
+  server's IAM and S3 skills, and `policy-validation` now also checks SOC 2. `cost-estimation`
+  prices through Price List API calls on the AWS MCP server and labels any figure it did not look
+  up "recalled, unverified".
+- About 40 skills were revised after test runs. Review and validation skills rate findings
+  CRITICAL, IMPORTANT or SUGGESTION, cite a location and a concrete fix, and report unchecked
+  context as an assumption. Told not to ask questions, or given the scope up front, a skill
+  records its assumptions and finishes.
+- Skills that carried a pasted second prompt now read as one set of instructions, and
+  overlapping skills keep each rule set in one place: `adversarial-code-review` defers to its
+  three pass skills and `frontend-review` checks against `frontend-development`. Two pass
+  ratings rise to IMPORTANT: a new field missing validation or a default at any entry point, and
+  any unguarded map or optional access.
+- Skill descriptions name the requests they cover, fit the Kiro skill index, and keep Claude
+  Code's skill listing within its budget with the SOPs listed. Hand-written skill lists in the
+  `k-product-manager`, `k-tpm` and `k-quality-assurance` prompts are gone; each skill's
+  description is the one place that says when to use it.
+- Detail that only some runs need moved into `skills/<name>/references/`, loaded on a stated
+  cue. The largest cuts: `test-coverage-analysis` (69.3 KB to 30.3 KB) and
+  `cypress-test-implementation` (53.9 KB to 19.4 KB).
+- Claude Code subagents preload 1 to 4 skills each (109 KB in total, down from 1.9 MB); the rest
+  load on demand. Each Kiro agent's prompt lists its own skills and tells it to load a matching
+  one before non-trivial work.
+- `architecture-diagram-generation` targets plain draw.io (diagrams.net) XML.
+- The skill count is now 79.
+
+#### Plugin and dependencies
+
+- The Claude Code plugin is ready for the plugin directory: its README says what the plugin
+  runs, sends and fetches, that telemetry is on by default and how to turn it off, and it ships
+  a listing icon and a `supportUrl`.
+- The AWS MCP proxy is now `mcp-proxy-for-aws-cli` 2.0.0, which needs Python 3.11 to 3.14;
+  `uvx` downloads one if none is installed.
 
 ### Fixed
 
-- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
-  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
-  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
-  retry-once recovery to spawns that error, time out, or return nothing.
-- The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan`. A
-  request matches a SOP row when it asks for what the row's User intent describes, a whole
-  workflow or one named procedure. A single deliverable that no row describes still goes to an
-  agent. Keyword overlap matches no row, and neither does a lookup the orchestrator answers within
-  its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
-  The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
-  ones.
+- CLI:
+  - `konductor config set` changes only the named key instead of dropping the rest of
+    `.konductor/config.yml`. It keeps the file's permission bits and refuses a symlinked
+    `.konductor/` or `config.yml`. Comments, anchors and quoting are not preserved.
+  - The config lock gives up with a contention error at its 5-second deadline instead of
+    retrying without a limit.
+  - `uninstall` keeps tracked files that changed since install and warns about them instead of
+    deleting them, and lists matching Kiro `.json.bak` backups for manual removal. `--json`
+    adds `kept_changed`, `kept_changed_paths` and `kept_backups`; `--dry-run --json` adds
+    `would_keep`.
+  - `update --no-telemetry` keeps a project opted out on later updates; the new
+    `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
+- Kiro CLI:
+  - Agents get the bundled `aws-mcp` server from their agent spec, as on Claude Code.
+  - `konductor` declares the role skills the specialists use, so the single-writer `konductor`
+    can load them.
+  - `--skill-name-filter` limits each agent's skill server to its declared skills, and a
+    `get_skill` miss says whether the filter hides the skill or lists up to three close names.
+  - The skills index tells V3 agents to load the `get_skill` schema first with the loader they
+    have, and V2 agents to use `tool_search`.
+  - Kiro CLI v3 agent files no longer carry an empty `hooks: []`, and v3 synth warns when it
+    drops an unmapped `toolsSettings` key.
+- Claude Code: agent files and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`).
+  Plugin agents show up in `claude plugin details` and `/plugin`, the plugin ships `NOTICE.txt`
+  with README links pinned to its release, and the plugin tag workflow can create the tag again.
+- Skills and routing:
+  - Skills no longer contradict themselves or point at tools, templates, steps or sections that
+    don't exist. This covers the design, planning, backend, verification and routing skills.
+  - The Smithy skills describe current Smithy rules, including `enum` shapes over `@enum`,
+    `@paginated`, required `@httpLabel` members and IDL 2.1 on Smithy 1.75.0 or later.
+  - `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
+    unencrypted for lacking an encryption setting.
+  - `git-merge` shows the merge and asks before pushing to the default branch, and only when
+    the repo merges locally; otherwise it opens a PR. `git-workflow` merges the default branch
+    in before a PR instead of rebasing.
+- `NOTICE.txt` lists every shipped crate.
+
+### Security
+
+- On Claude Code, `konductor install --harness claude` writes permission rules for the
+  `aws-mcp` tools to `.claude/settings.json`. Tools that act on AWS with your credentials
+  (`aws___run_script`, which runs agent-written Python, `aws___get_presigned_url` and
+  `aws___get_tasks`) get an ask rule. The five read-only documentation and region tools get an
+  allow rule, matching Kiro CLI. `k-architect` and `k-developer` grant the server's tools by
+  name, so a tool the server adds later stays unavailable until it is classified. User `deny` and
+  `ask` entries are kept, and `uninstall` removes only the entries install added. The rules
+  apply to every Claude Code session using that settings file. A `headless` or `bypass` mux or
+  cmux pane cannot call the ask-gated tools. The plugin cannot ship permission rules: plugin users
+  add `mcp__plugin_konductor_aws-mcp__<tool>` for each of the three to `permissions.ask`.
+- `k-verify` and `infra-validation` no longer run `cdk synth`, `cdk ls` or `cdk diff` until the
+  user confirms the CDK app is trusted, since all three run the app's code.
+- `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
+  `k-test-coverage-review` counts only when it comes from the user, and orchestrators never add
+  it themselves.
+- Orchestrators run `git` reads with flags that stop repository config from running a program
+  (`core.fsmonitor`, `core.pager`, `diff.external`, textconv, signature checks, submodule diffs),
+  and skip working-tree reads when the config defines a `filter.<driver>`.
+- Agents ignore planted instructions, never read or write `.konductor/memory/` through a
+  symlink, and report only key names or redacted values from a secret file the user names.
+- `rustls` 0.23.46 fixes GHSA-c8m5-c952-6cm4, GHSA-h2v8-394m-p7vv, GHSA-vp88-798v-h67f and
+  GHSA-w44r-93j7-qv28. Other Rust dependency updates fix RUSTSEC-2026-0381, -0382, -0386, -0457,
+  -0462 and -0486.
 
 ## [1.2.0] - 2026-10-26
 

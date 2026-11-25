@@ -1,0 +1,326 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Tests for the lint-toolchain pin check in tools/user-guide-sync/check-guide-facts.py.
+
+The pin in validate-pr.yml is required, so a missing file, a missing or renamed
+key, or a value that is not a literal X.Y.Z version must fail the check instead
+of being skipped.
+
+Run:  cd tests && pytest test_check_guide_facts_lint_pin.py
+"""
+
+import importlib.util
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SCRIPT = REPO_ROOT / "tools" / "user-guide-sync" / "check-guide-facts.py"
+WORKFLOW_REL = Path(".github") / "workflows" / "validate-pr.yml"
+SECTION_TITLE = "the pre-PR lint toolchain matches validate-pr.yml"
+EXPECTED_SHAPE = "must be a literal X.Y.Z version, optionally quoted"
+
+
+def load_script():
+    sys.path.insert(0, str(SCRIPT.parent))
+    spec = importlib.util.spec_from_file_location("check_guide_facts", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+check_guide_facts = load_script()
+
+
+def pin_of(tmp_path, text):
+    workflow = tmp_path / "validate-pr.yml"
+    workflow.write_text(text, encoding="utf-8", newline="")
+    return check_guide_facts.find_lint_toolchain_pin(workflow)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "env:\n  RUST_LINT_TOOLCHAIN: 1.98.1\n",
+        'env:\n  RUST_LINT_TOOLCHAIN: "1.98.1"\n',
+        "env:\n  RUST_LINT_TOOLCHAIN: '1.98.1'\n",
+        "env:\n  RUST_LINT_TOOLCHAIN: 1.98.1  # bump deliberately\n",
+        "env:\n  RUST_LINT_TOOLCHAIN:\n    1.98.1\n",
+        "env:\r\n  RUST_LINT_TOOLCHAIN: 1.98.1\r\n",
+    ],
+    ids=["bare", "double-quoted", "single-quoted", "trailing-comment", "next-line", "crlf"],
+)
+def test_literal_version_is_parsed(tmp_path, text):
+    assert pin_of(tmp_path, text) == ("1.98.1", None)
+
+
+def test_missing_workflow_file_is_a_problem(tmp_path):
+    pin, problem = check_guide_facts.find_lint_toolchain_pin(tmp_path / "absent.yml")
+    assert pin is None
+    assert "validate-pr.yml not found" in problem
+    assert "RUST_LINT_TOOLCHAIN" in problem
+
+
+def test_renamed_key_is_a_problem(tmp_path):
+    pin, problem = pin_of(tmp_path, "env:\n  LINT_TOOLCHAIN: 1.98.1\n")
+    assert pin is None
+    assert "no RUST_LINT_TOOLCHAIN key" in problem
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["${{ vars.RUST }}", "stable", "1.98", '"1.98.1', "1.98.1'"],
+    ids=["expression", "stable", "two-part", "unbalanced-double", "unbalanced-single"],
+)
+def test_non_literal_version_is_a_problem(tmp_path, value):
+    pin, problem = pin_of(tmp_path, f"env:\n  RUST_LINT_TOOLCHAIN: {value}\n")
+    assert pin is None
+    assert EXPECTED_SHAPE in problem
+
+
+@pytest.fixture(scope="module")
+def repo_copy(tmp_path_factory):
+    dest = tmp_path_factory.mktemp("repo")
+    shutil.copytree(
+        REPO_ROOT,
+        dest,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(".git", "target", "node_modules", ".worktrees", ".agents"),
+    )
+    return dest
+
+
+def lint_section_output(repo, pin_line):
+    workflow = repo / WORKFLOW_REL
+    original = workflow.read_text(encoding="utf-8")
+    lines = [
+        pin_line if "RUST_LINT_TOOLCHAIN:" in line else line
+        for line in original.splitlines(keepends=True)
+    ]
+    workflow.write_text("".join(lines), encoding="utf-8")
+    try:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--repo", str(repo)],
+            capture_output=True,
+            text=True,
+        )
+    finally:
+        workflow.write_text(original, encoding="utf-8")
+    _, _, rest = result.stdout.partition(SECTION_TITLE)
+    return rest.split("\n[", 1)[0]
+
+
+def test_guide_mention_that_differs_from_pin_fails(repo_copy):
+    section = lint_section_output(repo_copy, "          RUST_LINT_TOOLCHAIN: 1.99.0\n")
+    assert "FAIL  lint toolchain differs from RUST_LINT_TOOLCHAIN=1.99.0" in section
+
+
+def test_quoted_pin_matching_the_guide_passes(repo_copy):
+    section = lint_section_output(repo_copy, '          RUST_LINT_TOOLCHAIN: "1.100.0"\n')
+    assert "ok    every lint toolchain mention says 1.100.0" in section
+    assert "FAIL" not in section
+
+
+def test_unparsable_pin_fails_the_section(repo_copy):
+    section = lint_section_output(repo_copy, "          RUST_LINT_TOOLCHAIN: stable\n")
+    assert f"FAIL  RUST_LINT_TOOLCHAIN in validate-pr.yml is 'stable'; it {EXPECTED_SHAPE}" in section
+    assert "ok" not in section
+
+
+CLI_RS = REPO_ROOT / "cli" / "konductor-rs" / "src" / "cli.rs"
+
+
+def test_config_stays_withdrawn_and_is_found_as_a_hidden_command():
+    assert "config" in check_guide_facts.WITHDRAWN_COMMANDS
+    assert "config" in check_guide_facts.hidden_commands(CLI_RS.read_text(encoding="utf-8"))
+
+
+def test_existence_check_accepts_a_hidden_command_missing_from_the_readme():
+    assert check_guide_facts.withdrawn_command_problem("config", ["init"], {"config"}) is None
+
+
+def test_existence_check_fails_for_a_name_in_neither_source():
+    problem = check_guide_facts.withdrawn_command_problem("nosuchcmd", ["init"], {"config"})
+    assert "cli/README.md does not declare it and cli.rs has no hidden command of that name" in problem
+
+
+def test_stale_delegation_phrases_stay_forbidden():
+    assert set(check_guide_facts.STALE_DELEGATION_PHRASES) == {
+        "can also spawn each other",
+        "carry Agent(...) tools",
+        "holds the subagent tool but can spawn nothing",
+        "via Agent(...)",
+        "adversarial handoff never fires",
+        "step 6 silently no-ops",
+        "Its step-6 adversarial pass never fires",
+        "Kiro CLI v2 is not covered",
+        "only the core rules stop",
+        "the core rules forbid it in Kiro CLI v2",
+        "cannot spawn the architect in either runtime",
+        "no spawn tool in either runtime",
+    }
+
+
+def test_stale_phrase_is_matched_through_inline_code_backticks():
+    assert check_guide_facts.stale_delegation_phrases(
+        "k-architect and k-quality-assurance carry `Agent(...)` tools"
+    ) == ["carry Agent(...) tools"]
+    assert check_guide_facts.stale_delegation_phrases("k-developer via `Agent(...)`") == [
+        "via Agent(...)"
+    ]
+
+
+def test_konductor_spawn_cell_is_exempt_in_markdown_and_bundle_forms():
+    assert check_guide_facts.stale_delegation_phrases(
+        "| `konductor` | the 8 specialists | the same 8, via `Agent(...)`, plus `SendMessage` |"
+    ) == []
+    assert check_guide_facts.stale_delegation_phrases(
+        '{ k: "konductor", v: "the 8 specialists · the same 8 via Agent(...), plus SendMessage" }'
+    ) == []
+
+
+def test_stale_delegation_phrase_in_a_markdown_source_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "agents.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nIn Claude Code the specialists carry `Agent(...)` tools too.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert "agents.md: says 'carry Agent(...) tools'" in result.stdout
+
+
+def test_stale_delegation_phrase_in_a_bundle_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "site" / "user-guide.html"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original.replace("nothing · nothing", "k-developer via Agent(...)", 1),
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert "specialists hold no spawn tool" in result.stdout
+
+
+def test_v2_spawn_caveat_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "agents.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nKiro CLI v2 is not covered, so there only the core rules stop a spawn.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "specialists hold no spawn tool in any runtime" in result.stdout
+
+
+def test_stale_version_claims_are_the_two_shipped_phrases():
+    assert set(check_guide_facts.STALE_VERSION_CLAIMS) == {"last v2 release", "2.36.0 or later"}
+
+
+def _guide_check_with_appended(repo_copy, rel, addition):
+    page = repo_copy / rel
+    original = page.read_text(encoding="utf-8")
+    page.write_text(original + addition, encoding="utf-8")
+    try:
+        return subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+
+
+def test_last_v2_release_claim_in_the_guide_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy, "docs/user-guide/agents.md", "\nkiro-cli 3.0.0 is the last v2 release.\n"
+    )
+    assert result.returncode != 0
+    assert "state the checked kiro-cli versions, not a last release or a minimum" in result.stdout
+
+
+def test_minimum_version_claim_in_the_rust_doc_comment_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "cli/konductor-rs/src/cli/synth/kiro_cli_v2.rs",
+        "\n/// Needs kiro-cli 2.36.0 or later.\n",
+    )
+    assert result.returncode != 0
+    assert "kiro_cli_v2.rs: says '2.36.0 or later'" in result.stdout
+
+
+def test_v2_core_rules_clause_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "faq.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nNo specialist holds a spawn tool, and the core rules forbid it in Kiro CLI v2.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "the core rules forbid it in Kiro CLI v2" in result.stdout
+
+
+def test_stale_delegation_phrase_wrapped_across_markdown_lines_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "docs/user-guide/faq.md",
+        "\nNo specialist holds a spawn tool, and the core rules\nforbid it in Kiro CLI v2.\n",
+    )
+    assert result.returncode != 0
+    assert "the core rules forbid it in Kiro CLI v2" in result.stdout
+
+
+def test_version_claim_wrapped_across_doc_comment_lines_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "cli/konductor-rs/src/cli/synth/kiro_cli_v2.rs",
+        "\n/// Needs kiro-cli 2.36.0\n/// or later.\n",
+    )
+    assert result.returncode != 0
+    assert "kiro_cli_v2.rs: says '2.36.0 or later'" in result.stdout
+
+
+def test_roster_table_without_a_preloaded_column_fails_once_per_table(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "docs/user-guide/reference.md",
+        "\n| Agent | Model | Skills |\n| --- | --- | --- |\n"
+        "| `k-browser` | `claude-sonnet-5.5` | 5 |\n"
+        "| `k-media-analyzer` | `claude-sonnet-5.5` | 2 |\n",
+    )
+    assert result.returncode != 0
+    assert result.stdout.count("reference.md: roster table has no Preloaded column") == 1
+
+
+def test_notes_describe_the_existence_check_the_code_runs():
+    """A visible command missing from cli/README.md fails the check; the guide
+    must not say that any command in cli.rs, hidden or not, passes."""
+    notes = (REPO_ROOT / "docs" / "user-guide" / "notes.md").read_text(encoding="utf-8")
+    assert "hidden with `#[command(hide = true)]`" in notes
+    assert "hidden or not" not in notes

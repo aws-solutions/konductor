@@ -38,6 +38,7 @@ const TELEMETRY_REPORT_SCRIPT: &str =
 
 const MATERIALIZED_SCRIPT_NAME: &str = "konductor-telemetry-report-mcp.sh";
 
+pub use konductor_telemetry::install_info::install_info_record_is_valid;
 pub use konductor_telemetry::NIL_UUID_SENTINEL;
 
 /// No fallback to `std::env::temp_dir()`, never derived from
@@ -215,15 +216,12 @@ async fn resolved_addresses_include_disallowed_host(host: &str) -> bool {
 }
 
 fn build_event_id(uuid: &str) -> String {
-    use sha2::{Digest, Sha256};
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     let input = format!("{uuid}-{nanos}-{}", std::process::id());
-    let mut hasher = Sha256::new();
-    hasher.update(input.as_bytes());
-    format!("{:x}", hasher.finalize())
+    konductor_telemetry::sha256_hex(input.as_bytes())
 }
 
 fn wire_timestamp_now() -> String {

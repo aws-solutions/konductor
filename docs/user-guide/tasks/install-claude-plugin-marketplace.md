@@ -48,6 +48,11 @@ agent names such as `konductor` and `k-architect`.
 Plugin agents need agent-teams mode and tool permissions. Follow [Install for
 Claude Code, steps 2-3](install-claude-code.md#2-enable-agent-teams-mode).
 
+## Orchestration mode
+
+The plugin does not wire the session-start hook, so `orchestration.mode: coordinator` has no effect
+there. Coordinator mode needs a `konductor install` setup.
+
 ## Update or remove
 
 ```bash
@@ -60,8 +65,9 @@ manages CLI-tracked installs.
 
 ## AWS MCP
 
-The plugin bundles `aws-mcp` for `k-architect` and `k-developer`. Install
-`uvx` and configure AWS credentials before using AWS API tools. The proxy is
+The plugin bundles `aws-mcp` for `konductor`, `k-architect` and `k-developer`. Install
+`uvx` and configure AWS credentials before using AWS API tools. The proxy needs
+Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed. The proxy is
 pinned; AWS documentation and skills still come from the managed endpoint at
 request time.
 
@@ -77,11 +83,23 @@ or audit what the server can do, regardless of which agent triggered the
 call. See [Install for Claude Code](install-claude-code.md#optional-integrations)
 for AWS setup and other MCP integrations.
 
-A plugin agent's tool grant uses the plugin-scoped name
-`mcp__plugin_konductor_aws-mcp__*`, not the standalone `mcp__aws-mcp__*`.
-Grant that exact glob in `permissions.allow` (or `ask`/`deny`) if you set
-Claude Code permissions for this install path; the standalone name has no
-effect on a plugin agent.
+A plugin agent's tool grants use the plugin-scoped names
+`mcp__plugin_konductor_aws-mcp__<tool>`, not the standalone
+`mcp__aws-mcp__<tool>`. Use those names in `permissions.allow` (or
+`ask`/`deny`) if you set Claude Code permissions for this install path; the
+standalone names have no effect on a plugin agent.
+
+A plugin cannot ship permission rules, so this install path does not add the
+rules `konductor install --harness claude` writes. To have Claude Code ask
+before every call to the three tools that act on AWS with your credentials,
+add `mcp__plugin_konductor_aws-mcp__aws___run_script`,
+`mcp__plugin_konductor_aws-mcp__aws___get_presigned_url` and
+`mcp__plugin_konductor_aws-mcp__aws___get_tasks` to `permissions.ask` in your
+`settings.json`. `aws___run_script` runs agent-written Python. To pre-approve the five read-only
+tools as Kiro CLI does, add `mcp__plugin_konductor_aws-mcp__<tool>` to
+`permissions.allow` for `aws___search_documentation`, `aws___retrieve_skill`,
+`aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
 
 `k-browser`'s Playwright MCP server is not bundled. Configure it separately:
 
@@ -121,12 +139,23 @@ The plugin always sends to the default endpoint. It ignores
 See [Data Collection](../../../README.md#data-collection) for the full
 details and the event schema.
 
+## Dispatch permission mode
+
+The plugin's `dispatch_permission_mode` option sets how
+`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each
+child session: `interactive` (the default, which asks you in the pane),
+`headless` (no prompts; it edits files and denies anything your
+`permissions.allow` doesn't allow), or `bypass` (skips every permission
+check, for isolated environments only). Change it in `/config`. An exported
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` wins over the option. See
+[What the Claude Code plugin runs](../../../README.md#what-the-claude-code-plugin-runs).
+
 ## Related
 
 - [Install for Claude Code](install-claude-code.md)
 - [Install for Kiro CLI](install-kiro-cli.md)
 - [Install via Kiro Power](install-kiro-power.md)
-- [Plugin build output](../../../generated/claude-plugin/README.md)
+- [Plugin build and release](../../guides/claude-plugin-build.md)
 - <https://aws-solutions.github.io/konductor/>
 
 [← Install for Claude Code](install-claude-code.md) · [Task guides](README.md)

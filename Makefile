@@ -22,12 +22,12 @@
 #                     tree, producing per-harness output under dist/. Used
 #                     by the GitHub Actions release workflow
 #                     (.github/workflows/release.yml).
-#   claude-plugin       Regenerate generated/claude-plugin/{agents,skills}/
+#   claude-plugin       Regenerate dist/claude-plugin/{agents,skills}/
 #                     from agents/*.agent-spec.json, skills/*/SKILL.md, and
 #                     agent-sops/*.sop.md, via `konductor synth` and
 #                     `konductor install --harness claude` against a
 #                     throwaway scratch HOME/target -- see
-#                     generated/claude-plugin/README.md and
+#                     docs/guides/claude-plugin-build.md and
 #                     scripts/generate-claude-plugin.sh for the full
 #                     procedure. Output is gitignored -- see .gitignore --
 #                     so this is a local/CI build step, never something to
@@ -85,9 +85,10 @@
 #                     powers/konductor/skills/konductor-setup/scripts, so no
 #                     override is needed here). No commits, no push.
 
-.PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check \
+.PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check version-check notice-check \
         test test-rust test-schema-dump test-py test-skills-sh clean help \
         guide guide-check guide-sync guide-html guide-record kiro-power-check \
+        sop-orchestration-check sop-gate-facts-check \
         canvas canvas-install canvas-lint canvas-test canvas-build canvas-e2e
 
 all: build
@@ -104,13 +105,17 @@ help:
 	@echo "  make link               Symlink cli binary into ~/.local/bin (cli only)"
 	@echo "  make synth              Build the konductor CLI and run 'konductor synth',"
 	@echo "                          producing per-harness output under dist/ (cli only)"
-	@echo "  make claude-plugin      Regenerate generated/claude-plugin/ (gitignored)"
+	@echo "  make claude-plugin      Regenerate dist/claude-plugin/ (gitignored)"
 	@echo "  make claude-plugin-check  Regenerate + validate the flat plugin tree (no commits, no push)"
 	@echo "  make test               Run test in cli/, mcp/, and shared/"
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
 	@echo "  make test-py            Run the pytest suite under tests/"
+	@echo "  make version-check      Check crates, lockfiles and CHANGELOG.md match VERSION"
+	@echo "  make notice-check       Fail if NOTICE.txt is out of date with the shipped crates"
 	@echo "  make test-skills-sh     Run every tests/skills/*/*.sh regression test"
+	@echo "  make sop-orchestration-check  Check the gated SOP list against agent-sops/"
+	@echo "  make sop-gate-facts-check  Check gated SOP text against its gate boundaries"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
 	@echo ""
 	@echo "  Konductor Kiro Power (powers/konductor/, imported by users directly from main)"
@@ -184,7 +189,8 @@ KONDUCTOR_BIN := build/cli/konductor
 # an actual environment variable (`TARGET=... make synth`) does. This makes
 # both invocation styles behave the same.
 # --claude-bundled-mcp-servers pre-wires AWS MCP into dist/claude/agents/*.md
-# for the STANDALONE Claude Code install too, not just the plugin path --
+# and the dist/kiro-cli-v2 and dist/kiro-v3 agent files, so the standalone
+# Claude Code and Kiro installs get it too, not just the plugin path --
 # see scripts/claude-plugin-mcp-servers.json (the single source of truth
 # scripts/read-bundled-mcp-servers.sh reads) and cli/konductor-rs/src/cli.rs's
 # own doc comment on this flag. The launch command/args baked into
@@ -204,7 +210,7 @@ synth:
 claude-plugin:
 	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }
-	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh
+	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh --out dist/claude-plugin
 
 # ── claude-plugin-check ──────────────────────────────────────────────────────
 # Validates the committed marketplace.json, then assembles and validates the
@@ -259,6 +265,18 @@ test-rust:
 test-schema-dump:
 	$(MAKE) -C cli test-schema-dump
 
+# ── version-check ─────────────────────────────────────────────────────────────
+
+version-check:
+	python3 scripts/check-version-consistency.py
+
+# ── notice-check ──────────────────────────────────────────────────────────────
+# Regenerates NOTICE.txt and fails if that changed it. Fix with
+# `npm run generate-notice` and commit the result.
+notice-check:
+	node scripts/generate-notice.js
+	@git diff --exit-code -- NOTICE.txt || { echo "FATAL: NOTICE.txt is out of date. Run 'npm run generate-notice' and commit the result." >&2; exit 1; }
+
 # ── test-py ───────────────────────────────────────────────────────────────────
 # A few tests skip unless build/cli/konductor exists, so run `make synth` or
 # `make -C cli build` first to cover them all.
@@ -267,11 +285,8 @@ test-py:
 
 # ── test-skills-sh ────────────────────────────────────────────────────────────
 # Globbed so new tests are picked up. SKILLS_SH_EXCLUDE lists tests known to
-# fail on main; remove an entry once its test passes.
-#   persistent-memory/test-nonbullet-injection.sh writes its URL allowlist to
-#   .asdlc/memory-config.json, but memory-validator.sh reads
-#   .konductor/memory-config.json, so the two disallowed-URL cases pass through.
-SKILLS_SH_EXCLUDE := tests/skills/persistent-memory/test-nonbullet-injection.sh
+# fail on main; remove an entry once its test passes. Empty today.
+SKILLS_SH_EXCLUDE :=
 test-skills-sh:
 	@failed=""; \
 	for f in tests/skills/*/*.sh; do \
@@ -349,6 +364,16 @@ kiro-power-check:
 	else \
 		echo "=== [kiro-power-check] All checks passed ==="; \
 	fi
+
+# ── sop-orchestration-check ───────────────────────────────────────────────────
+# Needs python3 and PyYAML.
+sop-orchestration-check:
+	python3 scripts/check-sop-orchestration.py .
+
+# ── sop-gate-facts-check ──────────────────────────────────────────────────────
+# Needs python3 and PyYAML.
+sop-gate-facts-check:
+	python3 scripts/check-sop-gate-facts.py .
 
 # ── workflow canvas ───────────────────────────────────────────────────────────
 # workflow-canvas/ is an independent npm project, so none of these are part of

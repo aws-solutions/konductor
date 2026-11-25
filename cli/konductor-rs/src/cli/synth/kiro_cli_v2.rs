@@ -5,25 +5,29 @@
 // as Kiro CLI output (agent config JSON, `SKILL.md` + auxiliary files,
 // `.sop.md`).
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use super::claude::merge_mcp_servers;
 use super::content_writers::{write_all_context, write_all_skills, write_all_sops};
 #[cfg(test)]
 use super::content_writers::{write_auxiliary_file, write_skill, write_sop};
 use super::model::CanonicalModel;
 #[cfg(test)]
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
-use super::parser::KiroCliConfig;
+use super::parse_canonical::skill_names_from_dependencies;
+use super::parser::{KiroCliConfig, McpServerDef};
 use super::path_safety::reject_unsafe_agent_name;
 #[cfg(test)]
 use super::path_safety::{
     reject_unsafe_auxiliary_relative_path, reject_unsafe_name_segment, reject_unsafe_skill_name,
     reject_unsafe_sop_name,
 };
+use super::skill_index;
+use super::spawn_policy::{holds_kiro_v2_spawn_tools, is_kiro_spawn_tool, SUBAGENT_CAPABILITY};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -48,11 +52,11 @@ struct KiroAgentFile<'a> {
     model: &'a str,
     #[serde(rename = "welcomeMessage", skip_serializing_if = "Option::is_none")]
     welcome_message: Option<&'a str>,
-    tools: &'a [String],
+    tools: Vec<String>,
     #[serde(rename = "allowedTools")]
-    allowed_tools: &'a [String],
+    allowed_tools: Vec<String>,
     #[serde(rename = "toolsSettings")]
-    tools_settings: &'a serde_json::Value,
+    tools_settings: serde_json::Value,
     #[serde(rename = "mcpServers")]
     mcp_servers: serde_json::Value,
     hooks: serde_json::Value,
@@ -82,13 +86,26 @@ impl HarnessTransformer for KiroCliV2Transformer {
                 let Some(kiro) = &agent.client_config.kiro_cli else {
                     continue;
                 };
-                let file = render_agent_file(
+                let kiro = with_registry_mcp_servers(kiro, &agent.dependencies.mcp_registry);
+                let declared: Vec<&str> =
+                    skill_names_from_dependencies(&agent.dependencies.skills).collect();
+                let prompt = skill_index::kiro_skill_block(
+                    &agent.name,
+                    &declared,
+                    &model.skills,
+                    skill_index::KiroEngine::V2,
+                )
+                .map(|block| skill_index::append_block(&agent.config.system_prompt, &block));
+                let mut file = render_agent_file(
                     &agent.name,
                     &agent.config,
-                    kiro,
+                    &kiro,
                     &agent.dependencies.context.context_names,
                     &skill_names,
                 )?;
+                if let Some(prompt) = &prompt {
+                    file.prompt = prompt;
+                }
                 write_agent_file(staging_dir, &agent.name, &file)?;
             }
             write_sop_scopes_sidecar(staging_dir, &model.agents)?;
@@ -109,6 +126,19 @@ impl HarnessTransformer for KiroCliV2Transformer {
         })?;
 
         Ok(())
+    }
+}
+
+/// A copy of `kiro` whose `mcp_servers` is the agent spec's
+/// `dependencies.mcpRegistry` merged with its own `kiroCli.mcpServers` by
+/// `merge_mcp_servers`.
+pub(crate) fn with_registry_mcp_servers(
+    kiro: &KiroCliConfig,
+    registry: &BTreeMap<String, McpServerDef>,
+) -> KiroCliConfig {
+    KiroCliConfig {
+        mcp_servers: merge_mcp_servers(registry, &kiro.mcp_servers),
+        ..kiro.clone()
     }
 }
 
@@ -189,15 +219,27 @@ fn render_agent_file<'a>(
         resources.push(format!("file://{CONTEXT_CONTENT_TYPE_DIR}/{context_name}"));
     }
 
+    let mut tools = kiro.tools.clone();
+    let mut allowed_tools = kiro.allowed_tools.clone();
+    let mut tools_settings = kiro.tools_settings.clone();
+    if !holds_kiro_v2_spawn_tools(name) {
+        let servers: Vec<&str> = kiro.mcp_servers.keys().map(String::as_str).collect();
+        tools = strip_specialist_spawn_tools(&tools, &servers);
+        allowed_tools.retain(|id| !is_kiro_spawn_tool(id));
+        if let Some(settings) = tools_settings.as_object_mut() {
+            settings.remove(SUBAGENT_CAPABILITY);
+        }
+    }
+
     Ok(KiroAgentFile {
         name,
         description: &config.description,
         prompt: &config.system_prompt,
         model: &config.model,
         welcome_message: kiro.welcome_message.as_deref(),
-        tools: &kiro.tools,
-        allowed_tools: &kiro.allowed_tools,
-        tools_settings: &kiro.tools_settings,
+        tools,
+        allowed_tools,
+        tools_settings,
         mcp_servers,
         hooks: serde_json::Value::Object(
             kiro.hooks
@@ -207,6 +249,63 @@ fn render_agent_file<'a>(
         ),
         resources,
     })
+}
+
+/// The v2 engine's `@builtin` tools minus `subagent`, as the kiro-cli
+/// versions in `SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH` list them (3.0.0
+/// shows `fs_read`, `fs_write` and `execute_bash` as `read`, `write` and
+/// `shell`). v2 ignores `excludedTools`, and
+/// `toolsSettings.subagent.availableAgents` does not remove the tool (an
+/// empty list allows every agent; a non-matching list still lists
+/// `subagent`), so every agent except `konductor` gets this explicit list
+/// in place of `@builtin`. The name keeps "specialist" to match its sibling
+/// `SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH`, which the docs pin test reads
+/// by name.
+const SPECIALIST_BUILTIN_TOOLS: [&str; 13] = [
+    "fs_read",
+    "fs_write",
+    "execute_bash",
+    "use_aws",
+    "knowledge",
+    "introspect",
+    "todo_list",
+    "glob",
+    "grep",
+    "web_search",
+    "web_fetch",
+    "code",
+    "goal",
+];
+
+/// kiro-cli versions whose v2 engine listed exactly `SPECIALIST_BUILTIN_TOOLS`
+/// plus `subagent` under `/tools`. Re-probe on a release that changes the
+/// built-ins; the docs quote this list (tests/test_spawn_docs_text.py) and
+/// the Kiro CLI v2 install summary prints it (`install::checked_kiro_versions_line`).
+pub(crate) const SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH: [&str; 2] = ["2.36.0", "3.0.0"];
+
+/// Drops every spawn-tool alias and expands `@builtin` to
+/// `SPECIALIST_BUILTIN_TOOLS`, keeping the other entries in order and
+/// each id once, for every agent except `konductor`. `*` grants every
+/// tool, `subagent` included, so it expands to the same list plus
+/// `@<server>` for each of the spec's MCP servers.
+fn strip_specialist_spawn_tools(tools: &[String], mcp_servers: &[&str]) -> Vec<String> {
+    let builtins = || SPECIALIST_BUILTIN_TOOLS.iter().map(|t| t.to_string());
+    let mut stripped: Vec<String> = Vec::new();
+    for id in tools.iter().filter(|id| !is_kiro_spawn_tool(id)) {
+        let expanded: Vec<String> = match id.as_str() {
+            "@builtin" => builtins().collect(),
+            "*" => builtins()
+                .chain(mcp_servers.iter().map(|server| format!("@{server}")))
+                .collect(),
+            _ => vec![id.clone()],
+        };
+        for tool in expanded {
+            if !stripped.contains(&tool) {
+                stripped.push(tool);
+            }
+        }
+    }
+    stripped
 }
 
 /// Matches a hand-authored `skill://` resource entry naming a single
@@ -668,17 +767,19 @@ mod tests {
             resources: vec!["file://AGENTS.md".to_string()],
             welcome_message: None,
         };
-        let agent = agent_with_kiro("k-example", kiro);
+        // `konductor`: every other agent loses `subagent` and `@builtin` here.
+        let agent = agent_with_kiro("konductor", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
             render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
 
-        assert_eq!(file.name, "k-example");
+        assert_eq!(file.name, "konductor");
         assert_eq!(file.description, "A test agent.");
         assert_eq!(file.prompt, "You are a test agent.");
         assert_eq!(file.model, "claude-sonnet-5");
         assert_eq!(file.tools, &["@builtin".to_string()]);
         assert_eq!(file.allowed_tools, &["fs_read".to_string()]);
+        assert_eq!(file.tools_settings["subagent"]["trustedAgents"][0], "x");
         assert_eq!(file.resources, &["file://AGENTS.md".to_string()]);
         assert_eq!(
             file.mcp_servers["example-mcp"]["command"],
@@ -687,12 +788,161 @@ mod tests {
     }
 
     #[test]
+    fn render_agent_file_strips_spawn_tools_from_specialists() {
+        let kiro = KiroCliConfig {
+            tools: vec![
+                "@builtin".to_string(),
+                "subagent".to_string(),
+                "use_subagent".to_string(),
+                "agent_crew".to_string(),
+                "@aws-mcp".to_string(),
+            ],
+            allowed_tools: vec!["fs_read".to_string(), "subagent".to_string()],
+            tools_settings: serde_json::json!({
+                "subagent": {"trustedAgents": ["x"]},
+                "shell": {"autoAllowReadonly": true}
+            }),
+            ..KiroCliConfig::default()
+        };
+        let agent = agent_with_kiro("k-example", kiro);
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        let mut expected: Vec<String> = SPECIALIST_BUILTIN_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        expected.push("@aws-mcp".to_string());
+        assert_eq!(file.tools, expected);
+        assert_eq!(file.allowed_tools, &["fs_read".to_string()]);
+        assert_eq!(
+            file.tools_settings,
+            serde_json::json!({"shell": {"autoAllowReadonly": true}})
+        );
+    }
+
+    /// The mux and cmux orchestrators dispatch through shell panes, so on v2
+    /// they get the specialists' explicit built-in list: `@builtin` expands
+    /// without `subagent`, the other entries keep their order, and no
+    /// `toolsSettings.subagent` survives. `konductor` alone keeps both.
+    #[test]
+    fn render_agent_file_strips_subagent_from_the_mux_orchestrators_but_not_konductor() {
+        let kiro = || KiroCliConfig {
+            tools: vec![
+                "@builtin".to_string(),
+                "read".to_string(),
+                "shell".to_string(),
+                "todo".to_string(),
+            ],
+            allowed_tools: vec!["fs_read".to_string(), "shell".to_string()],
+            tools_settings: serde_json::json!({"subagent": {"trustedAgents": ["k-developer"]}}),
+            ..KiroCliConfig::default()
+        };
+        let mut expected: Vec<String> = SPECIALIST_BUILTIN_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        expected.extend(["read", "shell", "todo"].map(str::to_string));
+
+        for name in ["konductor-mux-orchestrator", "konductor-cmux-orchestrator"] {
+            let agent = agent_with_kiro(name, kiro());
+            let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+            let file =
+                render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new())
+                    .unwrap();
+            assert_eq!(file.tools, expected, "{name}");
+            assert!(!file.tools.iter().any(|t| t == "subagent"), "{name}");
+            assert_eq!(
+                file.allowed_tools,
+                &["fs_read".to_string(), "shell".to_string()],
+                "{name}"
+            );
+            assert!(file.tools_settings.get("subagent").is_none(), "{name}");
+        }
+
+        let agent = agent_with_kiro("konductor", kiro());
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+        assert_eq!(file.tools, &["@builtin", "read", "shell", "todo"]);
+        assert_eq!(
+            file.tools_settings["subagent"]["trustedAgents"],
+            serde_json::json!(["k-developer"])
+        );
+    }
+
+    #[test]
+    fn strip_specialist_spawn_tools_expands_a_wildcard_without_subagent() {
+        let tools = vec!["*".to_string()];
+        let stripped = strip_specialist_spawn_tools(&tools, &["aws-mcp"]);
+
+        let mut expected: Vec<String> = SPECIALIST_BUILTIN_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        expected.push("@aws-mcp".to_string());
+        assert_eq!(stripped, expected);
+        assert!(!stripped.iter().any(|t| t == "*" || t == "subagent"));
+    }
+
+    #[test]
+    fn render_agent_file_expands_a_specialist_wildcard_with_its_mcp_servers() {
+        let mut mcp_servers = IndexMap::new();
+        mcp_servers.insert(
+            "example-mcp".to_string(),
+            McpServerDef {
+                command: Some("uvx".to_string()),
+                args: vec!["example-mcp@latest".to_string()],
+                url: None,
+            },
+        );
+        let kiro = KiroCliConfig {
+            tools: vec!["*".to_string()],
+            mcp_servers,
+            ..KiroCliConfig::default()
+        };
+        let agent = agent_with_kiro("k-example", kiro);
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        let mut expected: Vec<String> = SPECIALIST_BUILTIN_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        expected.push("@example-mcp".to_string());
+        assert_eq!(file.tools, expected);
+        assert!(!file.tools.iter().any(|t| t == "*" || t == "subagent"));
+    }
+
+    #[test]
+    fn strip_specialist_spawn_tools_lists_a_builtin_once_when_also_named() {
+        let tools = vec![
+            "fs_read".to_string(),
+            "@builtin".to_string(),
+            "@aws-mcp".to_string(),
+        ];
+        let stripped = strip_specialist_spawn_tools(&tools, &[]);
+
+        let mut expected = vec!["fs_read".to_string()];
+        expected.extend(
+            SPECIALIST_BUILTIN_TOOLS
+                .iter()
+                .filter(|t| **t != "fs_read")
+                .map(|t| t.to_string()),
+        );
+        expected.push("@aws-mcp".to_string());
+        assert_eq!(stripped, expected);
+    }
+
+    #[test]
     fn render_agent_file_emits_welcome_message_when_present() {
         let kiro = KiroCliConfig {
             welcome_message: Some("Ready to help.".to_string()),
             ..Default::default()
         };
-        let agent = agent_with_kiro("asdlc-example", kiro);
+        let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
             render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
@@ -705,7 +955,7 @@ mod tests {
     #[test]
     fn render_agent_file_omits_welcome_message_key_when_absent() {
         let kiro = KiroCliConfig::default();
-        let agent = agent_with_kiro("asdlc-example", kiro);
+        let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
             render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
@@ -2024,6 +2274,70 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    fn skill_with_description(name: &str, description: &str) -> crate::cli::synth::model::SkillDef {
+        crate::cli::synth::model::SkillDef {
+            name: name.to_string(),
+            raw_frontmatter: format!("name: {name}\ndescription: {description}"),
+            body: "# Body\n".to_string(),
+            auxiliary_files: Vec::new(),
+        }
+    }
+
+    fn written_prompt(dir: &Path, agent: &str) -> String {
+        let path = dir
+            .join(expected_output_dir())
+            .join(format!("{agent}.json"));
+        let parsed: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+        parsed["prompt"].as_str().unwrap().to_string()
+    }
+
+    #[test]
+    fn transform_appends_declared_skill_index_to_prompt() {
+        let dir = temp_dir("skill-index");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro_and_skill_names(
+                "k-example",
+                KiroCliConfig::default(),
+                &["beta", "alpha"],
+            )],
+            skills: vec![
+                skill_with_description("alpha", "Use for alpha work."),
+                skill_with_description("beta", "Use for beta work."),
+                skill_with_description("gamma", "Use for gamma work."),
+            ],
+            ..Default::default()
+        };
+        KiroCliV2Transformer.transform(&model, &dir).unwrap();
+
+        let prompt = written_prompt(&dir, "k-example");
+        assert!(prompt.starts_with("You are a test agent.\n\n## Your skills\n"));
+        assert!(prompt.contains("`get_skill`"));
+        let lines: Vec<&str> = prompt.lines().filter(|l| l.starts_with("- ")).collect();
+        assert_eq!(
+            lines,
+            vec!["- beta: Use for beta work.", "- alpha: Use for alpha work."]
+        );
+        assert!(prompt.ends_with("- alpha: Use for alpha work.\n"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn transform_leaves_prompt_unchanged_for_agent_without_skills() {
+        let dir = temp_dir("skill-index-none");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro("k-example", KiroCliConfig::default())],
+            skills: vec![skill_with_description("alpha", "Use for alpha work.")],
+            ..Default::default()
+        };
+        KiroCliV2Transformer.transform(&model, &dir).unwrap();
+
+        assert_eq!(written_prompt(&dir, "k-example"), "You are a test agent.");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
     /// An agent with no declared `skillNames` is omitted from the
     /// sidecar entirely -- absent from the map and an empty array both
     /// mean "do not pass `--skill-name-filter`" to the install-side
@@ -2163,5 +2477,96 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&output_root);
+    }
+
+    fn aws_mcp_registry_entry() -> McpServerDef {
+        McpServerDef {
+            command: Some("uvx".to_string()),
+            args: vec![
+                "mcp-proxy-for-aws-cli==2.0.0".to_string(),
+                "https://aws-mcp.us-east-1.api.aws/mcp".to_string(),
+            ],
+            url: None,
+        }
+    }
+
+    fn agent_with_mcp_registry(
+        name: &str,
+        kiro: KiroCliConfig,
+        registry: BTreeMap<String, McpServerDef>,
+    ) -> ParsedAgentSpec {
+        let mut agent = agent_with_kiro(name, kiro);
+        agent.dependencies.mcp_registry = registry;
+        agent
+    }
+
+    fn transform_and_read_agent(label: &str, agent: ParsedAgentSpec) -> serde_json::Value {
+        let dir = temp_dir(label);
+        let file_name = format!("{}.json", agent.name);
+        let model = CanonicalModel {
+            agents: vec![agent],
+            ..Default::default()
+        };
+        KiroCliV2Transformer.transform(&model, &dir).unwrap();
+        let written = fs::read_to_string(dir.join(expected_output_dir()).join(file_name)).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+        serde_json::from_str(&written).unwrap()
+    }
+
+    #[test]
+    fn transform_renders_mcp_servers_from_dependencies_mcp_registry() {
+        let registry = BTreeMap::from([("aws-mcp".to_string(), aws_mcp_registry_entry())]);
+        let agent = agent_with_mcp_registry("k-developer", KiroCliConfig::default(), registry);
+
+        let file = transform_and_read_agent("mcp-registry", agent);
+
+        assert_eq!(file["mcpServers"]["aws-mcp"]["command"], "uvx");
+        assert_eq!(
+            file["mcpServers"]["aws-mcp"]["args"],
+            serde_json::json!([
+                "mcp-proxy-for-aws-cli==2.0.0",
+                "https://aws-mcp.us-east-1.api.aws/mcp"
+            ])
+        );
+    }
+
+    #[test]
+    fn kiro_cli_mcp_servers_entry_overrides_the_same_named_registry_entry() {
+        let registry = BTreeMap::from([
+            ("aws-mcp".to_string(), aws_mcp_registry_entry()),
+            (
+                "other-mcp".to_string(),
+                McpServerDef {
+                    command: Some("other".to_string()),
+                    ..Default::default()
+                },
+            ),
+        ]);
+        let mut kiro_servers = IndexMap::new();
+        kiro_servers.insert(
+            "aws-mcp".to_string(),
+            McpServerDef {
+                command: Some("kiro-specific".to_string()),
+                ..Default::default()
+            },
+        );
+        let kiro = KiroCliConfig {
+            mcp_servers: kiro_servers,
+            ..Default::default()
+        };
+
+        let file = transform_and_read_agent(
+            "mcp-registry-override",
+            agent_with_mcp_registry("k-developer", kiro, registry),
+        );
+
+        let servers = file["mcpServers"].as_object().unwrap();
+        assert_eq!(
+            servers.keys().collect::<Vec<_>>(),
+            ["aws-mcp", "other-mcp"],
+            "the kiroCli entry replaces the registry entry in place"
+        );
+        assert_eq!(servers["aws-mcp"]["command"], "kiro-specific");
+        assert_eq!(servers["aws-mcp"]["args"], serde_json::json!([]));
     }
 }

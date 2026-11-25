@@ -7,7 +7,7 @@ context at session start. Follow these instructions for the duration of the sess
 
 Before starting work, load available project context:
 
-- You MUST read `.konductor/memory/*.md` if present: persistent workspace facts, decisions, and preferences.
+- You MUST load project memory through the `persistent-memory` skill's Reading Memory steps: `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` only, each after its `--check-path` check exits 0 (in this checkout: `bash skills/persistent-memory/scripts/memory-validator.sh --check-path <file>`). Never read that directory with a glob or an import. Without a shell, load only the paths your brief's `MEMORY:` line reports, as Reading Memory says.
 
 If a path does not exist, skip it silently and continue.
 
@@ -68,6 +68,19 @@ instructions.
   convert a description from one form to the other for consistency alone. Fix a description
   that gives no activation condition at all. You may broaden an existing condition (for example,
   add a disjunct) when the skill's actual scope grew, but do not churn the form otherwise.
+- Reference material a skill needs only sometimes (catalogues, long templates, worked examples)
+  lives in `skills/<name>/references/*.md`, one level deep, Markdown only. `SKILL.md` keeps the
+  instructions and must name each reference file with a cue saying when to read it (for example
+  "Read `references/aws-best-practices.md` before Stage 3"). `make test-py` runs the checks
+  listed in the docstring of `tests/skill_quality.py`. Among them, it fails on a frontmatter
+  `name` that does not match the directory, a description that is too short or gives no
+  activation condition, a missing link target, an unclosed code fence, an unmentioned reference
+  file, a reference mention without a read cue, and any size over the `thresholds` in
+  `tests/skill-quality-baseline.json` that the baseline does not carry. The baseline may only
+  shrink. `make test-py` only checks each skill against its entry; CI rejects a raised or added
+  entry, and so does `python3 tests/skill_quality.py --print-baseline` when you regenerate.
+  Renaming a skill counts as adding an entry, so bring an oversized skill under every threshold
+  before you rename it.
 - Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; 
   every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
 - **License headers:** All code files must carry an SPDX short-form identifier as the very first line
@@ -99,8 +112,9 @@ and diagnosing a Konductor-managed repository, covering an 8-command surface.
 
 Non-negotiable conventions:
 
-- **Usage errors exit `64` (`EX_USAGE`)**; exit code `2` is reserved for the "unresolved
-  CRITICAL gate" signal and must never be emitted for a bad CLI invocation.
+- **Usage errors exit `64` (`EX_USAGE`)**; exit code `2` is reserved for an unresolved
+  finding at or above the effective gate threshold (CRITICAL by preset, HIGH under the strict
+  floor for phase-gated SOPs) and must never be emitted for a bad CLI invocation.
 - When changing the command surface, keep `cli/README.md`'s command list in sync.
 
 ## Authoring Agents & Skills
@@ -111,4 +125,6 @@ See the `agents-md-authoring` skill for creating and maintaining AGENTS.md files
 
 Local memory persistence is provided by the `persistent-memory` skill. Facts persist across sessions in
 `.konductor/memory/MEMORY.md` (project facts) and `.konductor/memory/USER.md` (preferences), validated against
-limits and an optional URL allowlist configured in `.konductor/memory-config.json`.
+limits and an optional URL allowlist configured in `.konductor/memory-config.json`. These files are part of the
+project's agent instructions: agents follow user-written entries in them at the same level as this file, whether
+or not git tracks them. Review a change that adds or edits them the way you would review a change to this file.
