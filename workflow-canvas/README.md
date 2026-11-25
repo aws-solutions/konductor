@@ -604,120 +604,117 @@ The code follows the split of the Run view:
 
 ## The Run view
 
-The view draws the same graph as the Design view, read-only, with a **Goal** box
-and a **Run** button beside it. The goal starts as the `default` of the file's
-`params.goal`, and the `description` of that param is the help text of the box.
-A file without a default leaves the box empty and Run off until a goal is typed,
-because the API needs one (1 to 2048 characters) to start a run.
+The view has a **Goal** box with a **Run** button under it, then the run as it
+is followed: how far it has got, its stages with the detail and console of the
+one picked, and the past runs of the workflow. It draws no graph; the drawing
+is the Design view's. The goal starts as the `default` of the file's
+`params.goal`. A file without a default leaves the box empty and Run off until
+a goal is typed, because the API needs one (1 to 2048 characters) to start a
+run.
 
-- **Run** calls `POST /api/run` with the goal, then reads
-  `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
-  Run is off and the goal box is read-only from the click until the run ends.
-  Read-only, not greyed out, so the box keeps focus and shows the goal of that
-  run. Enter in the box starts a run, like the button.
+- **Run** calls `POST /api/run` with the goal, then follows the run through
+  `GET /api/runs/{id}/events`, a long poll the server may hold open for
+  `LONG_POLL_WAIT_S` seconds. Run is off from the click until the run ends.
+  The Goal box stays editable, so the goal of the next run can be typed while
+  one goes on. Enter in the box starts a run, like the button.
 - If the server answers 409 `already_running`, as it does when a run from
-  another tab is going, the tab follows the run named in that answer instead
-  of starting one. The line under the button says so, and the goal typed is not
-  used for that run. `GET /api/runs` gives the goal of each run, but the Run
-  view does not call `listRuns` yet, so while the tab follows a run that was
-  already going the Goal box is empty, says "Not known" and is labelled so. When that run ends, the status line still says it was
-  already in progress.
+  another tab is going, the page follows the run named in that answer instead
+  of starting one, and the goal typed is not used for it. The API does not
+  give that run's goal, so while it goes the Goal box is read-only, empty and
+  says "Not known"; it comes back with the default once the run has ended.
 - Resume works after a reload, though the launch code works once: the page
-  resumes from the session it kept (see above). If the server was started
-  again, the kept token is refused and the page tells the user to start
-  `flow view` again; the run goes on unseen. The tab keeps the id of the latest run in
-  the storage of the browser tab (`sessionStorage`; the id is no secret) and
-  drops it once the run has ended or turns out to be gone. When the page
-  opens again with a session it reads that run, trying again like any read. If the run is still running, the
-  tab follows it as if the person had joined it, without a click on Run. A run
-  that has ended, one that the server will not give (for instance after it
-  started again) or a browser that blocks storage leaves the tab ready for a
-  new run. If the readings fail for another reason, such as no answer, the tab
-  does not know whether the run is going, and shows the alert for a run that
-  may still be going. Pressing Run while the page still looks for the run
-  stops the look and starts a run; a run that is going answers 409 and is
-  joined.
+  resumes from the session it kept (see above). The page keeps the id of the
+  latest run in the storage of the browser tab (`sessionStorage`; the id is no
+  secret) and drops it once the run has ended or turns out to be gone. When
+  the page opens again with a session it reads that run's events from the
+  start, so the stages and the console lines the server still holds come back.
+  A run that has ended, one the server will not give (for instance after it
+  started again) or a browser that blocks storage leaves the page ready for a
+  new run.
 - Pasting another launch address into the open tab lets go of the run: the
-  tab stops following it, shows no run status and forgets its id. The run goes
-  on at its server. The Goal box and Run belong to the workflow that is open.
-- A read of the run that fails is tried again after a second; the tab gives up
-  after three failures in a row. Only a missing answer, a 5xx, 408 or 429 is tried again:
-  any 4xx or a reply the page cannot read shows the alert at once. A call that
-  gets no answer in 15 seconds counts as a failure, except the one that trades
-  the launch code, which has a limit of 120 seconds because the code works once. A start that
-  gets no answer, or is accepted in a reply the page cannot read, says that the
-  run may not have started and that Run joins it if it did.
-- Each node shows a badge with a word and a colour: **Queued** (with a dashed
-  outline), **Running**, **Passed** and **Blocked**. The word carries the state;
-  only Queued and Not run also differ in shape. The intent is **Done** once the run
-  has it. After a halt, the stages behind the blocked one say **Not run**. The end
-  shows the result: **Passed** or **Halted**.
-- The stage that stopped a run shows under the status line, with the code of
-  its `reason` (such as `RESULT_MISSING`) and one sentence for each code that
-  the contract lists. A code the page does not know is shown as it is. A
-  blocked stage with a missing or empty `reason` shows with its name and no
-  reason, as the contract has a client treat a reason it does not know like any
-  other blocked stage. A `reason` that is not a string makes the reply a bad
-  reply.
+  page stops following it, shows no run and forgets its id. The run goes on at
+  its server. The Goal box and Run belong to the workflow that is open.
+- A failed call is tried again after `RETRY_FIRST_MS`, doubling to
+  `RETRY_MAX_MS`, until `MAX_FAILURES_IN_A_ROW` have failed in a row; then the
+  follower gives up and the alert offers **Follow again**, which reads on from
+  where the reads stopped. A 401 ends the follower with its own alert: the
+  server no longer knows the session. A call that brings nothing new waits
+  `MIN_POLL_GAP_MS` before the next one.
+- A line above the stages says where the run is ("Running draft. 0 of 2 stages
+  passed."), with a bar of the stages that passed or stopped it and the
+  elapsed time. A screen reader hears each change from a polite live region
+  that `App` keeps outside the views, so it is announced while the Design view
+  is open too; the line itself is not a live region, or the change would be
+  heard twice.
+- Each stage of the run is a button in the Tab order. Picking one shows its
+  detail next in the Tab order: where it is, why it stopped the run when it is
+  blocked, and its console lines. The lines are live only, as the server drops
+  them a minute after the run ends, and the page keeps at most
+  `CONSOLE_LINES_PER_RUN` of them.
+- The stage that stopped a run shows the code of its `reason` (such as
+  `RESULT_MISSING`) and one sentence for each code the contract lists. A code
+  the page does not know is shown as it is, and a blocked stage with a missing
+  or empty `reason` shows with its name and no reason, as the contract has a
+  client treat a reason it does not know like any other blocked stage.
+- The past runs come from `GET /api/runs`, newest first, with the state, id,
+  start time and goal of each. A goal the server cut ends in a mark, and an
+  empty goal says so; the goal is text, never markup. The list is read again
+  once the run has ended. When it cannot be read, a warning says so and the
+  rest of the view goes on working.
 - A Run that the server answers with 409 `trust_required` opens a dialog. It
   shows the `fix` of the answer and its command, such as
   `konductor flow trust hello`, with **Copy**, which copies the command, and
-  **Run again**, which asks for the same run with the same goal. The command
-  and **Copy** show only when the command is `konductor flow trust` and the
-  name of the workflow on the page, since the text comes from the server and is
-  meant for a terminal; for any other `fix` the dialog shows the sentence alone,
-  as plain text. The page
-  never grants trust: the person runs the command in a terminal. A save that
-  changes the file ends its trust, so the next Run asks again. **Close** leaves
-  the error under the Run button, and a Run again that meets another error
-  shows it as any error is shown.
-- A line under the button says where the run is ("Running draft. 0 of 2 stages
-  done."). A screen reader hears each change from a polite live region that
-  `App` keeps outside the views, so it is announced while the Design view is
-  open too. For a halted run it ends with the sentence of the blocked stage's
-  reason, or the code when the page does not know it. Each node's name for a
-  screen reader ends with its state.
-- An error from the API, whether the run does not start or a read fails, shows
-  in one alert under the Run button, with the sentence the server gave and
-  each name in backticks shown as code. A screen reader hears the same
+  **Run again**, which asks for the same run with the goal of the refused
+  start. The command and **Copy** show only when the command is
+  `konductor flow trust` and the name of the workflow on the page, since the
+  text comes from the server and is meant for a terminal; for any other `fix`
+  the dialog shows the sentence alone, as plain text. The page never grants
+  trust: the person runs the command in a terminal. A save that changes the
+  file ends its trust, so the next Run asks again. **Close** leaves the error
+  under the Run button and the rest of the view as it was, and a Run again
+  that meets another error shows it as any error is shown.
+- An error from the API, whether the run does not start or the reads fail,
+  shows in one alert under the Run button, with the sentence the server gave
+  and each name in backticks shown as code. A screen reader hears the same
   sentence, without the backticks, from an alert region that `App` keeps
   outside the views, so it is read when it appears even if the Design view is
-  open. When a read fails, the alert adds that the run (with its id) may still
-  be going on the server, and offers **Follow again**. A failed stage is a result, not an error, so it has no
-  alert. The goal is one line: line breaks in the default become
-  spaces, and Enter that ends an input method composition starts no run.
-- A workflow can be saved while a run goes on, so the run may have other stages
-  than the graph. The graph is the saved workflow, and it is drawn again when
-  the Design view saves, while a run works from the file as it was saved when the
-  run started. Node states attach by stage name, so a warning
-  above the graph names the stages that are not drawn and those that are not in
-  the run.
-- A run goes on while the Design view is open, and the tab shows it again when
-  you come back, with the goal box as it was: what you typed, or the goal of
-  the run in flight. Closing the page stops the reading, not the run.
-- The colours of the states are in `src/canvas/canvas.css` and match the theme
-  module, checked in both modes by the contrast test.
+  open. A failed stage is a result, not an error, so it has no alert. A start
+  that gets no answer, or is accepted in a reply the page cannot read, says
+  that it is not known whether the run started and asks for a reload, since a
+  second start could run the workflow twice. The goal is one line: line breaks
+  in the default become spaces, and Enter that ends an input method
+  composition starts no run.
+- A workflow can be saved while a run goes on. The run works from the file as
+  it was saved when it started, so its stages can differ from the ones the
+  Design view now draws; the stages of the run are the ones listed here.
+- A run goes on while the Design view is open, because the page follows it,
+  not the view that draws it. Coming back shows it as it is, with the Goal box
+  as it was. Closing the page stops the reading, not the run.
 
 The code follows the ports-and-adapters split of the graph:
 
-- `src/execution/core/` is the core and does no IO: the state of the tab and
-  its reducer, the loop that starts a run and reads it (`startAndFollow`), the
-  node states, the status sentences, the sentences of the reasons of a blocked
-  stage and the command of a `trust_required` answer. Its ports are `RunPort` (start and
-  read a run) and `Scheduler` (wait for some milliseconds), so a test moves
-  time by hand and nothing sleeps. A test (`test-support/execution-purity.test.ts`)
-  fails if the core imports anything but its own modules, the graph core and the
-  wire types, or reads a clock, randomness, the environment or the network.
-- The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
-  ties to the session token, `timerScheduler`, and `sessionRunMemory`, which
-  keeps the id of the latest run for `resumeRun`. The token is held only by
-  those run calls. `createHttpApi` ends a call after a timeout of 15 seconds, and the launch
-  code call after 120 seconds because it works once, and
-  `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
-  into the core's `RunAlreadyActive` so the core can follow that run.
-- `useExecution` keeps the state in `App`, and `Execution` draws it. The
-  Design and Run views share `WorkflowGate` (loading, error and empty
-  states) and `WorkflowGraphCard` (the card with the graph).
+- `src/execution/core/` and `src/run-client/` are the core and do no IO: the
+  run as the events build it (`run-follow.ts`), how far it has got
+  (`run-progress.ts`), the detail and console of a stage, the past runs, the
+  sentences of the reasons of a blocked stage, the goal rules and the command
+  of a `trust_required` answer. Their ports are `RunPort` (start a run),
+  `ReadEvents` (read its events) and `Scheduler` (wait for some
+  milliseconds), so a test moves time by hand and nothing sleeps. Two tests
+  (`test-support/execution-purity.test.ts` and `run-client-purity.test.ts`)
+  fail if they import anything but their own modules, the graph core and the
+  wire types, or read a clock, randomness, the environment or the network.
+- The adapters are `createHttpApi` (`startRun`), which `loadWorkflow` ties to
+  the session token, `createNextPorts` (`readEvents`, `listRuns`),
+  `timerScheduler`, and `sessionRunMemory`, which keeps the id of the latest
+  run for the resume after a reload. The token is held only by those calls.
+  `createHttpApi` ends a call after a timeout of 15 seconds, and the launch
+  code call after 120 seconds because it works once, and `loadWorkflow` turns
+  the 409 `already_running`, which carries the `run_id`, into
+  `RunAlreadyActive` so the page can follow that run, and the 409
+  `trust_required` into `RunNeedsTrust`.
+- `useRunController` keeps the run in `App`, so a change of view cannot stop
+  the only follower of a run, and `RunView` draws what it holds. The Design
+  and Run views share `WorkflowGate` (loading, error and empty states).
 
 ## Theme
 
@@ -759,7 +756,8 @@ corner radii, in a light and a dark mode.
   are small dots, 10 pixels across, in the middle of the top edge (in) and the
   bottom edge (out). They show while a node is hovered, has the keyboard focus
   or is selected, and are hidden otherwise. A link runs from the bottom edge of
-  one card to the top edge of the next. `src/canvas/card-shape.ts` holds the
+  one card to the top edge of the next, and the last stage carries the mark
+  that says where the run ends, whose colours are checked in both modes. `src/canvas/card-shape.ts` holds the
   card outline, the focus ring sizes and the dot size. The keyboard focus ring
   follows the rounded outline of the card.
 
@@ -778,10 +776,13 @@ http://127.0.0.1:4173, so no server needs to be running first. Its `webServer`
 list is where a backing service starts when the app needs one.
 
 A launch code works once, so `e2e/global-setup.ts` trades the code of the
-config for a session once per run, and the `canvas` fixture answers the page's
-own `POST /api/session` with that session. Every other call, such as
-`GET /api/workflow`, reaches the API. A test that needs the error state opens
-the page with a wrong code or none.
+config for a session once per run, and the `canvas` fixture of
+`e2e/support/fixtures.ts` answers the page's own `POST /api/session` with that
+session. Every other call, such as `GET /api/workflow`, reaches the API. A
+test that needs the error state opens the page with a wrong code or none.
+A test that answers the session call with a token of its own sends the calls
+the views make with it (`GET /api/agents`, `GET /api/runs`) on with the token
+the server knows, or their 401 drops the session under the test.
 
 Port 4173 must be free, or set `WC_APP_PORT` to another port (`WC_APP_PORT=4300
 npm run test:e2e`). The config never reuses a server, so a `vite preview` you
@@ -807,31 +808,21 @@ editing tests, add `--no-deps`, or `functional` runs first as its dependency.
 The stub keeps what is saved until it stops, so the fixture puts the sample
 workflow back before and after each test, and a test that needs the file changed
 by someone else writes it itself (`e2e/support/stub-workflow.ts`, which fails on
-a refused call). The editing tests also cover saves that go wrong: a refusal
-with findings and one with none, a lost session, an answer that is lost or
-cannot be read (the file holds the text, or does not), and a conflict whose
-draft can be copied, and a graph that grows by added stages and is fitted again.
-They edit the `hello-plan` example of the workflow engine
-(`workflow-engine/examples/hello-plan.yml`, named `hello`, the root of the
-stub), an agent and the prompt of its `>-` stage, and check that no other byte
-changes. They also add a prompt to a stage that has none, keep Save off for a
-prompt that the check refuses, keep Save off for a file whose
-stages are in brackets, and run after a save, which the stub answers with
-`trust_required`, so the dialog opens.
+a refused call). The editing test saves the prompt of a stage and finds it
+again after a reload; the saves that go wrong are covered in the unit tests of
+the Design view and its editing core.
 A test that says a save "writes nothing" counts the `PUT` requests that the page
 sent; the file is checked only where a request reaches the stub. The HTML report
 is written to `playwright-report/`; open it with `npx playwright show-report`.
-Accessibility is checked with axe-core on each tab, on the error state, on the
-Run view with a stage running, a failed stage, a passed run, the error of
-the API, a goal that cannot be run and the trust dialog, on the Design view
-while editing, with problems shown and with a conflict shown, and in both theme
-modes.
+Accessibility is checked with axe-core on each view, on the error state, on the
+Run view with a stage running, a stage that stopped the run, a passed run, the
+error of the API, a goal that cannot be run and the trust dialog, and in both
+theme modes.
 
-The stub runs one run at a time and never fails a stage. So the tests that
-start a real run on it (the first run test of `execution.spec.ts`, and the run
-of the sample in `editing.spec.ts`) wait for the end of the run, and the tests
-of a failed stage, a refused run, a joined run and a dropped read answer the
-run calls themselves (`e2e/support/run-routes.ts`).
+The stub runs one run at a time and never fails a stage. So a test that starts
+a real run on it waits for the end of the run, and the tests of a stage that
+stopped the run, a refused run and a run that is still going answer the run
+calls themselves (`e2e/support/run-routes.ts`).
 A test that starts another run on the stub must also wait for its end, or the
 next test gets a 409. For the same reason, if that one test fails and Playwright
 retries it, the retry gets a 409 and follows the run still going.
