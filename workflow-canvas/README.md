@@ -502,7 +502,9 @@ keeps.
   deleted or selected.
 
 Nothing is written until **Save**. The line beside it says **No changes**,
-**Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
+**Unsaved changes**, **Saving** or **Saved**, and **Loading** then **Loaded
+again from the server** when the file is loaded again after a conflict, in a
+polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
 The writer (`stage-text.ts`) changes only the bytes of the values it edits, in
@@ -592,9 +594,11 @@ breaks.
   that goes out during the pause is checked again by the server. Only an error
   stops a save. The Design view lists warnings and notes above the columns; the
   classic Designer also shows each under its field in the warning style.
-- **A refused save** (422) shows the findings the same way. A refusal with no
-  error among its findings shows the sentence of the server as a failure, so
-  it is never silent.
+- **A refused save** (422) shows its findings the same way in the classic
+  Designer. The Design view does not show findings that only the refusal
+  brings: Save is off with "Fix the problems in the workflow first." and the
+  list shows what its own check found. A refusal with no error among its findings shows the sentence of the
+  server as a failure, so it is never silent.
 - **A conflict** (409) means the file changed after the page loaded. Nothing
   is written, and an alert says so. If the file already holds the text that was
   sent (the 409 names its hash, and the page reads the file), the earlier write
