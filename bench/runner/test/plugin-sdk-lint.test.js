@@ -85,3 +85,11 @@ test('every part the SDK exports loads, and benchApi is the API the registry spe
   walk(sdk, '');
   assert.ok(Object.isFrozen(sdk), 'the SDK object is frozen: a plugin cannot change what another plugin sees');
 });
+
+test('the SDK exports what the opencode judge needs to move into its plugin: run-one and procs (B-014 step 2)', () => {
+  const sdk = require(SDK_DIR);
+  assert.equal(typeof sdk.runOne.spawnWithTimeout, 'function');
+  assert.equal(sdk.runOne, require('../lib/run-one.js'));
+  assert.equal(sdk.procs, require('../lib/procs.js'));
+  for (const k of ['stream', 'sandbox', 'awsCreds']) assert.ok(sdk[k], `sdk.${k}`);
+});

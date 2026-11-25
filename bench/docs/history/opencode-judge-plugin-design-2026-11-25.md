@@ -35,7 +35,7 @@ its cache salt text stays the same, so saved judge files and caches still match 
    `makeCaller({ timeoutMs, rawDir, log, flags })`, `cacheSalt(model)` and `checkJudges(judges)`. The core reads the
    prompt cap from the descriptor and calls the two hooks when a part has them; `flags` is the judge command's own
    options. The judge needs `stream`, `run-one`, `sandbox`, `procs` and `aws-creds` from `runner/lib`; the plugin
-   lint allows only `bench/sdk`, so these join the SDK first. Done when the judge tests pass unchanged on the fake
+   lint allows only `bench/sdk`, so these join the SDK first (`runOne` and `procs` added 2026-11-25; the rest were there). Done when the judge tests pass unchanged on the fake
    opencode and `harness-coupling-baseline.json` loses the two `judge/opencode.js` imports.
 3. Drop the named exports `kiro`, `opencode`, `claudeCode` and `strands` from `runner/lib/harness/index.js`. Put
    `SUBAGENT_TOOLS` (today in `plugins/claude-code/parse.js`, read by core files) behind the descriptor `streams`.
