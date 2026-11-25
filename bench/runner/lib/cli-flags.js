@@ -55,7 +55,7 @@ const FLAGS = {
   'cap controls': ['out', 'base', 'reps', 'scratch', 'agent-engine', 'repo-root', 'bench-dir', 'check', 'base-arm', 'aa', 'keep', 'prune', 'extra-tasks', 'json'],
   'cap trigger': [
     'cap', 'mode', 'split', 'reps', 'crosscheck', 'crosscheck-run', 'harness', 'base', 'queries', 'out', 'model', 'model-cmd', 'from-run', 'from-arm', 'acting-agent',
-    'from-runs', 'concurrency', 'budget-credits', 'budget-usd', 'run-credit-limit', 'stop-on', 'max-tool-calls', 'seed', 'censored-floor', 'dry-run', 'kiro-bin', 'auth-db', 'isolate', 'hide', 'cache',
+    'from-runs', 'concurrency', 'budget-credits', 'budget-usd', 'run-credit-limit', 'run-credit-limit-mode', 'stop-on', 'max-tool-calls', 'seed', 'censored-floor', 'dry-run', 'kiro-bin', 'auth-db', 'isolate', 'hide', 'cache',
     'cargo-target', 'cargo-online', 'agent-engine', 'effort', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
   ],
   'cap prune-report': ['base', 'harness', 'runs', 'runs-glob', 'min-exposure', 'evidence', 'out', 'json', 'repo-root', 'bench-dir', 'detail', 'format'],

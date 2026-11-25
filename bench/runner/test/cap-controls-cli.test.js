@@ -96,6 +96,22 @@ test('cap controls --check names a missing arm, a missing flag and a missing ext
   } finally { s.done(); }
 });
 
+test('cap trigger live --dry-run passes --run-credit-limit-mode to run, and adds none when it is absent (run stays hard)', () => {
+  const s = setup();
+  try {
+    const draft = path.join(s.root, 'draft.json');
+    write(draft, JSON.stringify({ capId: 'skill:alpha', queries: [{ id: 'd01', text: 'Please look over this service for input handling problems', expect: 'load', rationale: 'r' }] }));
+    const args = ['trigger', '--cap', 'skill:alpha', '--mode', 'live', '--queries', draft, '--dry-run', '--out', path.join(s.root, 'o'), '--repo-root', s.repo, '--bench-dir', s.bench, '--base', 'v1.2.0', '--budget-credits', '10', '--run-credit-limit', '4'];
+    const soft = s.cli(...args, '--run-credit-limit-mode', 'soft');
+    assert.equal(soft.status, 0, soft.stderr);
+    assert.match(soft.stdout, /--run-credit-limit 4 --run-credit-limit-mode soft/);
+    const bare = s.cli(...args);
+    assert.equal(bare.status, 0, bare.stderr);
+    assert.match(bare.stdout, /--run-credit-limit 4/);
+    assert.doesNotMatch(bare.stdout, /--run-credit-limit-mode/);
+  } finally { s.done(); }
+});
+
 test('cap trigger live --dry-run: --profile sets the replicates and drops the budget requirement; without it the budget is still required', () => {
   const s = setup();
   try {

@@ -330,7 +330,7 @@ function cmdImport(opts) {
 
 // ---- trigger ----
 
-const RUN_PASSTHROUGH = ['run-credit-limit', 'auth-db', 'model', 'effort', 'kiro-bin', 'cache', 'cargo-target', 'cargo-online', 'isolate', 'agent-engine', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'hide'];
+const RUN_PASSTHROUGH = ['run-credit-limit', 'run-credit-limit-mode', 'auth-db', 'model', 'effort', 'kiro-bin', 'cache', 'cargo-target', 'cargo-online', 'isolate', 'agent-engine', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'hide'];
 
 // The options of a `run` that executes the trigger tasks of one capability on one arm, stopped at the first capability decision.
 function liveRunOpts({ opts, harness, base, tasksDir, taskIds, reps, out, seed, repo, benchDir, extraTasks }) {

@@ -382,7 +382,7 @@ const USAGE = `Usage:
        found and the decoy showed no effect; it writes controls-check.json beside the run)
   node bench/runner/bench.js cap trigger --cap ID --mode proxy|live|runs [--from-runs DIR[,DIR]] [--split train|heldout|all] [--reps 3] [--harness kiro-cli|opencode] [--base REF]
        [--queries FILE] [--out DIR] [--model M] [--model-cmd CMD] [--from-run DIR] [--from-arm NAME] [--acting-agent A] [--concurrency N]
-       [--crosscheck F] [--crosscheck-run DIR] [--budget-credits X] [--budget-usd X] [--run-credit-limit X] [--stop-on first-capability|first-load|end_turn]
+       [--crosscheck F] [--crosscheck-run DIR] [--budget-credits X] [--budget-usd X] [--run-credit-limit X [--run-credit-limit-mode hard|soft]] [--stop-on first-capability|first-load|end_turn]
        [--max-tool-calls N] [--seed N] [--censored-floor X] [--dry-run] [--kiro-bin PATH] [--auth-db FILE] [--isolate auto|unshare|sandbox-exec|none]
        [--hide DIR,DIR] [--cache DIR] [--cargo-target DIR] [--cargo-online] [--agent-engine v2|v3] [--effort LEVEL] [--aws-creds-file FILE]
        [--aws-profile NAME] [--opencode-bin PATH] [--rg-bin PATH] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json] [--profile quick|detailed]
