@@ -206,7 +206,12 @@ describe('markedStageOf', () => {
 });
 
 describe('fieldValuesOf', () => {
-  const draft = { id: 's1', name: 'draft', agent: 'k-developer', prompt: '' };
+  const draft = {
+    id: 's1',
+    name: 'draft',
+    agent: 'k-developer',
+    prompt: 'Write the greeting.',
+  };
 
   it('takes the text keys of the stage in the view', () => {
     expect(fieldValuesOf(checkStageOf(view, 'draft'), draft)).toEqual({
@@ -214,6 +219,24 @@ describe('fieldValuesOf', () => {
       agent: 'k-developer',
       prompt: 'Write the greeting.',
     });
+  });
+
+  it('shows the prompt of the draft, which is the one being typed', () => {
+    const typed = { ...draft, prompt: 'Write it twice.' };
+
+    expect(fieldValuesOf(checkStageOf(view, 'draft'), typed)).toMatchObject({
+      prompt: 'Write it twice.',
+    });
+  });
+
+  it('keeps the prompt of the file when the editor cannot read it', () => {
+    const unread = { ...draft, prompt: '' };
+
+    expect(
+      fieldValuesOf(checkStageOf(view, 'draft'), unread, {
+        promptRead: false,
+      }),
+    ).toMatchObject({ prompt: 'Write the greeting.' });
   });
 
   it('leaves out the kind and the lines, which are not keys of the file', () => {
@@ -245,17 +268,18 @@ describe('fieldValuesOf', () => {
     ).toMatchObject({ name: 'drafting', agent: 'k-architect' });
   });
 
-  it('gives the name and the agent of a stage the view does not have', () => {
+  it('gives the name, the agent and the prompt of a stage the view lacks', () => {
     expect(fieldValuesOf(undefined, draft)).toEqual({
       name: 'draft',
       agent: 'k-developer',
+      prompt: 'Write the greeting.',
     });
   });
 });
 
 describe('SAVABLE_KEYS', () => {
   it('names the keys the form lets a person type in', () => {
-    expect(SAVABLE_KEYS).toEqual(['name', 'agent']);
+    expect(SAVABLE_KEYS).toEqual(['name', 'agent', 'prompt']);
   });
 });
 

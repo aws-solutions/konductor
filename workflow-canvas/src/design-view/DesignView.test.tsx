@@ -1571,6 +1571,92 @@ describe('DesignView, typing over the whole text', () => {
   });
 });
 
+describe('DesignView, the prompt of a stage', () => {
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  it('types a prompt, which the text shows at once', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(promptInput(), 'Write it twice.');
+
+    expect(promptInput().value).toBe('Write it twice.');
+    expect(
+      (screen.getByTestId('yaml-text') as HTMLTextAreaElement).value,
+    ).toContain('Write it twice.');
+    expect(screen.getByTestId('save-status').textContent).toContain(
+      'Unsaved changes',
+    );
+  });
+
+  it('saves the typed prompt through the writer of the file', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(promptInput(), 'Write it twice.');
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(
+      expect.stringContaining('prompt: Write it twice.'),
+      WITH_PROMPT.hash,
+    );
+    expect(screen.getByTestId('save-status').textContent).toContain('Saved');
+  });
+
+  it('keeps the other keys of the stage as they were', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(promptInput(), 'Write it twice.');
+    await press('Save');
+    await settle();
+
+    const [written] = edits.save.mock.calls[0] ?? [];
+    expect(written).toContain('name: draft');
+    expect(written).toContain('agent: k-developer');
+    expect(written).toContain('name: review');
+  });
+
+  it('keeps a prompt read-only when the stage reads a file', async () => {
+    drawn({ document: WITH_PROMPT_FILE });
+    await settle();
+    await openProperties();
+
+    expect(promptInput().readOnly).toBe(true);
+    expect(
+      (
+        within(panelOf('Properties')).getByRole('textbox', {
+          name: 'prompt_file',
+        }) as HTMLInputElement
+      ).readOnly,
+    ).toBe(true);
+  });
+
+  it('steps back over a typed prompt with Undo', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+    const before = (screen.getByTestId('yaml-text') as HTMLTextAreaElement)
+      .value;
+
+    await typeInto(promptInput(), 'Write it twice.');
+    await press('Undo');
+    await settle();
+
+    expect((screen.getByTestId('yaml-text') as HTMLTextAreaElement).value).toBe(
+      before,
+    );
+  });
+});
+
 describe('DesignView, saving while the text is typed over', () => {
   const TYPED = `${HELLO_TEXT}# typed over\n`;
 
