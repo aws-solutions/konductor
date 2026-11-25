@@ -932,11 +932,12 @@ npx playwright install chromium
 Then `npm run test:e2e`. It has two Playwright projects. `functional`
 (`e2e/tests/`) does not save to the stub. `editing` (`e2e/editing/`) does, so it
 runs after `functional` has finished; one red functional test makes the editing
-tests report "did not run". The editing tests run one after the other in one
-worker (`fullyParallel: false`), and the `sample` fixture of
-`e2e/support/editing-fixtures.ts` fails a test that finds itself in another
-worker, because the stub keeps one workflow for all of them. So `--repeat-each`,
-or a second spec file in `e2e/editing/`, needs `--workers=1`. To run only the
+tests report "did not run". The editing project runs on one worker
+(`workers: 1`), so all its files run one after the other, and
+`fullyParallel: false` keeps the tests of each file in order. The `sample`
+fixture of `e2e/support/editing-fixtures.ts` still fails a test that finds
+itself in another worker, because the stub keeps one workflow for all of them.
+To run only the
 editing tests, add `--no-deps`, or `functional` runs first as its dependency.
 The stub keeps what is saved until it stops, so the fixture puts the sample
 workflow back before and after each test, and a test that needs the file changed
