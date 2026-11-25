@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Checks bench/DEBT.md and counts its rows. Free: reads the file and, for --week, git history.
-//   node bench/scripts/debt-check.js                 every row has 10 cells, a known status, a due date and, when not
-//                                                     closed, an owner and a next action; ids are unique. Exit 1 if not
+// Checks bench/DEBT.md and bench/BACKLOG.md and counts the debt rows. Free: reads the file and, for --week, git history.
+//   node bench/scripts/debt-check.js                 every row of both tables has its cell count, a known status, a due
+//                                                     date and, when not closed, an owner and a next action; ids are
+//                                                     unique. Exit 1 if not
 //   node bench/scripts/debt-check.js --past-due [--today YYYY-MM-DD]
 //                                                     also list the rows that are not closed and past their due date (exit 1)
 //   node bench/scripts/debt-check.js --week [--since YYYY-MM-DD]
@@ -20,30 +21,37 @@ const DEBT_FILE = path.join(__dirname, '..', 'DEBT.md');
 const STATUSES = ['open', 'in progress', 'blocked', 'closed'];
 const COLUMNS = ['id', 'area', 'symptom', 'evidence', 'owner', 'next', 'proof', 'due', 'status', 'reviewed'];
 
-/** The table rows of DEBT.md text: [{ line, cells: { id, area, ... } , raw: [cells] }]. A `\|` stays inside a cell. */
-function parseRows(text) {
+/** One table's shape: its file, which lines are rows, its columns, its statuses and the one that means finished. */
+const DEBT = { file: DEBT_FILE, rowRe: /^\| (?:[DK]-|#)\d/, columns: COLUMNS, statuses: STATUSES, closed: 'closed' };
+const BACKLOG = {
+  file: path.join(__dirname, '..', 'BACKLOG.md'), rowRe: /^\| B-\d/,
+  columns: ['id', 'title', 'owner', 'next', 'due', 'status', 'debt'], statuses: ['todo', 'doing', 'done'], closed: 'done',
+};
+
+/** The table rows of `spec`'s text: [{ line, cells: { id, ... } , raw: [cells] }]. A `\|` stays inside a cell. */
+function parseRows(text, spec = DEBT) {
   const rows = [];
   String(text).split('\n').forEach((l, i) => {
-    if (!/^\| (?:[DK]-|#)\d/.test(l)) return;
+    if (!spec.rowRe.test(l)) return;
     const raw = l.slice(1, l.endsWith('|') ? -1 : undefined).split(/(?<!\\)\|/).map((c) => c.trim());
-    rows.push({ line: i + 1, raw, cells: Object.fromEntries(COLUMNS.map((k, j) => [k, raw[j] ?? ''])) });
+    rows.push({ line: i + 1, raw, cells: Object.fromEntries(spec.columns.map((k, j) => [k, raw[j] ?? ''])) });
   });
   return rows;
 }
 
-/** Format problems: [string]. */
-function checkRows(rows) {
+/** Format problems of `spec`'s rows: [string]. */
+function checkRows(rows, spec = DEBT) {
   const problems = [];
   const seen = new Map();
   for (const r of rows) {
     const c = r.cells;
     const at = `line ${r.line} ${c.id || '(no id)'}`;
-    if (r.raw.length !== COLUMNS.length) problems.push(`${at}: ${r.raw.length} cells, expected ${COLUMNS.length}`);
+    if (r.raw.length !== spec.columns.length) problems.push(`${at}: ${r.raw.length} cells, expected ${spec.columns.length}`);
     if (seen.has(c.id)) problems.push(`${at}: id also on line ${seen.get(c.id)}`);
     seen.set(c.id, r.line);
-    if (!STATUSES.includes(c.status)) problems.push(`${at}: status "${c.status.slice(0, 40)}" is not one of ${STATUSES.join(', ')}`);
+    if (!spec.statuses.includes(c.status)) problems.push(`${at}: status "${c.status.slice(0, 40)}" is not one of ${spec.statuses.join(', ')}`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.due)) problems.push(`${at}: due date "${c.due.slice(0, 40)}" is not YYYY-MM-DD`);
-    if (c.status !== 'closed' && (!c.owner || !c.next)) problems.push(`${at}: a row that is not closed needs an owner and a next action`);
+    if (c.status !== spec.closed && (!c.owner || !c.next)) problems.push(`${at}: a row that is not closed needs an owner and a next action`);
   }
   return problems;
 }
@@ -76,7 +84,8 @@ function textAt(since) {
 
 function main() {
   const rows = parseRows(fs.readFileSync(DEBT_FILE, 'utf8'));
-  const problems = checkRows(rows);
+  const backlog = checkRows(parseRows(fs.readFileSync(BACKLOG.file, 'utf8'), BACKLOG), BACKLOG);
+  const problems = [...checkRows(rows), ...backlog.map((p) => `BACKLOG.md ${p}`)];
   const c = countBy(rows);
   console.log(`${rows.length} rows: ${STATUSES.map((s) => `${c[s]} ${s}`).join(', ')}`);
   for (const p of problems) console.log(`format: ${p}`);
@@ -98,4 +107,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { parseRows, checkRows, countBy, pastDue, weekCounts, STATUSES, COLUMNS, DEBT_FILE };
+module.exports = { parseRows, checkRows, countBy, pastDue, weekCounts, STATUSES, COLUMNS, DEBT_FILE, BACKLOG };
