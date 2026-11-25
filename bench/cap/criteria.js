@@ -24,6 +24,8 @@ const path = require('node:path');
 const { diffCI, pairedCellCI, withinCellSd } = require('../report/stats.js');
 const { VERDICT_VALUE } = require('../judge/config.js');
 const { MARGIN } = require('./decide.js');
+const { loadSchema } = require('../runner/lib/schema.js');
+const { withPluginTypes } = require('../runner/lib/check-types.js');
 
 const DEFAULTS = Object.freeze({ margin: MARGIN, saturated: 0.95, judgeDisagree: 0.3, replicateSd: 0.4, minRuns: 5, adjust: true });
 const FLAGS = ['NON-DISCRIMINATING', 'SATURATED', 'HIGH-VARIANCE'];
@@ -36,14 +38,17 @@ const short = (s, n = 80) => { const t = String(s ?? '').replace(/\s+/g, ' ').tr
 const checkIdOf = (c) => (typeof c?.id === 'string' && c.id ? c.id : typeof c?.name === 'string' && c.name ? c.name : null);
 const checkLabel = (c) => short(`${c.type} ${c.path ?? c.cmd ?? c.pattern ?? ''}`);
 
-// The fields the task schema defines for a check. A content id hashes the ones a check sets, so the same check gets the
-// same id from its task definition and from the record a run wrote. No task file or schema changes: a real id field would
-// change checksRevision and mark every earlier result as not current.
-const CONTENT_FIELDS = Object.keys(require('../schema/task.schema.json').properties.checks.items.properties).sort();
+// The fields the task schema defines for a check, check-type plugin fields included (withPluginTypes). A content id
+// hashes the ones a check sets, so the same check gets the same id from its task definition and from the record a run
+// wrote. A built-in check sets no plugin field, so its id is the same with or without plugins. No task file or schema
+// changes: a real id field would change checksRevision and mark every earlier result as not current.
+let contentFieldsCache = null;
+/** The sorted check field names of the task schema with the default check-type plugins added, read once per process. */
+const contentFields = () => (contentFieldsCache ??= Object.freeze(Object.keys(withPluginTypes(loadSchema('task')).properties.checks.items.properties).sort()));
 
 function contentHash(c) {
   const picked = {};
-  for (const k of CONTENT_FIELDS) if (c?.[k] !== undefined) picked[k] = c[k];
+  for (const k of contentFields()) if (c?.[k] !== undefined) picked[k] = c[k];
   return crypto.createHash('sha256').update(JSON.stringify(picked)).digest('hex').slice(0, 12);
 }
 
@@ -84,7 +89,7 @@ function matchChecks(results, reference, base) {
   if (resIds.every((id) => refIds.includes(id))) {
     return { observations: results.map((c, i) => (typeof c?.passed === 'boolean' ? obsOf(c, resIds[i], reference[refIds.indexOf(resIds[i])]) : null)).filter(Boolean), error: null, note: null };
   }
-  const missing = [...new Set(reference.flatMap((r, i) => (results[i] && r && results[i].type === r.type ? CONTENT_FIELDS.filter((k) => r[k] !== undefined && results[i][k] === undefined) : [])))].sort();
+  const missing = [...new Set(reference.flatMap((r, i) => (results[i] && r && results[i].type === r.type ? contentFields().filter((k) => r[k] !== undefined && results[i][k] === undefined) : [])))].sort();
   const why = missing.length ? `result check records lack ${missing.join(', ')}, which the task's checks set, so content ids cannot be computed the same way` : 'the check contents differ from the reference list (the checks may have changed since the run)';
   if (results.length !== reference.length) return { observations: [], error: `${where}: ${results.length} check results against ${reference.length} checks; ${why}, and position cannot be used`, note: null };
   const off = results.findIndex((c, i) => c?.type !== reference[i]?.type);
@@ -386,4 +391,4 @@ function writeCriteria(outDir, report) {
   return [path.join(outDir, 'criteria.md'), path.join(outDir, 'criteria.json')];
 }
 
-module.exports = { DEFAULTS, FLAGS, CONTENT_FIELDS, contentIds, matchChecks, collectObservations, analyzeObservations, judgeNote, analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria };
+module.exports = { DEFAULTS, FLAGS, contentFields, contentIds, matchChecks, collectObservations, analyzeObservations, judgeNote, analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria };

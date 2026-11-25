@@ -19,6 +19,7 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { validate, loadSchema } = require('../../runner/lib/schema.js');
 const { checkProblems } = require('../../runner/lib/plant/predicates.js');
+const { withPluginTypes } = require('../../runner/lib/check-types.js');
 
 const STD = 'Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.';
 // Rule and procedure words, forbidden in every T2 and T3 prompt of either plant.
@@ -92,7 +93,7 @@ function faultProblems(tasks, python) {
 
 /** Gate A over counted set `set`: `{problems, counts, tasks}`. `faults: false` skips the simulator check. */
 function lintSet({ set, python = 'python3', faults = true }) {
-  const schema = loadSchema('task');
+  const schema = withPluginTypes(loadSchema('task'));
   const problems = [];
   const note = (id, msg) => problems.push(`${id}: ${msg}`);
   const counts = {};

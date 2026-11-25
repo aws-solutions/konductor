@@ -9,7 +9,7 @@ function pluginsList(registries) {
   const parts = [];
   const refused = new Map();
   for (const reg of registries) {
-    for (const kind of ['harness', 'judge-backend']) {
+    for (const kind of ['harness', 'judge-backend', 'check-type']) {
       for (const p of reg.parts(kind)) {
         const pl = p.plugin;
         parts.push({ kind, name: p.name, source: pl ? 'plugin' : 'built-in', version: pl?.version ?? null, benchApi: pl?.benchApi ?? null, sha256: pl?.sha256 ?? null });
@@ -33,14 +33,15 @@ function pluginsTable(registries) {
   return `${out.join('\n')}\n`;
 }
 
-/** Prints the table (or with --json the list) for the harness registry and the judge backend registry. */
+/** Prints the table (or with --json the list) for the harness, judge backend and check type registries. */
 function cmdPlugins(opts = {}) {
   const { REGISTRY } = require('./harness/descriptors.js');
   const { backendRegistry } = require('../../judge/backends.js');
+  const { defaultCheckTypes } = require('./check-types.js');
   const backends = backendRegistry();
   // The judge registry exposes its parts by id; adapt it to parts(kind) for the table.
   const judge = { parts: (kind) => (kind === 'judge-backend' ? backends.ids().map((id) => backends.part(id)) : []), refused: () => backends.refused() };
-  const registries = [{ parts: (kind) => (kind === 'harness' ? REGISTRY.parts('harness') : []), refused: () => REGISTRY.refused() }, judge];
+  const registries = [{ parts: (kind) => (kind === 'harness' ? REGISTRY.parts('harness') : []), refused: () => REGISTRY.refused() }, judge, defaultCheckTypes()];
   process.stdout.write(opts.json ? `${JSON.stringify(pluginsList(registries), null, 2)}\n` : pluginsTable(registries));
 }
 

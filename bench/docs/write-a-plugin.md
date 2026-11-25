@@ -6,7 +6,8 @@
 **Quick start:** [a Strands agent](how-to/strands-agent.md) · [an agent on Amazon Bedrock AgentCore](how-to/agentcore-agent.md)
 (path 2 there is a new plugin, in five steps).
 
-Date: 2026-11-23. Covers plugin API 1, which has two kinds: `harness` and `judge-backend` (see "A judge backend" below).
+Date: 2026-11-25. Covers plugin API 1, which has three kinds: `harness`, `judge-backend` and `check-type` (see "A judge
+backend" and "A check type" below).
 
 ## The problem
 
@@ -159,6 +160,36 @@ against `--budget-usd`; the judge family rule still runs on the judge model ids,
 the agent's own family. The kit (`kit/plugin/check.js`) checks harness plugins only; for a backend, copy the
 end-to-end test above.
 
+## A check type
+
+A `check-type` plugin adds a check a task can name in its `checks` list. It reads one file in the agent's workspace and
+says pass or fail. It can never run a command, so `cmd`, `tests` and `fixture_unchanged` stay core, and a plugin may not
+take any built-in name. Its `plugin.json` has `"kind": "check-type"`. Its `meta` file exports:
+
+- `id`: the type name tasks use, equal to the folder name;
+- `fields`: the check's own fields, each a small JSON schema (`{ "type": "string" }`), added to the task schema when it
+  loads. A field with the name of a core field, or of another plugin's field with a different schema, refuses the plugin;
+- `required`: the fields a check of this type must set;
+- `realCheck`: `true` when the check needs real work to pass, so the validator counts it when it proves the keyword-only
+  stub fails a check that is not a keyword check.
+
+Its `entry` module exports `evaluate(file, check)`, which returns `{ passed, detail }`, and `shapeErrors(check)`, which
+returns the problems `validate-tasks.js` should print. `file` is the check's `path`, already resolved inside the
+workspace and refused when a symlink is on the way. A throw, or a `passed` that is not `true`, fails the check, not the
+run. The design is `docs/history/check-type-plugin-design-2026-11-24.md`.
+
+```text
+bench/plugins/json_path/
+  plugin.json   {"benchApi": 1, "kind": "check-type", "name": "json_path", "version": "0.1.0", "meta": "meta.js", "entry": "index.js"}
+  meta.js       module.exports = Object.freeze({ id: 'json_path', fields: { at: { type: 'string' }, equals: {} }, required: ['at', 'equals'], realCheck: false });
+  index.js      exports.evaluate = (file, check) => ...; exports.shapeErrors = (check) => (typeof check.at === 'string' ? [] : ['at must be a string']);
+```
+
+A task then sets `{ "type": "json_path", "path": "out.json", "at": "x.y", "equals": 3 }`. `bench plugins` lists the
+type, `validate-tasks.js` checks its fields, and the criteria content id hashes its fields with the core ones.
+`runner/test/check-type-plugins.test.js` builds this plugin in a temp folder and runs it through all of these. The kit
+does not check this kind yet; copy that test.
+
 ## A plant
 
 Plants are not plugins in API 1. The plant, its rules, its policy and the scorer that decides safety stay core code,
@@ -172,7 +203,7 @@ the conveyor or the arm plant follows the same path: a harness plugin with `plan
 ## A plugin outside this repo
 
 Set `BENCH_PLUGIN_PATH` to one or more folders outside this repo, joined by `:`. Each folder holds plugin folders the
-way `bench/plugins` does, and the bench reads them after `bench/plugins` for both harnesses and judge backends. A bad
+way `bench/plugins` does, and the bench reads them after `bench/plugins` for harnesses, judge backends and check types. A bad
 plugin there is refused with its reason, as in `bench/plugins`. An entry that is not an absolute path, or not a folder,
 stops the bench with an error. An outside plugin cannot reach the SDK by `../../sdk`, so it names your bench
 checkout's SDK folder: `require('/path/to/repo/bench/sdk')`.
@@ -186,7 +217,7 @@ plugin's name, version and hash in `run-config.json`.
 
 ## Limits today
 
-Plugin API 1 covers harnesses and judge backends. Plants, scorers and unit kinds are still core code. A harness reads its
+Plugin API 1 covers harnesses, judge backends and read-only check types. Plants, scorers and unit kinds are still core code. A harness reads its
 own stream through `streams` (CONTRACT.md): `finalText`, plus `timeline` for trace and `stopEvent` for `--stop-on`.
 The plant readers stay core in `plant/stream-match.js`, because the plant scorer decides safety: a new stream format
 on a plant arm needs a reader added there by bench code. A few core files still name a runtime, among them `arms.js`,

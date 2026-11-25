@@ -235,14 +235,14 @@ cost (`report`) and, if the `cap` commands should accept it, how they reach a ca
 
 **Where it is registered.** The plugin registry, `bench/core/registry.js`, is the one list of the parts bench can run:
 every `bench/plugins/<name>/plugin.json`, the plugin folders under each `BENCH_PLUGIN_PATH` root (see
-[write-a-plugin.md](write-a-plugin.md)), plus the two built-in judge backends. `node bench/runner/bench.js plugins`
+[write-a-plugin.md](write-a-plugin.md)), plus the two built-in judge backends and the eight built-in check types. `node bench/runner/bench.js plugins`
 lists them. A manifest looks like this:
 
 ```json
 { "benchApi": 1, "kind": "harness", "name": "strands", "version": "1.0.0", "meta": "meta.js", "entry": "harness.js" }
 ```
 
-`benchApi` is the plugin interface version (1 today). `kind` is `harness` or `judge-backend`. `name` must equal the
+`benchApi` is the plugin interface version (1 today). `kind` is `harness`, `judge-backend` or `check-type`. `name` must equal the
 folder name. `meta` is the descriptor file and `entry` the module, both inside the folder. A manifest with another
 `benchApi`, an unknown kind or a missing file is refused with its reason and never loaded; two parts with one name
 is an error. Each run's `run-config.json` records every loaded plugin with a hash of its folder. Check a harness plugin for

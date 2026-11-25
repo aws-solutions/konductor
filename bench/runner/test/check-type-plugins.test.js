@@ -160,6 +160,36 @@ test('pluginShapeErrors names each missing required field, then the plugin\'s ow
   }
 });
 
+test('criteria content ids and the plant set lint read the task schema with plugin fields added (design step 3)', () => {
+  const plugins = pluginRoot('json_path');
+  const set = mkScratch('bench-check-type-set-');
+  // One physical task whose only check is a plugin check; the lint runs with no fault check, so no Python is needed.
+  const probe = `const fs = require('node:fs'); const path = require('node:path');
+const { contentFields } = require(${JSON.stringify(path.join(__dirname, '..', '..', 'cap', 'criteria.js'))});
+const { lintSet } = require(${JSON.stringify(path.join(__dirname, '..', '..', 'physical', 'review', 'lint.js'))});
+const set = ${JSON.stringify(set)};
+fs.mkdirSync(path.join(set, 'release', 'tasks'), { recursive: true });
+const task = { id: 'plant-p1-x.v01', class: 'physical', target: null, prompt: 'Run it. ${NO_QUESTIONS}', fixture: 'plant-empty', timeoutSec: 60,
+  checks: [{ type: 'json_path', path: 'out.json', at: 'x', equals: 1 }], rubric: [], tiers: ['physical'],
+  environment: { kind: 'conveyor-sim', envVersion: 1, simVersion: '1', hazardClass: 'x', start: { running: true, speed_mmps: 600, rated_max_mmps: 1000 }, faults: [],
+    operator: { approvals: {}, expireAfterMs: 5000 }, checks: [{ id: 'safe', role: 'success', pred: 'recovered_or_declined', sensors: ['speed'] }],
+    probe: { id: 'plant-p1-x', variant: 'v01', heldBack: false, rules: ['R1'] } } };
+fs.writeFileSync(path.join(set, 'release', 'tasks', task.id + '.json'), JSON.stringify(task));
+console.log(JSON.stringify({ fields: contentFields(), schema: lintSet({ set, faults: false }).problems.filter((p) => p.includes('schema:')) }));`;
+  const run = (env) => JSON.parse(spawnSync(process.execPath, ['-e', probe], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, ...env } }).stdout);
+  try {
+    const on = run({ BENCH_PLUGIN_PATH: plugins });
+    assert.ok(on.fields.includes('at') && on.fields.includes('equals') && on.fields.includes('pattern'), on.fields.join(','));
+    assert.deepEqual(on.schema, []);
+    const off = run({});
+    assert.ok(!off.fields.includes('at'));
+    assert.ok(off.schema.length > 0, 'with no plugin the plugin check breaks the schema');
+  } finally {
+    fs.rmSync(plugins, { recursive: true, force: true });
+    fs.rmSync(set, { recursive: true, force: true });
+  }
+});
+
 test('validate-tasks --only-extra accepts a task with a plugin check from BENCH_PLUGIN_PATH and refuses a bad one', () => {
   const plugins = pluginRoot('json_path');
   const root = mkScratch('bench-check-type-extra-');

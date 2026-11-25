@@ -26,6 +26,7 @@ test('bench plugins prints the harnesses and the judge backends', () => {
   assert.equal(r.status, 0, r.stderr);
   for (const name of ['kiro-cli', 'opencode', 'claude-code', 'strands']) assert.match(r.stdout, new RegExp(`\\| harness \\| ${name} \\|`));
   assert.match(r.stdout, /\| judge-backend \| kiro \| built-in \|/);
+  assert.match(r.stdout, /\| check-type \| contains \| built-in \|/, 'the check types are listed too (B-004)');
 });
 
 test('bench plugins --json lists the same parts as data', () => {

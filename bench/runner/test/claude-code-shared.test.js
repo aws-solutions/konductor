@@ -197,8 +197,13 @@ const collect = (child) => new Promise((resolve) => {
 test('CLI: a Claude Code run writes names-only run-config and env, a USD summary, and leaves nothing behind', async () => {
   const s = cliRoot();
   const out = path.join(s.root, 'out-cli');
+  // A check-type plugin on BENCH_PLUGIN_PATH, which no task uses: run-config still records it (B-004).
+  const ctp = path.join(s.root, 'check-type-plugins');
+  write(path.join(ctp, 'json_path', 'plugin.json'), JSON.stringify({ benchApi: 1, kind: 'check-type', name: 'json_path', version: '0.1.0', meta: 'meta.js', entry: 'index.js' }));
+  write(path.join(ctp, 'json_path', 'meta.js'), "module.exports = Object.freeze({ id: 'json_path', fields: { at: { type: 'string' } }, required: ['at'], realCheck: false });\n");
+  write(path.join(ctp, 'json_path', 'index.js'), "exports.evaluate = () => ({ passed: true, detail: '' });\nexports.shapeErrors = () => [];\n");
   try {
-    const r = await collect(cli(s, ['--arms', 'cc-vanilla', '--out', out, '--seed', '1', '--budget-usd', '1', '--run-budget-usd', '0.5'], { ...CC_ENV, AWS_PROFILE: 'ignored-profile' }));
+    const r = await collect(cli(s, ['--arms', 'cc-vanilla', '--out', out, '--seed', '1', '--budget-usd', '1', '--run-budget-usd', '0.5'], { ...CC_ENV, AWS_PROFILE: 'ignored-profile', BENCH_PLUGIN_PATH: ctp }));
     assert.equal(r.code, 0, r.err);
     assert.match(r.err, /AWS_PROFILE is set here and is not passed to claude/);
     const cfg = JSON.parse(fs.readFileSync(path.join(out, 'run-config.json'), 'utf8'));
@@ -207,7 +212,7 @@ test('CLI: a Claude Code run writes names-only run-config and env, a USD summary
     assert.equal(cfg.model, MODEL);
     assert.equal(cfg.canonicalModel, 'claude-sonnet-5-5');
     assert.equal(cfg.budgetUsd, 1);
-    assert.deepEqual(cfg.plugins.map((p) => [p.name, p.benchApi, /^[0-9a-f]{64}$/.test(p.sha256)]), [['claude-code', 1, true], ['kiro-cli', 1, true], ['opencode', 1, true], ['strands', 1, true]], 'run-config lists each loaded plugin with its hash');
+    assert.deepEqual(cfg.plugins.map((p) => [p.name, p.benchApi, /^[0-9a-f]{64}$/.test(p.sha256)]), [['claude-code', 1, true], ['kiro-cli', 1, true], ['opencode', 1, true], ['strands', 1, true], ['json_path', 1, true]], 'run-config lists each loaded plugin with its hash, check types included');
     assert.equal(cfg.claudeCode.maxBudgetUsdPerRun, 0.5);
     assert.equal(cfg.claudeCode.permissionMode, 'acceptEdits');
     assert.match(cfg.claudeCode.binarySha256, /^[0-9a-f]{64}$/);

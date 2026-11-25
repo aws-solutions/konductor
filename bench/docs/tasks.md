@@ -58,6 +58,8 @@ Checks run in the scratch directory after the run. They need no model.
 - `fixture_unchanged`: the file or directory at `path` is byte-identical to the pristine fixture. Used wherever the prompt says not to change tests or source.
 - `cmd`: run with `sh -c`, passes when the exit code equals `expectExit` (default 0). Only `node`, `sh` and POSIX tools (`grep`, `awk`, `sort`, `wc`). `BENCH_FINAL_TEXT` names a file outside the workspace that holds the agent's final message (unset when the run produced none), so a task whose right move is to stop and ask can check that the message asks.
 
+A new read-only check type needs no core edit: it is a `check-type` plugin (see [write-a-plugin.md](write-a-plugin.md#a-check-type)). `node bench/runner/bench.js plugins` lists every type bench knows.
+
 Substance checks for reports use `cmd` where counting needs more than a regex:
 
 - Distinct `file:line` references that resolve to a real file and line, and cite at least N seeded defect locations (within 2 lines). Also accepts `file.js, line N` and `file.js#LN`.

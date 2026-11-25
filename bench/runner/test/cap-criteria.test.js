@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { analyzeObservations, collectObservations, contentIds, matchChecks, CONTENT_FIELDS, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
+const { analyzeObservations, collectObservations, contentIds, matchChecks, contentFields, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
 const { MARGIN } = require('../../cap/decide.js');
 const { decideStudy } = require('../../cap/skillstudy.js');
 const { setupAndRun } = require('./cap-skillstudy-fake.js');
@@ -120,7 +120,7 @@ test('without an explicit id, checks are matched by content id even when the ord
   const of = (arm, id) => r.observations.find((o) => o.arm === arm && o.id === id);
   assert.deepEqual([of('ctl', fx).value, of('ctl', ct).value, of('del', fx).value, of('del', ct).value], [1, 0, 0, 1]);
   assert.equal(of('del', ct).label, 'contains b');
-  assert.ok(CONTENT_FIELDS.includes('expectExit') && CONTENT_FIELDS.includes('pattern'), 'the content fields come from the task schema');
+  assert.ok(contentFields().includes('expectExit') && contentFields().includes('pattern'), 'the content fields come from the task schema');
 });
 
 test('two checks with the same content are numbered in list order and both are kept', () => {

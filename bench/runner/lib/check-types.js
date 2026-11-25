@@ -27,7 +27,7 @@ function loadPluginType(p) {
 /**
  * The check types over the built-ins and the check-type plugins under `pluginRoots` (default bench/plugins and the
  * BENCH_PLUGIN_PATH roots). Throws when a plugin takes a built-in's name or its entry lacks a function. Returns
- * `ids()` built-ins first, `plugin(id)` the loaded plugin type (undefined for a built-in or an unknown id),
+ * `ids()` built-ins first, `parts(kind)` the registry parts (none for another kind, as `bench plugins` asks), `plugin(id)` the loaded plugin type (undefined for a built-in or an unknown id),
  * `refused()` the refused plugin folders and `record()` the loaded plugins for run-config.json.
  */
 function checkTypeRegistry(pluginRoots = [PLUGINS_DIR, ...pluginPathRoots()]) {
@@ -37,6 +37,7 @@ function checkTypeRegistry(pluginRoots = [PLUGINS_DIR, ...pluginPathRoots()]) {
   const plugins = new Map(parts.filter((p) => p.source === 'plugin').map((p) => [p.name, loadPluginType(p)]));
   return Object.freeze({
     ids: () => parts.map((p) => p.name),
+    parts: (kind = 'check-type') => (kind === 'check-type' ? parts : []),
     plugin: (id) => plugins.get(id),
     plugins: () => [...plugins.values()],
     refused: () => reg.refused(),
