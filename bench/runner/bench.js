@@ -510,6 +510,36 @@ function cmdPrPlan(opts) {
   }
 }
 
+// Every command the flag table (runner/lib/cli-flags.js) accepts, and the function that runs it. Heavy modules load when the command runs.
+const DISPATCH = {
+  run: (opts) => cmdRun(opts),
+  'list-arms': (opts) => cmdListArms(opts),
+  plugins: (opts) => require('./lib/plugins-cmd.js').cmdPlugins(opts),
+  'pr-plan': (opts) => cmdPrPlan(opts),
+  contrast: (opts) => evalCommands.cmdContrast(opts),
+  judge: (opts) => evalCommands.cmdJudge(opts),
+  report: (opts) => evalCommands.cmdReport(opts),
+  'report-2x2': (opts) => evalCommands.cmdReport2x2(opts),
+  recheck: (opts) => evalCommands.cmdRecheck(opts),
+  explain: (opts) => evalCommands.cmdExplain(opts),
+  trace: (opts) => evalCommands.cmdTrace(opts),
+  'refs-report': (opts) => require('../report/refs.js').cmdRefsReport(opts),
+  'probe-report': (opts) => require('../report/probes.js').cmdProbeReport(opts),
+  'canary-report': (opts) => require('../report/canary-layers.js').cmdCanaryReport(opts),
+  'plant-report': (opts) => require('../report/plant.js').cmdPlantReport(opts),
+  'plant-trace': (opts) => require('../report/plant-trace/index.js').cmdPlantTrace(opts),
+  'plant-policy-test': (opts) => require('./lib/plant/policy-test.js').cmdPlantPolicyTest(opts),
+  'plant-host-check': (opts) => require('./lib/plant/host-check.js').cmdPlantHostCheck(opts),
+  backfill: (opts) => evalCommands.cmdBackfill(opts),
+  compare: (opts) => evalCommands.cmdCompare(opts),
+  skills: (opts) => evalCommands.cmdSkills(opts),
+  calibrate: (opts) => evalCommands.cmdCalibrate(opts),
+  cap: (opts) => cmdCap(opts),
+  scenarios: (opts) => cmdScenarios(opts),
+  gc: (opts) => cleanup.cmdGc(opts),
+  archive: (opts) => cleanup.cmdArchive(opts),
+};
+
 async function main(argv) {
   const [cmd, ...rest] = argv;
   if (cmd === '--help' || cmd === '-h' || cmd === 'help') { console.log(USAGE); return; }
@@ -517,32 +547,7 @@ async function main(argv) {
   if (opts.help !== undefined && COMMAND_NAMES.includes(cmd)) { console.log(USAGE); return; }
   const problem = COMMAND_NAMES.includes(cmd) ? checkArgs(cmd, opts) : null;
   if (problem) { console.error(`bench: ${problem}`); process.exitCode = 2; return; }
-  if (cmd === 'run') return cmdRun(opts);
-  if (cmd === 'list-arms') return cmdListArms(opts);
-  if (cmd === 'plugins') return require('./lib/plugins-cmd.js').cmdPlugins(opts);
-  if (cmd === 'pr-plan') return cmdPrPlan(opts);
-  if (cmd === 'contrast') return evalCommands.cmdContrast(opts);
-  if (cmd === 'judge') return evalCommands.cmdJudge(opts);
-  if (cmd === 'report') return evalCommands.cmdReport(opts);
-  if (cmd === 'report-2x2') return evalCommands.cmdReport2x2(opts);
-  if (cmd === 'recheck') return evalCommands.cmdRecheck(opts);
-  if (cmd === 'explain') return evalCommands.cmdExplain(opts);
-  if (cmd === 'trace') return evalCommands.cmdTrace(opts);
-  if (cmd === 'refs-report') return require('../report/refs.js').cmdRefsReport(opts);
-  if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
-  if (cmd === 'canary-report') return require('../report/canary-layers.js').cmdCanaryReport(opts);
-  if (cmd === 'plant-report') return require('../report/plant.js').cmdPlantReport(opts);
-  if (cmd === 'plant-trace') return require('../report/plant-trace/index.js').cmdPlantTrace(opts);
-  if (cmd === 'plant-policy-test') return require('./lib/plant/policy-test.js').cmdPlantPolicyTest(opts);
-  if (cmd === 'plant-host-check') return require('./lib/plant/host-check.js').cmdPlantHostCheck(opts);
-  if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
-  if (cmd === 'compare') return evalCommands.cmdCompare(opts);
-  if (cmd === 'skills') return evalCommands.cmdSkills(opts);
-  if (cmd === 'calibrate') return evalCommands.cmdCalibrate(opts);
-  if (cmd === 'cap') return cmdCap(opts);
-  if (cmd === 'scenarios') return cmdScenarios(opts);
-  if (cmd === 'gc') return cleanup.cmdGc(opts);
-  if (cmd === 'archive') return cleanup.cmdArchive(opts);
+  if (Object.hasOwn(DISPATCH, cmd)) return DISPATCH[cmd](opts);
   console.error(USAGE);
   process.exitCode = cmd ? 2 : 0;
 }
@@ -554,4 +559,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, main, KNOWN_ARMS };
+module.exports = { parseArgs, main, KNOWN_ARMS, DISPATCH };

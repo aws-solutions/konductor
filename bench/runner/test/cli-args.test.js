@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench, makeRun } = require('./helpers.js');
-const { parseArgs } = require('../bench.js');
+const { parseArgs, DISPATCH } = require('../bench.js');
 const { FLAGS, BOOLEAN_FLAGS, checkArgs, COMMANDS } = require('../lib/cli-flags.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
@@ -37,6 +37,11 @@ const untouched = (s) => assert.deepEqual([fs.existsSync(s.marker), fs.readdirSy
 
 test('the command table covers exactly the documented commands', () => {
   assert.deepEqual([...COMMANDS].sort(), [...COMMAND_NAMES].sort());
+});
+
+test('the dispatch table runs exactly the commands the flag table accepts, so no accepted command falls through to usage (B-016)', () => {
+  assert.deepEqual(Object.keys(DISPATCH).sort(), [...COMMANDS].sort());
+  for (const [name, run] of Object.entries(DISPATCH)) assert.equal(typeof run, 'function', name);
 });
 
 test('--help and -h print usage on stdout and exit 0 without doing anything, for every command and with other flags', () => {
