@@ -225,3 +225,79 @@ describe('parseWorkflowExtras, the declared params', () => {
     expect(() => parseWorkflowExtras(withParams(params))).toThrow(ApiError);
   });
 });
+
+describe('parseWorkflowExtras, the declared checks', () => {
+  const withChecks = (accept: unknown, stages?: unknown) => {
+    const view = body().view;
+    return body({
+      view: {
+        ...view,
+        intent: { ...view.intent, accept },
+        ...(stages === undefined ? {} : { stages }),
+      },
+    });
+  };
+
+  it('reads each check with the kind its key names', () => {
+    const extras = parseWorkflowExtras(
+      withChecks([
+        { id: 'readme-exists', file: 'README.md' },
+        { id: 'tests-pass', run: ['make', 'test'] },
+      ]),
+    );
+
+    expect(extras.checks?.declared).toEqual([
+      { id: 'readme-exists', kind: 'file' },
+      { id: 'tests-pass', kind: 'run' },
+    ]);
+  });
+
+  it('reads the ids each stage waits for, by stage name', () => {
+    const extras = parseWorkflowExtras(
+      withChecks(
+        [{ id: 'readme-exists', file: 'README.md' }],
+        [{ ...body().view.stages[0], done_when: ['readme-exists'] }],
+      ),
+    );
+
+    expect(extras.checks?.doneWhen).toEqual({ draft: ['readme-exists'] });
+  });
+
+  it('leaves a stage with no done_when out of the map', () => {
+    const extras = parseWorkflowExtras(
+      withChecks([{ id: 'readme-exists', file: 'README.md' }]),
+    );
+
+    expect(extras.checks?.doneWhen).toEqual({});
+  });
+
+  it('leaves the checks out when the workflow declares none', () => {
+    expect(parseWorkflowExtras(body())).not.toHaveProperty('checks');
+  });
+
+  it('leaves the checks out for a document with no file', () => {
+    expect(parseWorkflowExtras(body({ view: null }))).not.toHaveProperty(
+      'checks',
+    );
+  });
+
+  it.each([
+    ['a check that is not a mapping', 'readme-exists'],
+    ['a check with no id', { file: 'README.md' }],
+    ['a check with neither file nor run', { id: 'readme-exists' }],
+    ['a run that is not a list', { id: 'tests-pass', run: 'make test' }],
+    ['a run whose entry is not a string', { id: 'tests-pass', run: [2] }],
+    ['a file that is not a string', { id: 'readme-exists', file: 7 }],
+  ])('refuses %s', (_, check) => {
+    expect(() => parseWorkflowExtras(withChecks([check]))).toThrow(ApiError);
+  });
+
+  it('refuses a done_when that is not a list of strings', () => {
+    const given = withChecks(
+      [{ id: 'readme-exists', file: 'README.md' }],
+      [{ ...body().view.stages[0], done_when: 'readme-exists' }],
+    );
+
+    expect(() => parseWorkflowExtras(given)).toThrow(ApiError);
+  });
+});

@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
+import type { WorkflowChecks } from '../api/types';
 import { goalProblem } from '../execution/core/goal';
 import type { RunMemory, Scheduler } from '../execution/core/ports';
+import {
+  checkRows,
+  checksRereadKey,
+  type CheckRow,
+  type ReadChecks,
+} from '../execution/core/run-checks';
 import {
   progressText,
   runProgress,
@@ -46,6 +53,7 @@ import {
   type ListRuns,
   type RunHistoryState,
 } from './use-run-history';
+import { useRunChecks } from './use-run-checks';
 import { useRunStart } from './use-run-start';
 
 /** The calls of the session that following a run makes. */
@@ -56,6 +64,8 @@ export interface RunViewPorts {
   readonly readEvents: ReadEvents | undefined;
   /** Lists the past runs; `undefined` without a session. */
   readonly listRuns: ListRuns | undefined;
+  /** Reads the state of the run's checks; `undefined` without a session. */
+  readonly readChecks: ReadChecks | undefined;
   /** Waits between the reads of a run. */
   readonly scheduler: Scheduler;
   /** The time now, in milliseconds. */
@@ -68,6 +78,13 @@ export interface RunController {
   readonly goal: string;
   /** One box per param the workflow declares, in the order of the file. */
   readonly params: readonly ParamBox[];
+  /**
+   * The checks the workflow declares with the state the run reports for
+   * each, in the order of the file. It is empty when it declares none.
+   */
+  readonly checks: readonly CheckRow[];
+  /** Why the checks of the run could not be read, if that happened. */
+  readonly checksFailure: string | undefined;
   /** Whether that text is the goal of the run being followed. */
   readonly ofThisRun: boolean;
   readonly canStart: boolean;
@@ -156,6 +173,7 @@ export function useRunController({
   stages,
   goalDefault,
   params: paramsState = PARAMS_LOADING,
+  declaredChecks,
   ports,
   runMemory,
 }: {
@@ -169,6 +187,8 @@ export function useRunController({
    * send the goal alone and leave every typed value behind.
    */
   readonly params?: ParamsState;
+  /** The checks the workflow declares, when it declares any. */
+  readonly declaredChecks?: WorkflowChecks;
   readonly ports: RunViewPorts;
   /** Keeps the run across a reload; a page without it starts afresh. */
   readonly runMemory?: RunMemory;
@@ -276,6 +296,11 @@ export function useRunController({
         ended: status === 'finished',
       })
     : undefined;
+  const checks = useRunChecks({
+    read: ports.readChecks,
+    runId,
+    reread: checksRereadKey(runId, run, runFinished),
+  });
   const notice = startNotice(started);
   // A start whose outcome is unknown counts as a run at risk: the server may
   // have taken it, and this page is the only one that could pick it up again,
@@ -301,6 +326,8 @@ export function useRunController({
   return {
     goal,
     params,
+    checks: checkRows(declaredChecks, checks.states, stages),
+    checksFailure: checks.failure,
     ofThisRun: goalIsOfThisRun(started, runFinished),
     canStart: canStartRun(decision),
     disabledReason: startDisabledReason(decision),

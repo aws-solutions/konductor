@@ -20,6 +20,7 @@ function following(over: Partial<RunViewPorts> = {}) {
     start: vi.fn(() => Promise.resolve(RUN_ID)),
     readEvents: events.readEvents,
     listRuns: vi.fn(() => Promise.resolve([])),
+    readChecks: vi.fn(() => Promise.resolve({})),
     scheduler: new EventWaits(),
     now: () => NOW,
     ...over,

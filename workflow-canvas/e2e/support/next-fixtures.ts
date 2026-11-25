@@ -128,6 +128,54 @@ async function declareParams(page: Page): Promise<void> {
   });
 }
 
+/** The checks a test has the workflow declare, with a stage waiting for one. */
+export const DECLARED_CHECKS = [
+  { id: 'readme-exists', file: 'README.md' },
+  { id: 'tests-pass', run: ['make', 'test'] },
+];
+
+/**
+ * Opens the page on the Run view with those checks declared and the states
+ * given for them, so a test can see both a verified and a deferred check
+ * without waiting for a server to run one. The stage `draft` waits for
+ * `readme-exists`.
+ */
+export async function openDeclaringChecks(
+  page: Page,
+  states: Readonly<Record<string, string>>,
+): Promise<WorkflowCanvasPage> {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    const reply = await route.fetch();
+    const body = (await reply.json()) as {
+      view: { intent: Record<string, unknown>; stages: unknown[] };
+    };
+    const [first, ...rest] = body.view.stages as Record<string, unknown>[];
+    await route.fulfill({
+      json: {
+        ...body,
+        view: {
+          ...body.view,
+          intent: { ...body.view.intent, accept: DECLARED_CHECKS },
+          stages: [{ ...first, done_when: ['readme-exists'] }, ...rest],
+        },
+      },
+    });
+  });
+  await page.route('**/api/runs/*', (route) => {
+    if (route.request().url().endsWith('/events')) return route.continue();
+    return route.fulfill({ json: { run: { checks: states } } });
+  });
+  const canvas = new WorkflowCanvasPage(page);
+  await page.goto(`/#${STUB_LAUNCH_CODE}`);
+  await canvas.title.waitFor();
+  await canvas.selectTab('Run');
+  return canvas;
+}
+
 /**
  * Opens the page on the Run view with those params declared. The routes go on
  * before the load, which is why this does not use the `next` fixture.

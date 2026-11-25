@@ -19,14 +19,15 @@ import { RunAlreadyActive, RunStartUnsure } from '../execution/core/ports';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import type { ReadEvents } from '../run-client/follow-run-events';
 import { runEventsPath } from '../run-client/follow-run-events';
+import type { CheckStates, ReadChecks } from '../execution/core/run-checks';
 import type { StartRun } from '../run-view/run-params';
 import type { ListRuns } from '../run-view/use-run-history';
 
 /*
  * The calls that the newer views need and the page's API client does
  * not have yet: the extra fields of the workflow, the agents, the past runs,
- * the events of a run, the start of a run with its params and a check of a
- * text that keeps the lines of each stage. They talk to the relative `/api`,
+ * the events of a run, the start of a run with its params, the state of the
+ * run's checks and a check of a text that keeps the lines of each stage. They talk to the relative `/api`,
  * as the client does, so the page and the server share one origin, and they
  * carry the transport and the error reading of `api/http-api.ts` and
  * `api/parse.ts`, so an error of these calls says what to do about it in the
@@ -88,6 +89,13 @@ export interface NextPorts {
    * start is not known.
    */
   readonly startRun: StartRun;
+  /**
+   * The state of each check of a run, by check id, as
+   * `GET /api/runs/{id}` reports it. Only the checks are read from there:
+   * the stages of the run come from its events, so there is one source for
+   * each thing the view draws.
+   */
+  readonly readChecks: ReadChecks;
   /** Checks a text and keeps the lines of each stage of its view. */
   readonly validate: (
     request: ValidateRequest,
@@ -207,6 +215,17 @@ function viewStageOf(
     throw new ApiError(BAD_REPLY, 200);
   }
   return { ...value, name };
+}
+
+// The `checks` of a run: a state per check id. A run of the contract always
+// has the map, and it is empty for a workflow that declares no check.
+function checkStatesOf(body: unknown): CheckStates {
+  const run = isObject(body) ? body.run : undefined;
+  const checks = isObject(run) ? run.checks : undefined;
+  if (!isObject(checks)) throw new ApiError(BAD_REPLY, 200);
+  return Object.fromEntries(
+    Object.entries(checks).map(([id, state]) => [id, textOrFail(state)]),
+  );
 }
 
 /** The most stages a workflow may have, as the contract allows. */
@@ -410,6 +429,10 @@ export function createNextPorts(
         json: () => response.json(),
       };
     },
+    readChecks: async (runId, signal) =>
+      checkStatesOf(
+        await send(`/api/runs/${encodeURIComponent(runId)}`, {}, signal),
+      ),
     validate: async (request, signal) =>
       checkAnswerOf(
         await send(

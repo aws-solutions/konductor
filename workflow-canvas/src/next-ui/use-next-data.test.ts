@@ -22,6 +22,7 @@ function portsOf(over: Partial<NextPorts> = {}): NextPorts {
     listAgents: vi.fn(() => Promise.resolve(AGENTS)),
     listRuns: vi.fn(() => Promise.resolve([])),
     startRun: vi.fn(() => Promise.resolve(RUN_STARTED)),
+    readChecks: vi.fn(() => Promise.resolve({})),
     readEvents: vi.fn(() =>
       Promise.resolve({
         ok: true,

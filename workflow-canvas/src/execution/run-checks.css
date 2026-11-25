@@ -1,0 +1,68 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The checks of a run, for the light and the dark mode. The colours are the
+ * theme's; run-checks-contrast.test.ts holds every value here to the palette
+ * and checks that each pair reaches WCAG AA in both modes.
+ */
+.wf-checks-list,
+.wf-check-state {
+  --wf-check-text: #16131f;
+  --wf-check-text-muted: #56516a;
+  --wf-check-pending-bg: #faf8f4;
+  --wf-check-done: #0b7a52;
+  --wf-check-done-bg: #e7f5ee;
+}
+
+:root[data-theme='dark'] .wf-checks-list,
+:root[data-theme='dark'] .wf-check-state {
+  --wf-check-text: #f5f3ee;
+  --wf-check-text-muted: #9c93b8;
+  --wf-check-pending-bg: #1c1740;
+  --wf-check-done: #3ddc97;
+  --wf-check-done-bg: #10281f;
+}
+
+.wf-checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--wf-check-text);
+}
+
+.wf-checks-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.wf-checks-id {
+  font-family: var(--wf-mono, 'JetBrains Mono', monospace);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.wf-checks-stages {
+  color: var(--wf-check-text-muted);
+  font-size: 13px;
+}
+
+.wf-check-state {
+  justify-self: end;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--wf-check-pending-bg);
+  color: var(--wf-check-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wf-check-state.is-verified {
+  background: var(--wf-check-done-bg);
+  color: var(--wf-check-done);
+}

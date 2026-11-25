@@ -62,6 +62,7 @@
 
 .wf-floor-stage {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
@@ -88,6 +89,17 @@
 
 .wf-floor-stage-name {
   overflow-wrap: anywhere;
+}
+
+/*
+ * The checks a stage waits for sit on their own line under its name, so a
+ * long check id never squeezes the stage's own state out of the row.
+ */
+.wf-floor-stage-checks {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .wf-floor-stage-state,

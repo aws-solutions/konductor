@@ -9,6 +9,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import { GOAL_MAX_LENGTH, goalProblem } from '../execution/core/goal';
 import { RunFloor } from '../execution/RunFloor';
 import type { ReasonSentence } from '../execution/core/stage-detail';
+import { ChecksPanel } from './ChecksPanel';
 import { ParamFields } from './ParamFields';
 import type { ParamBox } from './run-params';
 import { startsOnEnter } from './run-start';
@@ -82,8 +83,9 @@ function GoalPanel({
 
 /**
  * The Run view: a Goal box with the workflow's default goal in it, a box for
- * each param the workflow declares, a Run button, how far the run has got,
- * its stages with the console of the one picked, and the past runs.
+ * each param the workflow declares, a Run button, the checks of the workflow
+ * with the state the run reports for each, how far the run has got, its
+ * stages with the console of the one picked, and the past runs.
  *
  * It draws what `controller` holds and asks it to start a run; the run is
  * followed by the page, which keeps that controller whether this view is on
@@ -157,12 +159,17 @@ export function RunView({
           {history.failure}
         </Alert>
       )}
+      <ChecksPanel
+        checks={controller.checks}
+        failure={controller.checksFailure}
+      />
       <RunFloor
         run={controller.run}
         runId={controller.runId}
         progress={controller.progress}
         history={history.runs}
         ended={controller.ended}
+        checks={controller.checks}
         reasonSentence={reasonSentence}
       />
     </SpaceBetween>
