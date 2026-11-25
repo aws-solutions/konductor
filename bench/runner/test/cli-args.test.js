@@ -44,6 +44,15 @@ test('the dispatch table runs exactly the commands the flag table accepts, so no
   for (const [name, run] of Object.entries(DISPATCH)) assert.equal(typeof run, 'function', name);
 });
 
+test('cap and scenarios each run exactly the subcommands the flag table accepts, from one name-to-function table (B-016)', () => {
+  const { SUBCOMMANDS } = require('../lib/cli-flags.js');
+  for (const [cmd, file] of [['cap', '../../cap/cli.js'], ['scenarios', '../../scenarios/cli.js']]) {
+    const { SUB_DISPATCH } = require(file);
+    assert.deepEqual(Object.keys(SUB_DISPATCH).sort(), [...SUBCOMMANDS[cmd]].sort(), cmd);
+    for (const [name, run] of Object.entries(SUB_DISPATCH)) assert.equal(typeof run, 'function', `${cmd} ${name}`);
+  }
+});
+
 test('--help and -h print usage on stdout and exit 0 without doing anything, for every command and with other flags', () => {
   const s = sandbox();
   try {

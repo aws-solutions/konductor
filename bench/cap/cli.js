@@ -58,7 +58,6 @@ const { DEFAULTS } = require('../judge/config.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { formatCalibration, formatRaterKappas } = require('../judge/calibrate.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'unit-author', 'delegation', 'nudge-preview', 'nudge-check'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -732,36 +731,21 @@ function cmdReviewImport(opts) {
   ].join('\n'));
 }
 
+/** Subcommand name to handler; the one list `cap` accepts. `checkArgs` keeps its own copy, which a cli-args test pins to this one. */
+const SUB_DISPATCH = {
+  list: cmdList, audit: cmdAudit, variant: cmdVariant, plan: cmdPlan, draft: cmdDraft, import: cmdImport,
+  trigger: cmdTrigger, 'prune-report': cmdPruneReport, scenarios: cmdScenarios, controls: cmdControls,
+  'skill-plan': cmdSkillPlan, 'skill-study': cmdSkillStudy, decide: cmdDecide, review: cmdReview,
+  'review-import': cmdReviewImport, criteria: cmdCriteria, 'forced-prefix': cmdForcedPrefix, 'keep-prune': cmdKeepPrune,
+  select: cmdSelect, units: cmdUnits, 'unit-stage': cmdUnitStage, 'unit-author': cmdUnitAuthor,
+  delegation: cmdDelegation, 'nudge-preview': cmdNudgePreview, 'nudge-check': cmdNudgeCheck,
+};
+const SUBCOMMANDS = Object.keys(SUB_DISPATCH);
+
 function cmdCap(opts) {
   const sub = opts._[0];
   if (!SUBCOMMANDS.includes(sub)) { console.error(`bench: cap takes ${SUBCOMMANDS.join(', ')}`); process.exitCode = 2; return; }
-  const run = () => {
-    if (sub === 'list') return cmdList(opts);
-    if (sub === 'audit') return cmdAudit(opts);
-    if (sub === 'variant') return cmdVariant(opts);
-    if (sub === 'plan') return cmdPlan(opts);
-    if (sub === 'draft') return cmdDraft(opts);
-    if (sub === 'import') return cmdImport(opts);
-    if (sub === 'prune-report') return cmdPruneReport(opts);
-    if (sub === 'scenarios') return cmdScenarios(opts);
-    if (sub === 'controls') return cmdControls(opts);
-    if (sub === 'skill-plan') return cmdSkillPlan(opts);
-    if (sub === 'skill-study') return cmdSkillStudy(opts);
-    if (sub === 'decide') return cmdDecide(opts);
-    if (sub === 'review') return cmdReview(opts);
-    if (sub === 'review-import') return cmdReviewImport(opts);
-    if (sub === 'criteria') return cmdCriteria(opts);
-    if (sub === 'forced-prefix') return cmdForcedPrefix(opts);
-    if (sub === 'keep-prune') return cmdKeepPrune(opts);
-    if (sub === 'units') return cmdUnits(opts);
-    if (sub === 'unit-stage') return cmdUnitStage(opts);
-    if (sub === 'unit-author') return cmdUnitAuthor(opts);
-    if (sub === 'delegation') return cmdDelegation(opts);
-    if (sub === 'select') return cmdSelect(opts);
-    if (sub === 'nudge-preview') return cmdNudgePreview(opts);
-    if (sub === 'nudge-check') return cmdNudgeCheck(opts);
-    return cmdTrigger(opts);
-  };
+  const run = () => SUB_DISPATCH[sub](opts);
   const fail = (e) => {
     console.error(`cap ${sub}: ${e.message}`);
     process.exitCode = e.constructor.name === 'InstallsChanged' ? 1 : 2;
@@ -773,4 +757,4 @@ function cmdCap(opts) {
   return undefined;
 }
 
-module.exports = { cmdCap, SUBCOMMANDS };
+module.exports = { cmdCap, SUBCOMMANDS, SUB_DISPATCH };

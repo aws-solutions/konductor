@@ -18,8 +18,6 @@ const { cmdPilotTable } = require('./pilot-table.js');
 const { cmdReady } = require('./ready.js');
 const { cmdSpotReview } = require('./spot-review.js');
 
-const SUBCOMMANDS = ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review'];
-
 /** Runs `fn(scan, base)` on the konductor tree --base names, and removes the temporary export afterwards. */
 function withTree(opts, fn) {
   const spec = textFlag(opts.base);
@@ -134,20 +132,22 @@ function cmdPrereg(opts) {
   console.log(`${file} matches the task files and the rules`);
 }
 
+/** Subcommand name to handler; the one list `scenarios` accepts. `checkArgs` keeps its own copy, which a cli-args test pins to this one. */
+const SUB_DISPATCH = {
+  lint: cmdLint, coverage: cmdCoverage, prereg: cmdPrereg,
+  'pilot-table': cmdPilotTable, ready: cmdReady, 'spot-review': cmdSpotReview,
+};
+const SUBCOMMANDS = Object.keys(SUB_DISPATCH);
+
 function cmdScenarios(opts) {
   const sub = opts._[0];
   if (!SUBCOMMANDS.includes(sub)) { console.error(`bench: scenarios takes ${SUBCOMMANDS.join(', ')}`); process.exitCode = 2; return; }
   try {
-    if (sub === 'lint') cmdLint(opts);
-    else if (sub === 'coverage') cmdCoverage(opts);
-    else if (sub === 'prereg') cmdPrereg(opts);
-    else if (sub === 'pilot-table') cmdPilotTable(opts);
-    else if (sub === 'ready') cmdReady(opts);
-    else if (sub === 'spot-review') cmdSpotReview(opts);
+    SUB_DISPATCH[sub](opts);
   } catch (e) {
     console.error(`scenarios ${sub}: ${e.message}`);
     process.exitCode = 2;
   }
 }
 
-module.exports = { cmdScenarios, SUBCOMMANDS, withTree, dirArg, packSuiteProblem, contentLockProblems };
+module.exports = { cmdScenarios, SUBCOMMANDS, SUB_DISPATCH, withTree, dirArg, packSuiteProblem, contentLockProblems };
