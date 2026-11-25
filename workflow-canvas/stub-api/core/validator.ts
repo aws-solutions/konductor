@@ -10,6 +10,7 @@ import {
   isUsableStageName,
   MAX_INTENT_CHARS,
   MAX_PARAM_CHARS,
+  MIN_RUN_ARGV,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_YAML_DEPTH,
@@ -495,8 +496,8 @@ function readArgv(
     ctx.reporter.report('WRONG_TYPE', path, valueSpanOf(entry), message);
     return undefined;
   }
-  if (list.items.length < 1) {
-    const message = '`run` must have at least one entry.';
+  if (list.items.length < MIN_RUN_ARGV) {
+    const message = `\`run\` must have at least ${MIN_RUN_ARGV} entry.`;
     ctx.reporter.report('INVALID_VALUE', path, spanOf(list), message);
     return undefined;
   }

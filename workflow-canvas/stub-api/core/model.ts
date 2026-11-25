@@ -36,16 +36,20 @@ export interface Diagnostic {
 }
 
 /**
- * A check of the intent: an `id` and exactly one of `file` and `run`. A
- * `file` check passes when that file exists, a `run` check when its command
- * exits 0. Running one is the runner's work, not the stub's.
+ * A check of the intent: an `id` and exactly one of `file` and `run`, as the
+ * contract requires. A `file` check passes when that file exists, a `run`
+ * check when its command exits 0. Running one is the runner's work, not the
+ * stub's. The other key is typed `never`, so a check with both kinds, or
+ * with neither, does not compile.
  */
-export interface Check {
-  id: string;
-  file?: string;
-  /** A command and its arguments, run with no shell. */
-  run?: string[];
-}
+export type Check =
+  | { id: string; file: string; run?: never }
+  | {
+      id: string;
+      /** A command and its arguments, run with no shell. */
+      run: string[];
+      file?: never;
+    };
 
 /** Whether the server has run a check yet. */
 export const CHECK_STATES = ['verified', 'deferred'] as const;

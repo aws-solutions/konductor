@@ -11,6 +11,9 @@ export const MAX_GOAL_CHARS = 2048;
  * such as a diff can be passed inline.
  */
 export const MAX_PARAM_CHARS = 65_536;
+
+/** The fewest entries a `run` check may have: the program to run. */
+export const MIN_RUN_ARGV = 1;
 export const MAX_INTENT_CHARS = 300;
 export const MAX_PROMPT_CHARS = 32_768;
 export const MAX_STAGES = 40;

@@ -16,6 +16,7 @@ import {
   MAX_GOAL_CHARS,
   MAX_INTENT_CHARS,
   MAX_PARAM_CHARS,
+  MIN_RUN_ARGV,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_TEXT_BYTES,
@@ -163,6 +164,28 @@ describe('the stub and api/openapi.yaml', () => {
     expect([...STAGE_REASONS].sort()).toEqual(
       [...(schemaOf('StageReason').enum as string[])].sort(),
     );
+  });
+
+  it('give a check exactly one of file and run, with the rules the stub reads', () => {
+    const check = schemaOf('Check');
+    expect(property(check, 'id').pattern).toBe(NAME_PATTERN.source);
+    expect(check.required).toEqual(['id']);
+    const branches = check.oneOf as Json[];
+    expect(branches).toHaveLength(2);
+    const [byFile, byRun] = branches as [Json, Json];
+    expect(byFile.required).toEqual(['file']);
+    expect(property(byFile, 'file').pattern).toBe(PATH_PATTERN_SOURCE);
+    expect(byRun.required).toEqual(['run']);
+    const run = property(byRun, 'run');
+    expect(run.type).toBe('array');
+    expect(run.minItems).toBe(MIN_RUN_ARGV);
+    expect((run.items as Json).type).toBe('string');
+  });
+
+  it('name every done_when entry by a check id', () => {
+    const doneWhen = property(schemaOf('Stage'), 'done_when');
+    expect(doneWhen.type).toBe('array');
+    expect((doneWhen.items as Json).pattern).toBe(NAME_PATTERN.source);
   });
 
   it('have the same check states', () => {
