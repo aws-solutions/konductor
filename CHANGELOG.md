@@ -31,8 +31,7 @@ Read these before upgrading from 1.2.0.
   002. Run `chmod 700` on it.
 - **Specialists no longer spawn other agents.** They finish their part and hand the next step,
   or a proposed parallel split, back to the orchestrator. Spawn tools are blocked for
-  specialists on Kiro CLI v2, Kiro CLI v3 and Claude Code; Kiro CLI v2 gets an explicit tool
-  list in place of `@builtin` (checked with kiro-cli 2.36.0 and 3.0.0). A workflow that relied on a
+  specialists on Kiro CLI v2, Kiro CLI v3 and Claude Code. A workflow that relied on a
   specialist spawning must run through an orchestrator.
 - **On Claude Code, mux and cmux children no longer skip every permission check.** The default
   dispatch mode is now `interactive`, which asks in the child's pane. For unattended runs, set
@@ -95,18 +94,16 @@ Read these before upgrading from 1.2.0.
   builds, tests and whole phases still go to specialists. They run the SOP check on every
   request, and a request matches a SOP row when it asks for what the row's User intent
   describes, including a single-procedure SOP such as `k-plan`.
-- Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review.
-  One in the task's own output still open, or one the re-review reports there, carried over or new,
-  or caused by the fix in what depends on it, stops work on that artifact; a finding in
-  code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
-  A SOP's own fix scope and round limit win.
+- Review ceilings: a CRITICAL or IMPORTANT finding gets one fix and one re-review. A finding in
+  the task's own output that is still open after that stops work on the artifact. A finding in
+  code the task did not touch, and the fix did not cause, is listed as pre-existing instead of
+  fixed. A SOP's own fix scope and round limit win.
 - All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at
-  most 50 changed lines whose build, test and lint passed (reported with the diff stat; not for
-  auth, secrets, data or infrastructure). `konductor` also closes a standalone document with its
-  checker skill instead of a reviewer, and when it made the artifact,
-  or merged a parallel writer's part into it, a finding it would reject goes to you before it is dropped. A threat
-  model, an auth or credential design, or a design that crosses a network boundary or handles
-  sensitive data always goes to a reviewer.
+  most 50 lines whose build, test and lint passed, and say so with the diff stat. The skip never
+  applies to auth, secrets, data or infrastructure. `konductor` closes a standalone document with
+  its checker skill instead, and a finding it would reject on an artifact it made goes to you
+  before it is dropped. A threat model, an auth or credential design, or a design that crosses
+  a network boundary or handles sensitive data always goes to a reviewer.
 - House rules: Konductor's defaults yield to the request, recorded rulings, the project's
   instruction files and user-written memory, and the codebase's conventions, in that order. An
   open collision is asked once and saved as a `Ruling:` entry. A quoted user decision in a brief
@@ -118,8 +115,9 @@ Read these before upgrading from 1.2.0.
 - `k-adversarial-pull-request-review` is coordinated by the orchestrator, which spawns the four
   passes and a fresh `k-architect` checker. A pass that fails twice is recorded as `MISSING` and
   caps the verdict at APPROVE WITH COMMENTS. `k-code-review-workflow` ends by asking the
-  orchestrator to run it, `k-full-sdlc` runs it before writing a feature's status and marks a feature BLOCKED when a report leaves a
-  CRITICAL or IMPORTANT finding open or the pass is incomplete.
+  orchestrator to run it. `k-full-sdlc` runs it before writing a feature's status, and marks the
+  feature BLOCKED when a report leaves a CRITICAL or IMPORTANT finding open or the pass is
+  incomplete.
 - Each dispatched mux or cmux child gets its own 0700 directory for its brief, result and
   `.done`, and is granted only that directory. A non-zero exit is always recorded as `error`.
   `--brief <file>` passes a long brief.
@@ -237,7 +235,6 @@ Read these before upgrading from 1.2.0.
   and skip working-tree reads when the config defines a `filter.<driver>`.
 - Agents ignore planted instructions, never read or write `.konductor/memory/` through a
   symlink, and report only key names or redacted values from a secret file the user names.
-  A `credentials_file` that `k-light-ui-testing` or `k-e2e-test-generation` passes in a brief counts as user-named.
 - `rustls` 0.23.46 fixes GHSA-c8m5-c952-6cm4, GHSA-h2v8-394m-p7vv, GHSA-vp88-798v-h67f and
   GHSA-w44r-93j7-qv28. Other Rust dependency updates fix RUSTSEC-2026-0381, -0382, -0386, -0457,
   -0462 and -0486.

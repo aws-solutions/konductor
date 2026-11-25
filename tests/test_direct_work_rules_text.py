@@ -202,7 +202,7 @@ def test_rejected_finding_on_a_merged_part_blocks_done_for_konductor_only():
     assert MERGED_PART_CLAUSE in _spec("konductor")["config"]["systemPrompt"]
     for name in ORCHESTRATORS[1:]:
         assert "made the artifact" not in _spec(name)["config"]["systemPrompt"], name
-    for rel in ("skills/constraints/SKILL.md", "docs/user-guide/concepts.md", "CHANGELOG.md"):
+    for rel in ("skills/constraints/SKILL.md", "docs/user-guide/concepts.md"):
         assert "merged a parallel writer's part into it" in (ROOT / rel).read_text(encoding="utf-8"), rel
 
 

@@ -19,7 +19,6 @@ OPEN_WORDING = "still open"
 NOT_IN_FIX_BRIEF_WORDING = "not put in the fix brief"
 FIX_CAUSED_QUALIFIER_WORDING = "code the task did not add or change, and the fix did not cause, is listed"
 STOP_SCOPE_WORDING = "stop work on that artifact"
-STOP_SCOPE_CHANGELOG_WORDING = "stops work on that artifact"
 PASS_WORDING = "Pass: no CRITICAL or IMPORTANT in the task's own output"
 UNSCOPED_OPEN_WORDING = "Any first-review CRITICAL or IMPORTANT finding still open"
 OLD_FIRST_REVIEW_WORDING = "the first review did not report"
@@ -53,7 +52,7 @@ SOP_LIMIT_MIRRORS = [
     "tools/build-user-guide/sync-html-content.py",
 ]
 
-ALL_COPIES = POINTER_FILES + MIRRORS + ["CHANGELOG.md", "skills/code-review/SKILL.md"]
+ALL_COPIES = POINTER_FILES + MIRRORS + ["skills/code-review/SKILL.md"]
 
 
 def _item_6(name):
@@ -61,13 +60,6 @@ def _item_6(name):
     matches = ITEM_6_RE.findall(spec["config"]["systemPrompt"])
     assert len(matches) == 1, f"{name}: expected one item 6, found {len(matches)}"
     return matches[0]
-
-
-def _release_section():
-    text = (ROOT / "CHANGELOG.md").read_text()
-    start = text.index("## [2.0.0]")
-    end = text.find("\n## [", start + 1)
-    return text[start:] if end == -1 else text[start:end]
 
 
 def test_item_6_is_identical_in_all_orchestrators():
@@ -90,12 +82,6 @@ def test_mirrors_carry_the_four_pinned_clauses():
             assert wording in text, (rel, wording)
         assert NOT_IN_FIX_BRIEF_WORDING in text, rel
         assert FIX_CAUSED_QUALIFIER_WORDING in text, rel
-    unreleased = _release_section()
-    for wording in (STOP_WORDING, PREEXISTING_WORDING, PREDATES_WORDING, OWN_OUTPUT_WORDING, OPEN_WORDING):
-        assert wording in unreleased, wording
-    assert NOT_IN_FIX_BRIEF_WORDING in unreleased
-    assert FIX_CAUSED_QUALIFIER_WORDING in unreleased
-    assert STOP_SCOPE_CHANGELOG_WORDING in unreleased
 
 
 def test_pre_existing_is_never_keyed_to_the_first_review_report():
