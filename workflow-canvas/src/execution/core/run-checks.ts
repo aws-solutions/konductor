@@ -65,8 +65,10 @@ export function checkRows(
       id: check.id,
       state,
       verified: isVerified(state),
-      stages: order.filter((stage) =>
-        (checks.doneWhen[stage] ?? []).includes(check.id),
+      stages: order.filter(
+        (stage) =>
+          Object.hasOwn(checks.doneWhen, stage) &&
+          (checks.doneWhen[stage] ?? []).includes(check.id),
       ),
     };
   });

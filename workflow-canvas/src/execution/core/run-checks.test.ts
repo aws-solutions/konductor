@@ -69,6 +69,15 @@ describe('checkRows', () => {
     expect(checkRows(inherited, {}, ORDER)[0]?.state).toBe('deferred');
   });
 
+  it('reads done_when as own keys only, so stages named like Object members work', () => {
+    const order = ['constructor', 'toString', 'valueOf', 'draft'];
+
+    const rows = checkRows(DECLARED, {}, order);
+
+    expect(rows[0]?.stages).toEqual(['draft']);
+    expect(rows[1]?.stages).toEqual([]);
+  });
+
   it('names the stages that wait for a check, in run order', () => {
     const rows = checkRows(DECLARED, {}, ORDER);
 
