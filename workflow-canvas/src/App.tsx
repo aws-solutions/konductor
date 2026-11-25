@@ -259,7 +259,12 @@ export function App({
           {
             id: 'execution',
             label: 'Run',
-            content: <RunView controller={nextRunner} />,
+            content: (
+              <RunView
+                controller={nextRunner}
+                {...(workflowName === undefined ? {} : { workflowName })}
+              />
+            ),
           },
         ]
       : undefined;

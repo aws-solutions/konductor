@@ -9,6 +9,7 @@ import {
   running,
   test,
 } from '../support/next-fixtures';
+import { refuseRunsWith } from '../support/run-routes';
 import { saveFullPageScreenshot } from '../support/screenshots';
 
 // Run with `npm run screenshots`. These save the PNGs of the views the page
@@ -131,4 +132,22 @@ test('capture the Run view with a verified check and a deferred one', async ({
   );
 
   await saveFullPageScreenshot(canvas.page, 'next-run-checks');
+});
+
+// As with the Execution tab's shot of the same dialog, an arm64 host draws
+// the dimmed page behind it one level of colour off, so the committed PNG is
+// the one that CI draws (see Screenshots in the README).
+test('capture the Run view when a run needs trust', async ({ next }) => {
+  await refuseRunsWith(next.page, 409, {
+    error: 'The workflow is not trusted yet.',
+    code: 'trust_required',
+    fix: 'Run `konductor flow trust hello` in a terminal, then try again.',
+  });
+  await next.selectTab('Run');
+  await expect(next.runButton).toBeVisible();
+
+  await next.runButton.click();
+  await next.page.getByTestId('trust-command').waitFor();
+
+  await saveFullPageScreenshot(next.page, 'next-run-trust-required');
 });

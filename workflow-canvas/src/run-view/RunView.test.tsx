@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import createWrapper from '@cloudscape-design/components/test-utils/dom';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   RunAlreadyActive,
+  RunNeedsTrust,
   RunStartUnsure,
   type RunMemory,
 } from '../execution/core/ports';
@@ -38,6 +47,7 @@ function Drawn({
   ports,
   runMemory,
   reasonSentence,
+  workflowName,
   onRunState,
 }: {
   stages: readonly string[];
@@ -49,6 +59,7 @@ function Drawn({
   ports: RunViewPorts;
   runMemory?: RunMemory;
   reasonSentence?: (code: string) => string | undefined;
+  workflowName?: string;
   onRunState?: (state: RunLifecycle) => void;
 }) {
   const controller = useRunController({
@@ -63,6 +74,7 @@ function Drawn({
   return (
     <RunView
       controller={controller}
+      {...(workflowName === undefined ? {} : { workflowName })}
       {...(reasonSentence ? { reasonSentence } : {})}
     />
   );
@@ -100,10 +112,12 @@ function memoryOf(runId?: string): RunMemory {
 }
 function drawn({
   startResult = Promise.resolve(RUN_ID),
+  startAnswers,
   runs = [] as readonly RunSummaryRow[],
   listFails,
   memory,
   reasonSentence,
+  workflowName,
   goalDefault = GOAL_DEFAULT,
   noGoalDefault = false,
   declaredParams,
@@ -115,10 +129,13 @@ function drawn({
   onRunState,
 }: {
   startResult?: Promise<string>;
+  /** One answer per start, in order; the last stands for later starts. */
+  startAnswers?: ReadonlyArray<Error | string>;
   runs?: readonly RunSummaryRow[];
   listFails?: string;
   memory?: RunMemory;
   reasonSentence?: (code: string) => string | undefined;
+  workflowName?: string;
   goalDefault?: string;
   /** The workflow declares no default goal. */
   noGoalDefault?: boolean;
@@ -139,7 +156,17 @@ function drawn({
 } = {}) {
   const events = new HeldEvents();
   const waits = new EventWaits();
-  const start = vi.fn(() => startResult);
+  let starts = 0;
+  const start = vi.fn(() => {
+    if (startAnswers === undefined) return startResult;
+    const answer =
+      startAnswers[Math.min(starts, startAnswers.length - 1)] ??
+      new Error('No answer for this start.');
+    starts += 1;
+    return typeof answer === 'string'
+      ? Promise.resolve(answer)
+      : Promise.reject(answer);
+  });
   const listRuns = vi.fn(() =>
     listFails === undefined
       ? Promise.resolve(runs)
@@ -168,6 +195,7 @@ function drawn({
       ports={ports}
       {...(memory ? { runMemory: memory } : {})}
       {...(reasonSentence ? { reasonSentence } : {})}
+      {...(workflowName === undefined ? {} : { workflowName })}
       {...(onRunState ? { onRunState } : {})}
     />
   );
@@ -1360,5 +1388,226 @@ describe('RunView, the checks the workflow declares', () => {
     await settle();
 
     expect(document.querySelectorAll('[aria-live]')).toHaveLength(0);
+  });
+});
+
+describe('RunView when a run is refused because the workflow is not trusted', () => {
+  const FIX = 'Run `konductor flow trust hello` in a terminal, then try again.';
+  const COMMAND = 'konductor flow trust hello';
+  const untrusted = () =>
+    new RunNeedsTrust(`The workflow is not trusted yet. ${FIX}`, FIX);
+
+  const modal = () => createWrapper(document.body).findModal();
+  const dialog = () => screen.getByTestId('trust-dialog');
+  const inDialog = (name: string) =>
+    within(dialog()).getByRole('button', { name });
+
+  const refused = (...startAnswers: Array<Error | string>) =>
+    drawn({ startAnswers, workflowName: 'hello' });
+
+  it('opens a dialog with the fix of the server and its command', async () => {
+    refused(untrusted());
+
+    await press();
+
+    expect(modal()?.isVisible()).toBe(true);
+    expect(screen.getByTestId('trust-command').textContent).toBe(COMMAND);
+    expect(screen.getByTestId('trust-fix').textContent).toBe(
+      'Run konductor flow trust hello in a terminal, then try again.',
+    );
+    expect(screen.getByTestId('trust-intro').textContent).toContain(
+      'This page cannot trust a workflow.',
+    );
+  });
+
+  it('copies the command with Copy', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    try {
+      refused(untrusted());
+      await press();
+
+      await act(async () => {
+        fireEvent.click(inDialog('Copy command'));
+      });
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(COMMAND));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('starts the run again with the goal of the refused start', async () => {
+    const { start, events } = refused(untrusted(), RUN_ID);
+    await type('Ship it');
+    await press();
+
+    await act(async () => {
+      fireEvent.click(inDialog('Run again'));
+    });
+
+    expect(start).toHaveBeenNthCalledWith(
+      1,
+      { goal: 'Ship it' },
+      expect.anything(),
+    );
+    expect(start).toHaveBeenNthCalledWith(
+      2,
+      { goal: 'Ship it' },
+      expect.anything(),
+    );
+    expect(modal()?.isVisible() ?? false).toBe(false);
+    await answer(events, eventsAnswer([finished(1, 'passed')], { done: true }));
+    expect(screen.getByTestId('run-progress').textContent).toContain(
+      'Run passed.',
+    );
+  });
+
+  it('keeps every param of the refused start when the boxes move on', async () => {
+    const { start } = drawn({
+      startAnswers: [untrusted(), RUN_ID],
+      workflowName: 'hello',
+      declaredParams: [{ name: 'diff_input', required: true }],
+    });
+    await type('Ship it');
+    await act(async () => {
+      fireEvent.change(paramBox('diff_input'), {
+        target: { value: 'first.diff' },
+      });
+    });
+    await press();
+    await act(async () => {
+      fireEvent.change(paramBox('diff_input'), {
+        target: { value: 'second.diff' },
+      });
+      fireEvent.click(inDialog('Run again'));
+    });
+
+    expect(start).toHaveBeenNthCalledWith(
+      1,
+      { goal: 'Ship it', diff_input: 'first.diff' },
+      expect.anything(),
+    );
+    expect(start).toHaveBeenNthCalledWith(
+      2,
+      { goal: 'Ship it', diff_input: 'first.diff' },
+      expect.anything(),
+    );
+  });
+
+  it('keeps the goal of the refused start when the box has moved on', async () => {
+    const { start } = refused(untrusted(), RUN_ID);
+    await type('Ship it');
+    await press();
+    await type('Something else');
+
+    await act(async () => {
+      fireEvent.click(inDialog('Run again'));
+    });
+
+    expect(start).toHaveBeenNthCalledWith(
+      1,
+      { goal: 'Ship it' },
+      expect.anything(),
+    );
+    expect(start).toHaveBeenNthCalledWith(
+      2,
+      { goal: 'Ship it' },
+      expect.anything(),
+    );
+  });
+
+  it('opens the dialog afresh when Run again is refused for trust again', async () => {
+    const { start } = refused(untrusted(), untrusted());
+    await press();
+
+    await act(async () => {
+      fireEvent.click(inDialog('Run again'));
+    });
+
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(modal()?.isVisible()).toBe(true);
+  });
+
+  it('shows another error of Run again under the Run button, with no dialog', async () => {
+    refused(untrusted(), new Error('kiro-cli is not installed.'));
+    await press();
+
+    await act(async () => {
+      fireEvent.click(inDialog('Run again'));
+    });
+
+    expect(modal()?.isVisible() ?? false).toBe(false);
+    expect(screen.getByTestId('run-start-error').textContent).toContain(
+      'kiro-cli is not installed.',
+    );
+  });
+
+  it('leaves the Run view as it was when the dialog is closed', async () => {
+    refused(untrusted());
+    await press();
+
+    await act(async () => {
+      fireEvent.click(inDialog('Close'));
+    });
+
+    expect(modal()?.isVisible()).toBe(false);
+    const alert = screen.getByTestId('run-start-error');
+    expect(alert.textContent).toContain('The run did not start.');
+    expect(alert.querySelector('code')?.textContent).toBe(COMMAND);
+    expect(alert.textContent).not.toContain('`');
+    expect(goalBox().value).toBe(GOAL_DEFAULT);
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('opens the dialog again when Run is refused again after Close', async () => {
+    const { start } = refused(untrusted(), untrusted());
+    await press();
+    await act(async () => {
+      fireEvent.click(inDialog('Close'));
+    });
+
+    await press();
+
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(modal()?.isVisible()).toBe(true);
+  });
+
+  it('moves focus into the dialog, and back to Run when it closes', async () => {
+    refused(untrusted());
+    runButton().focus();
+
+    await press();
+
+    expect(dialog().contains(document.activeElement)).toBe(true);
+    await act(async () => {
+      fireEvent.click(inDialog('Close'));
+    });
+
+    expect(document.activeElement).toBe(runButton());
+  });
+
+  it('adds no live region of its own while the dialog is open', async () => {
+    refused(untrusted());
+
+    await press();
+
+    expect(document.querySelector('[aria-live]')).toBeNull();
+  });
+
+  it('shows the fix alone when the command is not one this page offers', async () => {
+    drawn({
+      startAnswers: [
+        new RunNeedsTrust('Not trusted.', 'Run `konductor flow trust other`.'),
+      ],
+      workflowName: 'hello',
+    });
+
+    await press();
+
+    expect(screen.queryByTestId('trust-command')).toBeNull();
+    expect(screen.getByTestId('trust-fix').textContent).toBe(
+      'Run konductor flow trust other.',
+    );
   });
 });
