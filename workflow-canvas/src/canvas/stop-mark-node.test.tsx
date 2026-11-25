@@ -8,7 +8,7 @@ import { WorkflowCanvas } from './WorkflowCanvas';
 const LAST = HELLO_VIEW.stages.at(-1)?.name ?? '';
 
 function drawn(states?: ReadonlyMap<string, StopMarkState>) {
-  const graph = buildGraph(HELLO_VIEW, 'kiro-cli', { stopMarks: true });
+  const graph = buildGraph(HELLO_VIEW, 'kiro-cli');
   render(<WorkflowCanvas graph={withStopMarks(graph, states)} />);
 }
 
@@ -19,12 +19,6 @@ describe('a canvas drawn with stop marks', () => {
     expect(
       screen.getByRole('img', { name: `The run ends after ${LAST}` }),
     ).toBeTruthy();
-  });
-
-  it('draws no end node', () => {
-    drawn();
-
-    expect(screen.queryByTestId('node-end')).toBeNull();
   });
 
   it('draws one mark only, on the stage that ends the run', () => {

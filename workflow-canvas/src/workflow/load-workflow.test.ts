@@ -14,7 +14,6 @@ import {
 } from '../test-support/fixtures';
 import { freshMemory, memoryStorage } from '../test-support/memory-storage';
 import { SaveConflict, SaveLost, SaveRefused } from '../designer/core';
-import type { RunPort } from '../execution/core';
 import { loadOnOpen, loadWorkflow, withDocument } from './load-workflow';
 
 const SAVED = { hash: 'b'.repeat(64), view: HELLO_VIEW, diagnostics: [] };
@@ -51,7 +50,7 @@ describe('loadWorkflow', () => {
           check: expect.any(Function),
           reload: expect.any(Function),
         },
-        runs: { start: expect.any(Function), get: expect.any(Function) },
+        runs: { start: expect.any(Function) },
       },
       remember: expect.any(Function),
     });
@@ -63,11 +62,9 @@ describe('loadWorkflow', () => {
     if (!result.ok) throw new Error('The load failed.');
 
     const { signal } = new AbortController();
-    const runId = await result.workflow.runs.start('Ship it', signal);
-    await result.workflow.runs.get(runId, signal);
+    await result.workflow.runs.start('Ship it', signal);
 
     expect(api.startRun).toHaveBeenCalledWith('token-1', 'Ship it', signal);
-    expect(api.getRun).toHaveBeenCalledWith('token-1', runId, signal);
   });
 
   it('ties the edit calls to the session token', async () => {
@@ -357,33 +354,6 @@ describe('loadWorkflow', () => {
         name: 'RunStartUnsure',
         message: error.message,
       });
-    });
-
-    it.each([
-      ['a 404', new ApiError('No such run.', 404)],
-      ['a reply the page cannot read', new ApiError('Bad reply.', 200)],
-    ])('refuse to read again after %s', async (_, error) => {
-      const runs = await portFor(
-        fakeApi({ getRun: vi.fn().mockRejectedValue(error) }),
-      );
-
-      await expect(runs.get('r', signal)).rejects.toMatchObject({
-        name: 'RunReadRefused',
-        message: error.message,
-      });
-    });
-
-    it.each([
-      ['no answer', new ApiError('No answer.', 0)],
-      ['a 502', new ApiError('Bad gateway.', 502)],
-      ['a 429', new ApiError('Slow down.', 429)],
-      ['an error that is not an ApiError', new Error('Odd.')],
-    ])('leave %s open to another try', async (_, error) => {
-      const runs = await portFor(
-        fakeApi({ getRun: vi.fn().mockRejectedValue(error) }),
-      );
-
-      await expect(runs.get('r', signal)).rejects.toBe(error);
     });
   });
 
@@ -1206,22 +1176,14 @@ describe('a 401 on a call after the load', () => {
     return { runs: result.workflow.runs, memory };
   }
 
-  it.each([
-    ['a run start', (runs: RunPort) => runs.start('g', signal)],
-    ['a run read', (runs: RunPort) => runs.get('r-1', signal)],
-  ])(
-    'on %s forgets the session and says the server lost it',
-    async (_, call) => {
-      const { runs, memory } = await runsOf(
-        fakeApi({ startRun: lost(), getRun: lost() }),
-      );
+  it('on a run start forgets the session and says the server lost it', async () => {
+    const { runs, memory } = await runsOf(fakeApi({ startRun: lost() }));
 
-      await expect(call(runs)).rejects.toThrow(
-        /server no longer knows this session.*Start `flow view` again/s,
-      );
-      expect(memory.recall()).toBeUndefined();
-    },
-  );
+    await expect(runs.start('g', signal)).rejects.toThrow(
+      /server no longer knows this session.*Start `flow view` again/s,
+    );
+    expect(memory.recall()).toBeUndefined();
+  });
 
   it('keeps the session on a failure that is not a 401', async () => {
     const { runs, memory } = await runsOf(

@@ -127,7 +127,6 @@ export const HELLO_DOCUMENT: WorkflowDocument = {
 /** Run calls that are never used, for a test that does not run anything. */
 export const NO_RUNS: RunPort = {
   start: () => Promise.reject(new Error('This test starts no run.')),
-  get: () => Promise.reject(new Error('This test reads no run.')),
 };
 
 /** Edit calls that are never used, for a test that edits nothing. */

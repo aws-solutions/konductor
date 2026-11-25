@@ -30,7 +30,8 @@ export const NODE_NAMES = [
 
 /**
  * How long to wait for a step of a run on the stub. A stage takes 3 seconds
- * there and the page reads the run once a second.
+ * there, and the page hears of it when the long poll of the run's events
+ * answers.
  */
 export const STEP_TIMEOUT_MS = 10_000;
 

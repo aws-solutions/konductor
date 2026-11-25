@@ -117,14 +117,3 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
     </div>
   );
 }
-
-/** The finish of the workflow, where the run order ends. */
-export function EndNode() {
-  return (
-    <div className="wf-node wf-node-end" data-testid="node-end">
-      <NodeShape height={NODE_HEIGHT.end} radius={NODE_RADIUS.end} />
-      <SequenceIn />
-      <div className="wf-node-title">end</div>
-    </div>
-  );
-}

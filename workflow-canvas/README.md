@@ -6,13 +6,16 @@ of the agent package or the CLI.
 
 The page has Design and Run views, picked with a switch in the page
 header. The Design view loads the workflow
-from the API and draws it: the intent, each stage in list order (name, agent
-and harness) and the end, joined by run-order edges. You can pick the agent of
+from the API and draws it: the intent and each stage in list order (name,
+agent and harness), joined by run-order edges, with a mark under the last
+stage where the run ends. Beside the drawing it shows the text of the file and
+the keys of the stage that is picked. You can pick the agent of
 a stage, rename it, edit its prompt, add a stage, delete one and save the file.
 A save changes only the values it edits and keeps every other key of the file. It shows a
 loading message, an error message or an empty message when there is nothing to
-draw. The Run view draws the saved workflow and runs it: a Run button
-starts a run, and each node shows its live state until the run ends. A blocked
+draw. The Run view starts a run and follows it: a Goal box and a Run button,
+then how far the run has got, its stages with the detail and console of the
+one picked, and the past runs of the workflow. A blocked
 stage shows its reason, and a Run of a workflow that is not trusted opens a
 dialog with the command that trusts it. The contract, the stub that serves it
 and the tests around both are in this folder.
@@ -22,12 +25,15 @@ and the tests around both are in this folder.
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `design-view/` edits it and `canvas/` draws it;
-  `run-view/` runs it and shows the run; `execution/core/` does no IO and reads a run
-  once a second. A read that fails with no answer, a server error, 408 or 429 is tried
-  again, up to three in a row; any other failure ends the following. A start
+  `run-view/` runs it and shows the run; `execution/core/` and `run-client/` do
+  no IO and follow a run through its events, a long poll the server may hold
+  open for 20 seconds. A call that fails is tried again after a second,
+  doubling to 16, until eight in a row have failed; a 401 ends the following
+  at once. A start
   that finds a run already active follows that run. Every run call takes a
   signal, and every call ends on its own, after 15
-  seconds, or 120 seconds for the launch code trade (see **The launch code
+  seconds, 30 for one long poll, or 120 seconds for the launch code trade (see
+  **The launch code
   trade** below), so a server that never answers cannot hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
@@ -298,9 +304,10 @@ does not start it, and the same tests call that server instead.
 ## The canvas
 
 `src/graph/` is the core of the canvas. `buildGraph(workflow, harness)` turns
-the workflow view into nodes (the intent, one per stage, the end) and edges
+the workflow view into nodes (the intent and one per stage) and edges
 (one from each node to the next, from the bottom edge of a node to the top
-edge of the next), placed in one column. It imports
+edge of the next), placed in one column, and marks each stage that no other
+stage follows with the mark that says the run ends there (`withStopMarks`). It imports
 only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
 imports anything else, or reads a clock, randomness, the environment or the
 network, and the stub core is held to the same rule by the same scan

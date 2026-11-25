@@ -294,10 +294,7 @@ export function DesignView({
     }),
     [state.saved.view, state.draft.stages],
   );
-  const graph = useMemo(
-    () => buildGraph(spec, harness, { stopMarks: true }),
-    [spec, harness],
-  );
+  const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
   const { select } = editor;
   // Counts the times a stage has been chosen in the drawing, so the side
   // column opens its keys each time, as the drawing says it will.

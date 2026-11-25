@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { buildGraph, END_ID, stageNodeId } from './build-graph';
+import { buildGraph, stageNodeId } from './build-graph';
 import {
   leafStages,
   stopMarkState,
@@ -37,14 +37,6 @@ function edge(source: string, target: string): GraphEdge {
   };
 }
 
-// The graph with no end node and no edge into it, as the page will draw it.
-function withoutEnd(graph: CanvasGraph): CanvasGraph {
-  return {
-    nodes: graph.nodes.filter((node) => node.id !== END_ID),
-    edges: graph.edges.filter((e) => e.target !== END_ID),
-  };
-}
-
 describe('leafStages', () => {
   it('finds the last stage of a workflow in list order', () => {
     expect(leafStages(graphOf('draft', 'review', 'ship'))).toEqual([
@@ -56,14 +48,8 @@ describe('leafStages', () => {
     expect(leafStages(graphOf('draft'))).toEqual([stageNodeId('draft')]);
   });
 
-  it('gives the same answer without the end node', () => {
-    const graph = graphOf('draft', 'review');
-
-    expect(leafStages(withoutEnd(graph))).toEqual(leafStages(graph));
-  });
-
   it('finds every stage that ends a branch, in node order', () => {
-    const base = withoutEnd(graphOf('plan', 'build', 'docs', 'ship'));
+    const base = graphOf('plan', 'build', 'docs', 'ship');
     const [plan, build, docs, ship] = ['plan', 'build', 'docs', 'ship'].map(
       stageNodeId,
     );
@@ -81,7 +67,7 @@ describe('leafStages', () => {
   });
 
   it('does not take an edge from a stage to itself for a follower', () => {
-    const base = withoutEnd(graphOf('draft'));
+    const base = graphOf('draft');
     const draft = stageNodeId('draft');
 
     expect(

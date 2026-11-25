@@ -129,12 +129,6 @@
   line-clamp: 3;
 }
 
-.wf-node-end {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* The card is one SVG (see nodes.tsx); this file only gives it colours. */
 .wf-node-shape {
   position: absolute;

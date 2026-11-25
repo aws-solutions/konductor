@@ -39,7 +39,6 @@ test('draws the stages of the workflow, the last one with a stop mark', async ({
   await expect(stopMark(canvas)).toHaveAccessibleName(
     'The run ends after review',
   );
-  await expect(canvas.graph.getByTestId('node-end')).toHaveCount(0);
 });
 
 test('offers the text of the workflow to type over', async ({ canvas }) => {
