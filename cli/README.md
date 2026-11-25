@@ -7,10 +7,7 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the agent, skill and SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, `doctor`, and
-> `verify-run` now perform real work (see [Current state](#current-state)). The remaining command
-> (`metrics`) is still a **stub** - it parses arguments and validates input correctly,
-> but does not yet perform real work.
+> **Status:** all commands perform real work (see [Current state](#current-state)).
 
 ---
 
@@ -211,6 +208,59 @@ drop. The command still succeeds. `-v` adds one
 figures in a `claude_preload` array. Each agent file lists the declared skills it does not
 preload, to be loaded with the `Skill` tool, so `synth` also warns when an agent has such skills
 but an explicit `clientConfig.claudeCli.tools` list without `Skill`.
+
+---
+
+## `metrics`
+
+```bash
+konductor metrics [--since 7d] [--by agent|model|day|repo] [--json]
+```
+
+Scans local Claude Code (`~/.claude/projects`, or `$CLAUDE_CONFIG_DIR`) and Kiro
+(`~/.kiro/sessions`, or `$KIRO_HOME`) session files, and keeps sessions run by a
+Konductor agent. That means an agent installed by any tracked install
+(`~/.konductor/installs`) or by the Claude Code marketplace plugin. Usage is reported
+per harness in its native unit: tokens for Claude Code, credits for Kiro. The two are
+never summed. Parsed results are cached in `~/.konductor/usage/records.jsonl` (mode
+`0600`), so sessions stay counted after the harness deletes its own files. Nothing is
+sent anywhere.
+
+| Option | Default | Values |
+|---|---|---|
+| `--since` | `7d` | `<n>h`, `<n>d`, or `<n>w` |
+| `--by` | `agent` | `agent`, `model`, `day` (UTC, by session start), `repo` |
+| `--json` | off | Machine-readable output, described below |
+
+Usage is counted per whole session. A session active at any point in the window
+counts in full, and `--by day` dates it by its start, so a long session can appear on
+a day before the window.
+
+The `requests` column is harness-native and not comparable across harnesses: API
+requests for Claude Code, Kiro's own request count for Kiro CLI v2, and prompt turns
+for Kiro v3.
+
+Exit codes: `0` on success, including when nothing is found; `1` when `HOME` is unset;
+`64` for a bad flag value.
+
+`--json` prints one object:
+
+| Key | Meaning |
+|---|---|
+| `since`, `by` | The options used |
+| `konductor_agents_known` | How many distinct Konductor agents were found installed |
+| `harnesses[]` | One entry per harness with data: `harness`, `unit` (`tokens` or `credits`), `rows[]`, and `total` |
+| `unparsed_files` | Session files in the window that couldn't be parsed |
+| `unreadable_files` | Session files that couldn't be opened |
+| `stale_files` | Changed files that couldn't be re-read; their last good data is used |
+| `unreadable_cache_lines` | Cache lines that couldn't be read. They are kept unchanged |
+
+Each row and `total` has the same fields:
+- `key`, `files`, `requests`, `subagent_runs`;
+- the token fields: `input_tokens`, `cache_write_tokens`, `cache_read_tokens`, `output_tokens`, `thinking_tokens`, `web_search_requests`;
+- `credits`.
+
+A value the harness doesn't record is `null`, never `0`. Claude Code rows have null `credits`, Kiro rows have null token fields, and `subagent_runs` is set only for Kiro v3.
 
 ---
 
@@ -1274,7 +1324,7 @@ like any other usage error.
     guidance
   - `verify-run` checking a SOP session file against its gate boundaries and
     reporting one exit code, including exit code 2 for an unresolved gating finding
-- **Stubs:** `metrics` still prints "not yet implemented."
+  - `metrics` reporting local token and credit usage of Konductor sessions per harness
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents), and `.konductor/runs/` storage.
 
@@ -1296,7 +1346,10 @@ like any other usage error.
   an alternative for installing from a local checkout.
 - SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
   no runtime discovery path for them yet.
-- `metrics` is a stub (see above).
+- `metrics`: Kiro session formats are undocumented, Claude Code
+  subagent output tokens are not reported (their transcripts hold placeholder values),
+  and Kiro v3 subagent credits are not split from the parent session (whether the parent
+  includes them is still being verified, see #289).
 - `update` and `uninstall` have no same-target concurrency protection: running two
   `konductor` invocations against the same target directory at once is unsupported and
   can corrupt the manifest, index, or on-disk files. Serialize invocations per target.
