@@ -47,22 +47,27 @@ const intFlag = (opts, name, dflt) => {
   return n;
 };
 
+// The opencode judge module, the judge-backend part of bench/plugins/opencode (B-014).
+const opencodeJudge = () => {
+  const { backendRegistry, OPENCODE_BACKEND } = require('../judge/backends.js');
+  return require(backendRegistry().part(OPENCODE_BACKEND).entry);
+};
+
 // The Bedrock backend is built on the first uncached call, so a rerun from the cache needs no credentials and no binary.
 function lazyCaller(opts) {
   let real = null;
   const caller = async (args) => {
     if (!real) {
-      const { makeOpencodeCaller } = require('../judge/opencode.js');
-      const { opencode: oc } = require('../runner/lib/harness/index.js');
+      const { makeOpencodeCaller, REGION } = opencodeJudge();
       for (const need of ['opencode-bin', 'aws-creds-file']) if (!opts[need]) throw new Error(`the answer is not cached; pass --${need} to call the model`);
       real = makeOpencodeCaller({
         bin: path.resolve(opts['opencode-bin']), credsFile: path.resolve(opts['aws-creds-file']), awsProfile: opts['aws-profile'] ?? 'bench',
-        region: opts['aws-region'] ?? oc.REGION, timeoutMs: intFlag(opts, 'timeout-sec', 240) * 1000,
+        region: opts['aws-region'] ?? REGION, timeoutMs: intFlag(opts, 'timeout-sec', 240) * 1000,
       });
     }
     return real(args);
   };
-  caller.cacheSalt = (model) => require('../judge/opencode.js').cacheSaltOf(model);
+  caller.cacheSalt = (model) => opencodeJudge().cacheSalt(model);
   return caller;
 }
 

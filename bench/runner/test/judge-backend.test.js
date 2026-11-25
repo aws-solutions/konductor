@@ -12,7 +12,7 @@ const { withCache } = require('../../judge/model.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
 const { LEDGER_FILE } = require('../lib/credit-ledger.js');
 const { resolveJudges } = require('../eval-commands.js');
-const { checkOpencodeJudges, opencodeModel } = require('../../judge/backends.js');
+const { checkJudges: checkOpencodeJudges, opencodeModel } = require('../../plugins/opencode/judge.js');
 
 const info = (...judges) => ({ backend: 'opencode', opencodeVersion: '1.19.5', region: 'us-east-1', systemPromptSha256: 'a'.repeat(64), models: Object.fromEntries(judges.map((j) => [j, { bedrockModelId: opencodeModel(j).bedrockId }])) });
 

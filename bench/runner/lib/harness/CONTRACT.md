@@ -109,7 +109,7 @@ These are not part of the per-run interface. They are runtime-specific helpers t
 | --- | --- | --- |
 | `kiro.kiroArgs`, `kiro.readTranscripts` | re-exported by `run-one.js` as `kiroArgs`, `readTranscripts` | tests and the cap tooling build kiro arguments and read session transcripts through `run-one.js` |
 | `kiro.aggregateRunDir(outDir)` | `backfill.js`, `backfill-skills.js` | re-aggregate an existing run directory |
-| `opencode.resolveOpencode`, `resolveRipgrep`, `envSetup`, `variantOf`, `readProfile`, `PROVIDER`, `REGION`, `TITLE`, `VERSION`, `DEFAULT_MODEL` (from `harness/index.js`) | `run-cmd.js`, `eval-commands.js`, `judge/opencode.js`, `skilleval/skilleval.js` | binary resolution and the run-config record for opencode |
+| `opencode.resolveOpencode`, `resolveRipgrep`, `envSetup`, `variantOf`, `readProfile`, `PROVIDER`, `REGION`, `TITLE`, `VERSION`, `DEFAULT_MODEL` (from `harness/index.js`) | tests only (`opencode-run.test.js`); the opencode judge, `plugins/opencode/judge.js`, reads them from its own `harness.js` (B-014) | binary resolution and the run-config record for opencode |
 | `claudeCode.resolveClaude`, `listingMismatch`, `envSetup`, `runConfigRecord`, `checkCredentials`, `credentialNames`, `canonicalModel`, `versionWarning`, `CREDENTIAL_VARS`, `PROFILE_VARS`, `PERMISSION_MODE`, `DEFAULT_MODEL`, `DEFAULT_RUN_BUDGET_USD`, `REGION` | `run-cmd.js`, `run-one.js` (`listingMismatch`), `scripts/claude-code-smoke.js` | binary resolution, credential checks and the run-config record for Claude Code |
 
 ## What `parseResult` must put in `acc`

@@ -8,8 +8,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { tmp } = require('./helpers.js');
 const { makeFakeOpencodeJudge } = require('./fake-opencode-judge.js');
-const { makeOpencodeCaller } = require('../../judge/opencode.js');
-const { JUDGE_SYSTEM_PROMPT, systemPromptSha256, opencodeModel, OPENCODE_MODELS, checkOpencodeJudges } = require('../../judge/backends.js');
+const { makeOpencodeCaller, opencodeModel, OPENCODE_MODELS, checkJudges: checkOpencodeJudges } = require('../../plugins/opencode/judge.js');
+const { JUDGE_SYSTEM_PROMPT, systemPromptSha256 } = require('../../judge/backends.js');
 
 const SECRETS = ['AKIATESTSECRET0001', 'SECRETVALUE-xyz', 'TOKENVALUE-abc'];
 const CREDS = `[other]\naws_access_key_id = AKIAOTHERPROFILE\naws_secret_access_key = OTHERSECRET\n\n[bench]\naws_access_key_id = ${SECRETS[0]}\naws_secret_access_key = ${SECRETS[1]}\naws_session_token = ${SECRETS[2]}\n`;

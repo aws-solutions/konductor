@@ -1,6 +1,6 @@
 # Design: the opencode judge as a plugin part
 
-Date: 2026-11-25. Status: step 1 built (2026-11-25; see BACKLOG B-014). Rows: BACKLOG B-014, DEBT D-212.
+Date: 2026-11-25. Status: steps 1 and 2 built (2026-11-25; see BACKLOG B-014). Rows: BACKLOG B-014, DEBT D-212.
 
 ## The problem
 
@@ -30,7 +30,7 @@ its cache salt text stays the same, so saved judge files and caches still match 
 1. Built. A manifest may list `"parts"`: more parts of other kinds under the same name, each with its own `meta` and
    `entry` (`core/registry.js`, `plugin-registry.test.js`). Each registry part now carries its own `entry`; the
    three readers use it. No output changes.
-2. Move the judge. `judge/opencode.js`, the model table and the panel check move to `plugins/opencode/judge.js`,
+2. Built. Move the judge. `judge/opencode.js`, the model table and the panel check move to `plugins/opencode/judge.js`,
    with a `judge-meta.js` of `{ id: 'opencode', costUnit: 'usd', label, maxPromptBytes: 400000 }`. The entry exports
    `makeCaller({ timeoutMs, rawDir, log, flags })`, `cacheSalt(model)` and `checkJudges(judges)`. The core reads the
    prompt cap from the descriptor and calls the two hooks when a part has them; `flags` is the judge command's own

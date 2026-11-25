@@ -142,11 +142,15 @@ the template, so a plugin that breaks fails the suite.
 ## A judge backend
 
 A `judge-backend` plugin adds a program that asks the judge models. Its `plugin.json` has `"kind": "judge-backend"`;
-its `meta` file exports `{ id, costUnit, label }`, where `costUnit` is `credits` or `usd` and decides which budget flag
-the judge takes (`--budget-credits` or `--budget-usd`); its `entry` module exports `makeCaller({ timeoutMs, rawDir, log })`,
-which returns an async `({ model, prompt })` function that resolves `{ text, credits, usd?, latencyMs, error? }`.
-`judge --judge-backend <id>` then uses it. The two built-ins, `kiro` and `opencode`, are listed in
-`judge/backends.js`; `checkBackend` there is the one check of a backend and its budget flag.
+its `meta` file exports `{ id, costUnit, label, maxPromptBytes? }`, where `costUnit` is `credits` or `usd` and decides
+which budget flag the judge takes (`--budget-credits` or `--budget-usd`), and `maxPromptBytes` is the largest prompt it
+takes (default 120000). Its `entry` module exports `makeCaller({ timeoutMs, rawDir, log, flags })`, which returns an
+async `({ model, prompt })` function that resolves `{ text, credits, usd?, latencyMs, error? }`. `flags` are the judge
+command's own options. The entry may also export `checkJudges(judges)`, which throws on a judge it cannot serve, before
+any call, and `cacheSalt(model)`, the text that keys a cached answer to this backend's setup.
+`judge --judge-backend <id>` then uses it. The one built-in, `kiro`, is in `judge/backends.js`; `checkBackend` there is
+the one check of a backend and its budget flag. The `opencode` backend is a part of `bench/plugins/opencode`
+(`judge-meta.js`, `judge.js`): a full example with all three hooks.
 
 ### Worked example: a backend that answers every criterion "pass"
 

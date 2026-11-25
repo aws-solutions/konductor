@@ -21,7 +21,7 @@ const MODES = ['rubric', 'pairwise', 'graded'];
 
 // The one family rule is judge/family.js familyOf; every check here reads it.
 const { familyOf } = require('./family.js');
-const { OPENCODE_BACKEND } = require('./backends.js');
+const { backendRegistry } = require('./backends.js');
 
 // A Claude model by name anywhere in the id, whatever the prefix.
 const namesClaude = (id) => /(^|[^a-z])(claude|anthropic)(?![a-z])/.test(String(id).toLowerCase());
@@ -71,9 +71,15 @@ function effectiveLimits(task, limits, explicit = {}) {
   return { maxFileChars: pick('maxFileChars'), maxBundleChars: pick('maxBundleChars') };
 }
 
-// The kiro backend passes the prompt as one argv string, which Linux caps near 128 KiB; opencode reads it from stdin.
+const ARGV_PROMPT_BYTES = 120000;
+let registry = null;
+
+/**
+ * The largest prompt, in bytes, the backend named `backendName` takes: its descriptor's `maxPromptBytes`, else
+ * 120000, since the kiro backend passes the prompt as one argv string, which Linux caps near 128 KiB.
+ */
 function maxPromptBytes(backendName) {
-  return backendName === OPENCODE_BACKEND ? 400000 : 120000;
+  return (registry ??= backendRegistry()).part(backendName)?.meta.maxPromptBytes ?? ARGV_PROMPT_BYTES;
 }
 
 module.exports = { effectiveLimits, maxPromptBytes, DEFAULTS, VERDICT_VALUE, MODES, MIN_PANEL_FAMILIES, families, checkJudgeModel, checkPanel };

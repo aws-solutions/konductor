@@ -92,4 +92,20 @@ test('the SDK exports what the opencode judge needs to move into its plugin: run
   assert.equal(sdk.runOne, require('../lib/run-one.js'));
   assert.equal(sdk.procs, require('../lib/procs.js'));
   for (const k of ['stream', 'sandbox', 'awsCreds']) assert.ok(sdk[k], `sdk.${k}`);
+  assert.equal(sdk.judgePrompt, require('../../judge/system-prompt.js'), 'the judge system prompt, for a judge-backend plugin');
+});
+
+test('the opencode judge is a judge-backend part of plugins/opencode, with its prompt cap, cache salt and panel check (B-014 step 2)', () => {
+  const { backendRegistry, BUILTIN_BACKENDS } = require('../../judge/backends.js');
+  const { maxPromptBytes } = require('../../judge/config.js');
+  assert.deepEqual(BUILTIN_BACKENDS.map((b) => b.id), ['kiro'], 'kiro is the one built-in backend');
+  const part = backendRegistry().part('opencode');
+  assert.equal(part.source, 'plugin');
+  assert.equal(part.entry, path.join(BENCH, 'plugins', 'opencode', 'judge.js'));
+  assert.equal(part.meta.costUnit, 'usd');
+  assert.equal(maxPromptBytes('opencode'), 400000);
+  assert.equal(maxPromptBytes('kiro'), 120000);
+  const mod = require(part.entry);
+  for (const k of ['makeCaller', 'cacheSalt', 'checkJudges']) assert.equal(typeof mod[k], 'function', k);
+  assert.equal(fs.existsSync(path.join(BENCH, 'judge', 'opencode.js')), false, 'the core judge/opencode.js is gone');
 });

@@ -9,7 +9,7 @@ const { tmp } = require('./helpers.js');
 const { makeFakeOpencodeJudge } = require('./fake-opencode-judge.js');
 const { sandbox, readJ } = require('./judge-backend-sandbox.js');
 const { makeExportedCredentials, parseExport, credentialsText } = require('../lib/aws-creds.js');
-const { makeOpencodeCaller } = require('../../judge/opencode.js');
+const { makeOpencodeCaller } = require('../../plugins/opencode/judge.js');
 const { checkArgs } = require('../lib/cli-flags.js');
 
 const MIN = 60 * 1000;

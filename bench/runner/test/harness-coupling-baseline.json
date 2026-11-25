@@ -2,8 +2,6 @@
   "createdWithImports": 18,
   "createdWithNames": 171,
   "imports": [
-    "judge/opencode.js -> plugins/opencode/creds.js",
-    "judge/opencode.js -> plugins/opencode/parse.js",
     "physical/controls/plant-control.js -> plugins/claude-code/parse.js",
     "report/plant-trace/stream-calls.js -> plugins/claude-code/parse.js",
     "runner/lib/introspect/scopes.js -> plugins/claude-code/parse.js",

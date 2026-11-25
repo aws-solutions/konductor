@@ -43,6 +43,7 @@ module.exports = lazyParts({
   hygiene: 'runner/lib/hygiene.js',
   isolate: 'runner/lib/isolate.js',
   isolationGates: 'runner/lib/isolation-gates.js',
+  judgePrompt: 'judge/system-prompt.js',
   orchMetrics: 'runner/lib/orch-metrics.js',
   owned: 'runner/lib/owned.js',
   procs: 'runner/lib/procs.js',

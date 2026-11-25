@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// FW-14 (DEBT D-208): judge backends are registry parts of kind judge-backend. The built-ins are kiro (credits) and
-// opencode (USD); a plugin under bench/plugins adds one with a descriptor and a makeCaller entry. checkBackend is the one
+// FW-14 (DEBT D-208): judge backends are registry parts of kind judge-backend. The built-in is kiro (credits); opencode
+// (USD) is a part of bench/plugins/opencode (B-014); a plugin under bench/plugins adds one with a descriptor and a makeCaller entry. checkBackend is the one
 // check of a backend and its budget flag that judge/run.js, judge/packrun.js and the judge CLI share.
 
 const test = require('node:test');
@@ -14,6 +14,8 @@ const { backendRegistry, checkBackend, makeBackendCaller } = require('../../judg
 const { runJudging } = require('../../judge/run.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
 const { readLedger } = require('../lib/credit-ledger.js');
+
+const PLUGINS = path.join(__dirname, '..', '..', 'plugins');
 
 // A judge-backend plugin folder whose caller answers every rubric criterion "pass" at USD 0.001 a call.
 function fakePlugin(root) {
@@ -30,8 +32,9 @@ function fakePlugin(root) {
   return root;
 }
 
-test('the built-ins: kiro counts credits, opencode USD; the wrong budget flag and an unknown backend are refused by one check', () => {
-  const reg = backendRegistry([]);
+test('kiro (built-in) counts credits, opencode (plugin part) USD; the wrong budget flag and an unknown backend are refused by one check', () => {
+  assert.deepEqual(backendRegistry([]).ids(), ['kiro'], 'kiro is the one built-in');
+  const reg = backendRegistry([PLUGINS]);
   assert.deepEqual(reg.ids(), ['kiro', 'opencode']);
   assert.deepEqual(checkBackend({}, reg), { backend: 'kiro', usdMode: false, unit: 'credits', part: reg.part('kiro') });
   assert.equal(checkBackend({ backend: 'opencode', budgetUsd: 1 }, reg).usdMode, true);
@@ -43,7 +46,7 @@ test('the built-ins: kiro counts credits, opencode USD; the wrong budget flag an
 test('a fake backend plugin loads, passes the check and judges a run with its USD spend on the ledger', async () => {
   const root = tmp();
   try {
-    const reg = backendRegistry([fakePlugin(path.join(root, 'plugins'))]);
+    const reg = backendRegistry([PLUGINS, fakePlugin(path.join(root, 'plugins'))]);
     assert.deepEqual(reg.ids(), ['kiro', 'opencode', 'fake-be']);
     assert.equal(reg.part('fake-be').source, 'plugin');
     const b = checkBackend({ backend: 'fake-be', budgetUsd: 1 }, reg);

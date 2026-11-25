@@ -4,5 +4,8 @@
   "name": "opencode",
   "version": "1.0.0",
   "meta": "meta.js",
-  "entry": "harness.js"
+  "entry": "harness.js",
+  "parts": [
+    { "kind": "judge-backend", "meta": "judge-meta.js", "entry": "judge.js" }
+  ]
 }

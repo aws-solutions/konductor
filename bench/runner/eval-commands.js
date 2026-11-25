@@ -4,7 +4,6 @@
 // Command handlers for judge, report, compare and calibrate. bench.js dispatches here.
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, realDir, BENCH_DIR } = require('./lib/tasks.js');
 const sandbox = require('./lib/sandbox.js');
@@ -14,10 +13,7 @@ const { resolveIsolation } = require('./lib/isolate.js');
 const procs = require('./lib/procs.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
-const { makeOpencodeCaller } = require('../judge/opencode.js');
-const { makeExportedCredentials, awsExport, isProfileName } = require('./lib/aws-creds.js');
-const { DEFAULT_BACKEND, OPENCODE_BACKEND, checkBackend, makeBackendCaller, checkOpencodeJudges } = require('../judge/backends.js');
-const { opencode: oc } = require('./lib/harness/index.js');
+const { DEFAULT_BACKEND, backendHook, checkBackend, makeBackendCaller } = require('../judge/backends.js');
 const { runJudging, planJudging } = require('../judge/run.js');
 const { rescoreQuotes, formatRescore } = require('../judge/rescore.js');
 const { checkRule } = require('../judge/views.js');
@@ -150,25 +146,6 @@ const SMALL_PANEL_WARNING = `warning: panel has fewer than ${MIN_PANEL_FAMILIES}
 
 const flagValue = (opts, name) => (opts[name] !== undefined && opts[name] !== true ? String(opts[name]) : null);
 
-// The opencode backend: one `opencode run` per judge call on Bedrock, tools off, credentials from a shared-credentials file
-// (--aws-creds-file) or from `aws configure export-credentials` (--aws-export-profile), refreshed during the pass.
-// BENCH_AWS_BIN points the export at another aws binary (tests use a fake one).
-function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir, log = () => {} }) {
-  const exportProfile = flagValue(opts, 'aws-export-profile');
-  if (exportProfile && opts['aws-creds-file'] !== undefined) throw new Error('--aws-creds-file and --aws-export-profile cannot be used together');
-  if (exportProfile && !isProfileName(exportProfile)) throw new Error(`--aws-export-profile "${exportProfile}" is not a profile name`);
-  const credsFile = exportProfile ? null : path.resolve(need(opts, 'aws-creds-file'));
-  const awsProfile = flagValue(opts, 'aws-profile') ?? 'bench';
-  const region = flagValue(opts, 'aws-region') ?? oc.REGION;
-  if (!/^[a-z]{2}(?:-[a-z]+)+-\d$/.test(region)) throw new Error(`--aws-region "${region}" is not an AWS region name`);
-  if (credsFile) oc.readProfile(credsFile, awsProfile);
-  const awsBin = process.env.BENCH_AWS_BIN || 'aws';
-  const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { awsBin }), log }) : null;
-  const cacheDir = path.resolve(flagValue(opts, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));
-  const resolved = oc.resolveOpencode({ cacheDir, binOverride: flagValue(opts, 'opencode-bin') });
-  return makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, credentials, awsProfile, region, timeoutMs, rawDir });
-}
-
 // The run and the judge panel for a judge command (rubric pass or quality pack).
 function judgePanelFor(opts) {
   const runDir = path.resolve(need(opts, 'run'));
@@ -187,10 +164,9 @@ function judgeBackendOf(opts, judges) {
     backend: opts['judge-backend'] === undefined ? DEFAULT_BACKEND : String(opts['judge-backend']),
     budgetCredits: opts['budget-credits'] ?? null, budgetUsd: opts['budget-usd'] ?? null,
   });
-  const viaOpencode = backend === OPENCODE_BACKEND;
   if (backend !== DEFAULT_BACKEND && opts['judge-cmd']) throw new Error(`--judge-cmd and --judge-backend ${backend} cannot be used together`);
-  if (viaOpencode) checkOpencodeJudges(judges);
-  return { backend, viaOpencode, part };
+  backendHook(part, 'checkJudges')?.(judges);
+  return { backend, part };
 }
 
 // One line naming where the calls go and who answers them, printed before any call (and in a plan).
@@ -199,20 +175,19 @@ function backendLine(opts, { backend, part }, judges) {
   return `backend: ${backend} (${how}); panel: ${judges.join(', ')} (${families(judges).length} model families)`;
 }
 
-// The model caller for a judge command: opencode on Bedrock, a --judge-cmd, or kiro-cli. Checks the backend flags first.
+// The model caller for a judge command: a plugin backend (opencode on Bedrock), a --judge-cmd, or kiro-cli. Checks the
+// backend flags first. `backendInfo`: what a plugin caller says about itself (`caller.info`, its `models(judges)`
+// filled in) with its cache salt, for the judgments file; null when the caller says nothing.
 function judgeCallerFor(opts, { runDir, judges }) {
   const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
-  const { backend, viaOpencode, part } = judgeBackendOf(opts, judges);
+  const { backend, part } = judgeBackendOf(opts, judges);
   const judgeCmd = backend === DEFAULT_BACKEND ? opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD : undefined;
   if (opts.plan) throw new Error('--plan was given but this judge path would make model calls; nothing was run (this is a bench bug, please report it)');
   const log = (m) => console.error(`[judge ${new Date().toISOString().slice(11, 19)}] ${m}`);
   log(backendLine(opts, { backend, part }, judges));
   let caller;
   if (part.source === 'plugin') {
-    caller = makeBackendCaller(part, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw'), log });
-  } else if (viaOpencode) {
-    caller = makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw'), log });
-    log(`backend: opencode ${caller.info.opencodeVersion}, ${caller.info.region}, system prompt sha256 ${caller.info.systemPromptSha256.slice(0, 12)}`);
+    caller = makeBackendCaller(part, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw'), log, flags: opts });
   } else if (judgeCmd) {
     caller = makeCmdCaller(String(judgeCmd), { timeoutMs });
   } else {
@@ -226,7 +201,9 @@ function judgeCallerFor(opts, { runDir, judges }) {
       ...(opts['kiro-bin'] ? { kiroBin: path.resolve(opts['kiro-bin']) } : {}),
     });
   }
-  return { caller, backend, viaOpencode, log };
+  const usd = part.meta.costUnit === 'usd';
+  const backendInfo = caller.info ? { ...caller.info, ...(typeof caller.info.models === 'function' ? { models: caller.info.models(judges) } : {}) } : null;
+  return { caller, backend, usd, backendInfo, log };
 }
 
 // The pack named by --criteria-pack, or null when the flag is absent.
@@ -248,7 +225,7 @@ async function cmdJudge(opts) {
   const arms = [...new Set(run.runs.map((r) => r.armId))];
   if ((modes.includes('pairwise') || modes.includes('graded')) && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
   if (opts.plan) return printJudgePlan(opts, { runDir, benchDir, judges, modes, baseline });
-  const { caller, backend, viaOpencode, log } = judgeCallerFor(opts, { runDir, judges });
+  const { caller, backend, usd, backendInfo, log } = judgeCallerFor(opts, { runDir, judges });
   // Calls that finished are cached on disk, so an interrupted judge phase loses only the calls in flight.
   const removeHandlers = procs.installSignalHandlers({ flush: () => {}, log });
   let j;
@@ -258,7 +235,7 @@ async function cmdJudge(opts) {
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
-      backend, quoteRule, reaskUnquoted: Boolean(opts['reask-unquoted']), ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
+      backend, quoteRule, reaskUnquoted: Boolean(opts['reask-unquoted']), ...(backendInfo ? { backendInfo } : {}), ...(caller.cacheSalt ? { cacheSalt: caller.cacheSalt } : {}),
       limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
     });
   } finally {
@@ -268,12 +245,12 @@ async function cmdJudge(opts) {
   const recs = [...j.rubric, ...j.pairwise];
   const errors = recs.filter((r) => r.judgeError);
   const last = j.invocations[j.invocations.length - 1];
-  const spend = viaOpencode ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
+  const spend = usd ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
   console.log(`judged ${j.rubric.length} rubric, ${j.pairwise.length} pairwise and ${j.graded.length} graded record(s); ${errors.length + j.graded.filter((r) => r.judgeError).length} with judgeError; ${spend}; ${j.notJudged.length} run(s) not judged`);
   if (small) console.log(SMALL_PANEL_WARNING);
   console.log(j.ledgerLine);
   if (j.guardState === 'hard') {
-    console.error(viaOpencode
+    console.error(usd
       ? 'usd guard: HARD STOP, this command spent past 100% of --budget-usd; calls in flight were counted, and no further call started'
       : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; calls in flight were counted, and no further call started');
     process.exitCode = 3;
@@ -348,7 +325,7 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
     console.log(planTail(d));
     return;
   }
-  const { caller, backend, viaOpencode, log } = judgeCallerFor(opts, { runDir, judges });
+  const { caller, backend, usd, backendInfo, log } = judgeCallerFor(opts, { runDir, judges });
   const removeHandlers = procs.installSignalHandlers({ flush: () => {}, log });
   let j;
   try {
@@ -357,7 +334,7 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
-      backend, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
+      backend, ...(backendInfo ? { backendInfo } : {}), ...(caller.cacheSalt ? { cacheSalt: caller.cacheSalt } : {}),
       limits, explicitLimits, redactions, log,
     });
   } finally {
@@ -365,12 +342,12 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
     procs.removeAllScratch();
   }
   const last = j.invocations[j.invocations.length - 1];
-  const spend = viaOpencode ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
+  const spend = usd ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
   console.log(`quality pack ${thePack.id}: ${j.records.length} record(s), ${j.records.filter((r) => r.judgeError).length} with judgeError; ${spend}; ${j.notJudged.length} run(s) not judged`);
   if (small) console.log(SMALL_PANEL_WARNING);
   console.log(j.ledgerLine);
   if (j.guardState === 'hard') {
-    console.error(viaOpencode ? 'usd guard: HARD STOP, this command spent past 100% of --budget-usd; no further call started' : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; no further call started');
+    console.error(usd ? 'usd guard: HARD STOP, this command spent past 100% of --budget-usd; no further call started' : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; no further call started');
     process.exitCode = 3;
   }
   reportCallerStop(caller);

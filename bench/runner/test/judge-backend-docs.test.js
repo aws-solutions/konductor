@@ -8,7 +8,8 @@ const path = require('node:path');
 
 test('the README and playbook document the backend, and their judge commands use flags the CLI accepts', () => {
   const { checkArgs } = require('../lib/cli-flags.js');
-  const { OPENCODE_MODELS, JUDGE_SYSTEM_PROMPT } = require('../../judge/backends.js');
+  const { JUDGE_SYSTEM_PROMPT } = require('../../judge/backends.js');
+  const { OPENCODE_MODELS } = require('../../plugins/opencode/judge.js');
   const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
   const readme = read('docs/reference.md');
   const section = readme.slice(readme.indexOf('### Judge backends'), readme.indexOf('## Calibration'));

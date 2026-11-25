@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+// The opencode judge backend: one `opencode run` per judge call on Amazon Bedrock, tools off, a one-line system prompt.
+// A `judge-backend` part of this plugin (judge-meta.js, B-014). The core calls `makeCaller`, and when a part exports
+// them, `cacheSalt(model)` for the cache key and `checkJudges(judges)` before any call.
 'use strict';
 
 const fs = require('node:fs');
@@ -6,15 +9,49 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFile } = require('node:child_process');
-const { parseStream } = require('../runner/lib/stream.js');
-const { spawnWithTimeout } = require('../runner/lib/run-one.js');
-const sandbox = require('../runner/lib/sandbox.js');
-const procs = require('../runner/lib/procs.js');
-const { opencode: oc } = require('../runner/lib/harness/index.js');
-const { aggregateEvents, rollUp, SQL } = require('../plugins/opencode/parse.js');
-const { installCredentials, removeCredentials, readProfile } = require('../plugins/opencode/creds.js');
-const { JUDGE_SYSTEM_PROMPT, systemPromptSha256, opencodeModel, OPENCODE_BACKEND } = require('./backends.js');
-const { writeCredentials } = require('../runner/lib/aws-creds.js');
+const sdk = require('../../sdk');
+const oc = require('./harness.js');
+const { aggregateEvents, rollUp, SQL } = require('./parse.js');
+const { installCredentials, removeCredentials, readProfile } = require('./creds.js');
+const { id: OPENCODE_BACKEND } = require('./judge-meta.js');
+
+const { parseStream } = sdk.stream;
+const { spawnWithTimeout } = sdk.runOne;
+const { sandbox, procs } = sdk;
+const { writeCredentials, makeExportedCredentials, awsExport, isProfileName } = sdk.awsCreds;
+const { JUDGE_SYSTEM_PROMPT, systemPromptSha256 } = sdk.judgePrompt;
+
+// Panel ids stay the logical names used everywhere else (family checks run on them). `temperature: null` means the
+// model rejects the field on Bedrock, so the no-temperature agent is used and nothing is sent.
+// `limit` is opencode's context and output cap for the model; the output cap is far above the longest reply seen.
+const OPENCODE_MODELS = {
+  'gpt-5.6-luna': { bedrockId: 'global.openai.gpt-5.6-luna', temperature: null, limit: { context: 900000, output: 8000 } },
+  'deepseek-3.2': { bedrockId: 'deepseek.v3.2', temperature: 0, limit: { context: 160000, output: 8000 } },
+  'glm-5': { bedrockId: 'zai.glm-5', temperature: 0, limit: { context: 200000, output: 8000 } },
+  'qwen3-coder-next': { bedrockId: 'qwen.qwen3-coder-next', temperature: 0, limit: { context: 200000, output: 8000 } },
+  'minimax-m2.5': { bedrockId: 'minimax.minimax-m2.5', temperature: 0, limit: { context: 200000, output: 8000 } },
+};
+
+const known = () => Object.keys(OPENCODE_MODELS).join(', ');
+
+/** The Bedrock model, agent and temperature of a logical panel id. Throws on an id with no mapping. */
+function opencodeModel(logical) {
+  const m = OPENCODE_MODELS[logical];
+  if (!m) throw new Error(`no Bedrock mapping for judge "${logical}" on the opencode backend (known panel ids: ${known()})`);
+  return { logical, ...m, agent: m.temperature === null ? 'judge-notemp' : 'judge' };
+}
+
+/**
+ * Throws unless every judge is a mapped panel id. A raw Bedrock id would pass the family check under another family
+ * name (zai.glm-5 is "zai", glm-5 is "glm"), so it is refused with the panel id to use.
+ */
+function checkJudges(judges) {
+  for (const j of judges) {
+    const logical = Object.keys(OPENCODE_MODELS).find((k) => OPENCODE_MODELS[k].bedrockId === j);
+    if (logical) throw new Error(`judge "${j}" is a Bedrock model id; use the panel id "${logical}" (the backend maps it)`);
+    opencodeModel(j);
+  }
+}
 
 // A caller is async ({model, prompt}) => {text, credits, usd, tokens, latencyMs, error?}. `model` is the logical panel id.
 
@@ -172,4 +209,35 @@ function makeOpencodeCaller({
   return caller;
 }
 
-module.exports = { makeOpencodeCaller, configJson, cacheSaltOf };
+const flagValue = (flags, name) => (flags[name] !== undefined && flags[name] !== true ? String(flags[name]) : null);
+
+/**
+ * The judge command's caller (core `makeBackendCaller`). `flags` are the judge command's own options: credentials
+ * from a shared-credentials file (--aws-creds-file) or from `aws configure export-credentials` (--aws-export-profile),
+ * refreshed during the pass; BENCH_AWS_BIN points the export at another aws binary (tests use a fake one).
+ * --aws-profile, --aws-region, --opencode-bin and --cache pick the profile, region, binary and install cache.
+ * `log` gets one line naming the binary version, region and system prompt hash.
+ */
+function makeCaller({ timeoutMs, rawDir = null, log = () => {}, flags = {} }) {
+  const exportProfile = flagValue(flags, 'aws-export-profile');
+  if (exportProfile && flags['aws-creds-file'] !== undefined) throw new Error('--aws-creds-file and --aws-export-profile cannot be used together');
+  if (exportProfile && !isProfileName(exportProfile)) throw new Error(`--aws-export-profile "${exportProfile}" is not a profile name`);
+  const credsFlag = flagValue(flags, 'aws-creds-file');
+  if (!exportProfile && !credsFlag) throw new Error('--aws-creds-file is required');
+  const credsFile = exportProfile ? null : path.resolve(credsFlag);
+  const awsProfile = flagValue(flags, 'aws-profile') ?? 'bench';
+  const region = flagValue(flags, 'aws-region') ?? oc.REGION;
+  if (!/^[a-z]{2}(?:-[a-z]+)+-\d$/.test(region)) throw new Error(`--aws-region "${region}" is not an AWS region name`);
+  if (credsFile) readProfile(credsFile, awsProfile);
+  const awsBin = process.env.BENCH_AWS_BIN || 'aws';
+  const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { awsBin }), log }) : null;
+  const cacheDir = path.resolve(flagValue(flags, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));
+  const resolved = oc.resolveOpencode({ cacheDir, binOverride: flagValue(flags, 'opencode-bin') });
+  const caller = makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, credentials, awsProfile, region, timeoutMs, rawDir });
+  log(`backend: opencode ${caller.info.opencodeVersion}, ${caller.info.region}, system prompt sha256 ${caller.info.systemPromptSha256.slice(0, 12)}`);
+  return caller;
+}
+
+module.exports = {
+  makeCaller, cacheSalt: cacheSaltOf, checkJudges, makeOpencodeCaller, configJson, OPENCODE_MODELS, opencodeModel, REGION: oc.REGION,
+};
