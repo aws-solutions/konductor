@@ -127,6 +127,27 @@ test('opens the stage that is clicked in the drawing', async ({ canvas }) => {
   ).toHaveValue('review');
 });
 
+test('deletes a stage from Properties and focuses its neighbour', async ({
+  canvas,
+}) => {
+  await canvas.node('node-stage-review').click();
+  const properties = canvas.page.getByRole('tabpanel', { name: 'Properties' });
+  const name = properties.getByLabel('name', { exact: true });
+  await expect(name).toHaveValue('review');
+
+  await properties.getByRole('button', { name: 'Delete stage' }).click();
+
+  await expect(canvas.page.getByTestId('node-stage-review')).toHaveCount(0);
+  await expect(name).toHaveValue('draft');
+  await expect(name).toBeFocused();
+  await expect(canvas.page.getByTestId('designer-live')).toHaveText(
+    'Stage review deleted.',
+  );
+  await expect(
+    properties.getByRole('button', { name: 'Delete stage' }),
+  ).toBeDisabled();
+});
+
 test('checks a changed stage and marks its lines in the text', async ({
   canvas,
 }) => {

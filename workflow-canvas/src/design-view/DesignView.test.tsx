@@ -578,6 +578,41 @@ describe('DesignView, the Properties tab', () => {
     ).toBeTruthy();
   });
 
+  it('deletes the first stage, selects the next one and moves focus to its name', async () => {
+    drawn();
+    await openProperties();
+
+    await act(async () => {
+      fireEvent.click(button('Delete stage'));
+    });
+
+    expect(screen.queryByTestId('node-stage-draft')).toBeNull();
+    expect(nameInput().value).toBe('review');
+    expect(document.activeElement).toBe(nameInput());
+    expect(screen.getByTestId('designer-live').textContent).toBe(
+      'Stage draft deleted.',
+    );
+    expect(isOff(button('Delete stage'))).toBe(true);
+  });
+
+  it('selects the stage before one deleted later in the workflow', async () => {
+    drawn();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('node-stage-review'));
+    });
+
+    await act(async () => {
+      fireEvent.click(button('Delete stage'));
+    });
+
+    expect(screen.queryByTestId('node-stage-review')).toBeNull();
+    expect(nameInput().value).toBe('draft');
+    expect(document.activeElement).toBe(nameInput());
+    expect(screen.getByTestId('designer-live').textContent).toBe(
+      'Stage review deleted.',
+    );
+  });
+
   // The keys of the file as it was loaded, and which of them can be edited:
   // the same form answers both.
   it('shows the keys the file has before anything is edited and leaves writable keys editable', async () => {
