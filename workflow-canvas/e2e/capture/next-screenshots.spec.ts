@@ -158,6 +158,12 @@ test('capture the Run view when a run needs trust', async ({ canvas }) => {
 // The runs below answer with fixed replies, not a run on the stub, so a
 // capture never races the three seconds that a stage takes there.
 test('capture the Run view while the first stage runs', async ({ canvas }) => {
+  // A run that is still going shows an elapsed time read from the clock, so
+  // the clock is held at a fixed instant six seconds after the `started_at`
+  // of the row below. Without this the label, and the PNG with it, change
+  // with the moment of the capture. Only the clock is fixed, not the timers,
+  // so the follower still reads the run.
+  await canvas.page.clock.setFixedTime(new Date('2026-10-24T04:12:11Z'));
   await answerRunWith(canvas.page, [running(1, 'draft')], [runRow('running')], {
     finished: false,
   });
@@ -166,6 +172,7 @@ test('capture the Run view while the first stage runs', async ({ canvas }) => {
 
   await canvas.runButton.click();
   await expect(canvas.runStatus).toContainText('Running draft.');
+  await expect(canvas.runStatus).toContainText('Elapsed 0:06');
   // The pointer and the focus are still on Run, which is now off and shows its
   // reason in a tooltip; a capture takes the page without it.
   await canvas.page.mouse.move(0, 0);

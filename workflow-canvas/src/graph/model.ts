@@ -19,18 +19,8 @@ export interface WorkflowSpec {
   stages: readonly StageSpec[];
 }
 
-/** How far a node has got in a run. */
-export type NodeState = 'queued' | 'running' | 'done' | 'failed';
-
 /** What the stop mark of a leaf stage shows once its part of the run is over. */
 export type StopMarkState = 'passed' | 'blocked' | 'not-reached';
-
-/** The live state of a node in a run, with the words that say it. */
-export interface NodeStatus {
-  state: NodeState;
-  /** The text shown on the node and read by a screen reader. */
-  label: string;
-}
 
 interface Placed {
   id: string;
@@ -44,7 +34,7 @@ interface Placed {
 /** The start of the workflow: what it is meant to achieve. */
 export type IntentGraphNode = Placed & {
   type: 'intent';
-  data: { outcome: string; status?: NodeStatus };
+  data: { outcome: string };
 };
 
 /** One unit of work, done by one agent on one harness. */
@@ -54,7 +44,6 @@ export type StageGraphNode = Placed & {
     name: string;
     agent: string;
     harness: string;
-    status?: NodeStatus;
     /** No stage follows this one, so the run ends here, at a stop mark. */
     endsRun?: true;
     /** What that stop mark shows; left out while the run may still reach it. */
@@ -65,7 +54,7 @@ export type StageGraphNode = Placed & {
 /** The finish of the workflow. */
 export type EndGraphNode = Placed & {
   type: 'end';
-  data: { status?: NodeStatus };
+  data: Record<string, never>;
 };
 
 export type GraphNode = IntentGraphNode | StageGraphNode | EndGraphNode;

@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { plainText } from '../workflow/message-parts';
-import { reduce, type ExecutionState } from './core';
+import type { ExecutionState } from './core';
 import { TrustDialog } from './TrustDialog';
 
 const FIX = 'Run `konductor flow trust hello` in a terminal, then try again.';
@@ -20,8 +20,16 @@ const refusedState = (fix = FIX, refusal = 1): ExecutionState => ({
   trust: { fix, goal: 'Ship it', refusal },
 });
 
-// Holds what the page holds: the closes that were sent. The state it draws is
-// the one given, with those closes reduced into it.
+// Holds what the page holds: the refusals whose dialog was closed. A close
+// marks the refusal it names, as the Run view's own state does.
+function closed(state: ExecutionState, refusals: readonly number[]) {
+  if (state.phase !== 'error' || !state.trust) return state;
+  const { trust } = state;
+  return refusals.includes(trust.refusal)
+    ? { ...state, trust: { ...trust, closed: true as const } }
+    : state;
+}
+
 function Page({
   state,
   onRunAgain = vi.fn(),
@@ -30,13 +38,9 @@ function Page({
   onRunAgain?: (goal: string) => void;
 }) {
   const [closes, setCloses] = useState<number[]>([]);
-  const shown = closes.reduce<ExecutionState>(
-    (current, refusal) => reduce(current, { type: 'trust-closed', refusal }),
-    state,
-  );
   return (
     <TrustDialog
-      state={shown}
+      state={closed(state, closes)}
       workflowName="hello"
       onRunAgain={onRunAgain}
       onClose={(refusal) => setCloses((all) => [...all, refusal])}

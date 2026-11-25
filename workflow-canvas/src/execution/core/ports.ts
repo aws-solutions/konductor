@@ -69,7 +69,7 @@ export class RunReadRefused extends Error {
 
 /**
  * The only source of time for the core, so a test can move it by hand. The
- * timer adapter lives in the layer that draws the tab.
+ * timer adapter lives in the layer that draws the views.
  */
 export interface Scheduler {
   /** Resolves after `ms` milliseconds, or at once when the signal aborts. */
@@ -88,10 +88,3 @@ export interface RunMemory {
   /** Drops the run that was remembered, once it has ended or is gone. */
   forget(): void;
 }
-
-/** A memory that keeps nothing, for a page that does not survive a reload. */
-export const NO_RUN_MEMORY: RunMemory = {
-  recall: () => undefined,
-  remember: () => undefined,
-  forget: () => undefined,
-};

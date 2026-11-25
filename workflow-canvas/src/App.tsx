@@ -106,7 +106,7 @@ export function App({
    */
   nextPortsFor: (workflow: LoadedWorkflow) => NextPorts;
 }) {
-  // Read here, not in the tab, so switching tabs does not load again.
+  // Read here, not in a view, so switching views does not load again.
   const result = useSettled(load);
   // The calls of the views belong to the workflow that loaded, so each load
   // gets its own; the hooks of those views tell workflows apart by them.

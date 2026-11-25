@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 /*
- * The Designer and Execution switch in the page header, which is dark in
- * both modes. The selected segment is filled with the band's link colour.
+ * The Design and Run switch in the page header, which is dark in both
+ * modes. The selected segment is filled with the band's link colour.
  */
 .wf-mode-switch {
   display: inline-flex;

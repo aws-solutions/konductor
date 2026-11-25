@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { RunView } from '../../api/types';
 
 // One plain sentence for each reason the contract names, from its list under
 // **How a run goes**.
@@ -23,18 +22,4 @@ const SENTENCES: Readonly<Record<string, string>> = {
  */
 export function reasonSentence(code: string): string | undefined {
   return Object.hasOwn(SENTENCES, code) ? SENTENCES[code] : undefined;
-}
-
-/**
- * The stage that stopped the run, with its reason when the reply gave one, or
- * `undefined` when no stage is blocked.
- */
-export function blockedStageOf(
-  run: RunView | undefined,
-): { name: string; reason?: string } | undefined {
-  const stage = run?.stages.find((candidate) => candidate.status === 'blocked');
-  if (stage === undefined) return undefined;
-  return stage.reason === undefined
-    ? { name: stage.name }
-    : { name: stage.name, reason: stage.reason };
 }
