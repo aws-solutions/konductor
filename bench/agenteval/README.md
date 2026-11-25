@@ -52,7 +52,7 @@ node bench/agenteval/agenteval.js generate-strands \
   --task-description "Customer service assistant for an online shop" \
   --out work/experiment.json \
   --num-cases 20 --num-topics 4 --evaluator OutputEvaluator \
-  --strands-bin .venv/bin/strands-evals
+  --strands-bin .venv/bin/strands-evals --yes-paid
 ```
 
 This runs `strands-evals generate` with an argument array (no shell), writes `work/experiment.json`, checks that the file loads as an experiment, and writes `work/experiment.generation.json` next to it (see [The provenance sidecar](#the-provenance-sidecar)). Without `--strands-bin` it looks for `strands-evals` on `PATH`. A missing binary prints the install hint and exits 1.
@@ -82,7 +82,7 @@ node bench/agenteval/agenteval.js generate-strands --trajectories \
   --task-description "Customer service assistant for an online shop" \
   --out work/experiment.json \
   --num-cases 20 --num-topics 4 --evaluator TrajectoryEvaluator \
-  --python .venv/bin/python
+  --python .venv/bin/python --yes-paid
 ```
 
 The sidecar records `mode: "api"` for this path and `mode: "cli"` for the binary. The helper calls a model like the CLI does, so it can cost money and needs the same credentials.
@@ -139,8 +139,10 @@ Running the same command a second time fails with `already exists; pass --force`
 generate-strands --context-file FILE --task-description TEXT --out FILE
                  [--num-cases N] [--num-topics K]
                  [--evaluator OutputEvaluator|TrajectoryEvaluator|InteractionsEvaluator]
-                 [--model ID] [--strands-bin PATH | --trajectories [--python PATH]] [--force]
+                 [--model ID] [--strands-bin PATH | --trajectories [--python PATH]] [--force] --yes-paid
 ```
+
+- `--yes-paid` is required. The generator calls a model through its own client, so the bench cannot count or cap the spend; the flag says a person approved this paid run. Without it the command exits 2 and runs nothing.
 
 - `--trajectories` runs the Python helper instead of the binary (see [Does the generator write expected trajectories?](#does-the-generator-write-expected-trajectories)). It cannot be combined with `--strands-bin`, and `--python` is only valid with it. The context file is read by the helper, so the 120 KB limit below does not apply.
 

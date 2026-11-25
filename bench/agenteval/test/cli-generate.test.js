@@ -20,7 +20,7 @@ function setup(extra = {}) {
   fs.writeFileSync(ctx, CONTEXT);
   const env = { ...process.env, FAKE_RECORD: path.join(dir, 'record.json'), ...extra };
   const out = path.join(dir, 'exp.json');
-  const args = ['generate-strands', '--context-file', ctx, '--task-description', 'Customer service assistant', '--out', out, '--strands-bin', bin];
+  const args = ['generate-strands', '--context-file', ctx, '--task-description', 'Customer service assistant', '--out', out, '--strands-bin', bin, '--yes-paid'];
   return { dir, bin, ctx, env, out, args, sidecar: path.join(dir, 'exp.generation.json'), record: () => JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')) };
 }
 
@@ -109,14 +109,14 @@ test('an existing experiment or sidecar is refused without --force, and replaced
 test('a missing binary gives an install hint and exit 1', () => {
   const t = setup();
   try {
-    const args = [...t.args.slice(0, -1), path.join(t.dir, 'not-installed')];
+    const args = [...t.args.slice(0, -2), path.join(t.dir, 'not-installed'), '--yes-paid'];
     const r = cli(args, { env: t.env });
     assert.equal(r.code, 1);
     assert.match(r.stderr, /cannot find ".*not-installed"/);
     assert.match(r.stderr, /Python 3\.11\+ virtualenv/);
     assert.match(r.stderr, /pip install strands-agents-evals/);
     assert.equal(fs.existsSync(t.sidecar), false);
-    const byName = cli(t.args.slice(0, -2), { env: { ...t.env, PATH: path.join(t.dir, 'empty') } });
+    const byName = cli([...t.args.slice(0, -3), '--yes-paid'], { env: { ...t.env, PATH: path.join(t.dir, 'empty') } });
     assert.equal(byName.code, 1);
     assert.match(byName.stderr, /cannot find "strands-evals"/);
   } finally { cleanup(t.dir); }
@@ -184,7 +184,17 @@ test('usage errors exit 2 before anything runs', () => {
       assert.match(r.stderr, pattern);
     }
     assert.equal(fs.existsSync(path.join(t.dir, 'record.json')), false, 'the generator never ran');
-    assert.equal(cli(['generate-strands', '--context-file', path.join(t.dir, 'nope.md'), '--task-description', 'x', '--out', t.out, '--strands-bin', t.bin]).code, 1);
+    assert.equal(cli(['generate-strands', '--context-file', path.join(t.dir, 'nope.md'), '--task-description', 'x', '--out', t.out, '--strands-bin', t.bin, '--yes-paid']).code, 1);
+  } finally { cleanup(t.dir); }
+});
+
+test('generate-strands refuses to run the paid generator without --yes-paid (B-011)', () => {
+  const t = setup();
+  try {
+    const r = cli(t.args.filter((a) => a !== '--yes-paid'), { env: t.env });
+    assert.equal(r.code, 2);
+    assert.match(r.stderr, /--yes-paid is required/);
+    assert.equal(fs.existsSync(path.join(t.dir, 'record.json')), false, 'the generator never ran');
   } finally { cleanup(t.dir); }
 });
 
@@ -201,7 +211,7 @@ function setupApi(extra = {}) {
   const t = setup(extra);
   const python = writeFakePython(t.dir);
   const env = { ...t.env, FAKE_VERSION_RECORD: path.join(t.dir, 'version.json') };
-  const args = ['generate-strands', '--trajectories', '--context-file', t.ctx, '--task-description', 'Customer service assistant', '--out', t.out, '--python', python];
+  const args = ['generate-strands', '--trajectories', '--context-file', t.ctx, '--task-description', 'Customer service assistant', '--out', t.out, '--python', python, '--yes-paid'];
   return { ...t, python, env, args, versionRecord: () => JSON.parse(fs.readFileSync(path.join(t.dir, 'version.json'), 'utf8')) };
 }
 
@@ -281,13 +291,13 @@ test('--trajectories propagates a helper failure, an empty result and a missing 
 test('--trajectories with a missing interpreter says how to install and pass --python', () => {
   const t = setupApi();
   try {
-    const r = cli([...t.args.slice(0, -2), '--python', path.join(t.dir, 'no-python')], { env: t.env });
+    const r = cli([...t.args.slice(0, -3), '--python', path.join(t.dir, 'no-python'), '--yes-paid'], { env: t.env });
     assert.equal(r.code, 1);
     assert.match(r.stderr, /cannot find ".*no-python"/);
     assert.match(r.stderr, /pip install strands-agents-evals/);
     assert.match(r.stderr, /--python \.venv\/bin\/python/);
     assert.equal(fs.existsSync(t.sidecar), false);
-    const byName = cli(t.args.slice(0, -2), { env: { ...t.env, PATH: path.join(t.dir, 'empty') } });
+    const byName = cli([...t.args.slice(0, -3), '--yes-paid'], { env: { ...t.env, PATH: path.join(t.dir, 'empty') } });
     assert.equal(byName.code, 1);
     assert.match(byName.stderr, /cannot find "python3"/);
   } finally { cleanup(t.dir); }

@@ -156,7 +156,7 @@ function planLift(rec, cap, tier, o) {
   const shortfall = Math.max(0, target - pk.chosen.length);
   rec.tasks = {
     chosen: pk.chosen, target, shortfall, sources: pk.sources, skippedRegexOnly: pk.skippedRegexOnly, skippedReal: pk.skippedReal,
-    scenarioCommand: shortfall ? `node bench/runner/bench.js cap scenarios --cap ${cap.id} --n ${shortfall} --base ${base}` : null,
+    scenarioCommand: shortfall ? `node bench/runner/bench.js cap scenarios --cap ${cap.id} --n ${shortfall} --base ${base} --budget-credits 30` : null,
   };
   if (shortfall) rec.warnings.push(`${shortfall} more scenario${shortfall === 1 ? '' : 's'} needed (profile ${prof.name} wants ${target} per skill): draft them with cap scenarios, review, add them as tasks`);
   if (pk.skippedRegexOnly.length) rec.warnings.push(`left out regex-only tasks: ${pk.skippedRegexOnly.join(', ')}`);
@@ -286,7 +286,7 @@ function planSkillStudy({
       rec.steps = [
         `node bench/runner/bench.js cap audit --cap ${cap.id} --base ${base}`,
         `node bench/runner/bench.js cap trigger --cap ${cap.id} --mode proxy --base ${base}   (needs queries: cap draft first; about 0.8 credits to draft, about 0.09 per proxy call)`,
-        `node bench/runner/bench.js cap scenarios --cap ${cap.id} --mode trigger --base ${base} --dry-run   (tasks that should load it and near misses that should not; review them, then drop --dry-run for one model call)`,
+        `node bench/runner/bench.js cap scenarios --cap ${cap.id} --mode trigger --base ${base} --dry-run   (tasks that should load it and near misses that should not; review them, then replace --dry-run with --budget-credits 30 for one model call, two at most)`,
       ];
       continue;
     }

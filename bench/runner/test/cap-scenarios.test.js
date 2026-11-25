@@ -184,10 +184,31 @@ test('cap scenarios with a command model writes the review files (the live path,
     const cmd = path.join(s.root, 'model.js');
     write(cmd, `#!/usr/bin/env node\nprocess.stdin.on('data',()=>{}).on('end',()=>process.stdout.write(${JSON.stringify(JSON.stringify(goodReply()))}));\n`);
     const out = path.join(s.root, 'out');
-    const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'scenarios', '--cap', 'skill:alpha', '--model-cmd', `node ${cmd}`, '--out', out, '--repo-root', s.repo, '--bench-dir', bench, '--base', 'v0'], { encoding: 'utf8', env: cliEnv(s.root) });
+    const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'scenarios', '--cap', 'skill:alpha', '--model-cmd', `node ${cmd}`, '--out', out, '--repo-root', s.repo, '--bench-dir', bench, '--base', 'v0', '--budget-credits', '30'], { encoding: 'utf8', env: cliEnv(s.root) });
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, /skill:alpha: wrote .*skill-alpha\.json and skill-alpha\.md \(8 scenarios/);
     assert.ok(fs.existsSync(path.join(out, 'scenarios', 'skill-alpha.md')));
+  } finally { s.done(); }
+});
+
+test('cap scenarios refuses a live run with no --budget-credits, or one below 15 credits per possible call (B-011)', () => {
+  const s = setup();
+  try {
+    const bench = makeCapBench(s.root);
+    const marker = path.join(s.root, 'called');
+    const cmd = path.join(s.root, 'model.js');
+    write(cmd, `#!/usr/bin/env node\nrequire('fs').writeFileSync(${JSON.stringify(marker)}, 'x');\n`);
+    const run = (...extra) => spawnSync(process.execPath, [BENCH_JS, 'cap', 'scenarios', '--cap', 'skill:alpha,skill:beta', '--model-cmd', `node ${cmd}`, '--out', path.join(s.root, 'out'), '--repo-root', s.repo, '--bench-dir', bench, '--base', 'v0', ...extra], { encoding: 'utf8', env: cliEnv(s.root) });
+    const none = run();
+    assert.equal(none.status, 2);
+    assert.match(none.stderr, /--budget-credits is required/);
+    const low = run('--budget-credits', '59');
+    assert.equal(low.status, 2);
+    assert.match(low.stderr, /up to 4 call\(s\) counted at 15 credits each, 60 credits, is over --budget-credits 59/);
+    const bad = run('--budget-credits', 'lots');
+    assert.equal(bad.status, 2);
+    assert.match(bad.stderr, /--budget-credits must be a positive number/);
+    assert.equal(fs.existsSync(marker), false, 'no model call was made');
   } finally { s.done(); }
 });
 

@@ -211,7 +211,7 @@ test('cap scenarios --mode trigger with a command model writes the review files'
     const cmd = path.join(s.root, 'model.js');
     write(cmd, `#!/usr/bin/env node\nprocess.stdin.on('data',()=>{}).on('end',()=>process.stdout.write(${JSON.stringify(JSON.stringify(reply()))}));\n`);
     const out = path.join(s.root, 'out');
-    const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'scenarios', '--cap', 'skill:alpha', '--mode', 'trigger', '--model-cmd', `node ${cmd}`, '--out', out, '--repo-root', s.repo, '--bench-dir', bench, '--base', 'v0'], { encoding: 'utf8', env: cliEnv(s.root) });
+    const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'scenarios', '--cap', 'skill:alpha', '--mode', 'trigger', '--model-cmd', `node ${cmd}`, '--out', out, '--repo-root', s.repo, '--bench-dir', bench, '--base', 'v0', '--budget-credits', '30'], { encoding: 'utf8', env: cliEnv(s.root) });
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, /skill-alpha\.trigger\.json and skill-alpha\.trigger\.md \(10 should-trigger and 10 near-miss tasks/);
   } finally { s.done(); }

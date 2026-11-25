@@ -40,6 +40,7 @@ through unchanged. Nothing from the environment is logged or stored.
   --trajectories           call the Python API instead of the binary, so cases carry expected trajectories (see below)
   --python PATH            the Python 3.11+ interpreter with strands-agents-evals installed, used with --trajectories (default: ${DEFAULT_PYTHON})
   --force                  replace an existing experiment and sidecar
+  --yes-paid               required: confirms this paid run was approved (the bench cannot meter or cap the generator's spend)
 
 Install the generator in a Python 3.11+ virtualenv: python3 -m venv .venv && .venv/bin/pip install strands-agents-evals
 
@@ -70,7 +71,7 @@ const readPythonVersion = (python) => readVersion(python, ['-c', VERSION_SNIPPET
 const sidecarPath = (out) => out.replace(/\.json$/i, '.generation.json');
 
 async function run(argv, { out, err }) {
-  const opts = parseFlags(argv, { value: VALUE_FLAGS, bool: ['force', 'help', 'trajectories'] });
+  const opts = parseFlags(argv, { value: VALUE_FLAGS, bool: ['force', 'help', 'trajectories', 'yes-paid'] });
   if (opts.help) { out(USAGE); return 0; }
   for (const need of ['context-file', 'task-description', 'out']) if (opts[need] === undefined) throw new UsageError(`--${need} is required`);
   if (!/\.json$/i.test(opts.out)) throw new UsageError('--out must end in .json');
@@ -81,6 +82,8 @@ async function run(argv, { out, err }) {
   if (api && opts['strands-bin'] !== undefined) throw new UsageError('--strands-bin cannot be combined with --trajectories (use --python)');
   if (!api && opts.python !== undefined) throw new UsageError('--python is only used with --trajectories');
   const bin = api ? (opts.python ?? DEFAULT_PYTHON) : (opts['strands-bin'] ?? DEFAULT_BIN);
+  // The generator spends through its own model client, so the bench cannot count or cap it: a person approves each run.
+  if (!opts['yes-paid']) throw new UsageError('--yes-paid is required: the generator calls a model the bench cannot meter or cap, so pass it only for an approved paid run');
   const label = api ? `${path.basename(bin)} ${path.basename(HELPER)}` : `${path.basename(bin)} generate`;
 
   let context;

@@ -23,16 +23,18 @@ tool list. Both give drafts for a person to read. Neither runs your agent.
    node bench/runner/bench.js cap scenarios --cap skill:NAME --dry-run --out /tmp/scn
    ```
 
-3. Draft 8 tasks that test the skill once it is loaded (one model call; it prints the credits it used).
+3. Draft 8 tasks that test the skill once it is loaded (one model call, two if the first reply is unusable; it prints the credits it used).
+   `--budget-credits` is required: the run is refused before any call when 15 credits per possible call
+   (two per skill) would pass it, so 30 covers one skill.
 
    ```bash
-   node bench/runner/bench.js cap scenarios --cap skill:NAME --n 8 --out /tmp/scn
+   node bench/runner/bench.js cap scenarios --cap skill:NAME --n 8 --budget-credits 30 --out /tmp/scn
    ```
 
 4. Draft 10 requests that should load the skill, and near misses that should not (one model call).
 
    ```bash
-   node bench/runner/bench.js cap scenarios --cap skill:NAME --mode trigger --n 10 --out /tmp/scn
+   node bench/runner/bench.js cap scenarios --cap skill:NAME --mode trigger --n 10 --budget-credits 30 --out /tmp/scn
    ```
 
 5. Read every draft in `/tmp/scn/scenarios/`. Write the good ones as task files by hand.
@@ -47,11 +49,12 @@ tool list. Both give drafts for a person to read. Neither runs your agent.
 
 1. Write `context.md` with one line per tool, such as `- lookup_order(order_id: str) -> dict`.
 
-2. Generate cases. This calls a model, so it may cost money.
+2. Generate cases. This calls a model, so it may cost money. The bench cannot count or cap that spend, so
+   the command refuses to run without `--yes-paid`; pass it only for a run you approved.
 
    ```bash
    node bench/agenteval/agenteval.js generate-strands --trajectories --context-file context.md \
-     --task-description "what your agent does" --out work/experiment.json --python .venv/bin/python
+     --task-description "what your agent does" --out work/experiment.json --python .venv/bin/python --yes-paid
    ```
 
 3. Sort the cases into `ok`, `needs-edit` and `reject`, with reasons (free).

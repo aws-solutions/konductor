@@ -43,6 +43,7 @@ const { analyze } = require('../report/generate.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
 const { generateScenarios, checkCount, generateTriggerScenarios, checkTriggerCount, parseSeed } = require('./scenarios.js');
+const { WORST_PER_CALL } = require('./paidcall.js');
 const { forcedPrefix, prefixHash, HARNESSES, KINDS: FORCED_KINDS } = require('./forced.js');
 const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
 const { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria } = require('./skillcli.js');
@@ -536,6 +537,19 @@ function cmdPruneReport(opts) {
 
 // ---- scenarios ----
 
+/**
+ * The --budget-credits cap of a paid `cap scenarios` run. `maxCalls` is the most calls the run can make; each is
+ * counted at WORST_PER_CALL (the owner's rule), so the run is refused before its first call when that could pass the cap.
+ */
+function budgetOf(v, maxCalls) {
+  if (v === undefined || v === true) throw new Error('--budget-credits is required unless --dry-run: every call is a paid model call');
+  const cap = Number(v);
+  if (!Number.isFinite(cap) || cap <= 0) throw new Error(`--budget-credits must be a positive number, got ${v}`);
+  const worst = maxCalls * WORST_PER_CALL;
+  if (worst > cap) throw new Error(`up to ${maxCalls} call(s) counted at ${WORST_PER_CALL} credits each, ${worst} credits, is over --budget-credits ${cap}; raise the cap or pass fewer --cap ids`);
+  return cap;
+}
+
 async function cmdScenarios(opts) {
   const { repo, base } = common(opts);
   const ids = list(opts.cap);
@@ -552,6 +566,8 @@ async function cmdScenarios(opts) {
   if (seedFile) { try { seedData = JSON.parse(fs.readFileSync(seedFile, 'utf8')); } catch (e) { throw new Error(`cannot read the seed file ${seedFile}: ${e.code || e.message}`); } }
   const seeds = seedData ? parseSeed(seedData, { capId: ids[0] }) : [];
   const dryRun = Boolean(opts['dry-run']);
+  // Up to two calls per skill (judgeOnce retries once), each counted at 15 credits under the owner's spend rule.
+  const budget = dryRun ? null : budgetOf(opts['budget-credits'], ids.length * 2);
   const model = opts.model && opts.model !== true ? opts.model : DEFAULT_MODEL;
   const outDir = outDirOf(opts, repo);
   const b = resolveBase(base, repo);
@@ -559,6 +575,7 @@ async function cmdScenarios(opts) {
   let failed = 0;
   let credits = 0;
   let calls = 0;
+  let counted = 0;
   try {
     const scan = scanRepo(b.dir);
     for (const id of ids) {
@@ -569,11 +586,13 @@ async function cmdScenarios(opts) {
     const made = dryRun ? { caller: async () => { throw new Error('a dry run never calls a model'); }, cleanup: () => {} } : makeCapCaller(opts, { rawDir: path.join(outDir, 'model-raw'), log });
     try {
       for (const id of ids) {
+        if (budget !== null && counted + 2 * WORST_PER_CALL > budget) { failed++; console.log(`${id}: SKIPPED, ${counted} credits counted so far plus up to 2 more calls would pass --budget-credits ${budget}`); continue; }
         const r = trigger
           ? await generateTriggerScenarios({ capId: id, scan, caller: made.caller, model, n, outDir, seeds, seedFile, dryRun })
           : await generateScenarios({ capId: id, scan, caller: made.caller, model, n, outDir, dryRun });
         credits += r.credits;
         calls += r.calls;
+        counted += Math.max(r.calls * WORST_PER_CALL, r.credits);
         if (r.dryRun) console.log(`${id}: wrote the prompt to ${r.file}`);
         else if (r.ok && trigger) console.log(`${id}: wrote ${r.file} and ${path.basename(r.mdFile)} (${r.draft.scenarios.filter((x) => x.expect === 'trigger').length} should-trigger and ${r.draft.scenarios.filter((x) => x.expect === 'near-miss').length} near-miss tasks, attempts ${r.calls}, ${r.credits.toFixed(3)} credits)`);
         else if (r.ok) console.log(`${id}: wrote ${r.file} and ${path.basename(r.mdFile)} (${r.draft.scenarios.length} scenarios, attempts ${r.calls}, ${r.credits.toFixed(3)} credits)`);

@@ -165,7 +165,7 @@ scores nothing. The generate step calls a model; the import step is free.
 
 ```text
 node bench/agenteval/agenteval.js generate-strands --trajectories --context-file context.md \
-  --task-description "what your agent does" --out work/experiment.json --python .venv/bin/python
+  --task-description "what your agent does" --out work/experiment.json --python .venv/bin/python --yes-paid
 node bench/agenteval/agenteval.js import-strands --experiment work/experiment.json \
   --tools-from-text context.md --out work/candidates
 ```

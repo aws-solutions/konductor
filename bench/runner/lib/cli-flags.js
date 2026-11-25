@@ -51,7 +51,7 @@ const FLAGS = {
   ],
   'cap draft': ['cap', 'n', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir'],
   'cap import': ['from', 'cap', 'n', 'out', 'repo-root', 'bench-dir'],
-  'cap scenarios': ['cap', 'n', 'mode', 'seed-queries', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir', 'dry-run'],
+  'cap scenarios': ['cap', 'n', 'mode', 'seed-queries', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir', 'dry-run', 'budget-credits'],
   'cap controls': ['out', 'base', 'reps', 'scratch', 'agent-engine', 'repo-root', 'bench-dir', 'check', 'base-arm', 'aa', 'keep', 'prune', 'extra-tasks', 'json'],
   'cap trigger': [
     'cap', 'mode', 'split', 'reps', 'crosscheck', 'crosscheck-run', 'harness', 'base', 'queries', 'out', 'model', 'model-cmd', 'from-run', 'from-arm', 'acting-agent',

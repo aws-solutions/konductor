@@ -333,7 +333,7 @@ const USAGE = `Usage:
        Writes DIR/drafts/<id>.json and .md for human review; assigns no splits; never writes into the repository. Costs credits)
   node bench/runner/bench.js cap import --from FILE --cap ID [--n 24] [--out DIR] [--repo-root DIR] [--bench-dir DIR]
        (reads a skill-creator style JSON array of { query, should_trigger } into the same draft format; should_trigger true is expect load, false is none)
-  node bench/runner/bench.js cap scenarios --cap ID,ID [--mode lift|trigger] [--n N] [--seed-queries FILE] [--model M] [--model-cmd CMD] [--out DIR] [--base REF] [--dry-run]
+  node bench/runner/bench.js cap scenarios --cap ID,ID [--mode lift|trigger] [--n N] [--seed-queries FILE] [--model M] [--model-cmd CMD] [--out DIR] [--base REF] (--budget-credits N | --dry-run)
        [--isolate auto|unshare|sandbox-exec|none] [--kiro-bin PATH] [--auth-db FILE] [--hide DIR,DIR] [--repo-root DIR] [--bench-dir DIR]
        (drafts 8 to 30 task scenarios for each skill, at least three quarters where the skill should help and at least one where it should change nothing,
        one tool-less model call per skill in a scratch HOME. Writes DIR/scenarios/<id>.json and .md for human review and never writes into the repository.
