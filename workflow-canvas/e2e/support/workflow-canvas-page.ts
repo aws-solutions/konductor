@@ -14,25 +14,19 @@ export const NODE_IDS = [
   'node-intent',
   'node-stage-draft',
   'node-stage-review',
-  'node-end',
 ] as const;
 /** The test id of one node. */
 export type NodeId = (typeof NODE_IDS)[number];
 
 /**
- * What a screen reader says for each node of the Designer tab, top to bottom.
+ * What a screen reader says for each node of the Design view, top to bottom.
  * The first stage is the one that Properties shows when the page opens.
  */
 export const NODE_NAMES = [
   'Intent: Add a greeting to the README',
   'Stage draft, agent k-developer, harness kiro-cli, selected',
   'Stage review, agent k-quality-assurance, harness kiro-cli',
-  'End',
 ] as const;
-
-/** The words a node shows for its state in a run. */
-export type BadgeText =
-  'Queued' | 'Running' | 'Done' | 'Blocked' | 'Not run' | 'Passed' | 'Halted';
 
 /**
  * How long to wait for a step of a run on the stub. A stage takes 3 seconds
@@ -43,24 +37,14 @@ export const STEP_TIMEOUT_MS = 10_000;
 /** The most Tab presses between one node and the next one to take focus. */
 const MAX_TABS_TO_NEXT_NODE = 10;
 
-/** The query that asks the page for the views this page object drives. */
-export const CLASSIC_UI_QUERY = 'ui=classic';
-
-/**
- * An address for those views: the query that asks for them, the extra query
- * the caller wants kept, and the launch code as a fragment.
- */
-export function classicUrl(launchCode?: string, query?: string): string {
-  const search = query ? `${query}&${CLASSIC_UI_QUERY}` : CLASSIC_UI_QUERY;
-  return `/?${search}${launchCode ? `#${launchCode}` : ''}`;
-}
-
-/** Page object for the workflow canvas: title, landmark, tabs and the graph. */
+/** Page object for the workflow canvas: title, landmark, views and the graph. */
 export class WorkflowCanvasPage {
   readonly main: Locator;
   readonly title: Locator;
   readonly graph: Locator;
   readonly edges: Locator;
+  /** The mark under the last stage, where the run ends. */
+  readonly stopMark: Locator;
   readonly themeButton: Locator;
   readonly breadcrumbs: Locator;
   readonly runButton: Locator;
@@ -75,23 +59,25 @@ export class WorkflowCanvasPage {
     this.title = this.main.getByRole('heading', { level: 1 });
     this.graph = page.getByRole('region', { name: 'Workflow graph' });
     this.edges = this.graph.locator('.react-flow__edge');
+    this.stopMark = this.graph.getByRole('img', {
+      name: /^The run ends after/,
+    });
     this.themeButton = page.getByRole('button', { name: /^Theme:/ });
     this.breadcrumbs = page.getByRole('navigation', { name: 'Breadcrumbs' });
     this.runButton = page.getByRole('button', { name: 'Run', exact: true });
     this.goal = page.getByLabel('Goal');
-    this.runStatus = page.getByTestId('run-status');
-    this.runError = page.getByTestId('run-error');
+    this.runStatus = page.getByTestId('run-progress');
+    this.runError = page.getByTestId('run-start-error');
     this.runAlert = page.getByTestId('run-live-alert');
     this.runLiveStatus = page.getByTestId('run-live-status');
   }
 
   /**
-   * Loads the app in the views this page object drives, which `?ui=classic`
-   * asks for, with the launch code in the address as the server prints it
-   * when `launchCode` is given, and waits for the title.
+   * Loads the app, with the launch code in the address as the server prints
+   * it when `launchCode` is given, and waits for the title.
    */
   async open(launchCode?: string): Promise<void> {
-    await this.page.goto(classicUrl(launchCode));
+    await this.page.goto(launchCode ? `/#${launchCode}` : '/');
     await this.title.waitFor();
   }
 
@@ -131,35 +117,6 @@ export class WorkflowCanvasPage {
     return this.node(id).locator('.wf-port-in');
   }
 
-  /** The label that a node shows for its state in a run. */
-  badge(id: NodeId): Locator {
-    return this.node(id).getByTestId('status-badge');
-  }
-
-  /**
-   * Asserts what every node shows for its state, top to bottom: the words of
-   * the badge, or `null` for a node with no badge.
-   */
-  async expectBadges(
-    texts: readonly [
-      BadgeText | null,
-      BadgeText | null,
-      BadgeText | null,
-      BadgeText | null,
-    ],
-  ): Promise<void> {
-    for (const [index, id] of NODE_IDS.entries()) {
-      const text = texts[index];
-      if (text === null || text === undefined) {
-        await expect(this.badge(id)).toHaveCount(0);
-      } else {
-        await expect(this.badge(id)).toHaveText(text, {
-          timeout: STEP_TIMEOUT_MS,
-        });
-      }
-    }
-  }
-
   /** The node that a screen reader names `name`. */
   nodeNamed(name: string): Locator {
     return this.graph.getByRole('group', { name, exact: true });
@@ -194,18 +151,22 @@ export class WorkflowCanvasPage {
   }
 
   /**
-   * Asserts a tab has finished showing its content: the graph on both tabs,
-   * and the Run button on Execution.
+   * Asserts a view has finished showing its content: the graph on Design, and
+   * the Run button on Run, which draws no graph.
    */
   async expectTabLoaded(name: TabName): Promise<void> {
     await this.expectTabShown(name);
-    await this.expectWorkflowDrawn();
     if (name === 'Run') await expect(this.runButton).toBeVisible();
+    else await this.expectWorkflowDrawn();
   }
 
-  /** Asserts the whole graph is on screen: every node and every edge. */
+  /**
+   * Asserts the whole graph is on screen: every node, every edge, and the
+   * mark that says where the run ends.
+   */
   async expectWorkflowDrawn(): Promise<void> {
     for (const id of NODE_IDS) await expect(this.node(id)).toBeVisible();
     await expect(this.edges).toHaveCount(NODE_IDS.length - 1);
+    await expect(this.stopMark).toBeVisible();
   }
 }

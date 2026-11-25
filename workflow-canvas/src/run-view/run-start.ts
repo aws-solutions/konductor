@@ -160,9 +160,7 @@ export function startNotice(start: RunStart): StartNotice | undefined {
 
 /*
  * The Goal box is one line, so a line break in the workflow's default goal
- * becomes a space and the person reads what the run is given. The Execution
- * tab's `use-goal.ts` follows the same rule for the outcome of the intent;
- * it is tied to a load result, so it cannot serve a declared default.
+ * becomes a space and the person reads what the run is given.
  */
 function oneLine(text: string): string {
   return text.replace(/\s*[\r\n]+\s*/g, ' ');
@@ -196,8 +194,7 @@ export interface GoalKey {
  * own. Enter with Alt, Ctrl, Cmd or Shift is another command, or a line break
  * in a box that takes one, so it starts nothing. The Enter that ends typing
  * in another script starts nothing either: Safari reports it with
- * `isComposing` false and the key code 229, so both are checked, as the
- * Execution tab's box does.
+ * `isComposing` false and the key code 229, so both are checked.
  */
 export function startsOnEnter(key: GoalKey): boolean {
   if (key.altKey || key.ctrlKey || key.metaKey || key.shiftKey) return false;

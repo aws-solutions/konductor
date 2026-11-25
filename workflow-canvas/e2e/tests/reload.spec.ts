@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { test } from '../support/fixtures';
 import { sharedSession } from '../support/session';
-import {
-  classicUrl,
-  WorkflowCanvasPage,
-} from '../support/workflow-canvas-page';
+import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 // A reload would ask the server for the page again. A request made after the
 // anchor was set is answered after any reload request, so once it is answered
@@ -32,6 +29,27 @@ test('keeps the workflow on the page when the address gets an anchor', async ({
 });
 
 const NEW_CODE = 'nQ3x7vJ2kLmN9pRs4TuVw5Y_-ab12';
+
+function launchUrl(launchCode?: string, query?: string): string {
+  return `/${query ? `?${query}` : ''}${launchCode ? `#${launchCode}` : ''}`;
+}
+
+// The views read more than the workflow with the session token: the agents a
+// stage may name and the past runs. A test that answers the session call with
+// a token of its own sends those calls on with the one the server knows, so
+// none of them answers 401 and drops the session under the test.
+async function sendOtherCallsOn(page: Page, token: string): Promise<void> {
+  await page.route(/\/api\/(agents|runs)(\?|$)/, async (route) =>
+    route.fulfill({
+      response: await route.fetch({
+        headers: {
+          ...route.request().headers(),
+          authorization: `Bearer ${token}`,
+        },
+      }),
+    }),
+  );
+}
 
 // The page is not reloaded for a pasted code: it opens a session with it and
 // changes only if that works.
@@ -171,7 +189,7 @@ test('resumes after a reload when the first load failed after the code worked', 
   await page.route('**/api/workflow', (route) =>
     route.fulfill({ status: 500, json: { error: 'Server error.' } }),
   );
-  await page.goto(classicUrl(STUB_LAUNCH_CODE));
+  await page.goto(launchUrl(STUB_LAUNCH_CODE));
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await page.unroute('**/api/workflow');
 
@@ -192,7 +210,7 @@ test('opens the kept session when the code in the address is spent', async ({
     }),
   );
 
-  await page.goto(classicUrl(NEW_CODE, 'again'));
+  await page.goto(launchUrl(NEW_CODE, 'again'));
 
   await canvas.expectWorkflowDrawn();
   await expect(page.getByTestId('launch-notice')).toContainText(
@@ -207,7 +225,7 @@ test('resumes after a reload when a fresh address opens over a dead session and 
   page,
 }) => {
   const canvas = new WorkflowCanvasPage(page);
-  await page.goto(classicUrl(undefined, 'dead'));
+  await page.goto(launchUrl(undefined, 'dead'));
   await page.evaluate(() =>
     window.sessionStorage.setItem(
       'konductor-workflow-canvas-session',
@@ -225,7 +243,7 @@ test('resumes after a reload when a fresh address opens over a dead session and 
         })
       : route.fulfill({ status: 500, json: { error: 'Server error.' } }),
   );
-  await page.goto(classicUrl(STUB_LAUNCH_CODE, 'fresh'));
+  await page.goto(launchUrl(STUB_LAUNCH_CODE, 'fresh'));
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await page.unroute('**/api/workflow');
 
@@ -243,6 +261,7 @@ test('resumes a pasted address after a reload when its first load failed and the
 }) => {
   await canvas.expectWorkflowDrawn();
   const shown = sharedSession();
+  await sendOtherCallsOn(page, shown.token);
   const pastedAuthorization = 'Bearer pasted-token';
   await page.route('**/api/session', (route) =>
     route.fulfill({ json: { ...shown, token: 'pasted-token' } }),
@@ -280,7 +299,9 @@ test('resumes a pasted address after a reload when its first load failed and the
   await page.reload();
 
   await canvas.expectWorkflowDrawn();
-  expect(authorizations).toEqual([pastedAuthorization]);
+  // The Design view reads the keys of a stage from the same call, so the load
+  // is not the only one; none of them may carry the dead token.
+  expect([...new Set(authorizations)]).toEqual([pastedAuthorization]);
 });
 
 const OTHER_CODE = 'aB4x7vJ2kLmN9pRs4TuVw5Y_-cd34';
@@ -291,6 +312,7 @@ test('resumes the shown session after a reload when an older pasted address answ
 }) => {
   await canvas.expectWorkflowDrawn();
   const shown = sharedSession();
+  await sendOtherCallsOn(page, shown.token);
   let releaseSlow!: () => void;
   const slowReleased = new Promise<void>((resolve) => (releaseSlow = resolve));
   await page.route('**/api/session', async (route) => {
@@ -326,7 +348,7 @@ test('resumes the shown session after a reload when an older pasted address answ
   await page.reload();
 
   await canvas.expectWorkflowDrawn();
-  expect(authorizations).toEqual(['Bearer fast-token']);
+  expect([...new Set(authorizations)]).toEqual(['Bearer fast-token']);
 });
 
 test('tells nothing on a reload when the pending session fails and the kept one opens', async ({

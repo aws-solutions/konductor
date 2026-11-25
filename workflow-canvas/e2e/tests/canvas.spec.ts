@@ -18,16 +18,11 @@ async function offsetBetween(from: Locator, to: Locator) {
   };
 }
 
-test('draws the workflow of the API on the Designer tab', async ({
-  canvas,
-}) => {
+test('draws the workflow of the API on the Design view', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
-  await expect(
-    canvas.page.getByRole('heading', { name: 'Workflow: hello' }),
-  ).toBeVisible();
 });
 
-test('shows the intent, then each stage with its agent and harness, then the end', async ({
+test('shows the intent, then each stage with its agent and harness, then where the run ends', async ({
   canvas,
 }) => {
   await expect(canvas.node('node-intent')).toContainText(
@@ -41,17 +36,14 @@ test('shows the intent, then each stage with its agent and harness, then the end
   await expect(canvas.node('node-stage-review')).toContainText(
     'k-quality-assurance · kiro-cli',
   );
-  await expect(canvas.node('node-end')).toContainText('end');
+  await expect(canvas.stopMark).toHaveAccessibleName(
+    'The run ends after review',
+  );
 });
 
 test('stacks the nodes in the order of the stages', async ({ canvas }) => {
   const tops: number[] = [];
-  for (const id of [
-    'node-intent',
-    'node-stage-draft',
-    'node-stage-review',
-    'node-end',
-  ] as const) {
+  for (const id of NODE_IDS) {
     const box = await canvas.node(id).boundingBox();
     tops.push(box?.y ?? Number.NaN);
   }
@@ -60,13 +52,15 @@ test('stacks the nodes in the order of the stages', async ({ canvas }) => {
   expect(new Set(tops).size).toBe(tops.length);
 });
 
-test('puts an out dot on every node but the end and an in dot on every node but the intent', async ({
+test('puts an out dot on every node but the last stage and an in dot on every node but the intent', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
 
   for (const id of NODE_IDS) {
-    await expect(canvas.outPort(id)).toHaveCount(id === 'node-end' ? 0 : 1);
+    await expect(canvas.outPort(id)).toHaveCount(
+      id === 'node-stage-review' ? 0 : 1,
+    );
     await expect(canvas.inPort(id)).toHaveCount(id === 'node-intent' ? 0 : 1);
   }
 });
@@ -102,15 +96,13 @@ test('hides the dots at rest and shows them on hover, focus and select', async (
 
   // The first stage is selected when the page opens.
   await expect(canvas.outPort('node-stage-draft')).toHaveCSS('opacity', '1');
-  await expect(canvas.outPort(review)).toHaveCSS('opacity', '0');
   await expect(canvas.inPort(review)).toHaveCSS('opacity', '0');
 
   await canvas.node(review).hover();
-  await expect(canvas.outPort(review)).toHaveCSS('opacity', '1');
   await expect(canvas.inPort(review)).toHaveCSS('opacity', '1');
 
   await canvas.page.mouse.move(0, 0);
-  await expect(canvas.outPort(review)).toHaveCSS('opacity', '0');
+  await expect(canvas.inPort(review)).toHaveCSS('opacity', '0');
   await canvas.tab('Design').focus();
   await canvas.tabToNextNode();
   await expect(canvas.outPort('node-intent')).toHaveCSS('opacity', '1');
@@ -239,7 +231,7 @@ test('fits every node of a workflow of 40 stages in the canvas', async ({
   const canvas = new WorkflowCanvasPage(page);
   await canvas.open(STUB_LAUNCH_CODE);
 
-  await expect(canvas.graph.locator('.react-flow__node')).toHaveCount(42);
+  await expect(canvas.graph.locator('.react-flow__node')).toHaveCount(41);
   await expectEveryNodeInCanvas(canvas);
 });
 
@@ -257,7 +249,7 @@ test('fits the nodes of a bigger workflow that replaces the one on the page', as
     'q3x7vJ2kLmN9pRs4TuVw5Y_-ab12',
   );
 
-  await expect(canvas.graph.locator('.react-flow__node')).toHaveCount(42);
+  await expect(canvas.graph.locator('.react-flow__node')).toHaveCount(41);
   await expectEveryNodeInCanvas(canvas);
 });
 
@@ -276,49 +268,13 @@ test('shows the harness of the session as it is, fake included, with no way to p
   await expect(page.getByText(/harness/i)).toHaveCount(0);
 });
 
-test('shows in full the Japanese text that a node cuts short', async ({
-  page,
-}) => {
-  const outcome = '作'.repeat(60);
-  const name = '日本語の長いステージ名です';
-  await page.route('**/api/session', (route) =>
-    route.fulfill({ json: sharedSession() }),
-  );
-  await page.route('**/api/workflow', (route) =>
-    route.fulfill({
-      json: {
-        name: 'jp',
-        text: textOf('jp', outcome, [{ name, agent: 'a' }]),
-        hash: 'a'.repeat(64),
-        read_only: false,
-        view: {
-          format: 'konductor/1',
-          version: '0.1.0',
-          name: 'jp',
-          intent: { outcome },
-          stages: viewStagesOf([{ name, agent: 'a' }]),
-        },
-        diagnostics: [],
-        stage_fields: STAGE_FIELDS,
-      },
-    }),
-  );
-  const canvas = new WorkflowCanvasPage(page);
-  await canvas.open(STUB_LAUNCH_CODE);
-
-  await expect(page.getByTestId('full-intent')).toHaveText(
-    `Intent: ${outcome}`,
-  );
-  await expect(page.getByTestId(`full-stage-${name}`)).toBeVisible();
-});
-
 test('removes the launch code from the address', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
 
   expect(new URL(canvas.page.url()).hash).toBe('');
 });
 
-test('keeps the graph when the tabs are switched', async ({ canvas }) => {
+test('keeps the graph when the views are switched', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
 
   await canvas.selectTab('Run');
@@ -330,7 +286,10 @@ test('keeps the graph when the tabs are switched', async ({ canvas }) => {
 test('does not let a node be dragged', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
   const draft = canvas.node('node-stage-draft');
-  const gapBefore = await offsetBetween(draft, canvas.node('node-end'));
+  const gapBefore = await offsetBetween(
+    draft,
+    canvas.node('node-stage-review'),
+  );
   const {
     x = 0,
     y = 0,
@@ -345,7 +304,7 @@ test('does not let a node be dragged', async ({ canvas }) => {
   await mouse.up();
 
   // Dragging the pane pans every node alike; dragging a node would not.
-  expect(await offsetBetween(draft, canvas.node('node-end'))).toEqual(
+  expect(await offsetBetween(draft, canvas.node('node-stage-review'))).toEqual(
     gapBefore,
   );
 });

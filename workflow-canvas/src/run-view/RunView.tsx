@@ -24,7 +24,7 @@ const NO_GOAL_OF_JOINED_RUN =
 const GOAL_DESCRIPTION =
   'What the run should achieve. Every stage is given it.';
 
-// TrustDialog is shared with the Execution tab, so it receives the same state.
+// TrustDialog reads its refusal from the same execution state shape.
 function trustStateOf(trust: TrustRefused | undefined): ExecutionState {
   if (!trust) return { phase: 'idle' };
   return {

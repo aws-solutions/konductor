@@ -15,8 +15,7 @@ const START_FAILED = 'The run did not start.';
 const IDLE: RunStart = { kind: 'idle' };
 
 // What the person reads for a start that failed: the sentence of the error,
-// with the next step for a server that may have stopped, which is what the
-// Execution tab says for the same failure.
+// with the next step for a server that may have stopped.
 function startMessageOf(error: unknown): string {
   return error instanceof Error && error.message !== ''
     ? messageOf(error, START_FAILED)
