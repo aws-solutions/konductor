@@ -6,13 +6,16 @@ import FormField from '@cloudscape-design/components/form-field';
 import Header from '@cloudscape-design/components/header';
 import Input from '@cloudscape-design/components/input';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import type { ExecutionState } from '../execution/core';
 import { GOAL_MAX_LENGTH, goalProblem } from '../execution/core/goal';
 import { RunFloor } from '../execution/RunFloor';
 import type { ReasonSentence } from '../execution/core/stage-detail';
+import { TrustDialog } from '../execution/TrustDialog';
+import { MessageText } from '../workflow/MessageText';
 import { ChecksPanel } from './ChecksPanel';
 import { ParamFields } from './ParamFields';
 import type { ParamBox } from './run-params';
-import { startsOnEnter } from './run-start';
+import { startsOnEnter, type TrustRefused } from './run-start';
 import type { RunController } from './use-run-controller';
 
 const NO_GOAL_OF_JOINED_RUN =
@@ -20,6 +23,22 @@ const NO_GOAL_OF_JOINED_RUN =
 
 const GOAL_DESCRIPTION =
   'What the run should achieve. Every stage is given it.';
+
+// TrustDialog is shared with the Execution tab, so it receives the same state.
+function trustStateOf(trust: TrustRefused | undefined): ExecutionState {
+  if (!trust) return { phase: 'idle' };
+  return {
+    phase: 'error',
+    message: trust.message,
+    started: false,
+    trust: {
+      fix: trust.fix,
+      goal: trust.goal,
+      refusal: trust.refusal,
+      ...(trust.closed === true ? { closed: true as const } : {}),
+    },
+  };
+}
 
 function GoalPanel({
   goal,
@@ -91,15 +110,19 @@ function GoalPanel({
  * followed by the page, which keeps that controller whether this view is on
  * show or not, so a change of tab does not stop the only follower of a run.
  * The Goal and param boxes are read-only while a run that was already going
- * is still going, because the API does not give that run's inputs. It adds no
+ * is still going, because the API does not give that run's inputs. A trust
+ * refusal opens a dialog with the command that trusts the workflow. It adds no
  * live region: the run status is announced once, elsewhere on the page.
  */
 export function RunView({
   controller,
+  workflowName,
   reasonSentence = () => undefined,
 }: {
   /** Where the run is, and the ways to act on it, as the page holds them. */
   controller: RunController;
+  /** The name of the open workflow, for its trust command. */
+  workflowName?: string;
   /** The sentence for the reason code of a blocked stage. */
   reasonSentence?: ReasonSentence;
 }) {
@@ -123,7 +146,7 @@ export function RunView({
           header={notice.header}
           data-testid="run-start-error"
         >
-          {notice.message}
+          <MessageText text={notice.message} />
         </Alert>
       )}
       {follow.status.kind === 'failed' && (
@@ -140,9 +163,9 @@ export function RunView({
             </Button>
           }
         >
-          {follow.status.message} The run may still be going on the server.
-          Follow it again to read on from where this page stopped, or reload the
-          page.
+          <MessageText text={follow.status.message} /> The run may still be
+          going on the server. Follow it again to read on from where this page
+          stopped, or reload the page.
         </Alert>
       )}
       {follow.status.kind === 'session_lost' && (
@@ -151,7 +174,7 @@ export function RunView({
           header="The server no longer knows this session."
           data-testid="run-session-error"
         >
-          {follow.status.message}
+          <MessageText text={follow.status.message} />
         </Alert>
       )}
       {history.failure !== undefined && (
@@ -162,6 +185,12 @@ export function RunView({
       <ChecksPanel
         checks={controller.checks}
         failure={controller.checksFailure}
+      />
+      <TrustDialog
+        state={trustStateOf(controller.trust)}
+        workflowName={workflowName}
+        onRunAgain={controller.runAgain}
+        onClose={controller.closeTrust}
       />
       <RunFloor
         run={controller.run}

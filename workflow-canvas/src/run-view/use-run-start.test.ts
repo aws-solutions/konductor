@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { RunAlreadyActive, type RunMemory } from '../execution/core/ports';
+import { ApiError } from '../api/api';
+import {
+  RunAlreadyActive,
+  RunNeedsTrust,
+  type RunMemory,
+} from '../execution/core/ports';
 import type { RunParams } from './run-params';
 import { useRunStart } from './use-run-start';
 const RUN_ID = '20261024-0412-a7b3c';
@@ -251,5 +256,94 @@ describe('useRunStart', () => {
 
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it('says what to do about a server that may have stopped, as the Execution tab does', async () => {
+    const start = vi.fn(() =>
+      Promise.reject(new ApiError('The server did not answer.', 503)),
+    );
+    const { result } = renderHook(() => useRunStart({ port: { start } }));
+
+    await act(async () => result.current.begin(GOAL_ONLY));
+
+    expect(result.current.start).toEqual({
+      kind: 'failed',
+      message:
+        'The server did not answer. If it stopped, start `flow view` again and open the address it prints.',
+    });
+  });
+
+  describe('a start refused because the workflow is not trusted', () => {
+    const FIX =
+      'Run `konductor flow trust hello` in a terminal, then try again.';
+    const refuse = () =>
+      vi.fn(() =>
+        Promise.reject(new RunNeedsTrust('The workflow is not trusted.', FIX)),
+      );
+
+    it('keeps the fix and the goal that was sent, as the first refusal', async () => {
+      const start = refuse();
+      const { result } = renderHook(() => useRunStart({ port: { start } }));
+
+      await act(async () => result.current.begin(GOAL_ONLY));
+
+      expect(result.current.start).toEqual({
+        kind: 'trust',
+        message: 'The workflow is not trusted.',
+        fix: FIX,
+        goal: 'Add a greeting',
+        params: GOAL_ONLY,
+        refusal: 1,
+      });
+    });
+
+    it('gives the next refusal its own number, so its dialog opens afresh', async () => {
+      const start = refuse();
+      const { result } = renderHook(() => useRunStart({ port: { start } }));
+      await act(async () => result.current.begin(GOAL_ONLY));
+      await act(async () => result.current.closeTrust(1));
+
+      await act(async () => result.current.begin(GOAL_ONLY));
+
+      expect(result.current.start).toMatchObject({
+        kind: 'trust',
+        refusal: 2,
+      });
+      expect(result.current.start).not.toHaveProperty('closed');
+    });
+
+    it('counts from one again after a start that failed for another reason', async () => {
+      const call = { fail: refuse() };
+      const start = vi.fn(() => call.fail());
+      const { result } = renderHook(() => useRunStart({ port: { start } }));
+      await act(async () => result.current.begin(GOAL_ONLY));
+      call.fail = vi.fn(() => Promise.reject(new Error('The server said no.')));
+      await act(async () => result.current.begin(GOAL_ONLY));
+      call.fail = refuse();
+
+      await act(async () => result.current.begin(GOAL_ONLY));
+
+      expect(result.current.start).toMatchObject({ kind: 'trust', refusal: 1 });
+    });
+
+    it('marks the refusal closed when its dialog is closed', async () => {
+      const start = refuse();
+      const { result } = renderHook(() => useRunStart({ port: { start } }));
+      await act(async () => result.current.begin(GOAL_ONLY));
+
+      await act(async () => result.current.closeTrust(1));
+
+      expect(result.current.start).toMatchObject({ refusal: 1, closed: true });
+    });
+
+    it('ignores a close that names another refusal', async () => {
+      const start = refuse();
+      const { result } = renderHook(() => useRunStart({ port: { start } }));
+      await act(async () => result.current.begin(GOAL_ONLY));
+
+      await act(async () => result.current.closeTrust(7));
+
+      expect(result.current.start).not.toMatchObject({ closed: true });
+    });
   });
 });

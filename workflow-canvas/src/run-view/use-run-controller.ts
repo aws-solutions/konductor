@@ -42,9 +42,11 @@ import {
   sameGoalSource,
   startDisabledReason,
   startNotice,
+  trustRefusalOf,
   type GoalSource,
   type RunLifecycle,
   type StartNotice,
+  type TrustRefused,
 } from './run-start';
 import { runTiming } from './run-timing';
 import { useRunClock } from './use-run-clock';
@@ -125,6 +127,12 @@ export interface RunController {
   paramTyped(name: string, text: string): void;
   /** Starts a run with the goal and the params in the boxes. */
   startRun(): void;
+  /** The last start refused because the workflow is not trusted. */
+  readonly trust: TrustRefused | undefined;
+  /** Repeats the refused start with the same params. */
+  runAgain(goal: string): void;
+  /** Records that the trust dialog was closed. */
+  closeTrust(refusal: number): void;
   /**
    * Follows the run again from where the reads stopped. It does nothing
    * unless `canFollowAgain`.
@@ -243,6 +251,7 @@ export function useRunController({
     start: started,
     begin,
     forget,
+    closeTrust,
   } = useRunStart({
     port: { start: ports.start },
     ...(runMemory ? { memory: runMemory } : {}),
@@ -348,6 +357,12 @@ export function useRunController({
         params: withParam(held.params, name, text),
       })),
     startRun: () => begin(runParams(goal, params)),
+    trust: trustRefusalOf(started),
+    runAgain: () => {
+      const refused = trustRefusalOf(started);
+      if (refused) begin(refused.params);
+    },
+    closeTrust,
     followAgain: follow.retry,
   };
 }
