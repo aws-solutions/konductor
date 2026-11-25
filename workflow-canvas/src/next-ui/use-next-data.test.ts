@@ -13,11 +13,14 @@ const EXTRAS: WorkflowExtras = {
 
 const AGENTS = [{ id: 'k-developer', summary: 'Code' }];
 
+const RUN_STARTED = '20261024-0412-a7b3c';
+
 function portsOf(over: Partial<NextPorts> = {}): NextPorts {
   return {
     loadExtras: vi.fn(() => Promise.resolve(EXTRAS)),
     listAgents: vi.fn(() => Promise.resolve(AGENTS)),
     listRuns: vi.fn(() => Promise.resolve([])),
+    startRun: vi.fn(() => Promise.resolve(RUN_STARTED)),
     readEvents: vi.fn(() =>
       Promise.resolve({
         ok: true,

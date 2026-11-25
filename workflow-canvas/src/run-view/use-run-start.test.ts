@@ -2,8 +2,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { RunAlreadyActive, type RunMemory } from '../execution/core/ports';
+import type { RunParams } from './run-params';
 import { useRunStart } from './use-run-start';
 const RUN_ID = '20261024-0412-a7b3c';
+
+/** The params of a run of a workflow that declares nothing but the goal. */
+const GOAL_ONLY: RunParams = { goal: 'Add a greeting' };
 
 function fakeMemory(kept?: string) {
   const state = { kept };
@@ -57,7 +61,7 @@ describe('useRunStart', () => {
       useRunStart({ port: { start }, memory }),
     );
 
-    await act(async () => result.current.begin('Add a greeting'));
+    await act(async () => result.current.begin(GOAL_ONLY));
 
     expect(state.kept).toBe(RUN_ID);
     expect(result.current.start).toEqual({
@@ -76,7 +80,7 @@ describe('useRunStart', () => {
       useRunStart({ port: { start }, memory }),
     );
 
-    await act(async () => result.current.begin('Add a greeting'));
+    await act(async () => result.current.begin(GOAL_ONLY));
 
     expect(state.kept).toBe(RUN_ID);
   });
@@ -86,8 +90,8 @@ describe('useRunStart', () => {
     const start = vi.fn(() => call.promise);
     const { result } = renderHook(() => useRunStart({ port: { start } }));
 
-    await act(async () => result.current.begin('one'));
-    await act(async () => result.current.begin('two'));
+    await act(async () => result.current.begin({ goal: 'one' }));
+    await act(async () => result.current.begin({ goal: 'two' }));
 
     expect(start).toHaveBeenCalledTimes(1);
     expect(result.current.start).toEqual({ kind: 'starting' });
@@ -185,7 +189,7 @@ describe('useRunStart', () => {
         useRunStart({ port: { start }, memory }),
       { initialProps: { start: first } },
     );
-    await act(async () => result.current.begin('Add a greeting'));
+    await act(async () => result.current.begin(GOAL_ONLY));
     expect(result.current.start).toEqual({ kind: 'starting' });
 
     rerender({ start: vi.fn(() => new Promise<string>(() => undefined)) });
@@ -196,7 +200,7 @@ describe('useRunStart', () => {
 
   it('aborts the start in flight when the session is replaced', async () => {
     const seen: AbortSignal[] = [];
-    const first = vi.fn((_goal: string, signal: AbortSignal) => {
+    const first = vi.fn((_params: RunParams, signal: AbortSignal) => {
       seen.push(signal);
       return new Promise<string>(() => undefined);
     });
@@ -204,7 +208,7 @@ describe('useRunStart', () => {
       ({ start }: { start: typeof first }) => useRunStart({ port: { start } }),
       { initialProps: { start: first } },
     );
-    await act(async () => result.current.begin('Add a greeting'));
+    await act(async () => result.current.begin(GOAL_ONLY));
 
     rerender({ start: vi.fn(() => new Promise<string>(() => undefined)) });
     await act(async () => {});
@@ -221,7 +225,7 @@ describe('useRunStart', () => {
         useRunStart({ port, memory }),
       { initialProps: { port: { start } } },
     );
-    await act(async () => result.current.begin('Add a greeting'));
+    await act(async () => result.current.begin(GOAL_ONLY));
     result.current.forget();
 
     rerender({ port: { start: vi.fn(() => Promise.resolve('x')) } });
@@ -238,7 +242,7 @@ describe('useRunStart', () => {
     const { result, unmount } = renderHook(() =>
       useRunStart({ port: { start } }),
     );
-    await act(async () => result.current.begin('Add a greeting'));
+    await act(async () => result.current.begin(GOAL_ONLY));
 
     unmount();
     await act(async () => {

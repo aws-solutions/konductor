@@ -10,10 +10,11 @@ import {
 
 /*
  * The fields of `GET /api/workflow` that `parse.ts` leaves out and the views
- * read when the workflow is loaded: the `stage_fields` of the document and
- * the default goal of the workflow. It reads the same answer with the same
- * readers as `parse.ts`, and rejects a shape the contract does not allow, so
- * a view built on it never shows a field the server did not send.
+ * read when the workflow is loaded: the `stage_fields` of the document, the
+ * default goal of the workflow and the params it declares. It reads the same
+ * answer with the same readers as `parse.ts`, and rejects a shape the
+ * contract does not allow, so a view built on it never shows a field the
+ * server did not send.
  *
  * The `kind` and the `range` of a stage are not here: they change with every
  * edit, so the Design view reads them from the answer of the check it just
@@ -61,12 +62,30 @@ export interface StageField {
   readonly excludes?: readonly string[];
 }
 
+/**
+ * One input of a run that the workflow declares beside the goal, the `Param`
+ * of `api/openapi.yaml`. The goal is not one of these: it has its own box and
+ * its own limit, and its default is read as `goalDefault`.
+ */
+export interface ParamDeclaration {
+  readonly name: string;
+  /** `string` in this version. A type a later version adds is shown as text. */
+  readonly type?: string;
+  readonly description?: string;
+  /** The value a run takes when it sends none. */
+  readonly default?: string;
+  /** Whether a run must carry a value. It is false unless the file says so. */
+  readonly required: boolean;
+}
+
 /** The fields of the answer that the parsed document leaves out. */
 export interface WorkflowExtras {
   /** The editable keys of a stage, by kind. It is there even with no view. */
   readonly stageFields: Readonly<Record<string, readonly StageField[]>>;
   /** The default goal the workflow declares, when it declares one. */
   readonly goalDefault?: string;
+  /** The params the workflow declares beside the goal, in the order of the file. */
+  readonly params?: readonly ParamDeclaration[];
 }
 
 function parseField(value: unknown): StageField {
@@ -103,8 +122,8 @@ function parseStageFields(
   );
 }
 
-// `params.goal.default`, when the workflow declares it. Every other param is
-// left alone: this version runs with the goal only.
+// `params.goal.default`, when the workflow declares it. The other params are
+// read by `parseParams`.
 function parseGoalDefault(view: Json): { readonly goalDefault?: string } {
   if (!Object.hasOwn(view, 'params')) return {};
   const params = objectOf(view.params);
@@ -114,15 +133,43 @@ function parseGoalDefault(view: Json): { readonly goalDefault?: string } {
   return { goalDefault: stringOf(goal.default) };
 }
 
+function parseParam(name: string, value: unknown): ParamDeclaration {
+  const param = objectOf(value);
+  return {
+    name,
+    required: Object.hasOwn(param, 'required')
+      ? booleanOf(param.required)
+      : false,
+    ...optional(param, 'type', stringOf),
+    ...optional(param, 'description', stringOf),
+    ...optional(param, 'default', stringOf),
+  };
+}
+
+// The params the workflow declares beside the goal. The server sends them in
+// the order of the file, and a param name starts with a letter, so the keys
+// of the answer keep that order.
+function parseParams(view: Json): {
+  readonly params?: readonly ParamDeclaration[];
+} {
+  if (!Object.hasOwn(view, 'params')) return {};
+  const declared = Object.entries(objectOf(view.params))
+    .filter(([name]) => name !== 'goal')
+    .map(([name, value]) => parseParam(name, value));
+  return declared.length > 0 ? { params: declared } : {};
+}
+
 /**
- * Reads the `stage_fields` and the default goal out of a `WorkflowDocument`
- * body. A `view` of `null` has no default goal; `stage_fields` is there
- * either way. Unknown fields are ignored, and a field the contract shapes
- * differently throws an `ApiError`, as reading the rest of the answer does.
+ * Reads the `stage_fields`, the default goal and the declared params out of a
+ * `WorkflowDocument` body. A `view` of `null` has neither a default goal nor
+ * params; `stage_fields` is there either way. Unknown fields are ignored, and
+ * a field the contract shapes differently throws an `ApiError`, as reading
+ * the rest of the answer does.
  */
 export function parseWorkflowExtras(body: unknown): WorkflowExtras {
   const document = objectOf(body);
   const stageFields = parseStageFields(document.stage_fields);
   if (document.view === null) return { stageFields };
-  return { stageFields, ...parseGoalDefault(objectOf(document.view)) };
+  const view = objectOf(document.view);
+  return { stageFields, ...parseGoalDefault(view), ...parseParams(view) };
 }

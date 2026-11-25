@@ -6,6 +6,7 @@ import {
   RunStartUnsure,
   type RunMemory,
 } from '../execution/core/ports';
+import type { ParamDeclaration } from '../api/workflow-extras';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import {
   EventWaits,
@@ -16,6 +17,7 @@ import {
   passed,
   running,
 } from '../test-support/held-events';
+import { PARAM_MAX_LENGTH } from './run-params';
 import { RunView } from './RunView';
 import type { RunLifecycle } from './run-start';
 import { useRunController, type RunViewPorts } from './use-run-controller';
@@ -27,6 +29,7 @@ import { useRunController, type RunViewPorts } from './use-run-controller';
 function Drawn({
   stages,
   goalDefault,
+  declaredParams,
   ports,
   runMemory,
   reasonSentence,
@@ -34,6 +37,7 @@ function Drawn({
 }: {
   stages: readonly string[];
   goalDefault?: string;
+  declaredParams?: readonly ParamDeclaration[];
   ports: RunViewPorts;
   runMemory?: RunMemory;
   reasonSentence?: (code: string) => string | undefined;
@@ -42,6 +46,7 @@ function Drawn({
   const controller = useRunController({
     stages,
     ...(goalDefault === undefined ? {} : { goalDefault }),
+    ...(declaredParams === undefined ? {} : { declaredParams }),
     ports,
     ...(runMemory ? { runMemory } : {}),
   });
@@ -92,6 +97,7 @@ function drawn({
   reasonSentence,
   goalDefault = GOAL_DEFAULT,
   noGoalDefault = false,
+  declaredParams,
   clock,
   onRunState,
 }: {
@@ -103,6 +109,8 @@ function drawn({
   goalDefault?: string;
   /** The workflow declares no default goal. */
   noGoalDefault?: boolean;
+  /** The params the workflow declares beside the goal. */
+  declaredParams?: readonly ParamDeclaration[];
   /** A clock the test moves, for the elapsed time. */
   clock?: { now: () => number };
   /** Told where the run is, as the page is. */
@@ -127,6 +135,7 @@ function drawn({
     <Drawn
       stages={STAGES}
       {...(noGoalDefault ? {} : { goalDefault })}
+      {...(declaredParams === undefined ? {} : { declaredParams })}
       ports={ports}
       {...(memory ? { runMemory: memory } : {})}
       {...(reasonSentence ? { reasonSentence } : {})}
@@ -142,8 +151,10 @@ function drawn({
    */
   const rerenderWith = ({
     goalDefault: nextDefault = goalDefault,
+    declaredParams: nextParams = declaredParams,
   }: {
     goalDefault?: string;
+    declaredParams?: readonly ParamDeclaration[];
   }) => {
     const nextEvents = new HeldEvents();
     const nextStart = vi.fn(() => startResult);
@@ -152,6 +163,7 @@ function drawn({
       <Drawn
         stages={STAGES}
         goalDefault={nextDefault}
+        {...(nextParams === undefined ? {} : { declaredParams: nextParams })}
         ports={{
           start: nextStart,
           readEvents: nextEvents.readEvents,
@@ -167,7 +179,9 @@ function drawn({
   return { events, start, listRuns, waits, rerenderWith, rerenderSame };
 }
 
-const goalBox = () => screen.getByRole('textbox') as HTMLInputElement;
+const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
+const paramBox = (name: string) =>
+  screen.getByLabelText(name) as HTMLInputElement;
 const runButton = () => screen.getByRole('button', { name: 'Run' });
 const followAgainButton = () =>
   screen.getByRole('button', { name: 'Follow again' });
@@ -252,7 +266,10 @@ describe('RunView when a run starts', () => {
 
     await press();
 
-    expect(start).toHaveBeenCalledWith(GOAL_DEFAULT, expect.anything());
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
     expect(events.calls).toEqual([{ runId: RUN_ID, after: 0 }]);
   });
 
@@ -632,7 +649,7 @@ describe('RunView when the page opens another workflow', () => {
     expect(goalBox().value).toBe('Write the release note');
     await press();
     expect(other.start).toHaveBeenCalledWith(
-      'Write the release note',
+      { goal: 'Write the release note' },
       expect.anything(),
     );
   });
@@ -759,6 +776,147 @@ describe('RunView, the Goal box of a workflow with no default goal', () => {
     await type('');
 
     expect(goalError()).toBe('Enter a goal to run.');
+  });
+});
+
+describe('RunView, the params the workflow declares', () => {
+  const DIFF: ParamDeclaration = {
+    name: 'diff_input',
+    type: 'string',
+    description: 'The diff to read.',
+    required: true,
+  };
+  const BRANCH: ParamDeclaration = {
+    name: 'branch',
+    default: 'main',
+    required: false,
+  };
+
+  async function typeParam(name: string, text: string) {
+    await act(async () => {
+      fireEvent.change(paramBox(name), { target: { value: text } });
+    });
+  }
+
+  it('asks for each declared param, in the order of the file', () => {
+    drawn({ declaredParams: [DIFF, BRANCH] });
+
+    expect(paramBox('diff_input')).toBeTruthy();
+    expect(paramBox('branch')).toBeTruthy();
+  });
+
+  it('says what a param is for', () => {
+    drawn({ declaredParams: [DIFF] });
+
+    expect(screen.getByText('The diff to read.')).toBeTruthy();
+  });
+
+  it('prefills the declared default', () => {
+    drawn({ declaredParams: [BRANCH] });
+
+    expect(paramBox('branch').value).toBe('main');
+  });
+
+  it('asks for nothing when the goal is the only param', () => {
+    drawn({ declaredParams: [] });
+
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+
+  it('sends the params with the goal when the run starts', async () => {
+    const { start } = drawn({ declaredParams: [DIFF, BRANCH] });
+    await typeParam('diff_input', 'the.diff');
+
+    await press();
+
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT, diff_input: 'the.diff', branch: 'main' },
+      expect.anything(),
+    );
+  });
+
+  it('leaves an empty box out, so the server applies the default', async () => {
+    const { start } = drawn({ declaredParams: [BRANCH] });
+
+    await typeParam('branch', '');
+    await press();
+
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
+  });
+
+  it('keeps Run off while a required param has no value, and says why', () => {
+    drawn({ declaredParams: [DIFF] });
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain(
+      'Enter a value for diff_input to run.',
+    );
+  });
+
+  it('turns Run on once the required param has a value', async () => {
+    drawn({ declaredParams: [DIFF] });
+
+    await typeParam('diff_input', 'the.diff');
+
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('takes a required param that the file gives a default', () => {
+    drawn({ declaredParams: [{ ...BRANCH, required: true }] });
+
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('marks a value over the limit and keeps Run off', async () => {
+    drawn({ declaredParams: [BRANCH] });
+
+    await typeParam('branch', 'a'.repeat(PARAM_MAX_LENGTH + 1));
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('branch');
+  });
+
+  it('shows what the server said about params it refused', async () => {
+    const refused = Promise.reject(
+      new Error('The workflow does not declare the param "branch".'),
+    );
+    const { start } = drawn({
+      declaredParams: [BRANCH],
+      startResult: refused,
+    });
+
+    await press();
+
+    expect(start).toHaveBeenCalled();
+    expect(screen.getByTestId('run-start-error').textContent).toContain(
+      'does not declare the param "branch"',
+    );
+  });
+
+  it('keeps the boxes of a run that was already going out of reach', async () => {
+    const { start } = drawn({
+      declaredParams: [BRANCH],
+      startResult: Promise.reject(new RunAlreadyActive('Busy.', RUN_ID)),
+    });
+
+    await press();
+
+    expect(start).toHaveBeenCalled();
+    expect(paramBox('branch').readOnly).toBe(true);
+    expect(paramBox('branch').value).toBe('');
+  });
+
+  it('starts the next workflow from its own param defaults', async () => {
+    const { rerenderWith } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+    expect(paramBox('branch').value).toBe('release');
+
+    rerenderWith({ declaredParams: [{ ...BRANCH, default: 'trunk' }] });
+
+    expect(paramBox('branch').value).toBe('trunk');
   });
 });
 

@@ -157,3 +157,71 @@ describe('parseWorkflowExtras', () => {
     expect(() => parseWorkflowExtras(body({ view }))).toThrow(ApiError);
   });
 });
+
+/** A view whose params are the mapping given. */
+const withParams = (params: Record<string, unknown>) =>
+  body({ view: { ...body().view, params } });
+
+describe('parseWorkflowExtras, the declared params', () => {
+  it('reads every key of a param', () => {
+    const extras = parseWorkflowExtras(
+      withParams({
+        diff_input: {
+          type: 'string',
+          description: 'The diff to read.',
+          default: 'the.diff',
+          required: true,
+        },
+      }),
+    );
+
+    expect(extras.params).toEqual([
+      {
+        name: 'diff_input',
+        type: 'string',
+        description: 'The diff to read.',
+        default: 'the.diff',
+        required: true,
+      },
+    ]);
+  });
+
+  it('keeps the order of the file', () => {
+    const extras = parseWorkflowExtras(
+      withParams({ branch: {}, goal: {}, diff_input: {} }),
+    );
+
+    expect(extras.params?.map((param) => param.name)).toEqual([
+      'branch',
+      'diff_input',
+    ]);
+  });
+
+  it('takes a param that is not required unless the file says so', () => {
+    const extras = parseWorkflowExtras(withParams({ branch: {} }));
+
+    expect(extras.params?.[0]?.required).toBe(false);
+  });
+
+  it('leaves the params out when the goal is the only one', () => {
+    expect(
+      parseWorkflowExtras(withParams({ goal: { default: 'Say hello' } })),
+    ).not.toHaveProperty('params');
+  });
+
+  it('leaves the params out for a document with no file', () => {
+    expect(parseWorkflowExtras(body({ view: null }))).not.toHaveProperty(
+      'params',
+    );
+  });
+
+  it.each([
+    ['a param that is not a mapping', { branch: 'main' }],
+    ['a default that is not a string', { branch: { default: 7 } }],
+    ['a required that is not a boolean', { branch: { required: 'yes' } }],
+    ['a type that is not a string', { branch: { type: 1 } }],
+    ['a description that is not a string', { branch: { description: 1 } }],
+  ])('refuses %s', (_, params) => {
+    expect(() => parseWorkflowExtras(withParams(params))).toThrow(ApiError);
+  });
+});

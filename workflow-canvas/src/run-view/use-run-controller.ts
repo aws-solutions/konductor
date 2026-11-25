@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
+import type { ParamDeclaration } from '../api/workflow-extras';
 import { goalProblem } from '../execution/core/goal';
-import type { RunMemory, RunPort, Scheduler } from '../execution/core/ports';
+import type { RunMemory, Scheduler } from '../execution/core/ports';
 import {
   progressText,
   runProgress,
@@ -13,6 +14,15 @@ import {
   useFollowRun,
   type FollowRunState,
 } from '../run-client/use-follow-run';
+import {
+  paramBoxes,
+  paramsProblem,
+  runParams,
+  withParam,
+  type ParamBox,
+  type ParamTexts,
+  type StartRun,
+} from './run-params';
 import {
   canStartRun,
   followedRunId,
@@ -36,8 +46,8 @@ import { useRunStart } from './use-run-start';
 
 /** The calls of the session that following a run makes. */
 export interface RunViewPorts {
-  /** Starts a run, as `POST /api/run` does. */
-  readonly start: RunPort['start'];
+  /** Starts a run with its params, as `POST /api/run` does. */
+  readonly start: StartRun;
   /** Reads the events of a run; `undefined` without a session. */
   readonly readEvents: ReadEvents | undefined;
   /** Lists the past runs; `undefined` without a session. */
@@ -52,6 +62,8 @@ export interface RunViewPorts {
 export interface RunController {
   /** The text of the Goal box. */
   readonly goal: string;
+  /** One box per param the workflow declares, in the order of the file. */
+  readonly params: readonly ParamBox[];
   /** Whether that text is the goal of the run being followed. */
   readonly ofThisRun: boolean;
   readonly canStart: boolean;
@@ -88,7 +100,9 @@ export interface RunController {
   readonly lifecycle: RunLifecycle;
   /** Takes the text of the Goal box. */
   goalTyped(text: string): void;
-  /** Starts a run with the goal in the box. */
+  /** Takes the text of one param box. */
+  paramTyped(name: string, text: string): void;
+  /** Starts a run with the goal and the params in the boxes. */
   startRun(): void;
   /**
    * Follows the run again from where the reads stopped. It does nothing
@@ -111,10 +125,22 @@ function followMessage(follow: FollowRunState): string {
   return '';
 }
 
+/** No declared params, and no typed text, as one object for every render. */
+const NO_PARAMS: readonly ParamDeclaration[] = [];
+const NO_TEXTS: ParamTexts = {};
+
+// What a person has typed for one workflow: the goal, if they typed one, and
+// the text of each param box they typed into.
+interface Typed {
+  readonly source: GoalSource;
+  readonly goal?: string;
+  readonly params: ParamTexts;
+}
+
 /**
  * Follows a run of one workflow: the state of a start, the events of the run,
  * the past runs and the clock of the elapsed time, with the ways to type a
- * goal and start a run.
+ * goal, fill in the declared params and start a run.
  *
  * The page holds this, not the view that draws it, so a run goes on while a
  * person looks at something else: the only follower of a run must not be
@@ -126,6 +152,7 @@ function followMessage(follow: FollowRunState): string {
 export function useRunController({
   stages,
   goalDefault,
+  declaredParams = NO_PARAMS,
   ports,
   runMemory,
 }: {
@@ -133,25 +160,34 @@ export function useRunController({
   readonly stages: readonly string[];
   /** The `params.goal.default` of the workflow, when it declares one. */
   readonly goalDefault?: string;
+  /** The params the workflow declares beside the goal, in the order of the file. */
+  readonly declaredParams?: readonly ParamDeclaration[];
   readonly ports: RunViewPorts;
   /** Keeps the run across a reload; a page without it starts afresh. */
   readonly runMemory?: RunMemory;
 }): RunController {
   // The text a person types belongs to the workflow it was typed for, so
-  // another workflow starts from its own default goal.
+  // another workflow starts from its own default goal and param defaults.
   const goalSource: GoalSource = {
     start: ports.start,
     list: ports.listRuns,
     goalDefault,
+    declared: declaredParams,
   };
-  const [typedFor, setTypedFor] = useState<{
-    source: GoalSource;
-    typed: string;
-  }>();
-  const typed = sameGoalSource(typedFor?.source, goalSource)
-    ? typedFor?.typed
+  const [typedFor, setTypedFor] = useState<Typed>();
+  const own = sameGoalSource(typedFor?.source, goalSource)
+    ? typedFor
     : undefined;
-  const goal = goalText(typed, goalDefault);
+  const goal = goalText(own?.goal, goalDefault);
+  const params = paramBoxes(declaredParams, own?.params ?? NO_TEXTS);
+  const typeInto = (change: (held: Typed) => Typed) =>
+    setTypedFor((held) =>
+      change(
+        sameGoalSource(held?.source, goalSource) && held
+          ? held
+          : { source: goalSource, params: NO_TEXTS },
+      ),
+    );
   const {
     start: started,
     begin,
@@ -200,6 +236,7 @@ export function useRunController({
     start: started,
     runFinished,
     goalProblem: goalProblem(goal),
+    paramsProblem: paramsProblem(params),
     followFailed: status === 'failed',
   };
   const timing = runTiming(runId ?? '', history.runs, seen?.at ?? ports.now());
@@ -232,6 +269,7 @@ export function useRunController({
   };
   return {
     goal,
+    params,
     ofThisRun: goalIsOfThisRun(started, runFinished),
     canStart: canStartRun(decision),
     disabledReason: startDisabledReason(decision),
@@ -242,11 +280,16 @@ export function useRunController({
     progress,
     ended: status === 'finished',
     runId,
-    goalTouched: typed !== undefined || started.kind !== 'idle',
+    goalTouched: own?.goal !== undefined || started.kind !== 'idle',
     canFollowAgain: status === 'failed',
     lifecycle,
-    goalTyped: (text) => setTypedFor({ source: goalSource, typed: text }),
-    startRun: () => begin(goal),
+    goalTyped: (text) => typeInto((held) => ({ ...held, goal: text })),
+    paramTyped: (name, text) =>
+      typeInto((held) => ({
+        ...held,
+        params: withParam(held.params, name, text),
+      })),
+    startRun: () => begin(runParams(goal, params)),
     followAgain: follow.retry,
   };
 }

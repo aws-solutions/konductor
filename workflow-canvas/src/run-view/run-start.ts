@@ -40,20 +40,23 @@ export function goalIsOfThisRun(
 /**
  * Whether Run can be pressed: no start is in flight, no run is being
  * followed unless it has ended, the outcome of the last start is known, and
- * the goal is one the API takes.
+ * the goal and the params are ones the API takes.
  */
 export function canStartRun({
   start,
   runFinished,
   goalProblem,
+  paramsProblem,
 }: {
   readonly start: RunStart;
   /** True once the run that is followed has ended. */
   readonly runFinished: boolean;
   /** Why the goal cannot be sent, from `goalProblem`. */
   readonly goalProblem: string | undefined;
+  /** Why the params cannot be sent, from `paramsProblem`. */
+  readonly paramsProblem?: string | undefined;
 }): boolean {
-  if (goalProblem !== undefined) return false;
+  if (goalProblem !== undefined || paramsProblem !== undefined) return false;
   switch (start.kind) {
     case 'idle':
     case 'failed':
@@ -79,15 +82,19 @@ export function startDisabledReason({
   start,
   runFinished,
   goalProblem,
+  paramsProblem,
   followFailed = false,
 }: {
   readonly start: RunStart;
   readonly runFinished: boolean;
   readonly goalProblem: string | undefined;
+  readonly paramsProblem?: string | undefined;
   /** True once the follower of the run gave up, so the run cannot be read. */
   readonly followFailed?: boolean;
 }): string | undefined {
-  if (canStartRun({ start, runFinished, goalProblem })) return undefined;
+  if (canStartRun({ start, runFinished, goalProblem, paramsProblem })) {
+    return undefined;
+  }
   if (start.kind === 'starting') return 'The run is starting.';
   // A run that has ended is not in the way: what is left is the next goal.
   if (start.kind === 'going' && !runFinished) {
@@ -96,7 +103,9 @@ export function startDisabledReason({
   if (start.kind === 'unsure') {
     return 'It is not known whether the last run started. Reload the page.';
   }
-  return goalProblem;
+  // The goal comes first: it is the box above the params, so a person reads
+  // the reason for the one they would fill in first.
+  return goalProblem ?? paramsProblem;
 }
 
 /** What went wrong with a start, for the alert under the button. */
@@ -169,14 +178,17 @@ export function startsOnEnter(key: GoalKey): boolean {
 }
 
 /**
- * Which workflow a typed goal belongs to: the calls of its session and the
- * default goal it declares. The text a person types is for that workflow
- * only, so another one starts from its own default.
+ * Which workflow a typed goal and typed param values belong to: the calls of
+ * its session, the default goal it declares and the params it declares. What
+ * a person types is for that workflow only, so another one starts from its
+ * own defaults.
  */
 export interface GoalSource {
   readonly start: unknown;
   readonly list: unknown;
   readonly goalDefault: string | undefined;
+  /** The declared params of the workflow, by identity. */
+  readonly declared: unknown;
 }
 
 /** Whether two goal sources are the same workflow. */
@@ -188,7 +200,8 @@ export function sameGoalSource(
     a !== undefined &&
     a.start === b.start &&
     a.list === b.list &&
-    a.goalDefault === b.goalDefault
+    a.goalDefault === b.goalDefault &&
+    a.declared === b.declared
   );
 }
 

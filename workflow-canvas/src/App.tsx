@@ -175,15 +175,16 @@ export function App({
       ),
     [saved],
   );
-  // The calls the newer Run view follows a run through,
-  // which belong to the workflow that loaded: another workflow is another
-  // object, and the controller starts again for it, the run its session kept
-  // included.
+  // The calls the newer Run view starts and follows a run through, which
+  // belong to the workflow that loaded: another workflow is another object,
+  // and the controller starts again for it, the run its session kept
+  // included. The start goes through those calls too, so the params of the
+  // run travel with the goal.
   const nextRunPorts = useMemo(
     () =>
       nextUi && nextPorts && runs
         ? {
-            start: runs.start,
+            start: nextPorts.startRun,
             readEvents: nextPorts.readEvents,
             listRuns: nextPorts.listRuns,
             scheduler,
@@ -199,6 +200,9 @@ export function App({
     ...(next.extras.goalDefault === undefined
       ? {}
       : { goalDefault: next.extras.goalDefault }),
+    ...(next.extras.params === undefined
+      ? {}
+      : { declaredParams: next.extras.params }),
     ports: nextRunPorts,
     // Only once there is a session: the page has no run of its own to keep
     // before one, and the controller drops the run of the session it is

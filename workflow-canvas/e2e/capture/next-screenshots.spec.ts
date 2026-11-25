@@ -2,6 +2,7 @@
 import {
   answerRunWith,
   expect,
+  openDeclaringParams,
   passed,
   runPassed,
   running,
@@ -42,6 +43,15 @@ test('capture the Run view before a run', async ({ next }) => {
   await expect(next.runButton).toBeVisible();
 
   await saveFullPageScreenshot(next.page, 'next-run-idle');
+});
+
+test('capture the Run view asking for the declared params', async ({
+  page,
+}) => {
+  const canvas = await openDeclaringParams(page);
+  await expect(canvas.page.getByLabel('branch')).toHaveValue('main');
+
+  await saveFullPageScreenshot(canvas.page, 'next-run-params');
 });
 
 test('capture the Run view after a run has passed', async ({ next }) => {

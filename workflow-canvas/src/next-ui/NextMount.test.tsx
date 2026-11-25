@@ -30,6 +30,7 @@ function portsOf(over: Partial<NextPorts> = {}): NextPorts {
       Promise.resolve([{ id: 'k-developer', summary: 'Code' }]),
     ),
     listRuns: vi.fn(() => Promise.resolve([])),
+    startRun: vi.fn(() => Promise.resolve(RUN_ID)),
     readEvents: vi.fn(
       () => new Promise<never>(() => undefined),
     ) as unknown as NextPorts['readEvents'],
@@ -209,14 +210,15 @@ describe('the run lifecycle as the page opens', () => {
 
   it('follows a run through the new view only', async () => {
     const events = new HeldEvents();
-    const { runs } = await openPage({
-      nextUi: true,
-      ports: portsOf({ readEvents: events.readEvents }),
-    });
+    const ports = portsOf({ readEvents: events.readEvents });
+    const { runs } = await openPage({ nextUi: true, ports });
 
     await startRun(events);
 
-    expect(runs.start).toHaveBeenCalledTimes(1);
+    // The newer view starts through its own calls, not the session's run
+    // port, which the view it replaced used.
+    expect(ports.startRun).toHaveBeenCalledTimes(1);
+    expect(runs.start).not.toHaveBeenCalled();
     // The controller of the Run tab reads `GET /api/runs/{id}`; nothing may.
     expect(runs.get).not.toHaveBeenCalled();
     expect(events.calls.length).toBeGreaterThan(0);
