@@ -6,9 +6,9 @@
 // the env and the stream reader with your agent's. CONTRACT.md (runner/lib/harness/) says what each member gets.
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseStream } = require('../../runner/lib/stream.js');
-const { promptFor } = require('../../runner/lib/arm-opts.js');
-const skills = require('../../runner/lib/skills.js');
+const { parseStream } = require('../../sdk').stream;
+const { promptFor } = require('../../sdk').armOpts;
+const skills = require('../../sdk').skills;
 const meta = require('./meta.js');
 
 const { id } = meta;

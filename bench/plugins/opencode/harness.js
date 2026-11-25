@@ -8,18 +8,18 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { parseStream } = require('../../runner/lib/stream.js');
-const sandbox = require('../../runner/lib/sandbox.js');
-const { ALLOW } = require('../../runner/lib/env.js');
+const { parseStream } = require('../../sdk').stream;
+const sandbox = require('../../sdk').sandbox;
+const { ALLOW } = require('../../sdk').env;
 const { translateAll } = require('./translate.js');
 const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('./creds.js');
 const { prepareQueryDir } = require('./query.js');
-const { copyPlainFile } = require('../../runner/lib/safe-copy.js');
-const { scrubTreeDetailed } = require('../../runner/lib/hygiene.js');
-const { secretLiterals } = require('../../runner/lib/scrub.js');
-const skills = require('../../runner/lib/skills.js');
-const { promptFor } = require('../../runner/lib/arm-opts.js');
+const { copyPlainFile } = require('../../sdk').safeCopy;
+const { scrubTreeDetailed } = require('../../sdk').hygiene;
+const { secretLiterals } = require('../../sdk').scrub;
+const skills = require('../../sdk').skills;
+const { promptFor } = require('../../sdk').armOpts;
 
 const id = 'opencode';
 const meta = require('./meta.js');
@@ -309,7 +309,7 @@ function trialInstall(prepared, ctx) {
 
 const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
-const rc = () => require('../../runner/lib/runconfig.js');
+const rc = () => require('../../sdk').runconfig;
 
 // Where opencode reads its config under HOME (XDG_CONFIG_HOME is HOME/.config); the judge backend uses it too.
 const CONFIG_REL = path.join('.config', 'opencode');

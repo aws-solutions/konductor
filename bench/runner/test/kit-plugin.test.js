@@ -20,8 +20,8 @@ const CHECK = path.join(BENCH, 'kit', 'plugin', 'check.js');
 function brokenTemplate(t, edit) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-plugin-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  // The copy sits two levels below a link to bench/runner, as a plugin under bench/plugins/<name>/ does.
-  fs.symlinkSync(path.join(BENCH, 'runner'), path.join(root, 'runner'));
+  // The copy sits two levels below a link to bench/sdk, as a plugin under bench/plugins/<name>/ does (B-013).
+  fs.symlinkSync(path.join(BENCH, 'sdk'), path.join(root, 'sdk'));
   const dir = path.join(root, 'plugins', 'plugin-template');
   fs.mkdirSync(path.dirname(dir));
   fs.cpSync(TEMPLATE, dir, { recursive: true });

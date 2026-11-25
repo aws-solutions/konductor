@@ -69,7 +69,7 @@ module.exports = {
   // A target is reachable when the translated skill index names it, or its sop- skill (skills.js targetOutcome).
   skillReachable(kind, target, startup) {
     if (!Array.isArray(startup.skillNames)) return null;
-    const { has } = require('../../runner/lib/skills.js');
+    const { has } = require('../../sdk').skills;
     return has(startup.skillNames, target) || (kind === 'sop' && has(startup.skillNames, `sop-${target}`));
   },
 };

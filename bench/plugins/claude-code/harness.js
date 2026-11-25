@@ -8,24 +8,24 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseStream } = require('../../runner/lib/stream.js');
-const { installedSkills } = require('../../runner/lib/startup.js');
-const sandbox = require('../../runner/lib/sandbox.js');
-const { ALLOW } = require('../../runner/lib/env.js');
-const { ensureEmptyClaudeRules } = require('../../runner/lib/isolation-gates.js');
-const { realHomes } = require('../../runner/lib/isolate.js');
-const { scrubTreeDetailed } = require('../../runner/lib/hygiene.js');
-const { secretLiterals } = require('../../runner/lib/scrub.js');
-const skills = require('../../runner/lib/skills.js');
-const { promptFor } = require('../../runner/lib/arm-opts.js');
-const { writeArmConfig } = require('../../runner/lib/arm-config.js');
-const { orchMetrics: computeOrchMetrics } = require('../../runner/lib/orch-metrics.js');
-const { copyPlainFile } = require('../../runner/lib/safe-copy.js');
+const { parseStream } = require('../../sdk').stream;
+const { installedSkills } = require('../../sdk').startup;
+const sandbox = require('../../sdk').sandbox;
+const { ALLOW } = require('../../sdk').env;
+const { ensureEmptyClaudeRules } = require('../../sdk').isolationGates;
+const { realHomes } = require('../../sdk').isolate;
+const { scrubTreeDetailed } = require('../../sdk').hygiene;
+const { secretLiterals } = require('../../sdk').scrub;
+const skills = require('../../sdk').skills;
+const { promptFor } = require('../../sdk').armOpts;
+const { writeArmConfig } = require('../../sdk').armConfig;
+const { orchMetrics: computeOrchMetrics } = require('../../sdk').orchMetrics;
+const { copyPlainFile } = require('../../sdk').safeCopy;
 const parse = require('./parse.js');
-const { turnStreamTexts } = require('../../runner/lib/autonomy.js');
+const { turnStreamTexts } = require('../../sdk').autonomy;
 const listing = require('./listing.js');
 const { TEAM_ENV, GUIDE_ALLOW, applyTeamMode } = require('./team-mode.js');
-const { plantPrompt, MCP_CONFIG_REL, SERVER_NAME: PLANT_SERVER } = require('../../runner/lib/plant/agent-file.js');
+const { plantPrompt, MCP_CONFIG_REL, SERVER_NAME: PLANT_SERVER } = require('../../sdk').plant.agentFile;
 
 const id = 'claude-code';
 const meta = require('./meta.js');
@@ -421,7 +421,7 @@ const keepPaths = (ctx) => [ctx.claude?.bin].filter(Boolean);
 // run-one records the startup MCP list as empty for this harness, because every command passes --strict-mcp-config.
 const strictMcp = true;
 
-const rc = () => require('../../runner/lib/runconfig.js');
+const rc = () => require('../../sdk').runconfig;
 
 // Where an install serves skills, relative to HOME (startup.js installedSkills): ~/.claude/skills holds both.
 const skillDirs = Object.freeze({ served: '.claude/skills', wrapped: '.claude/skills' });
@@ -466,7 +466,7 @@ function prepareOnlyCheck({ opts, runtimes }) {
  * calls no model, so it needs no keys (D-113). Throws when the keys are missing.
  */
 function runCredentials({ opts, deps = {}, env: baseEnv = process.env }) {
-  const { profileCredentials } = require('../../runner/lib/aws-creds.js');
+  const { profileCredentials } = require('../../sdk').awsCreds;
   const creds = opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
   const control = typeof opts['claude-bin'] === 'string' && isPlantControl(path.resolve(opts['claude-bin']));
   if (!control) checkCredentials(creds ? { ...baseEnv, ...creds.current() } : baseEnv);
@@ -491,7 +491,7 @@ const flagValueOf = (opts, name) => (opts[name] && opts[name] !== true ? opts[na
  * the binary has no --effort, or when `outDir` holds runs of another claude binary and --allow-claude-change is not given.
  */
 function setUpRun(ctx, { opts, config, outDir, ccRegion, runBudgetUsd, ccCreds, log }) {
-  const { readRunConfigs } = require('../../runner/lib/run-configs.js');
+  const { readRunConfigs } = require('../../sdk').runConfigs;
   const toolsDir = flagValueOf(opts, 'claude-tools-dir');
   ctx.claude = resolveClaude({ binOverride: flagValueOf(opts, 'claude-bin') ?? undefined, toolsDir: toolsDir ?? undefined });
   if (!ctx.claude.supportsEffort) throw new Error(`${ctx.claude.bin} (claude ${ctx.claude.version}) has no --effort flag, so the run could not apply --effort ${config.effort}; use a claude that lists --effort in claude --help`);

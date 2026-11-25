@@ -6,7 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const sandbox = require('../../runner/lib/sandbox.js');
+const sandbox = require('../../sdk').sandbox;
 
 // The Claude Code version the stream parser and the harness flags were checked against.
 const VALIDATED_VERSION = '2.1.316.1544';

@@ -73,6 +73,12 @@ harness module loads.
 `trialInstall`, `installInto`, `buildCommand`, `env`, `removeCredentials`, `keepPaths`, `turnSummary`, `parseResult`
 and `collectArtifacts`. CONTRACT.md says what each one gets and returns. Strands keeps its stream reader in `parse.js`.
 
+A plugin's code may require only `node:*` modules, files in its own folder and the bench SDK, `bench/sdk`. The SDK
+gives the bench helpers a harness needs, one part per helper module: `const { parseStream } = require('../../sdk').stream;`.
+Read `bench/sdk/index.js` for the list of parts. `runner/test/plugin-sdk-lint.test.js`
+fails when a plugin requires `runner/lib` or another plugin directly. A helper the SDK does not have yet is added to
+`bench/sdk/index.js`, not required around it. Files under the plugin's `test/` folder are not checked.
+
 `test/conformance.js` tells the kit how to read the recorded run with no model call:
 
 ```js

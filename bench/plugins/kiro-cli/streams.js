@@ -4,7 +4,7 @@
 // The kiro-cli stream readers (harness/streams.js, FW-17). The stream is kiro-cli's ACP updates (`sessionUpdate`
 // events and a closing `runFinished`). trace.js is required at call time: it loads modules that load the harnesses.
 
-const { aggregateStream, SUBAGENT_TOOL, toolNameOf, skillsCallOf, mcpInputOf, isV3Call, skillResourceCallOf, skillActivationOf, skillFileReadOf, subagentTargets } = require('../../runner/lib/stream.js');
+const { aggregateStream, SUBAGENT_TOOL, toolNameOf, skillsCallOf, mcpInputOf, isV3Call, skillResourceCallOf, skillActivationOf, skillFileReadOf, subagentTargets } = require('../../sdk').stream;
 
 const hasInput = (input) => input && typeof input === 'object' && Object.keys(input).length > 0;
 
@@ -67,11 +67,11 @@ function loadOrderEvent(ev, at, { add, fail, write, calls }) {
 
 // shortcut: the skills-server readers stay in runner/lib/skills.js (kiroCalls, kiroFirstDecision) because they share
 // its helpers with the answer parsing; move them here with those helpers when skills.js is split.
-const skills = () => require('../../runner/lib/skills.js');
+const skills = () => require('../../sdk').skills;
 
 module.exports = {
   finalText: (events) => aggregateStream(events).finalText,
-  timeline: (events) => require('../../runner/lib/trace.js').kiroTimeline(events),
+  timeline: (events) => require('../../sdk').trace.kiroTimeline(events),
   stopEvent,
   // Skills-server calls with their raw answers (skills.js extractSkills, `skillAnswer: 'server'`).
   skillCalls: (events) => skills().kiroCalls(events),

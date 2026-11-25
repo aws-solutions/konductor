@@ -7,7 +7,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { assertPlainPath } = require('../../runner/lib/safe-copy.js');
+const { assertPlainPath } = require('../../sdk').safeCopy;
 
 const slugOf = (cwd) => {
   let real = cwd;

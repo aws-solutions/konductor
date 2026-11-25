@@ -7,21 +7,21 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, sessionModels, runErrorOf } = require('../../runner/lib/stream.js');
+const { parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, sessionModels, runErrorOf } = require('../../sdk').stream;
 
 const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
-const { turnStreamTexts } = require('../../runner/lib/autonomy.js');
-const { crossCheckCredits } = require('../../runner/lib/result.js');
-const { buildChildEnv } = require('../../runner/lib/env.js');
-const sandbox = require('../../runner/lib/sandbox.js');
-const skills = require('../../runner/lib/skills.js');
-const { installedSkills } = require('../../runner/lib/startup.js');
-const { promptFor } = require('../../runner/lib/arm-opts.js');
-const { writeArmConfig } = require('../../runner/lib/arm-config.js');
-const { orchMetricsOfRunDir } = require('../../runner/lib/orch-metrics.js');
-const { copyPlainFile, assertPlainPath } = require('../../runner/lib/safe-copy.js');
-const { scrubTreeDetailed, redactHostPaths } = require('../../runner/lib/hygiene.js');
-const { secretLiterals } = require('../../runner/lib/scrub.js');
+const { turnStreamTexts } = require('../../sdk').autonomy;
+const { crossCheckCredits } = require('../../sdk').result;
+const { buildChildEnv } = require('../../sdk').env;
+const sandbox = require('../../sdk').sandbox;
+const skills = require('../../sdk').skills;
+const { installedSkills } = require('../../sdk').startup;
+const { promptFor } = require('../../sdk').armOpts;
+const { writeArmConfig } = require('../../sdk').armConfig;
+const { orchMetricsOfRunDir } = require('../../sdk').orchMetrics;
+const { copyPlainFile, assertPlainPath } = require('../../sdk').safeCopy;
+const { scrubTreeDetailed, redactHostPaths } = require('../../sdk').hygiene;
+const { secretLiterals } = require('../../sdk').scrub;
 
 const id = 'kiro-cli';
 const meta = require('./meta.js');
@@ -339,7 +339,7 @@ function checkScratchRoot(dir) {
   }
 }
 
-const rc = () => require('../../runner/lib/runconfig.js');
+const rc = () => require('../../sdk').runconfig;
 
 /** The kiro-cli model list (`chat --list-models`) under a scratch HOME with the auth db copied in. */
 function listModels(kiroBin, authDb, scratchDir, envKeep, agentEngine) {

@@ -21,7 +21,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { writeAtomic } = require('../../runner/lib/owned.js');
+const { writeAtomic } = require('../../sdk').owned;
 
 const PROBE_VERSION = 2;
 const LIFTED_BUDGET = '100000000';
@@ -84,7 +84,7 @@ function formulaBudget({ window, model, fraction, override }) {
   return Math.floor(window * (FOUR_CHAR_MODELS.test(model) ? 4 : 3) * fraction);
 }
 
-const { readTextOrNull: readText } = require('../../runner/lib/util.js');
+const { readTextOrNull: readText } = require('../../sdk').util;
 
 /** The skills installed in `configDir/skills`: `{ name, sop, modelInvocable }` in name order. */
 function installedSkills(configDir) {

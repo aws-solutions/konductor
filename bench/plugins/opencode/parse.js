@@ -4,7 +4,7 @@
 // Reads what an `opencode run --format json` call leaves behind. The event stream only carries the
 // parent session; subagent sessions exist only in the SQLite database, linked by parent_id.
 
-const { detectAskedUser } = require('../../runner/lib/stream.js');
+const { detectAskedUser } = require('../../sdk').stream;
 
 const SUBAGENT_TOOL = 'task';
 

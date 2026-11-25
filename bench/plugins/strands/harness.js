@@ -11,17 +11,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { parseStream } = require('../../runner/lib/stream.js');
-const { promptFor } = require('../../runner/lib/arm-opts.js');
-const skills = require('../../runner/lib/skills.js');
-const { scrubTreeDetailed } = require('../../runner/lib/hygiene.js');
-const { secretLiterals } = require('../../runner/lib/scrub.js');
-const { launcherForCwd, pythonArgs } = require('../../runner/lib/plant/strands-adapter.js');
+const { parseStream } = require('../../sdk').stream;
+const { promptFor } = require('../../sdk').armOpts;
+const skills = require('../../sdk').skills;
+const { scrubTreeDetailed } = require('../../sdk').hygiene;
+const { secretLiterals } = require('../../sdk').scrub;
+const { launcherForCwd, pythonArgs } = require('../../sdk').plant.strandsAdapter;
 const { aggregateEvents } = require('./parse.js');
 
 const id = 'strands';
 const meta = require('./meta.js');
-const PINS = require('../../physical/strands/plant_strands/bedrock_models.json');
+const PINS = require('../../sdk').plant.bedrockModels;
 const VERSION_PROBE = 'import sys, importlib.metadata as m; print(m.version("strands-agents")); print(sys.prefix); print(sys.base_prefix)';
 
 /**
@@ -110,7 +110,7 @@ function finalize(outDir, ctx) {
   return scrubTreeDetailed(outDir, secretLiterals(process.env, ctx?.awsCreds ? ctx.awsCreds.values() : []), { shapes: true });
 }
 
-const rc = () => require('../../runner/lib/runconfig.js');
+const rc = () => require('../../sdk').runconfig;
 
 /**
  * The Bedrock model and keys of a run (run-cmd.js), or nulls: a Strands run on Bedrock spends money, so it needs an
@@ -121,7 +121,7 @@ function runOptions({ opts, deps = {} }) {
   let stCreds = null;
   if (stModel) {
     if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
-    const { profileCredentials } = require('../../runner/lib/aws-creds.js');
+    const { profileCredentials } = require('../../sdk').awsCreds;
     stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
     stCreds.current();
   } else if (opts['aws-profile'] !== undefined) {
@@ -145,7 +145,7 @@ function setUpRun(ctx, { opts, config, stModel, stCreds, budgetCredits, state, l
 
 /** The hook census of a plant suite (run-cmd.js setUpPlantSuite): a plain arm whose agent can change plant calls is refused. */
 function plantPreflight({ ctx, suite, arms, scratchDir, wrap, log }) {
-  const { preflightStrands } = require('../../runner/lib/plant/strands-census.js');
+  const { preflightStrands } = require('../../sdk').plant.strandsCensus;
   suite.strandsCensus = preflightStrands({ strands: ctx.strands, suite, arms, env: env({ home: scratchDir, tmpdir: scratchDir }), scratch: scratchDir, wrap });
   log(`plant: Strands hook census: ${suite.strandsCensus.problems.length ? suite.strandsCensus.problems.join('; ') : 'no hook, middleware or tool swap that can change a plant call'}`);
 }
