@@ -23,7 +23,14 @@ import {
   type EditState,
   type SaveState,
 } from './edit-state';
-import { canSave, changeBlocker, isDirty, textOf } from './edit-view';
+import {
+  canSave,
+  changeBlocker,
+  isDirty,
+  rawTextOf,
+  textBlocker,
+  textOf,
+} from './edit-view';
 import { checkOf } from './problems';
 
 const NOT_EDITABLE =
@@ -83,6 +90,29 @@ function selected(state: EditState, id: string): EditState {
     : state;
 }
 
+/**
+ * The whole text typed over. It keeps the text, bumps the revision so the
+ * check runs for it, and leaves the draft as it is: its stages describe the
+ * file, so they are stale until a save or a reload gives the editor the
+ * server's parse of the new text. `changeBlocker` refuses a form edit while
+ * one is pending, which is why nothing here has to re-read the YAML; the
+ * core has no parser of its own and the check is the one that answers.
+ */
+function textSet(state: EditState, text: string): EditState {
+  if (textBlocker(state) !== undefined) return state;
+  const current = rawTextOf(state) ?? state.saved.text;
+  if (text === current) return state;
+  const phase = state.save.phase;
+  const settled =
+    phase === 'saved' || phase === 'reloaded' || phase === 'failed';
+  return {
+    ...state,
+    raw: text,
+    revision: state.revision + 1,
+    save: settled ? { phase: 'idle' } : state.save,
+  };
+}
+
 function checked(
   state: EditState,
   revision: number,
@@ -93,11 +123,36 @@ function checked(
     : state;
 }
 
+// A raw edit sent the whole file, so the ids of the draft describe the text
+// before it. What the server parsed of what was written is the new truth, so
+// the state opens again from it rather than keeping stages that no longer
+// point anywhere. A save of a form edit never reaches this.
+function openedAfterRaw(
+  state: EditState,
+  text: string,
+  result: SaveResult,
+): EditState {
+  const next = openDocument(
+    {
+      ...state.saved,
+      text,
+      hash: result.hash,
+      view: result.view,
+      diagnostics: result.diagnostics,
+    },
+    state.revision,
+  );
+  return next
+    ? { ...next, save: { phase: 'saved' } }
+    : { ...state, save: { phase: 'conflict', problem: NOT_EDITABLE } };
+}
+
 function savedAs(
   state: EditState,
   text: string,
   result: SaveResult,
 ): EditState {
+  if (state.raw !== undefined) return openedAfterRaw(state, text, result);
   // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
@@ -202,6 +257,8 @@ function step(
       return agentSet(state, event.id, event.agent);
     case 'set-prompt':
       return promptSet(state, event.id, event.prompt);
+    case 'set-text':
+      return textSet(state, event.text);
     case 'remove':
       return removed(state, event.id);
     case 'checked':

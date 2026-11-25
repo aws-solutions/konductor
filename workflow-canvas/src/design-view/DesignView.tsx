@@ -32,10 +32,13 @@ import type {
 } from '../designer-view/yaml-draft';
 import {
   canAddStage,
+  changeBlocker,
   fileBlocker,
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
+  rawTextOf,
+  textBlocker,
   textOf,
   writeBlocker,
 } from '../designer/core';
@@ -46,6 +49,7 @@ import type { LoadedWorkflow } from '../workflow/load-workflow';
 import type { Scheduler } from '../execution/core/ports';
 import { buildGraph, stageNodeId } from '../graph';
 import '../execution/announcements.css';
+import './design-view.css';
 import { FINDINGS_PER_PAGE, findingsPage, nextShown } from './findings';
 import {
   SAVABLE_KEYS,
@@ -60,9 +64,6 @@ import { useStageSources } from './use-stage-sources';
 export type StageFieldsByKind = Readonly<
   Record<string, readonly StageFieldRule[]>
 >;
-
-const RAW_EDIT_NOTE =
-  'The text under YAML is checked as the stages change, and it cannot be typed into here yet. Change a stage under Properties and press Save.';
 
 const EARLIER_TEXT_NOTE =
   'YAML shows an earlier text. The drawing and Properties show the workflow as it is now, and a save writes that; press Redo to come back.';
@@ -164,12 +165,15 @@ function shortcutKeyOf(event: KeyboardEvent): ShortcutKey {
  * that is picked. Each leaf stage of the drawing ends in a stop mark.
  *
  * The stages are edited through the editor that the page already holds, and
- * a save writes its text. The text itself cannot be typed into yet, because
- * the editor has no way to take a whole text, so the YAML tab checks the
- * text and shows what is wrong with it. Undo and redo step through the texts
- * of this session and show them; the workflow changes only through the keys
- * of a stage. Those texts belong to the load in `loaded`: another load is
- * another workflow, and the history starts over for it.
+ * a save writes its text. The text under YAML can also be typed over, which
+ * goes to the editor as one raw edit: a save then writes that text as it
+ * stands, on the same base hash and with the same conflict rules, and the
+ * keys of a stage are read-only until it is saved or the file is loaded
+ * again, because the stages on the page describe the file and not the text
+ * typed over it. Undo and redo step through the texts of this session and
+ * show them, and typing after one adopts the text it shows. Those texts
+ * belong to the load in `loaded`: another load is another workflow, and the
+ * history starts over for it.
  */
 export function DesignView({
   editor,
@@ -309,6 +313,9 @@ export function DesignView({
   // loaded: that is what the file holds. The stage is taken from the place it
   // was loaded from, which a rename or another stage being added or deleted
   // does not move.
+  // The keys of a stage describe the file. While the text has been typed
+  // over they cannot be changed, and this says why.
+  const frozen = changeBlocker(state);
   const fileView = opened.answer?.view ?? null;
   const viewStage = picked
     ? sourceStageOf(fileView, sources.of(picked.id))
@@ -330,13 +337,21 @@ export function DesignView({
     // agents does not have it; `values` holds the one chosen since.
     originalAgent:
       typeof viewStage?.agent === 'string' ? viewStage.agent : picked.agent,
-    readOnlyKeys,
+    // While the text has been typed over, no key of a stage can be changed:
+    // the stage shown is the one the file had, not the one the text holds.
+    readOnlyKeys:
+      frozen === undefined ? readOnlyKeys : rules.map((rule) => rule.key),
   };
   // A file the writer cannot edit in place at all is refused before any
   // change is made; a draft it cannot write is refused as it stands. Both
   // reasons come from the writer itself, through the editor's own state, so
   // the view never carries a second model of what a save would keep.
-  const refusal = fileBlocker(state) ?? writeBlocker(state);
+  // A raw edit writes the whole file, so the writer and its refusals are not
+  // used for it.
+  const refusal =
+    rawTextOf(state) === undefined
+      ? (fileBlocker(state) ?? writeBlocker(state))
+      : undefined;
 
   const onKeyDown = (event: KeyboardEvent) => {
     const asked = undoShortcut(shortcutKeyOf(event));
@@ -364,9 +379,11 @@ export function DesignView({
         Design
       </h2>
       <SpaceBetween size="m">
-        <Alert type="info" data-testid="raw-edit-note">
-          {RAW_EDIT_NOTE}
-        </Alert>
+        {frozen !== undefined && (
+          <Alert type="info" data-testid="stage-keys-frozen">
+            {frozen}
+          </Alert>
+        )}
         {showingEarlier && (
           <Alert type="warning" data-testid="earlier-text-note">
             {EARLIER_TEXT_NOTE}
@@ -404,6 +421,16 @@ export function DesignView({
             file: state.saved.name,
             text: history.text,
             ...(marked ? { stage: marked } : {}),
+            // Typing writes the text into the editor and into the history in
+            // one event, so a single render carries both and the caret stays
+            // where it was.
+            onChange: (next: string) => {
+              editor.setText(next);
+              record(next);
+            },
+            ...(textBlocker(state) === undefined
+              ? {}
+              : { blocked: textBlocker(state) }),
           }}
           stage={stage}
           agents={agents}
@@ -427,7 +454,7 @@ export function DesignView({
             />
             <Button
               iconName="add-plus"
-              disabled={!canAddStage(state.draft)}
+              disabled={frozen !== undefined || !canAddStage(state.draft)}
               disabledReason={`A workflow has at most ${MAX_STAGES} stages.`}
               onClick={() => editor.add()}
             >

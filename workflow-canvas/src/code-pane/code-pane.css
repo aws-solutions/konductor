@@ -98,3 +98,34 @@
 .wf-code-text:empty::before {
   content: ' ';
 }
+
+/* The box a whole text is typed into. The textarea fills it, so the border
+   and the background come from the box and the caret colour from the text. */
+.wf-code-area-box {
+  overflow: hidden;
+}
+
+.wf-code-area {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 320px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--wf-code-text);
+  caret-color: var(--wf-code-focus);
+  font: 12px/1.6 var(--wf-font-code);
+  white-space: pre;
+}
+
+.wf-code-area:focus-visible {
+  outline: 2px solid var(--wf-code-focus);
+  outline-offset: -2px;
+}
+
+.wf-code-area:disabled {
+  color: var(--wf-code-text-muted);
+}

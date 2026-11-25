@@ -41,12 +41,11 @@ test('draws the stages of the workflow, the last one with a stop mark', async ({
   await expect(next.graph.getByTestId('node-end')).toHaveCount(0);
 });
 
-test('says that the text of the workflow cannot be typed into yet', async ({
-  next,
-}) => {
-  await expect(next.page.getByTestId('raw-edit-note')).toContainText(
-    'cannot be typed into here yet',
-  );
+test('offers the text of the workflow to type over', async ({ next }) => {
+  const box = next.page.getByTestId('yaml-text');
+
+  await expect(box).toBeEditable();
+  await expect(box).toHaveValue(/name: hello/);
 });
 
 test('shows the text of the workflow under YAML', async ({ next }) => {
@@ -312,7 +311,7 @@ test('draws the views it replaced through ?ui=classic', async ({ page }) => {
   await canvas.open(STUB_LAUNCH_CODE);
 
   await expect(canvas.node('node-end')).toBeVisible();
-  await expect(page.getByTestId('raw-edit-note')).toHaveCount(0);
+  await expect(page.getByTestId('yaml-text')).toHaveCount(0);
 });
 
 test('has no accessibility violations on either view', async ({ next }) => {

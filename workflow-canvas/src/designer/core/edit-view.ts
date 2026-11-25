@@ -16,14 +16,37 @@ export function canEdit(state: EditState): boolean {
 /** The words that say why the stages cannot be changed while a file loads. */
 export const RELOADING_REASON = 'The workflow is being loaded again.';
 
+/** The words that say why the stages cannot be changed over a raw edit. */
+export const RAW_EDIT_REASON =
+  'The text of the workflow has been typed over, so the keys of a stage cannot be changed here. Save the text, or load the file again, first.';
+
+/**
+ * The text of a raw edit while it differs from the file, or `undefined` when
+ * there is none. It self-clears: a save makes that text the file's, so what
+ * was typed over and what is saved are the same text and nothing is pending.
+ */
+export function rawTextOf(state: EditState): string | undefined {
+  const { raw } = state;
+  return raw !== undefined && raw !== state.saved.text ? raw : undefined;
+}
+
 /** Why the stages cannot be changed now, or `undefined` when they can. */
 export function changeBlocker(state: EditState): string | undefined {
+  if (!canEdit(state)) return READ_ONLY_REASON;
+  if (state.save.phase === 'reloading') return RELOADING_REASON;
+  // The stages of the draft describe the file, not the text typed over it.
+  return rawTextOf(state) === undefined ? undefined : RAW_EDIT_REASON;
+}
+
+/** Why the text cannot be typed over now, or `undefined` when it can. */
+export function textBlocker(state: EditState): string | undefined {
   if (!canEdit(state)) return READ_ONLY_REASON;
   return state.save.phase === 'reloading' ? RELOADING_REASON : undefined;
 }
 
 /** Whether the draft differs from the saved workflow. */
 export function isDirty(state: EditState): boolean {
+  if (rawTextOf(state) !== undefined) return true;
   if (!sameStages(stagesOf(state.draft), state.saved.view.stages)) return true;
   // A file whose prompts cannot be read has none that the draft could change.
   const spots = savedPrompts(state.saved);
@@ -70,14 +93,23 @@ export function writtenOf(state: EditState): Written {
   return result;
 }
 
-/** The text that a save would write, or `undefined` when it cannot be written. */
+/**
+ * The text that a save would write, or `undefined` when it cannot be
+ * written. A raw edit is that text already, so the writer is not used for it.
+ */
 export function textOf(state: EditState): string | undefined {
+  const raw = rawTextOf(state);
+  if (raw !== undefined) return raw;
   const written = writtenOf(state);
   return written.ok ? written.text : undefined;
 }
 
-/** Why the draft cannot be written in place, or `undefined` when it can. */
+/**
+ * Why the draft cannot be written in place, or `undefined` when it can. A
+ * raw edit writes the whole file, so nothing has to be written in place.
+ */
 export function writeBlocker(state: EditState): string | undefined {
+  if (rawTextOf(state) !== undefined) return undefined;
   const written = writtenOf(state);
   return written.ok ? undefined : written.reason;
 }
