@@ -173,9 +173,9 @@ def test_agents_md_context_loading_uses_the_checked_read():
     assert "Without a shell, load only the paths your brief's `MEMORY:` line reports, as Reading Memory says." in loading, loading
 
 
-def test_unreleased_changelog_does_not_tie_memory_trust_to_untracked():
+def test_release_changelog_does_not_tie_memory_trust_to_untracked():
     text = (REPO_ROOT / "CHANGELOG.md").read_text()
-    unreleased = _section(text, "## [Unreleased]")
+    unreleased = _section(text, "## [2.0.0] - 2026-11-25")
     for line in unreleased.splitlines():
         assert not ("untracked" in line and ".konductor" in line), line
     assert not re.search(r"untracked\s+`?\.konductor", unreleased)

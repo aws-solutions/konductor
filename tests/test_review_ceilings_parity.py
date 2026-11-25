@@ -63,9 +63,9 @@ def _item_6(name):
     return matches[0]
 
 
-def _unreleased_section():
+def _release_section():
     text = (ROOT / "CHANGELOG.md").read_text()
-    start = text.index("## [Unreleased]")
+    start = text.index("## [2.0.0]")
     end = text.find("\n## [", start + 1)
     return text[start:] if end == -1 else text[start:end]
 
@@ -90,7 +90,7 @@ def test_mirrors_carry_the_four_pinned_clauses():
             assert wording in text, (rel, wording)
         assert NOT_IN_FIX_BRIEF_WORDING in text, rel
         assert FIX_CAUSED_QUALIFIER_WORDING in text, rel
-    unreleased = _unreleased_section()
+    unreleased = _release_section()
     for wording in (STOP_WORDING, PREEXISTING_WORDING, PREDATES_WORDING, OWN_OUTPUT_WORDING, OPEN_WORDING):
         assert wording in unreleased, wording
     assert NOT_IN_FIX_BRIEF_WORDING in unreleased
