@@ -1,0 +1,22 @@
+# Bench backlog
+
+Planned work for the bench: things to build or do. Known problems live in [DEBT.md](DEBT.md), not here.
+
+Rules:
+
+1. An item is a planned piece of work, not a defect. A defect goes in `DEBT.md` as a row.
+2. Every item has an id (`B-001` onward, never reused), a title, an owner, a next action, a due date and a status.
+3. Status is `todo`, `doing` or `done`. Close an item with the proof that it is done; never delete it.
+4. If the item relates to a debt row, name the row in the `debt row` column. Use `none` when there is no row, and say why in the title or next action.
+5. Fix a related debt row in the same change when you can.
+
+| ID | title | owner | next action | due date | status | debt row |
+| --- | --- | --- | --- | --- | --- | --- |
+| B-001 | Fix the six wrong doc steps (five defects) from the docs fact check | mate | Fix each doc as the report's table says, then rerun the doc steps and `node bench/scripts/check-doc-links.js` | 2026-12-08 | todo | [D-262](DEBT.md), [D-263](DEBT.md), [D-264](DEBT.md), [D-265](DEBT.md), [D-266](DEBT.md) (report: `reports/docs-fact-check-2026-11-24.md`) |
+| B-002 | Settle the two unsupported doc claims (the "under 1 credit" draft cost, the "NOT COUNTED" run history) | mate | Write the measured number with a date at the next approved paid `cap scenarios` draft, or cut the figure; date or link the run-history sentence | 2026-12-01 | todo | [D-267](DEBT.md), [D-268](DEBT.md) |
+| B-003 | Make plants plugins: a third plant should not edit five core files in two languages | mate | Write a short design: what a plant plugin declares (sim, scorer, intake, schema, trace strip), then split the first piece | 2026-12-15 | todo | [D-111](DEBT.md), [D-207](DEBT.md) |
+| B-004 | Make check types, unit kinds and reports plugin-driven, so none needs a core edit | mate | Start with unit kinds (one table in place of five), then report sections | 2026-12-15 | todo | [D-209](DEBT.md), [D-205](DEBT.md) (check types: no row yet, `reports/architecture-rerate-2026-11-24.md` problem 1) |
+| B-005 | Shrink `bench/ops/` (102 scripts, 9441 lines of bash): move shared logic into code and set strict mode in the four `kit/2x2` scripts | mate | List the scripts by purpose; fold the copied helpers into `bench/scripts/` or node, behind tests | 2026-12-15 | todo | [D-216](DEBT.md), [D-215](DEBT.md), [D-242](DEBT.md) |
+| B-006 | Run the full test suite on the current head (the last clean full runs are 64 commits back) | mate | Run `bench/scripts/test.sh` twice with `TMPDIR=/tmp` once the STANDARD run has left the host; record failures, flaky tests and leaked dirs | 2026-11-30 | todo | none: a check to run, not a known defect; a failure becomes a debt row |
+| B-007 | Public GitHub Pages docs site (later) | owner | Owner decides whether to publish; if yes, mate writes a plan first (what is public, build, link check, who maintains) | 2026-12-22 | todo | none: new work, no defect behind it |
+| B-008 | Scenario-authoring skill (optional) | owner | Owner decides the scaffold question (`scenarios new <id>` first, or "copy a neighbour") in `reports/scenario-skill-plan-2026-11-24.md`, section 6 | 2026-12-22 | todo | none: new work, no defect behind it |

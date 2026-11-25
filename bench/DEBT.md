@@ -1,5 +1,7 @@
 # Bench debt
 
+Planned work (things to build or do, not defects) is in [BACKLOG.md](BACKLOG.md).
+
 Known debt in the bench code. Every item has an owner, a next action and a due date. Fix an item in the same stretch of work that touches it, or add a row here. Never leave it silent.
 
 Last review: 2026-11-20 (debt triage: 25 rows closed, of them 8 merged into the row with the same cause; report kept outside the repo). Last code review: two architecture reviews and a debt review (2026-11-23, kept outside the repo; their tasks are rows D-196 to D-233, plan in the workspace `reports/framework-improvement-plan-2026-11-23.md`), after the bench review and refactor pass (2026-11-18) and plant code review 1 (2026-11-15). Next code review due by 2026-12-07. Owner decisions: one page sorts every row not closed by what blocks it (free work, owner decision, paid run, host, another session) and gives each of the 22 owner-decision rows a recommended answer with its reason and cost (2026-11-24, kept outside the repo as reports/debt-owner-decisions-2026-11-24.md; it replaces reports/owner-decisions-2026-11-21.md). The owner answered it the same day: yes to all recommended (D-183 kept v03 instead).
