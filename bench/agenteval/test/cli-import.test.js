@@ -155,6 +155,20 @@ test('--help prints usage on stdout and exits 0', () => {
   assert.match(cli(['import-strands', '--help']).stdout, /--tools-from-text FILE/);
 });
 
+test('the top usage is built from the command table, and each command has run and its own usage (B-012)', () => {
+  const { COMMANDS, TOP_USAGE } = require('../agenteval.js');
+  assert.deepEqual(Object.keys(COMMANDS).sort(), ['generate-strands', 'import-strands']);
+  for (const [name, { summary, load }] of Object.entries(COMMANDS)) {
+    assert.ok(TOP_USAGE.includes(`  ${name.padEnd(16)}  ${summary}`), `top usage has no line for ${name}`);
+    const command = load();
+    assert.equal(typeof command.run, 'function', name);
+    assert.match(command.USAGE, new RegExp(`^usage: agenteval\\.js ${name} `), name);
+  }
+  const r = cli(['constructor']);
+  assert.equal(r.code, 2, 'an inherited object key is an unknown command, not a crash');
+  assert.match(r.stderr, /unknown command constructor/);
+});
+
 test('missing or unreadable inputs exit 1 with a message and write nothing', () => {
   const { dir, out } = setup();
   const tools = path.join(dir, 'tools.json');
