@@ -10,6 +10,7 @@ import {
   changeBlocker,
   isDirty,
   RAW_EDIT_REASON,
+  RAW_SAVE_REASON,
   rawTextOf,
   textOf,
   writeBlocker,
@@ -335,5 +336,128 @@ describe('typing the loaded text over a form edit', () => {
     const written = textOf(renamed) ?? '';
 
     expect(reduce(renamed, { type: 'set-text', text: written })).toBe(renamed);
+  });
+});
+
+describe('a raw edit taken back', () => {
+  it('leaves nothing behind, so the next form edit is what a save writes', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const cancelled = after(
+      start,
+      { type: 'set-text', text: TYPED },
+      { type: 'set-text', text: HELLO_TEXT },
+    );
+
+    expect(cancelled.raw).toBeUndefined();
+    expect(Object.hasOwn(cancelled, 'raw')).toBe(false);
+    expect(isDirty(cancelled)).toBe(false);
+    expect(changeBlocker(cancelled)).toBeUndefined();
+
+    const renamed = after(cancelled, {
+      type: 'rename',
+      id,
+      name: 'drafting',
+    });
+
+    expect(textOf(renamed)).toContain('name: drafting');
+    expect(textOf(renamed)).not.toBe(TYPED);
+    expect(rawTextOf(renamed)).toBeUndefined();
+  });
+
+  it('sends the form edit, not the text that was typed and taken back', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const state = after(
+      start,
+      { type: 'set-text', text: TYPED },
+      { type: 'set-text', text: HELLO_TEXT },
+      { type: 'rename', id, name: 'drafting' },
+      { type: 'save' },
+    );
+
+    expect(state.submitted?.kind).toBe('form');
+    expect(state.submitted?.text).toContain('name: drafting');
+    expect(state.submitted?.text).not.toBe(TYPED);
+  });
+
+  it('comes back to the form draft without a save in between', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const renamed = after(start, { type: 'rename', id, name: 'drafting' });
+    const formText = textOf(renamed) ?? '';
+    const over = after(renamed, { type: 'set-text', text: TYPED });
+    expect(changeBlocker(over)).toBe(RAW_EDIT_REASON);
+
+    const back = after(over, { type: 'set-text', text: formText });
+
+    expect(back.raw).toBeUndefined();
+    expect(changeBlocker(back)).toBeUndefined();
+    expect(textOf(back)).toBe(formText);
+    // The form edit is still there to save.
+    expect(back.draft.stages[0]?.name).toBe('drafting');
+    expect(isDirty(back)).toBe(true);
+  });
+
+  it('bumps the revision, so the check runs for the text that is back', () => {
+    const start = opened();
+    const over = after(start, { type: 'set-text', text: TYPED });
+    const back = after(over, { type: 'set-text', text: HELLO_TEXT });
+
+    expect(back.revision).toBe(over.revision + 1);
+  });
+});
+
+describe('a raw save that is still running', () => {
+  const sending = () =>
+    after(opened(), { type: 'set-text', text: TYPED }, { type: 'save' });
+
+  it('keeps the keys of a stage shut until its answer arrives', () => {
+    const state = sending();
+    const id = state.draft.stages[0]?.id ?? '';
+
+    expect(changeBlocker(state)).toBe(RAW_SAVE_REASON);
+    expect(reduce(state, { type: 'rename', id, name: 'drafting' })).toBe(state);
+    expect(reduce(state, { type: 'add' })).toBe(state);
+  });
+
+  it('keeps them shut after the text is typed back to the file', () => {
+    const state = after(sending(), { type: 'set-text', text: HELLO_TEXT });
+    const id = state.draft.stages[0]?.id ?? '';
+
+    expect(state.raw).toBeUndefined();
+    expect(changeBlocker(state)).toBe(RAW_SAVE_REASON);
+    expect(reduce(state, { type: 'rename', id, name: 'drafting' })).toBe(state);
+  });
+
+  it('writes the text it was sent, with no stale bytes left over', () => {
+    const typedBack = after(sending(), { type: 'set-text', text: HELLO_TEXT });
+    const state = after(typedBack, savedOf(TYPED));
+
+    expect(state.saved.text).toBe(TYPED);
+    expect(state.raw).toBeUndefined();
+    expect(isDirty(state)).toBe(false);
+    expect(changeBlocker(state)).toBeUndefined();
+  });
+
+  it('opens the keys of a stage again once the answer has come', () => {
+    const state = after(sending(), savedOf(TYPED));
+    const id = state.draft.stages[0]?.id ?? '';
+    const renamed = after(state, { type: 'rename', id, name: 'drafting' });
+
+    expect(renamed.draft.stages[0]?.name).toBe('drafting');
+    expect(textOf(renamed)).toContain('name: drafting');
+  });
+
+  it('drops a text that the save made the same as the form draft', () => {
+    const sendingForm = after(
+      opened(),
+      { type: 'set-text', text: TYPED },
+      { type: 'save' },
+    );
+    const state = after(sendingForm, savedOf(TYPED));
+
+    // The file now holds TYPED, so the draft would write it: nothing is left.
+    expect(Object.hasOwn(state, 'raw')).toBe(false);
   });
 });

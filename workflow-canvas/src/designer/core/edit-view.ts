@@ -20,23 +20,32 @@ export const RELOADING_REASON = 'The workflow is being loaded again.';
 export const RAW_EDIT_REASON =
   'The text of the workflow has been typed over, so the keys of a stage cannot be changed here. Save the text, or load the file again, first.';
 
+/** The words that say why the stages cannot be changed while a text is sent. */
+export const RAW_SAVE_REASON =
+  'A text typed over the workflow is being saved. Wait for it to finish before changing the keys of a stage.';
+
 /**
  * The text of a raw edit while one is pending, or `undefined` when there is
- * none. A text equal to the file is still the one a save writes while the
- * form draft has moved away from it: typing the file back over a form edit
- * is how the author drops that edit, so it stays the chosen text. With a
- * clean form draft the same text is the file itself, so nothing is pending.
+ * none. It is pending while the state holds it: the reducer drops it as soon
+ * as it says nothing the form draft would not write anyway, so a text kept
+ * here is always the one a save writes.
  */
 export function rawTextOf(state: EditState): string | undefined {
-  const { raw } = state;
-  if (raw === undefined) return undefined;
-  return raw !== state.saved.text || formDirty(state) ? raw : undefined;
+  return state.raw;
+}
+
+/** Whether the save that is going on was sent a raw text. */
+export function savingRawText(state: EditState): boolean {
+  return state.save.phase === 'saving' && state.submitted?.kind === 'raw';
 }
 
 /** Why the stages cannot be changed now, or `undefined` when they can. */
 export function changeBlocker(state: EditState): string | undefined {
   if (!canEdit(state)) return READ_ONLY_REASON;
   if (state.save.phase === 'reloading') return RELOADING_REASON;
+  // A raw save reopens the draft from what the server parsed, so a change
+  // made to the stages while it runs would be thrown away by its answer.
+  if (savingRawText(state)) return RAW_SAVE_REASON;
   // The stages of the draft describe the file, not the text typed over it.
   return rawTextOf(state) === undefined ? undefined : RAW_EDIT_REASON;
 }
@@ -107,6 +116,15 @@ export function writtenOf(state: EditState): Written {
 export function textOf(state: EditState): string | undefined {
   const raw = rawTextOf(state);
   if (raw !== undefined) return raw;
+  return formTextOf(state);
+}
+
+/**
+ * The text the form draft alone would write, with no raw edit in the way, or
+ * `undefined` when the writer cannot write it in place. Typing this into the
+ * YAML box is how an author takes a raw edit back.
+ */
+export function formTextOf(state: EditState): string | undefined {
   const written = writtenOf(state);
   return written.ok ? written.text : undefined;
 }

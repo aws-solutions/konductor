@@ -27,6 +27,7 @@ import {
 import {
   canSave,
   changeBlocker,
+  formTextOf,
   isDirty,
   rawTextOf,
   textBlocker,
@@ -101,21 +102,49 @@ function selected(state: EditState, id: string): EditState {
  *
  * The text is compared with the one a save would write now, not with the
  * file: with a form edit pending, typing the file back is a change, and it
- * is how the author drops that edit.
+ * is how the author drops that edit. Typing the text the form draft would
+ * write takes the raw edit back instead, and it is dropped from the state
+ * rather than hidden, so it cannot come back when the form changes again.
  */
 function textSet(state: EditState, text: string): EditState {
   if (textBlocker(state) !== undefined) return state;
-  const current = textOf(state) ?? state.saved.text;
-  if (text === current) return state;
-  const phase = state.save.phase;
-  const settled =
-    phase === 'saved' || phase === 'reloaded' || phase === 'failed';
+  if (text === (textOf(state) ?? state.saved.text)) return state;
+  const settled = settledSave(state);
+  if (text === formTextOf(state)) {
+    return {
+      ...withoutRaw(state),
+      revision: state.revision + 1,
+      ...(settled ? { save: { phase: 'idle' } as SaveState } : {}),
+    };
+  }
   return {
     ...state,
     raw: text,
     revision: state.revision + 1,
-    save: settled ? { phase: 'idle' } : state.save,
+    ...(settled ? { save: { phase: 'idle' } as SaveState } : {}),
   };
+}
+
+// A finished save is old news once the draft changes again.
+function settledSave(state: EditState): boolean {
+  const { phase } = state.save;
+  return phase === 'saved' || phase === 'reloaded' || phase === 'failed';
+}
+
+// Drops the raw text, so nothing is left to become the payload again.
+function withoutRaw(state: EditState): EditState {
+  const next = { ...state };
+  delete next.raw;
+  return next;
+}
+
+// A raw text that no longer differs from what the form draft would write has
+// nothing left to say, so it goes rather than waiting to reappear.
+function withoutStaleRaw(state: EditState): EditState {
+  const raw = state.raw;
+  return raw !== undefined && raw === formTextOf(state)
+    ? withoutRaw(state)
+    : state;
 }
 
 function checked(
@@ -311,7 +340,9 @@ function step(
           }
         : state;
     case 'saved':
-      return whileSaving(state, () => savedAs(state, event.text, event.result));
+      return whileSaving(state, () =>
+        withoutStaleRaw(savedAs(state, event.text, event.result)),
+      );
     case 'conflict':
       return whileSaving(state, () => ({
         ...state,

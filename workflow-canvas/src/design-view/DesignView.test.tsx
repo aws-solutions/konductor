@@ -1592,3 +1592,99 @@ describe('DesignView, saving while the text is typed over', () => {
     expect(nameInput().value).toBe('draft');
   });
 });
+
+describe('DesignView, a raw edit taken back', () => {
+  const TYPED = `${HELLO_TEXT}# typed over\n`;
+
+  const yamlBox = () => screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  it('opens the keys of a stage again, and saves the next form edit', async () => {
+    const { edits } = drawn();
+    await settle();
+
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    expect(screen.getByTestId('stage-keys-frozen')).toBeTruthy();
+
+    await typeInto(yamlBox(), HELLO_TEXT);
+    await settle();
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+
+    await openProperties();
+    expect(nameInput().readOnly).toBe(false);
+    await typeInto(nameInput(), 'drafting');
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(
+      expect.stringContaining('name: drafting'),
+      HELLO_DOCUMENT.hash,
+    );
+    const [written] = edits.save.mock.calls[0] ?? [];
+    expect(written).not.toBe(TYPED);
+  });
+
+  it('keeps the keys of a stage shut while a raw save runs, even typed back', async () => {
+    const { edits } = drawn();
+    let finish = (): void => {};
+    edits.save.mockImplementation(
+      (text: string) =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({
+              hash: SAVED_HASH,
+              view: viewOfText(text),
+              diagnostics: [],
+            });
+        }),
+    );
+    await settle();
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    await press('Save');
+
+    await typeInto(yamlBox(), HELLO_TEXT);
+    await settle();
+    expect(screen.getByTestId('stage-keys-frozen').textContent).toContain(
+      'is being saved',
+    );
+    await openProperties();
+    expect(nameInput().readOnly).toBe(true);
+
+    await act(async () => {
+      finish();
+    });
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(TYPED, HELLO_DOCUMENT.hash);
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+    expect(nameInput().readOnly).toBe(false);
+  });
+
+  it('comes back to the text of a form edit without a save in between', async () => {
+    drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    const formText = yamlBox().value;
+
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    expect(screen.getByTestId('stage-keys-frozen')).toBeTruthy();
+
+    await typeInto(yamlBox(), formText);
+    await settle();
+
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+    await openProperties();
+    expect(nameInput().value).toBe('drafting');
+    expect(nameInput().readOnly).toBe(false);
+  });
+});
