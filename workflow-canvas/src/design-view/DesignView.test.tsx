@@ -625,7 +625,32 @@ describe('DesignView, the Properties tab', () => {
     const said = screen.getByTestId('reading-keys-failed').textContent ?? '';
 
     expect(said).toContain('The server said no.');
-    expect(said).toContain('Only the name and the agent of a stage are shown');
+    expect(said).toContain(
+      'The name, the agent and any prompt the editor can read are still there to change',
+    );
+  });
+
+  // The warning names the prompt because the editor finds it in the file
+  // itself, so a failed check does not take it off the page.
+  it('still takes a prompt after the first check failed', async () => {
+    const { edits } = drawn({
+      document: WITH_PROMPT,
+      openedFails: 'The server said no.',
+    });
+    await settle();
+    await openProperties();
+
+    expect(promptInput().readOnly).toBe(false);
+    await typeInto(promptInput(), 'Write it twice.');
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(
+      expect.stringContaining('prompt: Write it twice.'),
+      WITH_PROMPT.hash,
+    );
   });
 
   // The writer reads the file's own bytes, not the check, so a check that
