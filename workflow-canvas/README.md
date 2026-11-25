@@ -652,7 +652,10 @@ run.
   elapsed time. A screen reader hears each change from a polite live region
   that `App` keeps outside the views, so it is announced while the Design view
   is open too; the line itself is not a live region, or the change would be
-  heard twice.
+  heard twice. For a halted run it ends with the sentence of the blocked
+  stage's reason, or the code when the page does not know it.
+- While Design has changes that are not saved, a note at the top of the Run
+  view says that a run uses the saved workflow, so the draft is not what runs.
 - Each stage of the run is a button in the Tab order. Picking one shows its
   detail next in the Tab order: where it is, why it stopped the run when it is
   blocked, and its console lines. The lines are live only, as the server drops
