@@ -4,19 +4,18 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page has Design and Run views, picked with a switch in the page
-header. The Design view loads the workflow from the API and draws it: the
-intent and each stage in list order (name, agent and harness), joined by
-run-order edges, with a stop mark on each stage that no other stage follows,
-where the run ends. Beside the drawing it shows the text of the file under
-**YAML** and the keys of the picked stage under **Properties**. You can pick
-the agent of a stage, rename it, add a stage, delete one and save the file. A
-save changes only the values it edits and keeps every other key of the file.
-It shows a loading message, an error message or an empty message when there
-is nothing to draw. The Run view starts a run and follows it: a **Goal** box
-and a **Run** button, then how far the run has got, its stages with the
-console of the one picked, and the past runs of the workflow. A blocked stage
-shows its reason.
+The page has Design and Run views, picked with a switch in the page header. The
+Design view loads the workflow from the API and draws it: the intent and each
+stage in list order (name, agent and harness), joined by run-order edges, with a
+stop mark on each stage that no other stage follows, where the run ends. Beside
+the drawing it shows the text of the file under **YAML** and the keys of the
+picked stage under **Properties**. You can pick the agent of a stage, rename it,
+add a stage, step back with Undo and Redo, and save the file. A save changes
+only the values it edits and keeps every other key of the file. It shows a
+loading message, an error message or an empty message when there is nothing to
+draw. The Run view starts a run and follows it: a **Goal** box and a **Run**
+button, then how far the run has got, its stages with the console of the one
+picked, and the past runs of the workflow. A blocked stage shows its reason.
 
 These two views are what the page opens with. The views they replaced are
 still there behind `?ui=classic` while they are being finished (see **Which
@@ -436,15 +435,16 @@ are finished, and it goes with the views it opens.
 
 ## The Design view
 
-The view has the graph in the middle, with **Add stage** above it and the save
-line and **Save** in its header, and a side column on the right with two tabs:
-**YAML**, the text of the file, and **Properties**. Properties shows the
-picked stage (the first one when the page opens): its `name` and its `agent`
-to change, every other key the server lists for that kind of stage read-only,
-and **Delete stage**. `name` and `agent` are the two keys the editor writes; a
-key shown read-only, such as `prompt` or `prompt_file`, is kept byte for byte
-by a save but cannot be changed on the page yet. The stages run in the order
-they are listed, and there is no way to link or reorder them yet.
+The view has the graph in the middle, with **Add agent-N** (named for the stage
+it adds), **Undo** and **Redo** above it and the save line and **Save** in its
+header, and a side column on the right with two tabs: **YAML**, the text of the
+file, and **Properties**. Properties shows the picked stage (the first one when
+the page opens): its `name` and its `agent` to change and every other key the
+server lists for that kind of stage read-only. There is no Delete stage here
+yet. `name` and `agent` are the two keys the editor writes; a key shown
+read-only, such as `prompt` or `prompt_file`, is kept byte for byte by a save
+but cannot be changed on the page yet. The stages run in the order they are
+listed, and there is no way to link or reorder them yet.
 
 The **YAML** tab shows the file read-only, with line numbers, the lines of the
 picked stage marked and a note that says which they are; a long file shows a
@@ -454,23 +454,26 @@ change a stage under Properties and press **Save**. While an earlier text is
 shown, after an Undo, a note says that the drawing and Properties hold the
 workflow as it is now and that a save writes that.
 
-The Designer behind `?ui=classic` has the same graph and Properties, with no
-YAML tab. It edits the same two keys and a stage's `prompt`, and shows a
-`prompt_file` as a read-only path that a save keeps.
+The Designer behind `?ui=classic` draws the same graph with an end node in place
+of the stop marks, and has Properties with no YAML tab, **Add stage**, the agent
+list built into the page and **Delete stage**. It edits the same two keys and a
+stage's `prompt`, and shows a `prompt_file` as a read-only path that a save
+keeps.
 
-- **Add stage** adds a stage at the end, named `agent-1` (the first free
-  `agent-N`) with the agent `k-developer`, selects it and moves focus to its
-  name. It is off at 40 stages, the most the API allows.
+- **Add agent-N** (**Add stage** in the classic Designer) adds a stage at the
+  end, named `agent-1` (the first free `agent-N`) with the agent
+  `k-developer`, selects it and moves focus to its name. It is off at 40
+  stages, the most the API allows.
 - Typing in **name** renames the stage, and the node changes at once. The name
   is taken as typed; the API is what says whether it is a good name. The
   **Complete** or **Needs a fix** mark of a stage shows only for a draft that a
   check has answered for, so it never says a draft is complete before it was
   checked.
 - **agent** is a list of the agents that Konductor ships, each with a line on
-  what it is for. The API does not look an agent up in this version, so the
-  list is part of the page (`designer/core/agents.ts`); a file that names an
-  agent not on the list keeps it, shown first, and keeps it on offer when
-  another agent is chosen. There is no field to type any other id yet.
+  what it is for. The Design view takes it from `GET /api/agents`; the classic
+  Designer has it built into the page (`designer/core/agents.ts`). A file that
+  names an agent not on the list keeps it, shown first, and keeps it on offer
+  when another agent is chosen. There is no field to type any other id yet.
 - **prompt**, in the Designer behind `?ui=classic` only, is a text area with
   the count of its characters against 32768, the limit that the contract and
   the specification table give (`MAX_PROMPT_CHARS`,
@@ -483,9 +486,10 @@ YAML tab. It edits the same two keys and a stage's `prompt`, and shows a
   the page picks neither. The text area is also off, with the reason, for a
   prompt that is an alias or has an anchor or a tag, for a stage with two
   `prompt` keys, and for a file that uses a `<<` merge key.
-- **Delete stage** removes the stage, selects the one before it (or the next,
-  for the first) and moves focus to its name. A workflow keeps at least one
-  stage, so it is off for the last.
+- **Delete stage**, in the Designer behind `?ui=classic` only, removes the
+  stage, selects the one before it (or the next, for the first) and moves
+  focus to its name. A workflow keeps at least one stage, so it is off for the
+  last.
 - Choosing a stage by its node (click, or Enter or Space) selects it and moves
   focus to its name. Enter or Space on the stage that is already selected also
   moves focus to its name; a click on it changes nothing. Escape on a node
