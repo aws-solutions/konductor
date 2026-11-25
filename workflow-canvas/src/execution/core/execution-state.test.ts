@@ -97,6 +97,131 @@ describe('reduce', () => {
     });
   });
 
+  it('keeps the fix and the goal of a start refused for trust', () => {
+    const trust = { fix: 'Run `konductor flow trust hello`.', goal: 'Ship it' };
+
+    expect(
+      after(
+        { type: 'start' },
+        { type: 'failed', message: 'Not trusted.', trust },
+      ),
+    ).toEqual({
+      phase: 'error',
+      message: 'Not trusted.',
+      started: false,
+      trust: { ...trust, refusal: 1 },
+    });
+  });
+
+  describe('the count of trust refusals', () => {
+    const trust = { fix: 'Run `konductor flow trust hello`.', goal: 'Ship it' };
+    const refused: ExecutionEvent = {
+      type: 'failed',
+      message: 'Not trusted.',
+      trust,
+    };
+    const refusalOf = (state: ExecutionState) =>
+      state.phase === 'error' ? state.trust?.refusal : undefined;
+
+    it('goes up by one for each refusal in a row', () => {
+      const once = after({ type: 'start' }, refused);
+      const twice = reduce(reduce(once, { type: 'start' }), refused);
+      const thrice = reduce(reduce(twice, { type: 'start' }), refused);
+
+      expect([once, twice, thrice].map(refusalOf)).toEqual([1, 2, 3]);
+    });
+
+    it('is carried by the start after a refusal', () => {
+      expect(
+        reduce(after({ type: 'start' }, refused), { type: 'start' }),
+      ).toEqual({ phase: 'starting', trustRefusals: 1 });
+    });
+
+    it('starts again at one after a start that was not refused for trust', () => {
+      const other = reduce(
+        reduce(after({ type: 'start' }, refused), { type: 'start' }),
+        { type: 'failed', message: 'kiro-cli is not installed.' },
+      );
+
+      expect(other).toEqual({
+        phase: 'error',
+        message: 'kiro-cli is not installed.',
+        started: false,
+      });
+      expect(refusalOf(reduce(reduce(other, { type: 'start' }), refused))).toBe(
+        1,
+      );
+    });
+  });
+
+  describe('a close of the trust dialog', () => {
+    const trust = { fix: 'Run `konductor flow trust hello`.', goal: 'Ship it' };
+    const refused: ExecutionEvent = {
+      type: 'failed',
+      message: 'Not trusted.',
+      trust,
+    };
+    const closedOf = (state: ExecutionState) =>
+      state.phase === 'error' ? state.trust?.closed : undefined;
+    const closing = (refusal: number): ExecutionEvent => ({
+      type: 'trust-closed',
+      refusal,
+    });
+
+    it('is kept in the refusal it names', () => {
+      const closed = reduce(after({ type: 'start' }, refused), closing(1));
+
+      expect(closed).toEqual({
+        phase: 'error',
+        message: 'Not trusted.',
+        started: false,
+        trust: { ...trust, refusal: 1, closed: true },
+      });
+    });
+
+    it('leaves the next refusal open', () => {
+      const closed = reduce(after({ type: 'start' }, refused), closing(1));
+
+      const next = reduce(reduce(closed, { type: 'start' }), refused);
+
+      expect(closedOf(closed)).toBe(true);
+      expect(next).toMatchObject({ trust: { refusal: 2 } });
+      expect(closedOf(next)).toBeUndefined();
+    });
+
+    it('is dropped by a start, so a refusal that counts from one again is open', () => {
+      const closed = reduce(after({ type: 'start' }, refused), closing(1));
+      const other = reduce(reduce(closed, { type: 'start' }), {
+        type: 'failed',
+        message: 'kiro-cli is not installed.',
+      });
+
+      const again = reduce(reduce(other, { type: 'start' }), refused);
+
+      expect(reduce(closed, { type: 'start' })).toEqual({
+        phase: 'starting',
+        trustRefusals: 1,
+      });
+      expect(again).toMatchObject({ trust: { refusal: 1 } });
+      expect(closedOf(again)).toBeUndefined();
+    });
+
+    it('changes nothing for a refusal that is not the one on show', () => {
+      const refusal = after({ type: 'start' }, refused);
+
+      expect(reduce(refusal, closing(2))).toBe(refusal);
+      expect(reduce(IDLE, closing(1))).toBe(IDLE);
+      expect(reduce({ phase: 'starting' }, closing(1))).toEqual({
+        phase: 'starting',
+      });
+      const plain = after(
+        { type: 'start' },
+        { type: 'failed', message: 'No.' },
+      );
+      expect(reduce(plain, closing(1))).toBe(plain);
+    });
+  });
+
   it('takes a failure that names no run for the start in progress', () => {
     // Why the caller runs one loop at a time: a second loop's failure with no
     // run id cannot be told from the failure of the start.
