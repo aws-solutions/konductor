@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api';
+import { BAD_REPLY } from './parse';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import { parseWorkflowExtras, type StageField } from './workflow-extras';
 
@@ -285,11 +286,22 @@ describe('parseWorkflowExtras, the declared checks', () => {
     ['a check that is not a mapping', 'readme-exists'],
     ['a check with no id', { file: 'README.md' }],
     ['a check with neither file nor run', { id: 'readme-exists' }],
+    [
+      'a check with both file and run',
+      { id: 'readme-exists', file: 'README.md', run: ['make', 'test'] },
+    ],
+    ['a run that is an empty list', { id: 'tests-pass', run: [] }],
     ['a run that is not a list', { id: 'tests-pass', run: 'make test' }],
     ['a run whose entry is not a string', { id: 'tests-pass', run: [2] }],
     ['a file that is not a string', { id: 'readme-exists', file: 7 }],
   ])('refuses %s', (_, check) => {
     expect(() => parseWorkflowExtras(withChecks([check]))).toThrow(ApiError);
+  });
+
+  it('says it does not understand the reply, rather than drawing it', () => {
+    const both = { id: 'readme-exists', file: 'README.md', run: ['make'] };
+
+    expect(() => parseWorkflowExtras(withChecks([both]))).toThrow(BAD_REPLY);
   });
 
   it('refuses a done_when that is not a list of strings', () => {

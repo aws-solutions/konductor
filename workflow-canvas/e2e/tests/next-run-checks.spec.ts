@@ -105,6 +105,39 @@ test('marks the stage with the check it waits for, and no other', async ({
   );
 });
 
+test('reads the run for its checks a bounded number of times, never polling', async ({
+  page,
+}) => {
+  const canvas = await openDeclaringChecks(page, {
+    'readme-exists': 'verified',
+  });
+  const reads: string[] = [];
+  canvas.page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (/^\/api\/runs\/[^/]+$/.test(path)) reads.push(path);
+  });
+  await answerRunWith(canvas.page, RUN_EVENTS);
+
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
+    'Run passed.',
+  );
+
+  // The events of this run arrive in one page, so the run is read once when
+  // it starts and once for the change that page brings.
+  expect(reads).toHaveLength(2);
+
+  // Nothing reads it again: the wait for a third read runs out, where a page
+  // that polled would make one within a second.
+  await expect(
+    canvas.page.waitForRequest(
+      (request) => /^\/api\/runs\/[^/]+$/.test(new URL(request.url()).pathname),
+      { timeout: 1500 },
+    ),
+  ).rejects.toThrow();
+  expect(reads).toHaveLength(2);
+});
+
 test('draws no checks panel for the views it replaced', async ({ page }) => {
   await page.goto(`/?ui=classic#${STUB_LAUNCH_CODE}`);
 

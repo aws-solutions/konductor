@@ -2,7 +2,15 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { RunStartUnsure } from '../execution/core';
-import { EventWaits, HeldEvents } from '../test-support/held-events';
+import {
+  EventWaits,
+  HeldEvents,
+  eventsAnswer,
+  passed,
+  running,
+  finished,
+} from '../test-support/held-events';
+import type { CheckStates, ReadChecks } from '../execution/core/run-checks';
 import { UNFOLLOWED_RUN_REASON } from './run-start';
 import { useRunController, type RunViewPorts } from './use-run-controller';
 
@@ -240,5 +248,95 @@ describe('useRunController, the Goal box error', () => {
     await started();
 
     expect(result.current.goalTouched).toBe(true);
+  });
+});
+
+describe('useRunController, how often it reads the checks of a run', () => {
+  /**
+   * Reads that never answer, so a test can count them and see that a read it
+   * supersedes was aborted rather than left running.
+   */
+  class HeldChecks {
+    readonly calls: { runId: string; signal: AbortSignal }[] = [];
+
+    readonly read: ReadChecks = (runId, signal) => {
+      this.calls.push({ runId, signal });
+      return new Promise<CheckStates>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), {
+          once: true,
+        });
+      });
+    };
+
+    /** The reads whose signal has not been aborted. */
+    get live(): number {
+      return this.calls.filter((call) => !call.signal.aborted).length;
+    }
+  }
+
+  it('reads once at the start, once per stage that passes and once at the end', async () => {
+    const held = new HeldChecks();
+    const { events, started } = following({ readChecks: held.read });
+    expect(held.calls).toHaveLength(0);
+
+    await started();
+    expect(held.calls, 'at the start').toHaveLength(1);
+
+    // A stage taking up the work changes no check, so nothing is read again.
+    await act(async () => events.answer(eventsAnswer([running(1, 'draft')])));
+    expect(held.calls, 'draft running').toHaveLength(1);
+
+    // The server runs a stage's checks as it passes, so each pass is read.
+    await act(async () => events.answer(eventsAnswer([passed(2, 'draft')])));
+    expect(held.calls, 'draft passed').toHaveLength(2);
+
+    await act(async () => events.answer(eventsAnswer([running(3, 'review')])));
+    expect(held.calls, 'review running').toHaveLength(2);
+
+    await act(async () => events.answer(eventsAnswer([passed(4, 'review')])));
+    expect(held.calls, 'review passed').toHaveLength(3);
+
+    await act(async () =>
+      events.answer(eventsAnswer([finished(5, 'passed')], { done: true })),
+    );
+    expect(held.calls, 'the run ended').toHaveLength(4);
+
+    // Four reads of one run, and no more however long the page is left open.
+    expect(held.calls.map((call) => call.runId)).toEqual([
+      RUN_ID,
+      RUN_ID,
+      RUN_ID,
+      RUN_ID,
+    ]);
+  });
+
+  it('holds one read at a time, aborting the one it supersedes', async () => {
+    const held = new HeldChecks();
+    const { events, started } = following({ readChecks: held.read });
+
+    await started();
+    expect(held.live, 'at the start').toBe(1);
+
+    for (const page of [
+      eventsAnswer([passed(1, 'draft')]),
+      eventsAnswer([passed(2, 'review')]),
+      eventsAnswer([finished(3, 'passed')], { done: true }),
+    ]) {
+      await act(async () => events.answer(page));
+      expect(held.live, 'after a read was superseded').toBe(1);
+    }
+
+    expect(held.calls).toHaveLength(4);
+    expect(
+      held.calls.slice(0, -1).every((call) => call.signal.aborted),
+      'every superseded read is aborted',
+    ).toBe(true);
+  });
+
+  it('reads no run before one has started', async () => {
+    const held = new HeldChecks();
+    following({ readChecks: held.read });
+
+    expect(held.calls).toHaveLength(0);
   });
 });

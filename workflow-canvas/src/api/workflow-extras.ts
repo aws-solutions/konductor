@@ -162,18 +162,22 @@ function parseParams(view: Json): {
   return declared.length > 0 ? { params: declared } : {};
 }
 
-// One check of `intent.accept`. A check has exactly one of `file` and `run`,
-// which the server has already held it to, so the key that is there names the
-// kind.
+// One check of `intent.accept`. The contract requires exactly one of `file`
+// and `run`, and a `run` of at least one word, so a check with both keys,
+// with neither, or with an empty `run` is a reply this page does not
+// understand rather than a declaration to draw.
 function parseCheck(value: unknown): CheckDeclaration {
   const check = objectOf(value);
   const id = stringOf(check.id);
-  if (Object.hasOwn(check, 'file')) {
+  const byFile = Object.hasOwn(check, 'file');
+  const byRun = Object.hasOwn(check, 'run');
+  if (byFile === byRun) fail();
+  if (byFile) {
     stringOf(check.file);
     return { id, kind: 'file' };
   }
-  if (!Object.hasOwn(check, 'run')) fail();
-  arrayOf(check.run).map(stringOf);
+  const argv = arrayOf(check.run).map(stringOf);
+  if (argv.length < 1) fail();
   return { id, kind: 'run' };
 }
 
