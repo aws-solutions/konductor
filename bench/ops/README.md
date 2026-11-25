@@ -46,7 +46,6 @@ is the docs owner's page and points here.
 | `arm-fake-turns.json` | The scripted turns `run-physical-ai-wave0.sh` feeds the fake arm agent on its free path. |
 | `arm-pose-two-host.sh` | The two-host pose repeat check of DEBT D-30, one command per step. Free. |
 | `arm-signed-release-test-v2.sh` | The arm policy test and the five arm controls on a signed release, in one command. |
-| `arm-signed-release-test.sh` | Superseded by `arm-signed-release-test-v2.sh`. |
 | `debt-paid/jobs.txt` | The five paid debt jobs (D-132, D-167, D-123, D-159, D-137): each job's cap and its calls (name, kind, model, the writer a recheck reads, tasks). |
 | `debt-paid/prep.js` | Helpers of `debt-paid/run.sh`: each call's prompt and bundle (the map step's template, the recheck bundle, a new task's batch author prompt), its result and its real credits. Free. |
 | `debt-paid/prompts/D-123-W1.md` | The D-123 writer brief: an env-free shared limiter in `t5-qa-flaky-fix`. |
@@ -81,7 +80,6 @@ is the docs owner's page and points here.
 | `gen-recheck-report-2026-11-24.py` | Writes the recheck report of the 2026-11-24 batch from a queue file and its result files. Free. |
 | `t3-order-history-v9-bump.py` | Bumps t3-db-order-history from v8 to v9; refuses when a JSON round trip changes the file. Free. |
 | `run-full-suite-twice-v2.sh` | KR k485f5870: two full suite runs through `bench/scripts/test.sh --tap`, then the reading. Free. |
-| `run-full-suite-twice.sh` | Superseded by `run-full-suite-twice-v2.sh`. |
 | `run-fw30-rewrite.sh` | FW-30: the pilot tasks written again from `briefs-fw30.json`, deepseek-3.2 writes, glm-5 reviews. Paid (cap 120); `--dry-run` is free. |
 | `run-lite-judge.sh` | Judge pass of the LITE konductor-against-plain run. Paid (USD). |
 | `run-lite-konductor-v2.sh` | LITE konductor-against-plain run, v2. Paid. |
@@ -119,7 +117,6 @@ is the docs owner's page and points here.
 | `standard-recheck/test-run.sh` | Paid-path test of `run.sh` with a stub kiro-cli. Free. |
 | `strands-counted-trial.sh` | One counted Strands plant trial on the real pinned model. Paid. |
 | `test-arm-signed-release-v2.sh` | Test of `arm-signed-release-test-v2.sh`. Free. |
-| `test-arm-signed-release.sh` | Superseded by `test-arm-signed-release-v2.sh`. |
 | `test-lite-helper-skipped.sh` | Stub test of `lite-helper.js` (D-160). Free. |
 | `test-lite-v2-fill.sh` | Test of the LITE v2 budget and fill rules. Free. |
 | `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
@@ -127,7 +124,6 @@ is the docs owner's page and points here.
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
-| `test-run-full-suite-twice.sh` | Superseded by `test-run-full-suite-twice-v2.sh`. |
 | `test-run-pilot-option-b.sh` | Stub run of the 15-task path and option B. Free. |
 | `test-run-pilot-v2-rerun.sh` | Paid-path test of `run-pilot-v2-rerun.sh` with the fake kiro-cli. Free. |
 | `test-run-pilot-v2-rewrite.sh` | Paid-path test of `run-pilot-v2-rewrite.sh` with the fake kiro-cli. Free. |
