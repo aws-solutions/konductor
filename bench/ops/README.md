@@ -77,6 +77,9 @@ is the docs owner's page and points here.
 | `run-debt-d167-remap.sh` | D-167: glm-5 re-maps the 12 coverage-gap stage 1 tasks from the filled catalogue. Paid (cap 180 counted); `--plan` is free. |
 | `run-overnight.sh` | The overnight chain of 2026-11-24: the credential refresher, a wait (up to 8 h) for `run-cc-compare.sh` to end, `run-clean-fill.sh --go`, then the Claude Code judge (its free `--plan` first). Stops at the first failing step. Paid, through the approved caps of each step. |
 | `debt-open-rows.js` | Lists the rows of `bench/DEBT.md` that are not closed, with counts by status, owner and area. Free, read only. |
+| `dryrun-four.sh` | Free dry-run gate for four task prompts (t2, t4, t7), run from the ops checkout. |
+| `gen-recheck-report-2026-11-24.py` | Writes the recheck report of the 2026-11-24 batch from a queue file and its result files. Free. |
+| `t3-order-history-v9-bump.py` | Bumps t3-db-order-history from v8 to v9; refuses when a JSON round trip changes the file. Free. |
 | `run-full-suite-twice-v2.sh` | KR k485f5870: two full suite runs through `bench/scripts/test.sh --tap`, then the reading. Free. |
 | `run-full-suite-twice.sh` | Superseded by `run-full-suite-twice-v2.sh`. |
 | `run-fw30-rewrite.sh` | FW-30: the pilot tasks written again from `briefs-fw30.json`, deepseek-3.2 writes, glm-5 reviews. Paid (cap 120); `--dry-run` is free. |

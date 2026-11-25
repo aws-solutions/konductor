@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import unittest
+from unittest import mock
 
 import _paths
 
@@ -103,7 +104,11 @@ class ModelSwitchTest(unittest.TestCase):
         self.assertEqual(list(pins["models"]), ["qwen.qwen3-coder-next"])
         self.assertEqual(pins["models"]["qwen.qwen3-coder-next"], {"inputUsdPerMTok": 0.5, "outputUsdPerMTok": 1.2, "maxTokens": 4096})
 
+    # Building the Bedrock client reads the boto profile; a host that names a profile it lacks must not fail the test (no call is made).
+    @mock.patch.dict(os.environ, {"AWS_CONFIG_FILE": os.devnull, "AWS_SHARED_CREDENTIALS_FILE": os.devnull})
     def test_a_pinned_bedrock_model_is_capped_in_its_region(self):
+        for name in ("AWS_PROFILE", "AWS_DEFAULT_PROFILE"):
+            os.environ.pop(name, None)
         trace = Trace(io.StringIO())
         model, capped = launch.model_of("bedrock:qwen.qwen3-coder-next", 5.0, trace)
         self.assertIs(model, capped)

@@ -174,7 +174,7 @@ test('loadTasks resolves hiddenDir and loadSuite knows the hard suite', () => {
     const suite = loadSuite('hard', tasks, bench);
     assert.deepEqual(suite.taskIds, ['t1']);
     assert.equal(suite.parallel, 1);
-    assert.throws(() => loadSuite('nightly', tasks, bench), /lite, full, hard or real/);
+    assert.throws(() => loadSuite('nightly', tasks, bench), /unknown suite "nightly" \(expected lite, full, hard, real,/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

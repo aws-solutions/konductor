@@ -18,7 +18,7 @@ const REPO = process.env.BENCH_REPO;
 const HERE = __dirname;
 const RECHECK = path.join(HERE, '..', 'standard-recheck');
 const stage = () => require(path.join(REPO, 'bench/scenarios/lib/stage.js'));
-const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const readJson = (f) => require(path.join(REPO, 'bench/runner/lib/util.js')).readJson(f);
 const batchOf = (id) => id.split('-')[0];
 const isNew = (id) => id.startsWith('new:');
 const bare = (id) => id.replace(/^new:/, '');
