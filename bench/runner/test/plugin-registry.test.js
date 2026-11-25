@@ -73,6 +73,47 @@ test('another benchApi, an unknown kind, a missing file or a mismatched name is 
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('a manifest "parts" list adds parts of other kinds under the same name, each with its own meta and entry (B-014)', () => {
+  const root = tmp();
+  try {
+    const dir = plugin(root, 'duo', { parts: [{ kind: 'judge-backend', meta: 'judge-meta.js', entry: 'judge.js' }] });
+    write(path.join(dir, 'judge-meta.js'), "module.exports = Object.freeze({ id: 'duo', costUnit: 'usd' });\n");
+    write(path.join(dir, 'judge.js'), 'module.exports = {};\n');
+    const r = createRegistry({ pluginRoots: [root] });
+    assert.deepEqual(r.refused(), []);
+    const [h] = r.parts('harness');
+    const [j] = r.parts('judge-backend');
+    assert.equal(h.entry, path.join(dir, 'harness.js'));
+    assert.equal(j.entry, path.join(dir, 'judge.js'));
+    assert.equal(j.meta.costUnit, 'usd');
+    assert.equal(j.plugin, h.plugin, 'both parts come from one plugin');
+    assert.deepEqual(r.record().map((p) => [p.name, p.kind]), [['duo', 'harness']], 'one plugin, recorded once, as before');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a "parts" entry with the main kind, a repeated kind, a missing file or another meta id is refused', () => {
+  const root = tmp();
+  try {
+    const extra = (name, parts, metaId = name) => {
+      const dir = plugin(root, name, { parts });
+      write(path.join(dir, 'j.js'), `module.exports = Object.freeze({ id: ${JSON.stringify(metaId)} });\n`);
+    };
+    extra('samekind', [{ kind: 'harness', meta: 'j.js', entry: 'j.js' }]);
+    extra('twice', [{ kind: 'check-type', meta: 'j.js', entry: 'j.js' }, { kind: 'check-type', meta: 'j.js', entry: 'j.js' }]);
+    extra('nofile', [{ kind: 'judge-backend', meta: 'j.js', entry: 'gone.js' }]);
+    extra('notlist', { kind: 'judge-backend' });
+    extra('otherid', [{ kind: 'judge-backend', meta: 'j.js', entry: 'j.js' }], 'someone');
+    const r = createRegistry({ pluginRoots: [root] });
+    assert.deepEqual(r.parts('harness').map((p) => p.name), []);
+    const why = Object.fromEntries(r.refused().map((x) => [path.basename(x.dir), x.why]));
+    assert.match(why.samekind, /parts\[0\]: kind "harness" is already a part of this plugin/);
+    assert.match(why.twice, /parts\[1\]: kind "check-type" is already a part of this plugin/);
+    assert.match(why.nofile, /parts\[0\]: "entry" file gone\.js does not exist/);
+    assert.match(why.notlist, /"parts" must be a list/);
+    assert.match(why.otherid, /parts\[0\]: meta id "someone" must equal the plugin name "otherid"/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('a plugin with the name of a built-in is an error', () => {
   const root = tmp();
   try {

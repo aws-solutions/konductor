@@ -74,6 +74,20 @@ harness module loads.
 `trialInstall`, `installInto`, `buildCommand`, `env`, `removeCredentials`, `keepPaths`, `turnSummary`, `parseResult`
 and `collectArtifacts`. CONTRACT.md says what each one gets and returns. Strands keeps its stream reader in `parse.js`.
 
+One folder can hold more than one part under its name, each of another kind. List the others in `"parts"`, each
+with its own `meta` and `entry`; each `meta` file's `id` is the plugin name. For example a runtime's harness and its
+judge backend:
+
+```json
+{
+  "benchApi": 1, "kind": "harness", "name": "NAME", "version": "1.0.0", "meta": "meta.js", "entry": "harness.js",
+  "parts": [{ "kind": "judge-backend", "meta": "judge-meta.js", "entry": "judge.js" }]
+}
+```
+
+A `parts` entry with the main kind, a kind listed twice or a missing file refuses the whole folder. The plugin is
+still one plugin: `bench plugins` lists a row per part, and `run-config.json` records the folder once.
+
 A plugin's code may require only `node:*` modules, files in its own folder and the bench SDK, `bench/sdk`. The SDK
 gives the bench helpers a harness needs, one part per helper module: `const { parseStream } = require('../../sdk').stream;`.
 Read `bench/sdk/index.js` for the list of parts. `runner/test/plugin-sdk-lint.test.js`

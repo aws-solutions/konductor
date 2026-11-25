@@ -17,7 +17,7 @@ const PLUGINS_DIR = path.resolve(__dirname, '..', '..', 'plugins');
 
 /** The plugin part `p` with its entry functions, or a throw naming the one it lacks. */
 function loadPluginType(p) {
-  const mod = require(p.plugin.entry);
+  const mod = require(p.entry);
   for (const fn of ['evaluate', 'shapeErrors']) {
     if (typeof mod[fn] !== 'function') throw new Error(`check type ${p.name}: its entry module exports no ${fn} function`);
   }

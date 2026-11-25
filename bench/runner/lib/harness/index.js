@@ -27,7 +27,7 @@ const { runtimeOf, DEFAULT_RUNTIME } = require('./runtime.js');
 const { REGISTRY } = require('./descriptors.js');
 
 // Every harness in registry order: each one's plugin entry module (core/registry.js, bench/plugins/<name>/).
-const HARNESSES = Object.fromEntries(REGISTRY.parts('harness').map((p) => [p.name, require(p.plugin.entry)]));
+const HARNESSES = Object.fromEntries(REGISTRY.parts('harness').map((p) => [p.name, require(p.entry)]));
 // Each harness also by its camel-case id (opencode, claudeCode, strands), and the default runtime's as `kiro`.
 const byCamel = Object.fromEntries(Object.entries(HARNESSES).map(([id, h]) => [id.replace(/-(\w)/g, (_, c) => c.toUpperCase()), h]));
 const { opencode, strands, claudeCode } = byCamel;

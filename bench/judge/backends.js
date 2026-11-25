@@ -54,7 +54,7 @@ function checkBackend({ backend = DEFAULT_BACKEND, budgetCredits = null, budgetU
 
 /** The caller of a plugin backend `part`, from its entry module's makeCaller(opts). Built-ins are built by the CLI. */
 function makeBackendCaller(part, opts) {
-  const mod = require(part.plugin.entry);
+  const mod = require(part.entry);
   if (typeof mod.makeCaller !== 'function') throw new Error(`judge backend ${part.name}: its entry module exports no makeCaller`);
   return mod.makeCaller(opts);
 }

@@ -62,7 +62,7 @@ test('the outside backend loads and reaches the SDK by its absolute path', async
   const { backendRegistry } = require('../../judge/backends.js');
   const reg = backendRegistry([root]);
   assert.ok(reg.ids().includes('outside-be'));
-  const caller = require(reg.part('outside-be').plugin.entry).makeCaller({});
+  const caller = require(reg.part('outside-be').entry).makeCaller({});
   assert.equal((await caller({ model: 'm', prompt: 'p' })).text, 'string');
 });
 

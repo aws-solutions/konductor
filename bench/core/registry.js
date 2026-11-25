@@ -8,7 +8,8 @@
 //
 // A plugin folder holds plugin.json: { "benchApi": 1, "kind": "harness", "name", "version", "meta", "entry" }.
 // `meta` is a frozen descriptor file with no requires (harness/CONTRACT.md, "Descriptor"); `entry` is the harness
-// module. A plugin with another benchApi, an unknown kind or a bad manifest is listed as refused, with its reason, and
+// module. An optional "parts": [{ "kind", "meta", "entry" }] adds parts of other kinds under the same name, so one
+// runtime folder can hold its harness and its judge backend (B-014); the plugin is still recorded once. A plugin with another benchApi, an unknown kind or a bad manifest is listed as refused, with its reason, and
 // never loaded. Two parts with one name is an error.
 
 const crypto = require('node:crypto');
@@ -45,39 +46,62 @@ function manifestProblem(m, dir) {
   if (!KINDS.includes(m.kind)) return `kind ${JSON.stringify(m.kind)} is not one of ${KINDS.join(', ')}`;
   for (const k of ['name', 'version', 'meta', 'entry']) if (typeof m[k] !== 'string' || !m[k]) return `"${k}" must be a non-empty string`;
   if (m.name !== path.basename(dir)) return `name "${m.name}" must equal its folder name "${path.basename(dir)}"`;
-  for (const k of ['meta', 'entry']) {
-    const file = path.resolve(dir, m[k]);
-    if (path.relative(dir, file).startsWith('..')) return `"${k}" must stay inside the plugin folder`;
-    if (!fs.existsSync(file)) return `"${k}" file ${m[k]} does not exist`;
+  const fileProblem = (p) => {
+    for (const k of ['meta', 'entry']) {
+      if (typeof p[k] !== 'string' || !p[k]) return `"${k}" must be a non-empty string`;
+      const file = path.resolve(dir, p[k]);
+      if (path.relative(dir, file).startsWith('..')) return `"${k}" must stay inside the plugin folder`;
+      if (!fs.existsSync(file)) return `"${k}" file ${p[k]} does not exist`;
+    }
+    return null;
+  };
+  const main = fileProblem(m);
+  if (main) return main;
+  if (m.parts === undefined) return null;
+  if (!Array.isArray(m.parts)) return '"parts" must be a list of { kind, meta, entry }';
+  const kinds = [m.kind];
+  for (const [i, p] of m.parts.entries()) {
+    if (!KINDS.includes(p?.kind)) return `parts[${i}]: kind ${JSON.stringify(p?.kind)} is not one of ${KINDS.join(', ')}`;
+    if (kinds.includes(p.kind)) return `parts[${i}]: kind "${p.kind}" is already a part of this plugin`;
+    kinds.push(p.kind);
+    const why = fileProblem(p);
+    if (why) return `parts[${i}]: ${why}`;
   }
   return null;
 }
 
 /**
- * One plugin folder, read: { plugin: {name, kind, version, benchApi, sha256, dir, meta, entry} } when it loads, else
- * { refused: {dir, why} }. `meta` is the required descriptor; `entry` is the absolute path of the module.
+ * One plugin folder, read: { plugin: {name, kind, version, benchApi, sha256, dir, meta, entry, parts} } when it loads,
+ * else { refused: {dir, why} }. `meta` and `entry` (absolute path) are the main part's; `parts` is every part,
+ * main first, each { kind, meta, entry }.
  */
 function readPlugin(dir) {
   let m;
   try { m = JSON.parse(fs.readFileSync(path.join(dir, 'plugin.json'), 'utf8')); } catch (e) { return { refused: { dir, why: `plugin.json: ${e.message}` } }; }
   const why = manifestProblem(m, dir);
   if (why) return { refused: { dir, why } };
-  const meta = require(path.resolve(dir, m.meta));
-  if (meta?.id !== m.name) return { refused: { dir, why: `meta id ${JSON.stringify(meta?.id)} must equal the plugin name "${m.name}"` } };
-  return { plugin: { name: m.name, kind: m.kind, version: m.version, benchApi: m.benchApi, sha256: folderHash(dir), dir, meta, entry: path.resolve(dir, m.entry) } };
+  const parts = [];
+  for (const [i, p] of [m, ...(m.parts ?? [])].entries()) {
+    const meta = require(path.resolve(dir, p.meta));
+    if (meta?.id !== m.name) return { refused: { dir, why: `${i ? `parts[${i - 1}]: ` : ''}meta id ${JSON.stringify(meta?.id)} must equal the plugin name "${m.name}"` } };
+    parts.push(Object.freeze({ kind: p.kind, meta, entry: path.resolve(dir, p.entry) }));
+  }
+  const [{ meta, entry }] = parts;
+  return { plugin: { name: m.name, kind: m.kind, version: m.version, benchApi: m.benchApi, sha256: folderHash(dir), dir, meta, entry, parts: Object.freeze(parts) } };
 }
 
 /**
  * The registry over `builtins` ([{kind, meta}], in display order) and the plugin folders found in each of
  * `pluginRoots` (sorted by name, after the built-ins). `order` (names) puts those parts first, in that order, so a
  * built-in that becomes a plugin keeps its place. Throws when two parts share a name. Returns a frozen object:
- *   parts(kind)   [{name, kind, meta, source: 'builtin'|'plugin', plugin}] in order
+ *   parts(kind)   [{name, kind, meta, entry, source: 'builtin'|'plugin', plugin}] in order; `entry` is the part's
+ *                 module path (null for a built-in)
  *   descriptors() the harness descriptors, in order
  *   plugins()     the loaded plugins; refused() the refused folders with their reason
  *   record()      [{name, kind, version, benchApi, sha256}] of the loaded plugins, for run-config.json
  */
 function createRegistry({ builtins = [], pluginRoots = [], order = [] } = {}) {
-  const parts = builtins.map(({ kind, meta }) => ({ name: meta.id, kind, meta, source: 'builtin', plugin: null }));
+  const parts = builtins.map(({ kind, meta }) => ({ name: meta.id, kind, meta, entry: null, source: 'builtin', plugin: null }));
   const plugins = [];
   const refused = [];
   for (const root of pluginRoots) {
@@ -87,7 +111,7 @@ function createRegistry({ builtins = [], pluginRoots = [], order = [] } = {}) {
       const r = readPlugin(path.join(root, name));
       if (r.refused) { refused.push(r.refused); continue; }
       plugins.push(r.plugin);
-      parts.push({ name: r.plugin.name, kind: r.plugin.kind, meta: r.plugin.meta, source: 'plugin', plugin: r.plugin });
+      for (const part of r.plugin.parts) parts.push({ name: r.plugin.name, kind: part.kind, meta: part.meta, entry: part.entry, source: 'plugin', plugin: r.plugin });
     }
   }
   const seen = new Map();
