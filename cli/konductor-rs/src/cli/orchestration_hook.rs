@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // orchestration_hook.rs: `konductor __orchestration-hook`, run by a
-// session-start hook. For a `konductor` session whose user config says
-// `orchestration.mode: coordinator`, it prints the coordinator persona:
+// session-start hook. For a mode agent's session (see `mode_agent_check`)
+// whose user config says `orchestration.mode: coordinator`, it prints the
+// coordinator persona:
 // a header, a line telling the agent to read the installed routing rules
 // file, and the installed coordinator digest. Hook stdout is capped by
 // the harnesses (about 3,000 bytes on Kiro CLI v3), so the full rules
 // file is named, not printed.
 //
 // It never fails the harness: every path exits 0 and nothing goes to
-// stderr. A session that is not Konductor's `konductor`, or whose mode is
+// stderr. A session that is not a mode agent's, or whose mode is
 // `auto` or unset, gets no output, except that a Claude Code `resume` or
 // `compact` under `auto` prints `Orchestration: auto`, so a session that
 // was a coordinator before the user changed the mode can see the change.
@@ -19,7 +20,9 @@ use std::path::{Component, Path, PathBuf};
 
 use super::install::index::env_home_dir;
 use super::install::manifest::read_manifest;
-use super::install::resource_rewrite::{hook_command_install_root, orchestration_hook_wiring};
+use super::install::resource_rewrite::{
+    hook_command_install_root, orchestration_hook_wirings, HookWiring,
+};
 use super::install::{claude, kiro_cli, kiro_cli_v3};
 use super::orchestration_mode::{resolve_user_mode, FallbackReason, Mode, ModeResolution};
 use super::telemetry_hook::{
@@ -27,9 +30,17 @@ use super::telemetry_hook::{
     same_dir, AgentLayout, HookPayload, InstallIndex,
 };
 
-/// The one agent the mode applies to: the agent that loads
+/// The mode agent Konductor ships: the agent that loads
 /// `k-direct-work.md` (pinned by `tests/test_konductor_prompt_mode_neutral.py`).
 pub(crate) const MODE_AGENT: &str = "konductor";
+
+/// The context file the coordinator persona replaces. An installed agent
+/// that loads it is a mode agent under any name, so a renamed orchestrator
+/// gets the mode too.
+pub(crate) const DIRECT_WORK_CONTEXT_FILE_NAME: &str = "k-direct-work.md";
+
+/// Cap on an installed agent file read to find its context files.
+pub(crate) const MAX_AGENT_FILE_BYTES: u64 = 1024 * 1024;
 
 pub(crate) const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
 pub(crate) const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
@@ -93,6 +104,11 @@ pub(crate) enum PersonaError {
         install_root: PathBuf,
         harness: Option<String>,
     },
+    /// The session's agent file is too large to tell whether it loads
+    /// the Direct Work context.
+    AgentFileTooLarge {
+        path: PathBuf,
+    },
 }
 
 /// `SessionStart` (Kiro CLI v3, Claude Code) and `agentSpawn` (Kiro CLI
@@ -143,6 +159,155 @@ fn layout_for_harness(harness: Option<&str>) -> Option<AgentLayout> {
     } else {
         None
     }
+}
+
+/// Whether a Kiro agent definition lists the Direct Work context among
+/// its `file://` resources, in synth's relative form or the absolute form
+/// install rewrites it to.
+pub(crate) fn kiro_agent_loads_direct_work(agent: &serde_json::Value) -> bool {
+    agent
+        .get("resources")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str)
+        .filter_map(|resource| resource.strip_prefix("file://"))
+        .map(Path::new)
+        .any(|path| {
+            path.file_name()
+                .is_some_and(|name| name == DIRECT_WORK_CONTEXT_FILE_NAME)
+                && path
+                    .parent()
+                    .and_then(Path::file_name)
+                    .is_some_and(|dir| dir == "context")
+        })
+}
+
+/// Whether a Claude agent file inlines the Direct Work context. Synth
+/// opens each inlined context with a `<Context: name>` line of its own.
+/// Bytes that are not UTF-8, including a character the cap cut in half,
+/// become U+FFFD and leave every newline and every ASCII line intact, so
+/// they cannot hide the opening line or fake one.
+fn claude_agent_loads_direct_work(body: &[u8]) -> bool {
+    let opening = format!("<Context: {DIRECT_WORK_CONTEXT_FILE_NAME}>");
+    // `from_utf8` first: it is faster than the lossy decode on the
+    // common, valid file.
+    let text = match std::str::from_utf8(body) {
+        Ok(text) => std::borrow::Cow::Borrowed(text),
+        Err(_) => String::from_utf8_lossy(body),
+    };
+    text.lines().any(|line| line == opening)
+}
+
+/// What an agent file says about the Direct Work context.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DirectWork {
+    Loads,
+    DoesNotLoad,
+    /// The file is longer than `MAX_AGENT_FILE_BYTES` and the part read
+    /// did not settle it. The path is relative to the install root.
+    Undecidable(PathBuf),
+}
+
+/// An installed agent file, read at most one byte past
+/// `MAX_AGENT_FILE_BYTES`, and whether it is longer than that cap (the
+/// bytes are cut to the cap). With `whole_only`, a file the stat already
+/// shows is over the cap is not read at all.
+pub(crate) fn read_agent_file(path: &Path, whole_only: bool) -> std::io::Result<(Vec<u8>, bool)> {
+    let file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    if whole_only && len > MAX_AGENT_FILE_BYTES {
+        return Ok((Vec::new(), true));
+    }
+    let mut bytes = Vec::with_capacity(len.min(MAX_AGENT_FILE_BYTES + 1) as usize);
+    file.take(MAX_AGENT_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)?;
+    let over = bytes.len() as u64 > MAX_AGENT_FILE_BYTES;
+    bytes.truncate(MAX_AGENT_FILE_BYTES as usize);
+    Ok((bytes, over))
+}
+
+/// What the agent file `root` holds for `agent` in `layout` (either
+/// layout when `None`) says about the Direct Work context. `agent` is a
+/// name the install's manifest lists, so it is a single path component.
+///
+/// This runs on every session start of an agent the install owns, before
+/// the user config is read, so it stays cheap: a stat rules out an
+/// oversized Kiro file without reading it, and no read goes more than one
+/// byte past the cap. On a typical install a check costs tens of
+/// microseconds, well under the manifest reads that precede it. A missing
+/// or unreadable file does not load the context.
+fn installed_agent_direct_work(
+    root: &Path,
+    layout: Option<AgentLayout>,
+    agent: &str,
+) -> DirectWork {
+    let read =
+        |relative: &Path, whole_only: bool| read_agent_file(&root.join(relative), whole_only).ok();
+    let kiro = || {
+        let relative = PathBuf::from(format!(".kiro/agents/{agent}.json"));
+        // A truncated JSON document never parses, so only the whole file
+        // can decide.
+        match read(&relative, true) {
+            None => DirectWork::DoesNotLoad,
+            Some((_, true)) => DirectWork::Undecidable(relative),
+            Some((bytes, false)) => {
+                let loads = serde_json::from_slice::<serde_json::Value>(&bytes)
+                    .is_ok_and(|value| kiro_agent_loads_direct_work(&value));
+                if loads {
+                    DirectWork::Loads
+                } else {
+                    DirectWork::DoesNotLoad
+                }
+            }
+        }
+    };
+    let claude = || {
+        let relative = PathBuf::from(format!(".claude/agents/{agent}.md"));
+        match read(&relative, false) {
+            None => DirectWork::DoesNotLoad,
+            Some((bytes, _)) if claude_agent_loads_direct_work(&bytes) => DirectWork::Loads,
+            Some((_, true)) => DirectWork::Undecidable(relative),
+            Some((_, false)) => DirectWork::DoesNotLoad,
+        }
+    };
+    match layout {
+        Some(AgentLayout::Kiro) => kiro(),
+        Some(AgentLayout::Claude) => claude(),
+        None => match kiro() {
+            DirectWork::Loads => DirectWork::Loads,
+            DirectWork::DoesNotLoad => claude(),
+            undecidable => match claude() {
+                DirectWork::Loads => DirectWork::Loads,
+                _ => undecidable,
+            },
+        },
+    }
+}
+
+/// A mode agent is `MODE_AGENT`, or any agent whose definition in the
+/// install that owns it loads the Direct Work context. This only decides
+/// which sessions get the persona; the persona text still comes from that
+/// install's trusted context directories. An undecidable agent is not a
+/// mode agent: it never gets the persona, only a fallback line under
+/// `coordinator`.
+///
+/// That line also reaches a session of an oversized agent that is not
+/// an orchestrator, an accepted rare edge: nothing short of the whole
+/// file says what an agent is. The manifest records no roles, the
+/// shipped orchestrator names miss a renamed one, a Claude agent file
+/// inlines its contexts after the prompt, and a cut JSON document does
+/// not parse. Guessing from part of the file would let its text pick the
+/// answer. The line costs such a session nothing: it says the session
+/// runs as `auto`, which changes nothing for an agent with no coordinator
+/// mode. On Kiro CLI v2 the hook is wired
+/// only into mode agents' own files, so there the line is limited
+/// already.
+fn mode_agent_check(owning_root: &Path, layout: Option<AgentLayout>, agent: &str) -> DirectWork {
+    if agent == MODE_AGENT {
+        return DirectWork::Loads;
+    }
+    installed_agent_direct_work(owning_root, layout, agent)
 }
 
 /// Calls `load_persona` only for `coordinator`, so other sessions never
@@ -229,10 +394,16 @@ pub(crate) fn persona_reason(error: &PersonaError) -> String {
                 .map(|name| format!(" for {name}"))
                 .unwrap_or_default();
             format!(
-                "the install at {owner} owns the konductor session but its session-start hook \
+                "the install at {owner} owns the agent of this session but its session-start hook \
                  is not wired{for_harness}; run konductor update in {owner}"
             )
         }
+        PersonaError::AgentFileTooLarge { path } => format!(
+            "the agent file at {} is larger than {} MiB, so the hook could not check whether it \
+             loads {DIRECT_WORK_CONTEXT_FILE_NAME}",
+            display_path(path, home.as_deref()),
+            MAX_AGENT_FILE_BYTES / (1024 * 1024)
+        ),
     }
 }
 
@@ -442,33 +613,58 @@ fn with_trailing_newline(mut text: String) -> String {
 
 /// Whether the install at `owning_root` has its own session-start hook
 /// for `harness` (any hook strategy when the harness is unknown) that
-/// reads `owning_root`. A hook command without `--install-root` counts:
-/// it prints for the nearest install, which is this one.
-fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>) -> bool {
+/// reads `owning_root` and fires for `agent`. A hook command without
+/// `--install-root` counts: it prints for the nearest install, which is
+/// this one. On Kiro CLI v2 each mode agent's own file carries its hook,
+/// so the session agent's file decides; it is not required of the other
+/// mode agents, whose sessions this hook does not run for, so one
+/// unwired agent never makes another agent's session print a fallback
+/// line next to the owner's persona. A slot that does not list the
+/// session agent among its mode agents needs every listed one wired.
+fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>, agent: &str) -> bool {
     let Ok(Some(manifest)) = read_manifest(owning_root) else {
         return false;
+    };
+    let reads_owner = |wiring: &HookWiring| {
+        wiring.commands.as_ref().is_ok_and(|commands| {
+            commands.iter().any(|command| {
+                hook_command_install_root(command)
+                    .is_none_or(|root| same_dir(Path::new(&root), owning_root))
+            })
+        })
     };
     manifest
         .strategies
         .iter()
         .filter(|slot| harness.is_none_or(|name| slot.strategy == name))
-        .filter_map(|slot| orchestration_hook_wiring(owning_root, slot))
-        .filter_map(|wiring| wiring.commands.ok())
-        .flatten()
-        .any(|command| {
-            hook_command_install_root(&command)
-                .is_none_or(|root| same_dir(Path::new(&root), owning_root))
+        .any(|slot| {
+            let wirings = orchestration_hook_wirings(owning_root, slot);
+            let own: Vec<&HookWiring> = wirings
+                .iter()
+                .filter(|wiring| wiring.agent.as_deref() == Some(agent))
+                .collect();
+            if own.is_empty() {
+                !wirings.is_empty() && wirings.iter().all(reads_owner)
+            } else {
+                own.into_iter().all(reads_owner)
+            }
         })
 }
 
-/// Event, identity and ownership are checked before the config file is
+/// Event, ownership and identity are checked before the config file is
 /// opened, so other agents' sessions cost no YAML parse. `own_install` is
 /// the install that wired this hook; only the nearest install that owns
-/// `konductor` for the firing `harness` prints, so two installs never
+/// the session's agent for the firing `harness` prints, so two installs never
 /// inject twice and an install for another harness never silences this one.
 /// A shadowed hook stays silent only while the owner's own hook is wired;
 /// otherwise it prints a fallback line naming the owner, so the mode is
-/// never dropped without a trace.
+/// never dropped without a trace. For the same reason an agent file too
+/// large to check gets a fallback line under `coordinator`, not silence.
+///
+/// Cost for a session whose agent is not a mode agent: the install index
+/// (each candidate root's manifest) and, unless the agent is
+/// `MODE_AGENT`, one read of its installed agent file, capped at
+/// `MAX_AGENT_FILE_BYTES`. The user config is not opened.
 pub(crate) fn dispatch_orchestration_hook(
     cwd: &Path,
     agent_arg: Option<&str>,
@@ -491,30 +687,44 @@ pub(crate) fn dispatch_orchestration_hook(
             .as_deref()
             .and_then(|root| kiro_session_agent_mode(root, session_id))
     };
-    if resolve_session_agent(&payload, agent_arg, &kiro_session_agent).as_deref()
-        != Some(MODE_AGENT)
-    {
+    let Some(agent) = resolve_session_agent(&payload, agent_arg, &kiro_session_agent) else {
         return;
-    }
+    };
     let index = InstallIndex::new(candidate_install_roots(cwd, home.as_deref()));
-    let owning_root = match layout_for_harness(harness) {
-        Some(layout) => index.install_for_layout(MODE_AGENT, layout),
-        None => index.install_for(MODE_AGENT),
+    let layout = layout_for_harness(harness);
+    let owning_root = match layout {
+        Some(layout) => index.install_for_layout(&agent, layout),
+        None => index.install_for(&agent),
     };
     let Some(owning_root) = owning_root else {
         return;
     };
+    let undecidable = match mode_agent_check(owning_root, layout, &agent) {
+        DirectWork::Loads => None,
+        DirectWork::DoesNotLoad => return,
+        DirectWork::Undecidable(relative) => Some(relative),
+    };
     let shadowed = own_install.is_some_and(|own| !same_dir(own, owning_root));
-    if shadowed && owner_hook_is_wired(owning_root, harness) {
+    if shadowed && owner_hook_is_wired(owning_root, harness, &agent) {
         return;
     }
     let persona_root = logical_root(owning_root, home.as_deref());
-    let restate_auto = is_resume_or_compact(&payload);
+    // An undecidable session never had the persona, so there is no
+    // earlier mode line for `AUTO_LINE` to correct.
+    let restate_auto = undecidable.is_none() && is_resume_or_compact(&payload);
     let output = decide(&resolve_user_mode(home.as_deref()), restate_auto, || {
+        // The owner's missing hook is reported first: `konductor update`
+        // in the owner fixes it, and the owner's own hook then reports an
+        // oversized agent file.
         if shadowed {
             return Err(PersonaError::OwnerHookNotWired {
                 install_root: persona_root.clone(),
                 harness: harness.map(str::to_string),
+            });
+        }
+        if let Some(relative) = &undecidable {
+            return Err(PersonaError::AgentFileTooLarge {
+                path: persona_root.join(relative),
             });
         }
         if !is_trusted_location(owning_root, home.as_deref(), cwd) {
@@ -749,6 +959,215 @@ mod tests {
     }
 
     #[test]
+    fn a_kiro_agent_loads_direct_work_through_a_context_resource() {
+        let loads = |resources: serde_json::Value| {
+            kiro_agent_loads_direct_work(&serde_json::json!({ "resources": resources }))
+        };
+        assert!(loads(serde_json::json!([
+            "file://context/k-direct-work.md"
+        ])));
+        assert!(loads(serde_json::json!([
+            "skill://x",
+            "file:///home/u/.kiro/context/k-direct-work.md"
+        ])));
+        assert!(!loads(serde_json::json!([
+            "file:///home/u/.kiro/context/k-orchestrator-routing-rules.md"
+        ])));
+        assert!(!loads(serde_json::json!([
+            "file:///home/u/notes/k-direct-work.md"
+        ])));
+        assert!(!loads(serde_json::json!(["context/k-direct-work.md"])));
+        assert!(!kiro_agent_loads_direct_work(&serde_json::json!({})));
+    }
+
+    #[test]
+    fn a_claude_agent_loads_direct_work_only_through_its_context_block() {
+        assert!(claude_agent_loads_direct_work(
+            b"Help.\n\n<Context: k-direct-work.md>\nrules\n</Context: k-direct-work.md>"
+        ));
+        assert!(claude_agent_loads_direct_work(
+            b"Help.\r\n<Context: k-direct-work.md>\r\nrules\r\n"
+        ));
+        assert!(!claude_agent_loads_direct_work(
+            b"Shape rules live here and in `k-direct-work.md`.\n\
+             <Context: k-orchestrator-routing-rules.md>\nx\n</Context: k-orchestrator-routing-rules.md>"
+        ));
+    }
+
+    #[test]
+    fn a_mode_agent_is_konductor_or_an_installed_agent_that_loads_direct_work() {
+        let root = scratch_dir("mode-agent");
+        let kiro = |name: &str, resource: &str| {
+            let file = root.join(format!(".kiro/agents/{name}.json"));
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(
+                file,
+                serde_json::json!({ "name": name, "resources": [resource] }).to_string(),
+            )
+            .unwrap();
+        };
+        kiro("acme", "file://context/k-direct-work.md");
+        kiro("acme-mux", "file://context/k-orchestrator-routing-rules.md");
+        let claude = root.join(".claude/agents/acme.md");
+        std::fs::create_dir_all(claude.parent().unwrap()).unwrap();
+        std::fs::write(
+            &claude,
+            "<Context: k-direct-work.md>\nx\n</Context: k-direct-work.md>\n",
+        )
+        .unwrap();
+
+        let check = |layout, agent| mode_agent_check(&root, layout, agent);
+        assert_eq!(
+            check(Some(AgentLayout::Kiro), MODE_AGENT),
+            DirectWork::Loads
+        );
+        assert_eq!(check(Some(AgentLayout::Kiro), "acme"), DirectWork::Loads);
+        assert_eq!(check(Some(AgentLayout::Claude), "acme"), DirectWork::Loads);
+        assert_eq!(check(None, "acme"), DirectWork::Loads);
+        assert_eq!(
+            check(Some(AgentLayout::Kiro), "acme-mux"),
+            DirectWork::DoesNotLoad
+        );
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "acme-mux"),
+            DirectWork::DoesNotLoad
+        );
+        assert_eq!(check(None, "k-developer"), DirectWork::DoesNotLoad);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    fn write_agent(root: &Path, relative: &str, bytes: &[u8]) {
+        let file = root.join(relative);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, bytes).unwrap();
+    }
+
+    const CAP: usize = MAX_AGENT_FILE_BYTES as usize;
+    const CLAUDE_OPENING: &[u8] = b"<Context: k-direct-work.md>\n";
+
+    /// `opening` first, then filler bytes up to `len`.
+    fn claude_body(opening: &[u8], len: usize) -> Vec<u8> {
+        let mut body = opening.to_vec();
+        body.resize(len, b'x');
+        body
+    }
+
+    /// A Kiro agent JSON that loads Direct Work, padded with spaces to
+    /// exactly `len` bytes.
+    fn kiro_body(len: usize) -> Vec<u8> {
+        let mut body = br#"{"resources":["file://context/k-direct-work.md"]}"#.to_vec();
+        body.resize(len, b' ');
+        body
+    }
+
+    #[test]
+    fn an_agent_file_over_the_cap_is_undecidable_unless_the_read_part_settles_it() {
+        let root = scratch_dir("oversized-agent");
+        let claude_path = |name: &str| format!(".claude/agents/{name}.md");
+        let check = |layout, agent| mode_agent_check(&root, layout, agent);
+
+        write_agent(
+            &root,
+            &claude_path("early"),
+            &claude_body(CLAUDE_OPENING, CAP + 10),
+        );
+        let mut late = claude_body(b"", CAP);
+        late.extend_from_slice(b"\n<Context: k-direct-work.md>\n");
+        write_agent(&root, &claude_path("late"), &late);
+        write_agent(&root, &claude_path("plain"), &claude_body(b"", CAP + 1));
+        write_agent(&root, &claude_path("exact"), &claude_body(b"", CAP));
+
+        assert_eq!(check(Some(AgentLayout::Claude), "early"), DirectWork::Loads);
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "late"),
+            DirectWork::Undecidable(PathBuf::from(claude_path("late")))
+        );
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "plain"),
+            DirectWork::Undecidable(PathBuf::from(claude_path("plain")))
+        );
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "exact"),
+            DirectWork::DoesNotLoad
+        );
+
+        write_agent(&root, ".kiro/agents/fits.json", &kiro_body(CAP));
+        write_agent(&root, ".kiro/agents/big.json", &kiro_body(CAP + 1));
+        assert_eq!(check(Some(AgentLayout::Kiro), "fits"), DirectWork::Loads);
+        assert_eq!(
+            check(Some(AgentLayout::Kiro), "big"),
+            DirectWork::Undecidable(PathBuf::from(".kiro/agents/big.json"))
+        );
+
+        // Without a layout, either file loading Direct Work decides it.
+        write_agent(&root, ".kiro/agents/early.json", &kiro_body(CAP + 1));
+        write_agent(&root, ".kiro/agents/plain.json", br#"{"resources":[]}"#);
+        assert_eq!(check(None, "early"), DirectWork::Loads);
+        assert_eq!(
+            check(None, "big"),
+            DirectWork::Undecidable(PathBuf::from(".kiro/agents/big.json"))
+        );
+        assert_eq!(
+            check(None, "plain"),
+            DirectWork::Undecidable(PathBuf::from(claude_path("plain")))
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_cap_inside_a_multibyte_character_still_finds_the_context_line() {
+        let root = scratch_dir("cap-mid-char");
+        // "é" is two bytes. The prefix has an odd length, so the cap
+        // falls between the two bytes of one of them.
+        let mut body = CLAUDE_OPENING.to_vec();
+        if body.len().is_multiple_of(2) {
+            body.push(b'x');
+        }
+        while body.len() < CAP + 2 {
+            body.extend_from_slice("é".as_bytes());
+        }
+        assert!(std::str::from_utf8(&body[..CAP]).is_err());
+        write_agent(&root, ".claude/agents/acme.md", &body);
+        assert_eq!(
+            mode_agent_check(&root, Some(AgentLayout::Claude), "acme"),
+            DirectWork::Loads
+        );
+
+        // Bytes that are not UTF-8 elsewhere in the file do not hide it.
+        let mut invalid = vec![0xff, 0xfe, b'\n'];
+        invalid.extend_from_slice(CLAUDE_OPENING);
+        write_agent(&root, ".claude/agents/latin.md", &invalid);
+        assert_eq!(
+            mode_agent_check(&root, Some(AgentLayout::Claude), "latin"),
+            DirectWork::Loads
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn an_undecidable_agent_gets_a_fallback_line_only_under_coordinator() {
+        let error = PersonaError::AgentFileTooLarge {
+            path: PathBuf::from("/srv/p/.claude/agents/acme.md"),
+        };
+        let line = decide(&ModeResolution::Explicit(Mode::Coordinator), false, || {
+            Err(error.clone())
+        });
+        assert_eq!(
+            line,
+            HookOutput::Line(
+                "Orchestration: auto (fallback: the agent file at /srv/p/.claude/agents/acme.md \
+                 is larger than 1 MiB, so the hook could not check whether it loads \
+                 k-direct-work.md)"
+                    .to_string()
+            )
+        );
+        assert_eq!(
+            decide(&ModeResolution::Explicit(Mode::Auto), false, || Err(error)),
+            HookOutput::Nothing
+        );
+    }
+
+    #[test]
     fn the_harness_flag_maps_to_an_agent_layout_or_the_legacy_lookup() {
         assert_eq!(
             layout_for_harness(Some("kiro-cli-v2")),
@@ -852,17 +1271,17 @@ mod tests {
                 install_root: PathBuf::from("/srv/project"),
                 harness: Some("claude".to_string()),
             })),
-            "Orchestration: auto (fallback: the install at /srv/project owns the konductor \
-             session but its session-start hook is not wired for claude; run konductor update \
-             in /srv/project)"
+            "Orchestration: auto (fallback: the install at /srv/project owns the agent of \
+             this session but its session-start hook is not wired for claude; run konductor \
+             update in /srv/project)"
         );
         assert_eq!(
             fallback_line(&persona_reason(&PersonaError::OwnerHookNotWired {
                 install_root: PathBuf::from("/srv/project"),
                 harness: None,
             })),
-            "Orchestration: auto (fallback: the install at /srv/project owns the konductor \
-             session but its session-start hook is not wired; run konductor update in \
+            "Orchestration: auto (fallback: the install at /srv/project owns the agent of \
+             this session but its session-start hook is not wired; run konductor update in \
              /srv/project)"
         );
     }
@@ -946,6 +1365,67 @@ mod tests {
             rules.display()
         )));
         assert!(body.ends_with("\n\n## Digest\n- delegate\n"), "{body}");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    /// On Kiro CLI v2 each mode agent's own file carries the hook, so the
+    /// shadowed check asks the session agent's file, not another's.
+    #[test]
+    fn the_owner_hook_on_kiro_v2_is_the_session_agents_own() {
+        let root = scratch_dir("owner-v2");
+        let agent = |name: &str, hook: bool| {
+            let entries: Vec<serde_json::Value> = hook
+                .then(|| {
+                    serde_json::json!({"command": format!(
+                        "/opt/konductor __orchestration-hook --agent {name} --install-root {}",
+                        root.display()
+                    )})
+                })
+                .into_iter()
+                .collect();
+            serde_json::json!({
+                "name": name,
+                "resources": ["file://context/k-direct-work.md"],
+                "hooks": {"agentSpawn": entries}
+            })
+            .to_string()
+        };
+        let files = [
+            (".kiro/agents/acme.json".to_string(), agent("acme", true)),
+            (
+                ".kiro/agents/globex.json".to_string(),
+                agent("globex", false),
+            ),
+        ];
+        let manifest_files = files
+            .iter()
+            .map(|(path, contents)| {
+                std::fs::create_dir_all(root.join(path).parent().unwrap()).unwrap();
+                std::fs::write(root.join(path), contents).unwrap();
+                ManifestFile {
+                    path: path.clone(),
+                    sha256: None,
+                    provenance: Provenance::Created,
+                }
+            })
+            .collect();
+        upsert_strategy(
+            &root,
+            StrategyManifest::new(
+                kiro_cli::STRATEGY_NAME,
+                "2026-01-01T00:00:00Z",
+                ".",
+                None,
+                Status::Complete,
+                manifest_files,
+            ),
+        )
+        .unwrap();
+        let harness = Some(kiro_cli::STRATEGY_NAME);
+        assert!(owner_hook_is_wired(&root, harness, "acme"));
+        assert!(!owner_hook_is_wired(&root, harness, "globex"));
+        // An agent the slot does not list as a mode agent needs them all.
+        assert!(!owner_hook_is_wired(&root, harness, "initech"));
         std::fs::remove_dir_all(&root).ok();
     }
 
