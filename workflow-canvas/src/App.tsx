@@ -24,7 +24,8 @@ import type { SwapRisk } from './launch/swap-guard';
 import type { NextPorts } from './next-ui/next-http';
 import { NextRunAnnouncements } from './next-ui/NextRunAnnouncements';
 import { oneCheck } from './next-ui/one-check';
-import { useNextData } from './next-ui/use-next-data';
+import { useNextData, type NextData } from './next-ui/use-next-data';
+import { PARAMS_LOADING, type ParamsState } from './run-view/run-params';
 import { RunView } from './run-view/RunView';
 import {
   useRunController,
@@ -51,6 +52,19 @@ const NO_RUN_PORTS: RunViewPorts = {
   scheduler: timerScheduler,
   now: () => Date.now(),
 };
+
+/**
+ * What the page knows about the params of the workflow. Until the fields of
+ * the workflow have been read for the load the page has now, it knows
+ * nothing, which is not the same as a workflow that declares none: a run
+ * started then would send the goal alone and leave every typed value behind.
+ */
+function paramsState(next: NextData): ParamsState {
+  if (next.failure !== undefined)
+    return { kind: 'failed', reason: next.failure };
+  if (!next.ready) return PARAMS_LOADING;
+  return { kind: 'ready', declared: next.extras.params ?? [] };
+}
 
 /**
  * True when the Run view draws a workflow, so it has a Run button. A load
@@ -200,9 +214,7 @@ export function App({
     ...(next.extras.goalDefault === undefined
       ? {}
       : { goalDefault: next.extras.goalDefault }),
-    ...(next.extras.params === undefined
-      ? {}
-      : { declaredParams: next.extras.params }),
+    params: paramsState(next),
     ports: nextRunPorts,
     // Only once there is a session: the page has no run of its own to keep
     // before one, and the controller drops the run of the session it is

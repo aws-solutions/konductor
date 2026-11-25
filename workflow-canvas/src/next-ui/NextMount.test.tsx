@@ -491,3 +491,79 @@ describe('the check of a text as the page opens', () => {
     expect(isOff(saveButton())).toBe(true);
   });
 });
+
+describe('the Run view while the fields of the workflow are not known', () => {
+  const GOAL = 'Fix the build';
+
+  /** Opens the page on the Run view with that answer for the extras read. */
+  async function onRunView(loadExtras: NextPorts['loadExtras']) {
+    const page = await openPage({
+      nextUi: true,
+      ports: portsOf({ loadExtras }),
+    });
+    await act(async () => {
+      fireEvent.click(runTab());
+    });
+    return page;
+  }
+
+  const runButton = () => screen.getByRole('button', { name: 'Run' });
+
+  const typeGoal = async (text: string) => {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Goal'), {
+        target: { value: text },
+      });
+    });
+  };
+
+  const isOff = (button: HTMLElement) =>
+    button.hasAttribute('disabled') ||
+    button.getAttribute('aria-disabled') === 'true';
+
+  it('keeps Run off, and starts nothing, while the read is still going', async () => {
+    const { ports } = await onRunView(
+      () => new Promise<WorkflowExtras>(() => undefined),
+    );
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('still being read');
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).not.toHaveBeenCalled();
+  });
+
+  it('keeps Run off, and starts nothing, after a read that failed', async () => {
+    const { ports } = await onRunView(() =>
+      Promise.reject(new Error('The server said no.')),
+    );
+    await act(async () => {});
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('The server said no.');
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).not.toHaveBeenCalled();
+  });
+
+  it('turns Run on once the read answers, and starts with the typed goal', async () => {
+    const { ports } = await onRunView(() => Promise.resolve(EXTRAS));
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(false);
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).toHaveBeenCalledWith(
+      { goal: GOAL },
+      expect.anything(),
+    );
+  });
+});

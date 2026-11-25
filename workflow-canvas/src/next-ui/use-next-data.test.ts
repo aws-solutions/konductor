@@ -134,3 +134,55 @@ describe('useNextData', () => {
     expect(seen[0]?.aborted).toBe(true);
   });
 });
+
+describe('useNextData, whether what it holds is what the server said', () => {
+  const held = () => new Promise<WorkflowExtras>(() => undefined);
+
+  it('is not ready while the first read is going', async () => {
+    const ports = portsOf({ loadExtras: held });
+    const { result } = renderHook(() => useNextData({ ports }));
+    await act(async () => {});
+
+    expect(result.current.ready).toBe(false);
+  });
+
+  it('is ready once the read answers', async () => {
+    const ports = portsOf();
+    const { result } = renderHook(() => useNextData({ ports }));
+    await act(async () => {});
+
+    expect(result.current.ready).toBe(true);
+    expect(result.current.extras).toEqual(EXTRAS);
+  });
+
+  it('is not ready after a read that failed', async () => {
+    const ports = portsOf({
+      loadExtras: () => Promise.reject(new Error('The server said no.')),
+    });
+    const { result } = renderHook(() => useNextData({ ports }));
+    await act(async () => {});
+
+    expect(result.current.ready).toBe(false);
+    expect(result.current.failure).toBe('The server said no.');
+  });
+
+  it('is not ready while a fresh read after a save is going', async () => {
+    const ports = portsOf({ loadExtras: held });
+    const { result, rerender } = renderHook(
+      ({ reload }: { reload: string }) => useNextData({ ports, reload }),
+      { initialProps: { reload: 'h1' } },
+    );
+    await act(async () => {});
+
+    rerender({ reload: 'h2' });
+    await act(async () => {});
+
+    expect(result.current.ready).toBe(false);
+  });
+
+  it('is not ready without a session', () => {
+    const { result } = renderHook(() => useNextData({ ports: undefined }));
+
+    expect(result.current.ready).toBe(false);
+  });
+});

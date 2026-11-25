@@ -13,6 +13,52 @@ export const PARAM_MAX_LENGTH = 65_536;
 /** What a person has typed for each param, by name. */
 export type ParamTexts = Readonly<Record<string, string>>;
 
+/**
+ * What the page knows about the params a workflow declares. A workflow that
+ * declares none is `ready` with an empty list, which is not the same as not
+ * having been told: a run must not start with inputs the page has not read,
+ * because it would send the goal alone and leave every typed value behind.
+ */
+export type ParamsState =
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'failed'; readonly reason: string }
+  | { readonly kind: 'ready'; readonly declared: readonly ParamDeclaration[] };
+
+/** The params of a page that has read nothing yet. */
+export const PARAMS_LOADING: ParamsState = { kind: 'loading' };
+
+/** The declared params of a state that has them, and none while it has not. */
+export function declaredParamsOf(
+  state: ParamsState,
+): readonly ParamDeclaration[] {
+  return state.kind === 'ready' ? state.declared : NO_DECLARED;
+}
+
+const NO_DECLARED: readonly ParamDeclaration[] = [];
+
+const STILL_READING =
+  'The inputs this workflow takes are still being read from the server.';
+
+/**
+ * Why the params stop a run while the page has not been told what they are,
+ * as a sentence for the Run button, or `undefined` once it has. A read that
+ * failed carries its own reason, which the page also shows above the view.
+ */
+export function paramsUnknownProblem(state: ParamsState): string | undefined {
+  if (state.kind === 'ready') return undefined;
+  return state.kind === 'failed' ? state.reason : STILL_READING;
+}
+
+/** The typed texts with only the names given kept, as own keys. */
+export function keptParams(
+  typed: ParamTexts,
+  names: ReadonlySet<string>,
+): ParamTexts {
+  return Object.fromEntries(
+    Object.entries(typed).filter(([name]) => names.has(name)),
+  );
+}
+
 /** The `params` of `POST /api/run`: the goal, and a value for each param sent. */
 export type RunParams = Readonly<Record<string, string>>;
 

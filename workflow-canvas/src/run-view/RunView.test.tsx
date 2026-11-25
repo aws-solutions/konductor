@@ -7,6 +7,7 @@ import {
   type RunMemory,
 } from '../execution/core/ports';
 import type { ParamDeclaration } from '../api/workflow-extras';
+import type { ParamsState } from './run-params';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import {
   EventWaits,
@@ -30,6 +31,7 @@ function Drawn({
   stages,
   goalDefault,
   declaredParams,
+  paramsState,
   ports,
   runMemory,
   reasonSentence,
@@ -38,6 +40,8 @@ function Drawn({
   stages: readonly string[];
   goalDefault?: string;
   declaredParams?: readonly ParamDeclaration[];
+  /** The state of the params; by default they are read and are those above. */
+  paramsState?: ParamsState;
   ports: RunViewPorts;
   runMemory?: RunMemory;
   reasonSentence?: (code: string) => string | undefined;
@@ -46,7 +50,7 @@ function Drawn({
   const controller = useRunController({
     stages,
     ...(goalDefault === undefined ? {} : { goalDefault }),
-    ...(declaredParams === undefined ? {} : { declaredParams }),
+    params: paramsState ?? { kind: 'ready', declared: declaredParams ?? [] },
     ports,
     ...(runMemory ? { runMemory } : {}),
   });
@@ -98,6 +102,7 @@ function drawn({
   goalDefault = GOAL_DEFAULT,
   noGoalDefault = false,
   declaredParams,
+  paramsState,
   clock,
   onRunState,
 }: {
@@ -111,6 +116,8 @@ function drawn({
   noGoalDefault?: boolean;
   /** The params the workflow declares beside the goal. */
   declaredParams?: readonly ParamDeclaration[];
+  /** The state of the params; by default they are read and are those above. */
+  paramsState?: ParamsState;
   /** A clock the test moves, for the elapsed time. */
   clock?: { now: () => number };
   /** Told where the run is, as the page is. */
@@ -136,6 +143,7 @@ function drawn({
       stages={STAGES}
       {...(noGoalDefault ? {} : { goalDefault })}
       {...(declaredParams === undefined ? {} : { declaredParams })}
+      {...(paramsState === undefined ? {} : { paramsState })}
       ports={ports}
       {...(memory ? { runMemory: memory } : {})}
       {...(reasonSentence ? { reasonSentence } : {})}
@@ -184,6 +192,7 @@ function drawn({
    */
   const rerenderRead = (
     nextParams: readonly ParamDeclaration[] | undefined = declaredParams,
+    nextState: ParamsState | undefined = paramsState,
   ) =>
     rerender(
       <Drawn
@@ -192,6 +201,7 @@ function drawn({
         {...(nextParams === undefined
           ? {}
           : { declaredParams: nextParams.map((param) => ({ ...param })) })}
+        {...(nextState === undefined ? {} : { paramsState: nextState })}
         ports={ports}
         {...(memory ? { runMemory: memory } : {})}
         {...(reasonSentence ? { reasonSentence } : {})}
@@ -1069,6 +1079,67 @@ describe('RunView, the params the workflow declares', () => {
     );
   });
 
+  // The text of a param the file no longer declares is dropped, not merely
+  // hidden, so declaring the name again starts from the new default.
+  it('starts a param declared again from its new default, not the old text', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    await act(async () => rerenderRead([]));
+    await act(async () => rerenderRead([{ ...BRANCH, default: 'trunk' }]));
+
+    expect(paramBox('branch').value).toBe('trunk');
+  });
+
+  it('keeps the text of a param that was there all along', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [DIFF, BRANCH] });
+    await typeParam('diff_input', 'the.diff');
+    await typeParam('branch', 'release');
+
+    await act(async () => rerenderRead([DIFF]));
+    await act(async () => rerenderRead([DIFF, BRANCH]));
+
+    expect(paramBox('diff_input').value).toBe('the.diff');
+    expect(paramBox('branch').value).toBe('main');
+  });
+
+  it('keeps every typed value while the read of the fields is going', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    // A save sends the page back to a read in flight before the new
+    // declarations arrive. Nothing is pruned then: the file still declares
+    // whatever it declares, and the page has not been told otherwise.
+    await act(async () => rerenderRead([], { kind: 'loading' }));
+    await act(async () => rerenderRead([BRANCH]));
+
+    expect(paramBox('branch').value).toBe('release');
+  });
+
+  it('keeps Run off with a reason while the fields are not known', async () => {
+    drawn({ declaredParams: [BRANCH], paramsState: { kind: 'loading' } });
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('still being read');
+    expect(screen.queryByLabelText('branch')).toBeNull();
+  });
+
+  it('says why the fields could not be read, and keeps Run off', () => {
+    drawn({
+      declaredParams: [BRANCH],
+      paramsState: { kind: 'failed', reason: 'The server said no.' },
+    });
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('The server said no.');
+  });
+
+  it('puts the goal first when both the goal and the fields stop a run', () => {
+    drawn({ noGoalDefault: true, paramsState: { kind: 'loading' } });
+
+    expect(runButton().textContent).toContain('Enter a goal to run.');
+  });
+
   it('starts another workflow afresh, the goal and the params alike', async () => {
     const { rerenderWith } = drawn({ declaredParams: [BRANCH] });
     await type('Fix the build');
@@ -1098,6 +1169,7 @@ describe('the Run view and the controller the page keeps', () => {
     const controller = useRunController({
       stages: STAGES,
       goalDefault: GOAL_DEFAULT,
+      params: { kind: 'ready', declared: [] },
       ports,
     });
     return shown ? <RunView controller={controller} /> : <p>Another view</p>;

@@ -2,7 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ParamDeclaration } from '../api/workflow-extras';
 import {
+  declaredParamsOf,
+  keptParams,
   PARAM_MAX_LENGTH,
+  PARAMS_LOADING,
+  paramsUnknownProblem,
   paramBoxes,
   paramProblem,
   paramsProblem,
@@ -204,5 +208,56 @@ describe('withParam', () => {
 
     expect(Object.hasOwn(typed, '__proto__')).toBe(true);
     expect(Object.getPrototypeOf(typed)).toBe(Object.prototype);
+  });
+});
+
+describe('the state of the declared params', () => {
+  it('has the declarations once they are read', () => {
+    const state = { kind: 'ready', declared: [BRANCH] } as const;
+
+    expect(declaredParamsOf(state)).toEqual([BRANCH]);
+    expect(paramsUnknownProblem(state)).toBeUndefined();
+  });
+
+  it('has none, and stops a run, while they are still being read', () => {
+    expect(declaredParamsOf(PARAMS_LOADING)).toEqual([]);
+    expect(paramsUnknownProblem(PARAMS_LOADING)).toContain('still being read');
+  });
+
+  it('has none, and stops a run with the reason, after a read that failed', () => {
+    const failed = { kind: 'failed', reason: 'The server said no.' } as const;
+
+    expect(declaredParamsOf(failed)).toEqual([]);
+    expect(paramsUnknownProblem(failed)).toBe('The server said no.');
+  });
+
+  it('tells a workflow that declares none from one not read yet', () => {
+    const none = { kind: 'ready', declared: [] } as const;
+
+    expect(declaredParamsOf(none)).toEqual(declaredParamsOf(PARAMS_LOADING));
+    expect(paramsUnknownProblem(none)).toBeUndefined();
+    expect(paramsUnknownProblem(PARAMS_LOADING)).toBeDefined();
+  });
+});
+
+describe('keptParams', () => {
+  it('keeps the texts of the names given', () => {
+    expect(
+      keptParams({ branch: 'release', note: 'x' }, new Set(['branch'])),
+    ).toEqual({ branch: 'release' });
+  });
+
+  it('keeps nothing when no name is given', () => {
+    expect(keptParams({ branch: 'release' }, new Set())).toEqual({});
+  });
+
+  it('keeps a name as an own key, never the prototype', () => {
+    const kept = keptParams(
+      withParam({}, '__proto__', 'x'),
+      new Set(['__proto__']),
+    );
+
+    expect(Object.getPrototypeOf(kept)).toBe(Object.prototype);
+    expect(Object.hasOwn(kept, '__proto__')).toBe(true);
   });
 });

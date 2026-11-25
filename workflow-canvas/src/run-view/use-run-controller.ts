@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import type { ParamDeclaration } from '../api/workflow-extras';
 import { goalProblem } from '../execution/core/goal';
 import type { RunMemory, Scheduler } from '../execution/core/ports';
 import {
@@ -15,11 +14,16 @@ import {
   type FollowRunState,
 } from '../run-client/use-follow-run';
 import {
+  declaredParamsOf,
+  keptParams,
   paramBoxes,
   paramsProblem,
+  paramsUnknownProblem,
+  PARAMS_LOADING,
   runParams,
   withParam,
   type ParamBox,
+  type ParamsState,
   type ParamTexts,
   type StartRun,
 } from './run-params';
@@ -125,8 +129,7 @@ function followMessage(follow: FollowRunState): string {
   return '';
 }
 
-/** No declared params, and no typed text, as one object for every render. */
-const NO_PARAMS: readonly ParamDeclaration[] = [];
+/** No typed text, as one object for every render. */
 const NO_TEXTS: ParamTexts = {};
 
 // What a person has typed for one workflow: the goal, if they typed one, and
@@ -152,7 +155,7 @@ interface Typed {
 export function useRunController({
   stages,
   goalDefault,
-  declaredParams = NO_PARAMS,
+  params: paramsState = PARAMS_LOADING,
   ports,
   runMemory,
 }: {
@@ -160,8 +163,12 @@ export function useRunController({
   readonly stages: readonly string[];
   /** The `params.goal.default` of the workflow, when it declares one. */
   readonly goalDefault?: string;
-  /** The params the workflow declares beside the goal, in the order of the file. */
-  readonly declaredParams?: readonly ParamDeclaration[];
+  /**
+   * What the page knows about the params the workflow declares. A page that
+   * has not been told yet keeps Run off, because a run started then would
+   * send the goal alone and leave every typed value behind.
+   */
+  readonly params?: ParamsState;
   readonly ports: RunViewPorts;
   /** Keeps the run across a reload; a page without it starts afresh. */
   readonly runMemory?: RunMemory;
@@ -179,7 +186,31 @@ export function useRunController({
     ? typedFor
     : undefined;
   const goal = goalText(own?.goal, goalDefault);
-  const params = paramBoxes(declaredParams, own?.params ?? NO_TEXTS);
+  const declared = declaredParamsOf(paramsState);
+  const params = paramBoxes(declared, own?.params ?? NO_TEXTS);
+  // The names the server last said the workflow declares, as one value the
+  // effect below compares. A param name has no line break in it, so the join
+  // cannot run two names together.
+  const declaredNames =
+    paramsState.kind === 'ready'
+      ? declared.map((param) => param.name).join('\n')
+      : undefined;
+  // A save can take a param out of the file. Its text is dropped once the new
+  // declarations are read, so declaring that name again later starts from the
+  // new declaration's default instead of reviving what was typed for the old
+  // one. A read still going, or one that failed, declares nothing and so
+  // prunes nothing.
+  useEffect(() => {
+    if (declaredNames === undefined) return;
+    const kept = new Set(declaredNames === '' ? [] : declaredNames.split('\n'));
+    setTypedFor((held) => {
+      if (!held) return held;
+      const texts = keptParams(held.params, kept);
+      return Object.keys(texts).length === Object.keys(held.params).length
+        ? held
+        : { ...held, params: texts };
+    });
+  }, [declaredNames]);
   const typeInto = (change: (held: Typed) => Typed) =>
     setTypedFor((held) =>
       change(
@@ -236,7 +267,7 @@ export function useRunController({
     start: started,
     runFinished,
     goalProblem: goalProblem(goal),
-    paramsProblem: paramsProblem(params),
+    paramsProblem: paramsUnknownProblem(paramsState) ?? paramsProblem(params),
     followFailed: status === 'failed',
   };
   const timing = runTiming(runId ?? '', history.runs, seen?.at ?? ports.now());

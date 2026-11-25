@@ -9,6 +9,13 @@ import type { NextPorts } from './next-http';
 export interface NextData {
   readonly extras: WorkflowExtras;
   readonly agents: readonly AgentOption[];
+  /**
+   * Whether `extras` is what the server said about the workflow the page has
+   * now. It is false while a read is in flight and after one that failed, so
+   * a view can tell a field the workflow does not declare from one it has not
+   * been told about yet.
+   */
+  readonly ready: boolean;
   /** Why the reads failed; the views then fall back to what they can do. */
   readonly failure?: string;
 }
@@ -16,7 +23,11 @@ export interface NextData {
 const NO_EXTRAS: WorkflowExtras = { stageFields: {} };
 
 /** What the views have before anything is read, and after a read fails. */
-const NOTHING_READ: NextData = { extras: NO_EXTRAS, agents: KNOWN_AGENTS };
+const NOTHING_READ: NextData = {
+  extras: NO_EXTRAS,
+  agents: KNOWN_AGENTS,
+  ready: false,
+};
 
 const READ_FAILED = 'The server did not give the fields of this workflow.';
 
@@ -27,8 +38,10 @@ function messageOf(error: unknown): string {
 }
 
 // What was read, and which session it was read through, so the fields of the
-// workflow that was left are never shown under another one.
-interface Read extends NextData {
+// workflow that was left are never shown under another one. Readiness is not
+// kept here: it is whether this answer is the one the page is asking for and
+// nothing failed, which the hook works out as it returns.
+interface Read extends Omit<NextData, 'ready'> {
   readonly ports: NextPorts;
   readonly reload: unknown;
 }
@@ -89,6 +102,11 @@ export function useNextData({
     return NOTHING_READ;
   }
   return read.failure === undefined
-    ? { extras: read.extras, agents: read.agents }
-    : { extras: read.extras, agents: read.agents, failure: read.failure };
+    ? { extras: read.extras, agents: read.agents, ready: true }
+    : {
+        extras: read.extras,
+        agents: read.agents,
+        ready: false,
+        failure: read.failure,
+      };
 }
