@@ -6,6 +6,7 @@ import StatusIndicator, {
   type StatusIndicatorProps,
 } from '@cloudscape-design/components/status-indicator';
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -66,7 +67,7 @@ export type StageFieldsByKind = Readonly<
 >;
 
 const EARLIER_TEXT_NOTE =
-  'YAML shows an earlier text. The drawing and Properties show the workflow as it is now, and a save writes that; press Redo to come back.';
+  'YAML shows an earlier version of the stage edits. The drawing and Properties show the current stage edits, which Save writes; press Redo to come back.';
 
 const STATUS_WORDS: Readonly<Record<DraftStatus, string>> = {
   unchecked: 'Not checked yet',
@@ -170,10 +171,11 @@ function shortcutKeyOf(event: KeyboardEvent): ShortcutKey {
  * stands, on the same base hash and with the same conflict rules, and the
  * keys of a stage are read-only until it is saved or the file is loaded
  * again, because the stages on the page describe the file and not the text
- * typed over it. Undo and redo step through the texts of this session and
- * show them, and typing after one adopts the text it shows. Those texts
- * belong to the load in `loaded`: another load is another workflow, and the
- * history starts over for it.
+ * typed over it. Undo and redo through a raw edit adopt the text they show,
+ * so the editor and Save use that text too. Undo and redo through stage edits
+ * can show an earlier text while the current stages stay in the editor. Those
+ * texts belong to the load in `loaded`: another load is another workflow, and
+ * the history starts over for it.
  */
 export function DesignView({
   editor,
@@ -210,6 +212,7 @@ export function DesignView({
   // as it stands rather than a text no save could produce.
   const written = useMemo(() => textOf(state), [state]);
   const text = written ?? savedText;
+  const rawText = rawTextOf(state);
   // The text the save in flight sent, kept so a later edit does not change
   // what the places of the stages are read for.
   const [sent, setSent] = useState<string>();
@@ -221,7 +224,16 @@ export function DesignView({
     validate,
     scheduler,
   });
-  const { record, reset } = history;
+  const {
+    record,
+    reset,
+    undo,
+    redo,
+    undoText,
+    redoText,
+    undoAdoptsText,
+    redoAdoptsText,
+  } = history;
   const { edit } = draft;
   // The history holds the texts of one draft, so it is of the load that
   // opened that draft. The load the page hands over says which: a save gives
@@ -256,12 +268,15 @@ export function DesignView({
       : {}),
   });
   // A change of the stages makes a text; the text shown is the one the
-  // history points at, and that is the text the check reads. A draft with no
+  // history points at, and that is the text the check reads. Whole-text edits
+  // are marked so undo and redo can adopt the text they cross. A draft with no
   // text a save could write records nothing: the history holds texts a save
   // can write, so undo always lands on one.
   useEffect(() => {
-    if (written !== undefined) record(written);
-  }, [record, written]);
+    if (written !== undefined) {
+      record(written, rawText === undefined ? 'stages' : 'text');
+    }
+  }, [rawText, record, written]);
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
@@ -349,28 +364,54 @@ export function DesignView({
   // A raw edit writes the whole file, so the writer and its refusals are not
   // used for it.
   const refusal =
-    rawTextOf(state) === undefined
+    rawText === undefined
       ? (fileBlocker(state) ?? writeBlocker(state))
       : undefined;
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    const asked = undoShortcut(shortcutKeyOf(event));
-    if (asked === undefined) return;
-    event.preventDefault();
-    if (asked === 'undo') history.undo();
-    else history.redo();
-  };
 
   // Why the text cannot be typed into now, if it cannot: read-only, a load,
   // or a save on its way to the server.
   const blocked = textBlocker(state);
+  const stepHistory = useCallback(
+    (asked: 'undo' | 'redo') => {
+      const undoing = asked === 'undo';
+      const next = undoing ? undoText : redoText;
+      const adopts = undoing ? undoAdoptsText : redoAdoptsText;
+      if (next === undefined || (adopts && blocked !== undefined)) return;
+      if (adopts) editor.setText(next);
+      if (undoing) undo();
+      else redo();
+    },
+    [
+      blocked,
+      editor,
+      redo,
+      redoAdoptsText,
+      redoText,
+      undo,
+      undoAdoptsText,
+      undoText,
+    ],
+  );
+
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const asked = undoShortcut(shortcutKeyOf(event));
+      if (asked === undefined) return;
+      event.preventDefault();
+      stepHistory(asked);
+    },
+    [stepHistory],
+  );
+  const onUndo = useCallback(() => stepHistory('undo'), [stepHistory]);
+  const onRedo = useCallback(() => stepHistory('redo'), [stepHistory]);
+
   // The lines of a stage are named only while the drawing and the text agree
   // on them. A raw edit leaves the draft on the loaded stages while the check
   // parses whatever was typed, so the stage at a given place in that parse
   // need not be the one that is picked: a rename, a reorder, a deletion or a
   // replacement that keeps the count would mark another stage's lines.
   const marked =
-    pickedPlace && rawTextOf(state) === undefined
+    pickedPlace && rawText === undefined
       ? markedStageOf(checked?.view, pickedPlace, {
           stale: ofNow === undefined,
           sources: state.draft.stages.map((one) => sources.of(one.id)),
@@ -437,7 +478,7 @@ export function DesignView({
             onChange: (next: string) => {
               if (blocked !== undefined) return;
               editor.setText(next);
-              record(next);
+              record(next, 'text');
             },
             ...(blocked === undefined ? {} : { blocked }),
           }}
@@ -474,15 +515,19 @@ export function DesignView({
             <SpaceBetween direction="horizontal" size="xs">
               <Button
                 iconName="undo"
-                disabled={!history.canUndo}
-                onClick={history.undo}
+                disabled={
+                  !history.canUndo || (undoAdoptsText && blocked !== undefined)
+                }
+                onClick={onUndo}
               >
                 Undo
               </Button>
               <Button
                 iconName="redo"
-                disabled={!history.canRedo}
-                onClick={history.redo}
+                disabled={
+                  !history.canRedo || (redoAdoptsText && blocked !== undefined)
+                }
+                onClick={onRedo}
               >
                 Redo
               </Button>

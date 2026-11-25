@@ -33,6 +33,18 @@ describe('useEditHistory', () => {
     expect(result.current.text).toBe('v1');
   });
 
+  it('marks undo and redo through whole-text edits for adoption', () => {
+    const { result } = renderHistory();
+    act(() => result.current.record('v1'));
+    act(() => result.current.record('v2', 'text'));
+
+    expect(result.current.undoText).toBe('v1');
+    expect(result.current.undoAdoptsText).toBe(true);
+    act(() => result.current.undo());
+    expect(result.current.redoText).toBe('v2');
+    expect(result.current.redoAdoptsText).toBe(true);
+  });
+
   it('applies two calls in one batch in order', () => {
     const { result } = renderHistory();
     act(() => {

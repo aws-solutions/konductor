@@ -711,7 +711,9 @@ describe('DesignView, undo and redo', () => {
     await openYaml();
 
     expect(panelOf('YAML').textContent).toContain('name: draft');
-    expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
+    expect(screen.getByTestId('earlier-text-note').textContent).toContain(
+      'current stage edits, which Save writes',
+    );
 
     await act(async () => {
       fireEvent.click(button('Redo'));
@@ -1423,12 +1425,52 @@ describe('DesignView, typing over the whole text', () => {
     await settle();
 
     expect(yamlBox().value).toBe(HELLO_TEXT);
-    expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
 
     await press('Redo');
     await settle();
 
     expect(yamlBox().value).toBe(TYPED);
+  });
+
+  it('saves the text shown after Undo and Redo over a raw edit', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    const beforeRaw = yamlBox().value;
+    const typed = `${beforeRaw}# typed over\n`;
+
+    await typeText(typed);
+    await act(async () => {
+      fireEvent.keyDown(yamlBox(), { key: 'z', ctrlKey: true });
+    });
+    await settle();
+
+    expect(yamlBox().value).toBe(beforeRaw);
+    await press('Save');
+    await settle();
+    expect(edits.save).toHaveBeenLastCalledWith(
+      yamlBox().value,
+      HELLO_DOCUMENT.hash,
+    );
+
+    await act(async () => {
+      fireEvent.keyDown(yamlBox(), {
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: true,
+      });
+    });
+    await settle();
+    const redone = yamlBox().value;
+    expect(redone).toBe(typed);
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenLastCalledWith(redone, SAVED_HASH);
   });
 
   it('steps back over a key of a stage and then over a raw edit', async () => {
@@ -1566,6 +1608,7 @@ describe('DesignView, saving while the text is typed over', () => {
     await press('Save');
 
     expect(yamlBox().readOnly).toBe(true);
+    expect(isOff(button('Undo'))).toBe(true);
     await typeInto(yamlBox(), `${TYPED}# newer\n`);
     await typeInto(yamlBox(), HELLO_TEXT);
 
