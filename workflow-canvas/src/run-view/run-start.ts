@@ -179,16 +179,20 @@ export function startsOnEnter(key: GoalKey): boolean {
 
 /**
  * Which workflow a typed goal and typed param values belong to: the calls of
- * its session, the default goal it declares and the params it declares. What
- * a person types is for that workflow only, so another one starts from its
- * own defaults.
+ * its session. Those are built once for the workflow that loaded, so they
+ * tell one workflow from another and do not change when the page reads that
+ * workflow's fields again, as it does after a save. What a person types
+ * therefore survives a reread and is lost only when the workflow is replaced.
+ *
+ * The declared params are not part of this. Reading them again yields an
+ * equal list under a new identity, and a list that keys the typed values
+ * would drop them on every save; the current declarations are applied by
+ * `paramBoxes` instead, which draws a box per declared param and takes what
+ * was typed for it.
  */
 export interface GoalSource {
   readonly start: unknown;
   readonly list: unknown;
-  readonly goalDefault: string | undefined;
-  /** The declared params of the workflow, by identity. */
-  readonly declared: unknown;
 }
 
 /** Whether two goal sources are the same workflow. */
@@ -196,13 +200,7 @@ export function sameGoalSource(
   a: GoalSource | undefined,
   b: GoalSource,
 ): boolean {
-  return (
-    a !== undefined &&
-    a.start === b.start &&
-    a.list === b.list &&
-    a.goalDefault === b.goalDefault &&
-    a.declared === b.declared
-  );
+  return a !== undefined && a.start === b.start && a.list === b.list;
 }
 
 /**

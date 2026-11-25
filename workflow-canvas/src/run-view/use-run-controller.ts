@@ -166,13 +166,13 @@ export function useRunController({
   /** Keeps the run across a reload; a page without it starts afresh. */
   readonly runMemory?: RunMemory;
 }): RunController {
-  // The text a person types belongs to the workflow it was typed for, so
-  // another workflow starts from its own default goal and param defaults.
+  // What a person types belongs to the workflow it was typed for, which the
+  // calls of its session name. Reading the workflow's fields again, as a save
+  // does, leaves those calls alone, so the typed goal and param values
+  // survive it; another workflow brings its own calls and starts afresh.
   const goalSource: GoalSource = {
     start: ports.start,
     list: ports.listRuns,
-    goalDefault,
-    declared: declaredParams,
   };
   const [typedFor, setTypedFor] = useState<Typed>();
   const own = sameGoalSource(typedFor?.source, goalSource)

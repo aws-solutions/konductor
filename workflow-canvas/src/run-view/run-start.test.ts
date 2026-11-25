@@ -253,14 +253,9 @@ describe('canStartRun and startDisabledReason, the params', () => {
 });
 
 describe('sameGoalSource', () => {
-  const source = {
-    start: () => undefined,
-    list: () => undefined,
-    goalDefault: 'Say hello',
-    declared: [{ name: 'diff_input', required: false }],
-  };
+  const source = { start: () => undefined, list: () => undefined };
 
-  it('is the same workflow for the same calls, default goal and params', () => {
+  it('is the same workflow for the same calls', () => {
     expect(sameGoalSource({ ...source }, source)).toBe(true);
   });
 
@@ -274,16 +269,6 @@ describe('sameGoalSource', () => {
     expect(sameGoalSource({ ...source, list: () => undefined }, source)).toBe(
       false,
     );
-  });
-
-  it('is another workflow when the default goal changes', () => {
-    expect(
-      sameGoalSource({ ...source, goalDefault: 'Fix the build' }, source),
-    ).toBe(false);
-  });
-
-  it('is another workflow when the declared params change', () => {
-    expect(sameGoalSource({ ...source, declared: [] }, source)).toBe(false);
   });
 
   it('is no workflow before anything is typed', () => {

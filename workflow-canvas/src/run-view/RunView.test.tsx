@@ -176,7 +176,37 @@ function drawn({
     );
     return { events: nextEvents, start: nextStart, listRuns: nextList };
   };
-  return { events, start, listRuns, waits, rerenderWith, rerenderSame };
+  /**
+   * Draws the view again as the page does after a save: the same session, so
+   * the same calls, with the workflow's fields read once more. The read
+   * yields an equal declaration list under a new identity, and the caller may
+   * pass the declarations the saved file now has.
+   */
+  const rerenderRead = (
+    nextParams: readonly ParamDeclaration[] | undefined = declaredParams,
+  ) =>
+    rerender(
+      <Drawn
+        stages={STAGES}
+        {...(noGoalDefault ? {} : { goalDefault })}
+        {...(nextParams === undefined
+          ? {}
+          : { declaredParams: nextParams.map((param) => ({ ...param })) })}
+        ports={ports}
+        {...(memory ? { runMemory: memory } : {})}
+        {...(reasonSentence ? { reasonSentence } : {})}
+        {...(onRunState ? { onRunState } : {})}
+      />,
+    );
+  return {
+    events,
+    start,
+    listRuns,
+    waits,
+    rerenderWith,
+    rerenderRead,
+    rerenderSame,
+  };
 }
 
 const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
@@ -980,6 +1010,74 @@ describe('RunView, the params the workflow declares', () => {
     expect(start).toHaveBeenCalled();
     expect(paramBox('branch').readOnly).toBe(true);
     expect(paramBox('branch').value).toBe('');
+  });
+
+  // A save makes the page read the workflow's fields again, which yields an
+  // equal list of declarations under a new identity. What a person typed is
+  // theirs and must outlive that read.
+  it('keeps the typed goal and param values when the workflow is read again', async () => {
+    const { start, rerenderRead } = drawn({ declaredParams: [DIFF, BRANCH] });
+    await type('Fix the build');
+    await typeParam('diff_input', 'the.diff');
+    await typeParam('branch', 'release');
+
+    rerenderRead();
+
+    expect(goalBox().value).toBe('Fix the build');
+    expect(paramBox('diff_input').value).toBe('the.diff');
+    expect(paramBox('branch').value).toBe('release');
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      {
+        goal: 'Fix the build',
+        diff_input: 'the.diff',
+        branch: 'release',
+      },
+      expect.anything(),
+    );
+  });
+
+  it('keeps a cleared box cleared when the workflow is read again', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', '');
+
+    rerenderRead();
+
+    expect(paramBox('branch').value).toBe('');
+  });
+
+  it('draws a param the save added from its own default, keeping the rest', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    rerenderRead([BRANCH, { name: 'note', default: 'none', required: false }]);
+
+    expect(paramBox('branch').value).toBe('release');
+    expect(paramBox('note').value).toBe('none');
+  });
+
+  it('drops the text of a param the save took out of the file', async () => {
+    const { start, rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    rerenderRead([]);
+
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
+  });
+
+  it('starts another workflow afresh, the goal and the params alike', async () => {
+    const { rerenderWith } = drawn({ declaredParams: [BRANCH] });
+    await type('Fix the build');
+    await typeParam('branch', 'release');
+
+    rerenderWith({ goalDefault: 'Write the release note' });
+
+    expect(goalBox().value).toBe('Write the release note');
+    expect(paramBox('branch').value).toBe('main');
   });
 
   it('starts the next workflow from its own param defaults', async () => {
