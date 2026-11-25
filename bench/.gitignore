@@ -14,3 +14,5 @@ manifest.json.sig
 plant-release*/
 # The real-task suite manifest, not a release file.
 !/real/manifest.json
+# The scenario run-level manifest (scenarios/konductor/manifest.js), not a release file.
+!/scenarios/konductor/manifest.json
