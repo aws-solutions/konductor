@@ -403,16 +403,17 @@ The rest wraps the core, so the rules can be tested without a browser:
   with errors, with their messages), or the canvas with its editing (next
   section).
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
-  (`@xyflow/react`). Nodes cannot be moved or connected; the view can be
-  panned, and zoomed with the controls. In the Design view a stage can be
-  selected, with a click or with Enter or Space on the node; the Run view
-  is read-only. Each node can be reached with the Tab key and has a name for
-  screen readers, which ends with "selected" for the selected stage. The view
-  fits the graph again when a stage is added or deleted. The view starts zoomed out
-  far enough to show the longest workflow the API allows (40 stages), where the
-  text is small; use the zoom controls to read it. A node cuts a long name or
-  outcome short, and keeps the whole text in its `title`; an outcome too long
-  for the node is also written out in full under the graph.
+  (`@xyflow/react`). Nodes cannot be moved or connected; the view can be panned,
+  and zoomed with the controls. In the Design view a stage can be selected, with
+  a click or with Enter or Space on the node. The Run view draws no graph; the
+  Execution tab behind `?ui=classic` draws it read-only, with each node's
+  outcome. Each node can be reached with the Tab key and has a name for screen
+  readers, which ends with "selected" for the selected stage. The view fits the
+  graph again when a stage is added (or deleted, in the classic Designer). The
+  view starts zoomed out far enough to show the longest workflow the API allows
+  (40 stages), where the text is small; use the zoom controls to read it. A node
+  cuts a long name or outcome short, and keeps the whole text in its `title`; an
+  outcome too long for the node is also written out in full under the graph.
 
 ## Which views the page opens
 
@@ -435,9 +436,10 @@ are finished, and it goes with the views it opens.
 
 ## The Design view
 
-The view has the graph in the middle, with **Add agent-N** (named for the stage
-it adds), **Undo** and **Redo** above it and the save line and **Save** in its
-header, and a side column on the right with two tabs: **YAML**, the text of the
+The view has a **Components** column on the left with the save line,
+**Save**, **Add agent-N** (named for the stage it adds), **Undo** and
+**Redo**; the graph in the middle; and a side column on the right with two
+tabs: **YAML**, the text of the
 file, and **Properties**. Properties shows the picked stage (the first one when
 the page opens): its `name` and its `agent` to change and every other key the
 server lists for that kind of stage read-only. There is no Delete stage here
@@ -465,10 +467,10 @@ keeps.
   `k-developer`, and selects it. The classic Designer also moves focus to its
   name. It is off at 40 stages, the most the API allows.
 - Typing in **name** renames the stage, and the node changes at once. The name
-  is taken as typed; the API is what says whether it is a good name. The
-  **Complete** or **Needs a fix** mark of a stage shows only for a draft that a
-  check has answered for, so it never says a draft is complete before it was
-  checked.
+  is taken as typed; the API is what says whether it is a good name. In the
+  classic Designer, the **Complete** or **Needs a fix** mark of a stage shows
+  only for a draft that a check has answered for, so it never says a draft is
+  complete before it was checked.
 - **agent** is a list of the agents that Konductor ships, each with a line on
   what it is for. The Design view takes it from `GET /api/agents`; the classic
   Designer has it built into the page (`designer/core/agents.ts`). A file that
@@ -574,9 +576,10 @@ and a YAML 1.1 reader such as libyaml takes U+0085, U+2028 and U+2029 for line
 breaks.
 
 - **Checking.** A moment (400 ms) after the last change, the text is checked
-  with `POST /api/validate`. What it finds shows under the field it is about,
-  and all of it in an alert above the graph, with the name of the stage in
-  front. What the last check found stays on show while you type, until the
+  with `POST /api/validate`. The Design view lists what it finds in one
+  warning above the columns, as `Line N:` and the message. The classic
+  Designer shows each under the field it is about, and all of it in an alert
+  above the graph, with the name of the stage in front. What the last check found stays on show while you type, until the
   check of the new text answers, so the page does not jump at every key. The
   server has the last word: Save is off while the check of the current draft
   has errors, with the reason in a tooltip, and a save that goes out in the
@@ -634,7 +637,7 @@ handler that is on only then), because the draft lives in the page. A change
 that is put back, so the draft equals the file again, does not ask, and nor
 does a draft that has been saved.
 
-The code follows the split of the Execution tab:
+The code follows the split of the Design view:
 
 - `src/designer/core/` is the core and does no IO: the draft of the stages, the
   text that a save writes (`stage-text.ts`, `prompt-text.ts`), the findings put on the stage and
@@ -677,7 +680,8 @@ run.
   another tab is going, the page follows the run named in that answer instead
   of starting one, and the goal typed is not used for it. The API does not
   give that run's goal, so while it goes the Goal box is read-only, empty and
-  says "Not known"; it comes back with the default once that run has ended.
+  says "Not known"; once that run has ended it comes back with the goal for
+  the next run, the one typed or else the workflow's default.
 - Resume works after a reload: the page keeps the id of the latest run in the
   storage of the browser tab (`sessionStorage`; the id is no secret) and drops
   it once the run has ended or turns out to be gone. When the page opens again
@@ -707,7 +711,7 @@ run.
   working.
 - An error from the API, whether the run does not start or the reads fail,
   shows in one alert under the Run button, with the sentence the server gave
-  and each name in backticks shown as code. A start that gets no answer, or is
+  as plain text. A start that gets no answer, or is
   accepted in a reply the page cannot read, says that it is not known whether
   the run started and asks for a reload, since a second start could run the
   workflow twice. The goal is one line: line breaks in the default become
