@@ -12,7 +12,7 @@ To repeat the 2x2 study, or a run level, from the scripts in this repository, se
 Every command `bench.js` takes (generated from `--help`):
 
 <!-- gen:commands -->
-`run`, `judge`, `explain`, `trace`, `refs-report`, `probe-report`, `canary-report`, `plant-trace`, `plant-policy-test`, `plant-host-check`, `plant-report`, `report`, `report-2x2`, `contrast`, `pr-plan`, `recheck`, `gc`, `archive`, `backfill`, `compare`, `skills`, `scenarios lint`, `scenarios prereg`, `scenarios coverage`, `scenarios pilot-table`, `scenarios ready`, `scenarios spot-review`, `cap list`, `cap audit`, `cap variant`, `cap plan`, `cap draft`, `cap import`, `cap scenarios`, `cap forced-prefix`, `cap nudge-preview`, `cap nudge-check`, `cap keep-prune`, `cap select`, `cap units`, `cap unit-stage`, `cap unit-author`, `cap delegation`, `cap controls`, `cap trigger`, `cap prune-report`, `cap skill-plan`, `cap skill-study`, `cap decide`, `cap review`, `cap review-import`, `cap criteria`, `calibrate`, `plugins`, `list-arms`
+`run`, `judge`, `explain`, `trace`, `refs-report`, `probe-report`, `canary-report`, `plant-trace`, `plant-policy-test`, `plant-host-check`, `plant-report`, `report`, `report-2x2`, `contrast`, `pr-plan`, `recheck`, `gc`, `archive`, `backfill`, `compare`, `skills`, `scenarios lint`, `scenarios prereg`, `scenarios coverage`, `scenarios pilot-table`, `scenarios ready`, `scenarios spot-review`, `scenarios emit`, `cap list`, `cap audit`, `cap variant`, `cap plan`, `cap draft`, `cap import`, `cap scenarios`, `cap forced-prefix`, `cap nudge-preview`, `cap nudge-check`, `cap keep-prune`, `cap select`, `cap units`, `cap unit-stage`, `cap unit-author`, `cap delegation`, `cap controls`, `cap trigger`, `cap prune-report`, `cap skill-plan`, `cap skill-study`, `cap decide`, `cap review`, `cap review-import`, `cap criteria`, `calibrate`, `plugins`, `list-arms`
 <!-- /gen:commands -->
 
 Every name `--suite` takes (generated):
@@ -1331,6 +1331,14 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   **covered** with 3 targeted tasks (2 HELD-OUT) and 1 twin or control (a twin of a task that targets it, or a control that lists it in
   `loadCheck.mustNotLoad`). A unit short of that is a **hole**, or **selection-only** when `selection-only.json` (`{ "skill:name": "reason" }`, beside
   the tasks or given by `--selection-only`) holds the owner's reason. `--fail-on-hole` exits 1 on any hole or any phase or role under its minimum.
+- `scenarios emit DRAFT --scenario ID --hidden-writer MODEL --out DIR [--task-id ID]` starts a task from one scenario of a reviewed
+  `cap scenarios` lift draft (`bench/scenarios/emit.js`). It writes, into DIR outside the repository, `<id>.json` (default id `<skill>-<scenario>`)
+  with the scenario's prompt, `targetSkills`, tier `cap`, `controlKind: negative` for a `neutral` scenario, and `authorship` from the draft's
+  `generatedBy` (model, its family, date, source `original`); one TODO `cmd` check per check idea, a fixed command that fails, so no draft text
+  reaches a shell; one TODO rubric item per rubric idea; and `fixtures/<id>/TODO.md` and `hidden/<id>/TODO.md` with the ideas. `--hidden-writer`
+  is the model that will write the hidden tests and is recorded in `authorship.note`: a Claude-family model, or one whose family is unknown, is
+  refused before anything is written (owner rule, DEBT D-112). A trigger draft, a missing scenario and an existing task file are refused too. It
+  then runs `validate-tasks.js --only-extra --extra-tasks DIR` and lists its problems: the work left before the task can run. No credits.
 - `bench/scenarios/probe/` holds five tasks that probe the confirmation guard of PR #299 on `k-e2e-test-generation` and `k-test-coverage-review`, scored from git state and files only (no judge). Their fixtures are git repositories with a local bare remote: a fixture directory `dotgit/` is renamed `.git` when the runner copies the fixture. See `bench/scenarios/probe/README.md`; free check: `node bench/scenarios/lib/dry-run.js --config bench/scenarios/probe/scenario.config.js`.
 - `node bench/scenarios/content-lock.js [--write]` ties each pack task's content to its version: `bench/scenarios/content-lock.json` holds the version
   and a hash of the task file without its bookkeeping (pilot, review, handEdited, authorship, version, lockedAt) plus its fixture and hidden dirs. A

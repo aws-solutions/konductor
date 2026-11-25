@@ -37,12 +37,20 @@ tool list. Both give drafts for a person to read. Neither runs your agent.
    node bench/runner/bench.js cap scenarios --cap skill:NAME --mode trigger --n 10 --budget-credits 30 --out /tmp/scn
    ```
 
-5. Read every draft in `/tmp/scn/scenarios/`. Write the good ones as task files by hand.
+5. Read every draft in `/tmp/scn/scenarios/`. Delete the scenarios you do not want.
 
-6. Check your task files (free).
+6. Start a task from one good scenario (free). `--hidden-writer` names the model that will write the hidden tests;
+   a Claude model is refused. The command writes a skeleton with TODO checks and lists what is left to write.
 
    ```bash
-   node bench/tasks/validate-tasks.js --extra-tasks DIR --only-extra
+   node bench/runner/bench.js scenarios emit /tmp/scn/scenarios/skill-NAME.json --scenario s01 \
+     --hidden-writer gpt-5 --out /tmp/tasks
+   ```
+
+7. Write the fixture, the checks and the rubric, then check the task files (free).
+
+   ```bash
+   node bench/tasks/validate-tasks.js --extra-tasks /tmp/tasks --only-extra
    ```
 
 ## Path B: any agent, from its tool list
@@ -68,8 +76,9 @@ tool list. Both give drafts for a person to read. Neither runs your agent.
 
 ## Missing today
 
-No command turns an approved draft into a runnable task file, on either path. A person writes the task JSON
-(fixture, checks, rubric) by hand. For agenteval this is DEBT row D-112.
+No command writes a runnable task. On path A, `scenarios emit` writes the skeleton, and a person still writes the
+fixture, the checks and the rubric. Path B has no emitter: the bench cannot run an agent that is not a Konductor
+agent yet (DEBT row D-112).
 
 ## Go deeper
 

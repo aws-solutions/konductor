@@ -83,6 +83,7 @@ const FLAGS = {
   'scenarios pilot-table': ['pack', 'json'],
   'scenarios ready': ['batch', 'ids', 'late', 'json'],
   'scenarios spot-review': ['seed', 'out'],
+  'scenarios emit': ['scenario', 'hidden-writer', 'task-id', 'out', 'repo-root'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
@@ -90,7 +91,7 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'unit-author', 'delegation', 'nudge-preview', 'nudge-check'] };
+const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review', 'emit'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'unit-author', 'delegation', 'nudge-preview', 'nudge-check'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
@@ -99,7 +100,7 @@ const BOOLEAN_FLAGS = new Set([
 ]);
 
 // Positional arguments a command takes after its name (and subcommand): the directory of `scenarios lint DIR`.
-const POSITIONALS = { 'scenarios lint': 1, 'scenarios coverage': 1, 'scenarios prereg': 2, 'scenarios pilot-table': Infinity, 'scenarios ready': 1, 'scenarios spot-review': 1 };
+const POSITIONALS = { 'scenarios lint': 1, 'scenarios coverage': 1, 'scenarios prereg': 2, 'scenarios pilot-table': Infinity, 'scenarios ready': 1, 'scenarios spot-review': 1, 'scenarios emit': 1 };
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];
 

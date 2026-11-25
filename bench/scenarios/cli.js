@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// `bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review ...`: authoring tools for the scenario pack. Everything here is free: no model call, no credits.
+// `bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review|emit ...`: authoring tools for the scenario pack. Everything here is free: no model call, no credits.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -17,6 +17,7 @@ const prereg = require('./prereg.js');
 const { cmdPilotTable } = require('./pilot-table.js');
 const { cmdReady } = require('./ready.js');
 const { cmdSpotReview } = require('./spot-review.js');
+const { cmdEmit } = require('./emit.js');
 
 /** Runs `fn(scan, base)` on the konductor tree --base names, and removes the temporary export afterwards. */
 function withTree(opts, fn) {
@@ -135,7 +136,7 @@ function cmdPrereg(opts) {
 /** Subcommand name to handler; the one list `scenarios` accepts. `checkArgs` keeps its own copy, which a cli-args test pins to this one. */
 const SUB_DISPATCH = {
   lint: cmdLint, coverage: cmdCoverage, prereg: cmdPrereg,
-  'pilot-table': cmdPilotTable, ready: cmdReady, 'spot-review': cmdSpotReview,
+  'pilot-table': cmdPilotTable, ready: cmdReady, 'spot-review': cmdSpotReview, emit: cmdEmit,
 };
 const SUBCOMMANDS = Object.keys(SUB_DISPATCH);
 

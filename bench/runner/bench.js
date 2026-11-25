@@ -9,7 +9,7 @@
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
- *   node bench/runner/bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review ...   (the scenario pack's authoring tools; free, no credits)
+ *   node bench/runner/bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review|emit ...   (the scenario pack's authoring tools; free, no credits)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select|units|unit-stage|unit-author|delegation ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
@@ -298,6 +298,11 @@ const USAGE = `Usage:
        (the owner's spot-review sample: per batch a shuffle of the task ids with its own seed (base seed plus the batch number), dropped tasks
        left out, the first 10% rounded up and at least one, as markdown with links; DIR/spot-review.json pins samples already read and marks
        batches pending until final. Default seed 20261119, the sample in bench/scenarios/SPOT-REVIEW.md. No credits)
+  node bench/runner/bench.js scenarios emit DRAFT --scenario ID --hidden-writer MODEL --out DIR [--task-id ID] [--repo-root DIR]
+       (one scenario of a reviewed cap scenarios lift draft becomes a task skeleton in DIR, outside the repository: DIR/<id>.json with the
+       prompt, the target skill and authorship from the draft, TODO checks and rubric, and fixtures/<id>/TODO.md and hidden/<id>/TODO.md
+       with the ideas. --hidden-writer is the model that will write the hidden tests: a Claude-family or unknown-family model is refused.
+       Then runs validate-tasks on DIR and lists its problems, the work left. Refuses an existing task file. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger

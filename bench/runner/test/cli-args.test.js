@@ -196,8 +196,12 @@ test('every flag in the usage text is accepted, and every accepted flag is in th
   const usage = spawnSync(process.execPath, [BENCH_JS, 'run', '--help'], { env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: tmp() }, encoding: 'utf8' }).stdout;
   const blocks = usage.split(/\n(?=  node bench\/runner\/bench\.js )/).filter((b) => b.startsWith('  node bench/runner/bench.js '));
   const documented = {};
+  // Built from the subcommand table, longest name first so `review-import` is tried before `review`.
+  const { SUBCOMMANDS } = require('../lib/cli-flags.js');
+  const subs = Object.entries(SUBCOMMANDS).map(([cmd, names]) => `${cmd} (?:${[...names].sort((a, b) => b.length - a.length).join('|')})`);
+  const head = new RegExp(`^ {2}node bench/runner/bench\\.js (${subs.join('|')}|[a-z0-9-]+)`);
   for (const b of blocks) {
-    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export-reference|export|score)|scenarios (?:lint|coverage|prereg|pilot-table|ready|spot-review)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix|keep-prune|select|unit-stage|unit-author|units|delegation|nudge-preview|nudge-check)|[a-z0-9-]+)/);
+    const m = b.match(head);
     const key = m[1];
     const flags = new Set([...b.matchAll(/--([a-z][a-z0-9-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
     documented[key] = new Set([...(documented[key] || []), ...flags]);
