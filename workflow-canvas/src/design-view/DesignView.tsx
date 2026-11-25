@@ -33,6 +33,7 @@ import type {
 } from '../designer-view/yaml-draft';
 import {
   canAddStage,
+  canEdit,
   canRemoveStage,
   changeBlocker,
   fileBlocker,
@@ -41,6 +42,7 @@ import {
   nextStageName,
   promptFieldOf,
   rawTextOf,
+  READ_ONLY_REASON,
   textBlocker,
   textOf,
   writeBlocker,
@@ -330,6 +332,7 @@ export function DesignView({
   // does not move.
   // The keys of a stage describe the file. While the text has been typed
   // over they cannot be changed, and this says why.
+  const editable = canEdit(state);
   const frozen = changeBlocker(state);
   const fileView = opened.answer?.view ?? null;
   const viewStage = picked
@@ -442,7 +445,13 @@ export function DesignView({
         <span key={announcement.count}>{announcement.text}</span>
       </div>
       <SpaceBetween size="m">
-        {frozen !== undefined && (
+        {!editable && (
+          <Alert type="info" data-testid="read-only-note">
+            {READ_ONLY_REASON} You can look at the stages and select one, but
+            not change them.
+          </Alert>
+        )}
+        {editable && frozen !== undefined && (
           <Alert type="info" data-testid="stage-keys-frozen">
             {frozen}
           </Alert>

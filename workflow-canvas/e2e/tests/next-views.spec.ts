@@ -96,6 +96,41 @@ test('saves the text shown after Undo and Redo over a raw edit', async ({
   expect(saved).toEqual([beforeRaw, typed]);
 });
 
+test('keeps every workflow control read-only when the server says so', async ({
+  page,
+}) => {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', async (route) => {
+    const response = await route.fetch();
+    const document = (await response.json()) as object;
+    await route.fulfill({ json: { ...document, read_only: true } });
+  });
+  const canvas = new WorkflowCanvasPage(page);
+
+  await canvas.open(STUB_LAUNCH_CODE);
+  await canvas.expectWorkflowDrawn();
+
+  await expect(page.getByTestId('read-only-note')).toContainText(
+    'The workflow is read-only.',
+  );
+  await expect(page.getByTestId('yaml-text')).not.toBeEditable();
+  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /^Add / })).toBeDisabled();
+
+  await page.getByRole('tab', { name: 'Properties' }).click();
+  const properties = page.getByRole('tabpanel', { name: 'Properties' });
+  await expect(
+    properties.getByLabel('name', { exact: true }),
+  ).not.toBeEditable();
+  await expect(properties.getByLabel('agent', { exact: true })).toBeDisabled();
+  await expect(
+    properties.getByRole('button', { name: 'Delete stage' }),
+  ).toBeDisabled();
+});
+});
+
 test('shows the text of the workflow under YAML', async ({ canvas }) => {
   const yaml = canvas.page.getByRole('tabpanel', { name: 'YAML' });
 

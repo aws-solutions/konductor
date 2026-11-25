@@ -7,7 +7,7 @@ import type { StageView, WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
-import { MAX_STAGES, textOf } from '../designer/core';
+import { MAX_STAGES, READ_ONLY_REASON, textOf } from '../designer/core';
 import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
@@ -451,6 +451,48 @@ describe('DesignView, the drawing', () => {
     expect(
       screen.getByRole('img', { name: 'The run ends after review' }),
     ).toBeTruthy();
+  });
+});
+
+describe('DesignView, a read-only workflow', () => {
+  it('keeps every workflow control read-only and says why', async () => {
+    drawn({ document: { ...HELLO_DOCUMENT, readOnly: true } });
+    await settle();
+
+    expect(screen.getByTestId('read-only-note').textContent).toContain(
+      READ_ONLY_REASON,
+    );
+    await openProperties();
+
+    expect(nameInput().readOnly).toBe(true);
+    expect(promptInput().readOnly).toBe(true);
+    expect(
+      wrapper()
+        .findSelect()!
+        .findTrigger()
+        .getElement()
+        .hasAttribute('disabled'),
+    ).toBe(true);
+
+    const controls = ['Save', 'Delete stage'];
+    const add = screen.getByRole('button', { name: /^Add / });
+    expect(isOff(add)).toBe(true);
+    for (const label of controls) expect(isOff(button(label))).toBe(true);
+
+    for (const control of [add, ...controls.map(button)]) {
+      await act(async () => control.focus());
+      const cloudscape = wrapper()
+        .findAllButtons()
+        .find((one) => one.getElement() === control);
+      expect(
+        cloudscape?.findDisabledReason()?.getElement().textContent,
+      ).toContain(READ_ONLY_REASON);
+    }
+
+    await openYaml();
+    const yaml = screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+    expect(yaml.readOnly).toBe(true);
+    expect(panelOf('YAML').textContent).toContain(READ_ONLY_REASON);
   });
 });
 
