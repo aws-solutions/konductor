@@ -78,7 +78,14 @@ pub(crate) struct Record {
     /// isn't re-parsed every run.
     #[serde(default)]
     pub konductor_agent: Option<String>,
+    /// `PARSER_VERSION` that produced the record; an older one is re-parsed
+    /// while its source file still exists.
+    #[serde(default)]
+    pub parser_version: u32,
 }
+
+/// Bump whenever a collector change should re-read files already cached.
+pub(crate) const PARSER_VERSION: u32 = 1;
 
 impl Record {
     fn new(harness: Harness, path: &Path, mtime: u64, size: u64, session_id: String) -> Self {
@@ -98,6 +105,31 @@ impl Record {
             subagent_runs: None,
             models: Vec::new(),
             konductor_agent: None,
+            parser_version: PARSER_VERSION,
+        }
+    }
+
+    /// Keeps only what's needed to skip re-parsing an unchanged file (and
+    /// to count it as unparsed). Nothing about a non-Konductor session —
+    /// its repo, ids, or timing — is stored.
+    pub(crate) fn into_stub(self) -> Self {
+        Record {
+            path: self.path,
+            mtime: self.mtime,
+            size: self.size,
+            harness: self.harness,
+            session_id: String::new(),
+            parent_session_id: None,
+            agent: self.agent,
+            repo: None,
+            first_ts: None,
+            last_ts: None,
+            harness_version: None,
+            status: self.status,
+            subagent_runs: None,
+            models: Vec::new(),
+            konductor_agent: None,
+            parser_version: self.parser_version,
         }
     }
 
