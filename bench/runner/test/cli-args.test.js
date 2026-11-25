@@ -53,6 +53,19 @@ test('cap and scenarios each run exactly the subcommands the flag table accepts,
   }
 });
 
+test('every command and every cap and scenarios subcommand has a usage line and a reference.md entry (B-016)', () => {
+  const { USAGE } = require('../bench.js');
+  const reference = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'reference.md'), 'utf8');
+  const names = [...Object.keys(DISPATCH)];
+  for (const [cmd, file] of [['cap', '../../cap/cli.js'], ['scenarios', '../../scenarios/cli.js']]) {
+    for (const sub of Object.keys(require(file).SUB_DISPATCH)) names.push(`${cmd} ${sub}`);
+  }
+  for (const name of names) {
+    assert.ok(USAGE.includes(`node bench/runner/bench.js ${name}`), `usage has no line for "${name}"`);
+    assert.ok(reference.includes(name), `reference.md does not name "${name}"`);
+  }
+});
+
 test('--help and -h print usage on stdout and exit 0 without doing anything, for every command and with other flags', () => {
   const s = sandbox();
   try {

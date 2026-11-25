@@ -560,4 +560,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, main, KNOWN_ARMS, DISPATCH };
+module.exports = { parseArgs, main, KNOWN_ARMS, DISPATCH, USAGE };
