@@ -16,8 +16,12 @@ export default defineConfig({
   projects: [
     { name: 'functional', testDir: 'e2e/tests', use: stableRendering },
     // These save to the stub, which keeps one workflow for all of them, so
-    // they run after the others, which only read it. They save over the
-    // workflow of a real server too, so they are listed only for the stub.
+    // they run after the others, which only read it. One worker for the whole
+    // project, not just one test at a time within a file: `fullyParallel:
+    // false` still lets a second spec file start on another worker, and two
+    // workers writing to the one workflow would read each other's saves.
+    // They save over the workflow of a real server too, so they are listed
+    // only for the stub.
     ...(API_TARGET.isStub
       ? [
           {
@@ -25,6 +29,7 @@ export default defineConfig({
             testDir: 'e2e/editing',
             use: stableRendering,
             fullyParallel: false,
+            workers: 1,
             dependencies: ['functional'],
           },
         ]
