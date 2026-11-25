@@ -29,8 +29,8 @@ async function ranWithChecks(
   page: Page,
   states: Readonly<Record<string, string>>,
 ): Promise<WorkflowCanvasPage> {
-  const canvas = await openDeclaringChecks(page, states);
-  await answerRunWith(canvas.page, RUN_EVENTS);
+  const canvas = await openDeclaringChecks(page);
+  await answerRunWith(canvas.page, RUN_EVENTS, undefined, { checks: states });
   await canvas.runButton.click();
   await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
@@ -74,6 +74,25 @@ test('reads the state from the server once a run has started', async ({
   );
 });
 
+test('shows no read error after a run whose read reports no check', async ({
+  next,
+}) => {
+  await answerRunWith(next.page, RUN_EVENTS);
+  await next.selectTab('Run');
+
+  await next.runButton.click();
+  await expect(next.page.getByTestId('run-progress')).toContainText(
+    'Run passed.',
+  );
+
+  await expect(next.page.getByTestId('check-state-readme-exists')).toHaveText(
+    'Deferred',
+  );
+  await expect(
+    next.page.getByText('There is no run with this id.'),
+  ).toHaveCount(0);
+});
+
 test('shows a verified check beside a deferred one', async ({ page }) => {
   const canvas = await ranWithChecks(page, {
     'readme-exists': 'verified',
@@ -108,15 +127,15 @@ test('marks the stage with the check it waits for, and no other', async ({
 test('reads the run for its checks a bounded number of times, never polling', async ({
   page,
 }) => {
-  const canvas = await openDeclaringChecks(page, {
-    'readme-exists': 'verified',
-  });
+  const canvas = await openDeclaringChecks(page);
   const reads: string[] = [];
   canvas.page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
     if (/^\/api\/runs\/[^/]+$/.test(path)) reads.push(path);
   });
-  await answerRunWith(canvas.page, RUN_EVENTS);
+  await answerRunWith(canvas.page, RUN_EVENTS, undefined, {
+    checks: { 'readme-exists': 'verified' },
+  });
 
   await canvas.runButton.click();
   await expect(canvas.page.getByTestId('run-progress')).toContainText(

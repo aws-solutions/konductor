@@ -97,17 +97,19 @@ test('capture the Run view after a run has passed, in the dark mode', async ({
 test('capture the Run view with a verified check and a deferred one', async ({
   page,
 }) => {
-  const canvas = await openDeclaringChecks(page, {
-    'readme-exists': 'verified',
-    'tests-pass': 'deferred',
-  });
-  await answerRunWith(canvas.page, [
-    running(1, 'draft'),
-    passed(2, 'draft'),
-    running(3, 'review'),
-    passed(4, 'review'),
-    runPassed(5),
-  ]);
+  const canvas = await openDeclaringChecks(page);
+  await answerRunWith(
+    canvas.page,
+    [
+      running(1, 'draft'),
+      passed(2, 'draft'),
+      running(3, 'review'),
+      passed(4, 'review'),
+      runPassed(5),
+    ],
+    undefined,
+    { checks: { 'readme-exists': 'verified', 'tests-pass': 'deferred' } },
+  );
 
   await canvas.runButton.click();
   await expect(canvas.page.getByTestId('run-progress')).toContainText(
