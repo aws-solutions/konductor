@@ -183,6 +183,26 @@ test('kiro-cli arms are not refused --effort, --stop-on, --max-tool-calls or --r
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 
+test('--run-credit-limit-mode takes hard or soft, needs --run-credit-limit, and refuses any other value', () => {
+  const s = setup();
+  try {
+    const base = ['--arms', 'vanilla', '--agent-engine', 'v3', '--prepare-only'];
+    for (const mode of ['hard', 'soft']) {
+      const r = run(s, [...base, '--run-credit-limit', '2', '--run-credit-limit-mode', mode]);
+      assert.equal(r.status, 0, `${mode}: ${r.stderr}`);
+    }
+    const bad = run(s, [...base, '--run-credit-limit', '2', '--run-credit-limit-mode', 'gentle']);
+    assert.notEqual(bad.status, 0);
+    assert.match(bad.stderr, /bench: --run-credit-limit-mode takes hard or soft, not "gentle"/);
+    const bare = run(s, [...base, '--run-credit-limit', '2', '--run-credit-limit-mode']);
+    assert.notEqual(bare.status, 0);
+    assert.match(bare.stderr, /bench: --run-credit-limit-mode takes hard or soft/);
+    const alone = run(s, [...base, '--run-credit-limit-mode', 'soft']);
+    assert.notEqual(alone.status, 0);
+    assert.match(alone.stderr, /bench: --run-credit-limit-mode needs --run-credit-limit/);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});
+
 test('a Claude Code arm accepts an autonomy task, and the flag check still comes first', () => {
   const s = setup({ autonomy: true });
   try {

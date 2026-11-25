@@ -34,7 +34,7 @@ const USAGE = `Usage:
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
-       [--extra-tasks DIR,DIR] [--prereg FILE] [--level lite|standard|full [--level-since FILE]] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
+       [--extra-tasks DIR,DIR] [--prereg FILE] [--level lite|standard|full [--level-since FILE]] [--suites-dir DIR] [--run-credit-limit X [--run-credit-limit-mode hard|soft]] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE] [--forced-must-load ARM,ARM]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
        [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--python PATH] [--strands-python PATH] [--strands-agent FILE] [--introspect]
@@ -82,7 +82,8 @@ const USAGE = `Usage:
        (--run-credit-limit X: on engine v2 the run is killed at the poll once its metered credits pass X and is recorded as censored. On v3 credits
        arrive once, at the end of a turn, so a one-shot run always finishes: over X it gets creditLimitExceeded and creditOvershoot, nothing is killed;
        a conversation task is checked after each turn and stops before the next one. --budget-credits is the only bound on total spend: new launches stop
-       when charged credits plus the largest run so far would pass it)
+       when charged credits plus the largest run so far would pass it. --run-credit-limit-mode hard (the default) stops the run as above; soft never stops it:
+       a run that ends over X gets creditLimitExceeded, a warning in run.log and creditLimitWarning in result.json, and runs to its natural end)
        (--auth-db is the kiro-cli auth database each run's scratch HOME gets a copy of, default the standard location under HOME)
        (--arm-prefix puts the text of FILE (at most 90000 bytes) in front of the task prompt of that arm; run-config records its sha256 and size.
        --arm-agent starts that arm in AGENT instead of its default agent. --arm-config writes keys into that arm's scratch ~/.konductor/config.yml after the

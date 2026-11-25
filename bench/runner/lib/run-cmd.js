@@ -53,6 +53,8 @@ const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js'
 const DEFAULT_EFFORT = 'high';
 // Censored opencode runs are charged this many USD when the arm has no completed run yet.
 const DEFAULT_CENSORED_FLOOR_USD = 0.5;
+// --run-credit-limit-mode values; the first is the default (hard: stop the run at the limit; soft: warn and let it finish).
+const CREDIT_LIMIT_MODES = ['hard', 'soft'];
 
 function intOpt(v, name, min = 1) {
   const n = Number(v);
@@ -146,7 +148,8 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log, tasks = 
  * The flag and arm checks of `run` that need no credentials, binary or network, so `--prepare-only` makes them too and
  * fails where the real run would. `opts` are the run flags; `tasks` the selected tasks; `runtime` the arms' harness id.
  * Throws on the first refusal.
- * Returns the parsed values the run uses: `{budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn}`.
+ * Returns the parsed values the run uses: `{budgetFlag, budgetCredits, censoredFloor, runCreditLimit, runCreditLimitMode, stopOn}`.
+ * `runCreditLimitMode` is 'hard' (stop the run at the limit) or 'soft' (warn, flag and let it finish); null without a limit.
  */
 function checkHarnessFlags({ opts, tasks, runtime }) {
   const desc = descriptorOf(runtime);
@@ -176,12 +179,16 @@ function checkHarnessFlags({ opts, tasks, runtime }) {
     if (opts['run-credit-limit'] === true || !(runCreditLimit > 0)) throw new Error('--run-credit-limit must be a positive number');
     if (!desc.supports.runCreditLimit) throw new Error(`--run-credit-limit applies to ${joinNames(supporting('runCreditLimit').map((d) => d.proseName))} arms only; ${runtime} runs are costed in ${unitName}${desc.flags.perRunCapFlag ? ` (use --${desc.flags.perRunCapFlag} for a per-run cap)` : ''}`);
   }
+  const mode = opts['run-credit-limit-mode'];
+  if (mode !== undefined && !CREDIT_LIMIT_MODES.includes(mode)) throw new Error(`--run-credit-limit-mode takes ${CREDIT_LIMIT_MODES.join(' or ')}${typeof mode === 'string' ? `, not "${mode}"` : ''}`);
+  if (mode !== undefined && runCreditLimit === null) throw new Error('--run-credit-limit-mode needs --run-credit-limit');
+  const runCreditLimitMode = runCreditLimit === null ? null : mode ?? 'hard';
   let stopOn = null;
   if (opts['stop-on'] !== undefined) {
     stopOn = opts['stop-on'];
     if (!STOP_ON.includes(stopOn)) throw new Error(`--stop-on takes ${STOP_ON.slice(0, -1).join(', ')} or ${STOP_ON.at(-1)}`);
   }
-  return { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn };
+  return { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, runCreditLimitMode, stopOn };
 }
 
 /**
