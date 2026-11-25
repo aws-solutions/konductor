@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import Button from '@cloudscape-design/components/button';
+import SpaceBetween from '@cloudscape-design/components/space-between';
 import Tabs from '@cloudscape-design/components/tabs';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { FieldForm, type FieldFormChange } from './FieldForm';
@@ -65,6 +66,9 @@ export function DesignerLayout({
   agents,
   openProperties = 0,
   onStageChange,
+  onStageDelete,
+  deleteDisabled = false,
+  deleteDisabledReason,
 }: {
   /** The components a person drags onto the drawing. */
   children?: ReactNode;
@@ -77,6 +81,10 @@ export function DesignerLayout({
   /** Goes up when the page asks for the keys of a stage to be shown. */
   openProperties?: number;
   onStageChange: (change: FieldFormChange) => void;
+  /** Deletes the picked stage. Without it, no delete control is shown. */
+  onStageDelete?: () => void;
+  deleteDisabled?: boolean;
+  deleteDisabledReason?: string;
 }) {
   const id = useId();
   const [tab, setTab] = useState<string>(YAML_TAB);
@@ -109,15 +117,26 @@ export function DesignerLayout({
   }, [wanted, tab, folded]);
 
   const properties = stage ? (
-    <FieldForm
-      stageName={stage.name}
-      rules={stage.rules}
-      agents={agents}
-      originalAgent={stage.originalAgent}
-      values={stage.values}
-      {...(stage.readOnlyKeys ? { readOnlyKeys: stage.readOnlyKeys } : {})}
-      onChange={onStageChange}
-    />
+    <SpaceBetween size="m">
+      <FieldForm
+        stageName={stage.name}
+        rules={stage.rules}
+        agents={agents}
+        originalAgent={stage.originalAgent}
+        values={stage.values}
+        {...(stage.readOnlyKeys ? { readOnlyKeys: stage.readOnlyKeys } : {})}
+        onChange={onStageChange}
+      />
+      {onStageDelete && (
+        <Button
+          disabled={deleteDisabled}
+          disabledReason={deleteDisabledReason}
+          onClick={onStageDelete}
+        >
+          Delete stage
+        </Button>
+      )}
+    </SpaceBetween>
   ) : (
     <p className="wf-layout-note">{NO_STAGE}</p>
   );

@@ -33,6 +33,7 @@ import type {
 } from '../designer-view/yaml-draft';
 import {
   canAddStage,
+  canRemoveStage,
   changeBlocker,
   fileBlocker,
   KNOWN_AGENTS,
@@ -299,6 +300,7 @@ export function DesignView({
   // Counts the times a stage has been chosen in the drawing, so the side
   // column opens its keys each time, as the drawing says it will.
   const [opens, setOpens] = useState(0);
+  const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -432,6 +434,13 @@ export function DesignView({
       <h2 className="wf-visually-hidden" id={headingId}>
         Design
       </h2>
+      <div
+        className="wf-visually-hidden"
+        role="status"
+        data-testid="designer-live"
+      >
+        <span key={announcement.count}>{announcement.text}</span>
+      </div>
       <SpaceBetween size="m">
         {frozen !== undefined && (
           <Alert type="info" data-testid="stage-keys-frozen">
@@ -500,6 +509,25 @@ export function DesignView({
               editor.setPrompt(picked.id, typed);
             }
           }}
+          onStageDelete={() => {
+            if (
+              !picked ||
+              frozen !== undefined ||
+              !canRemoveStage(state.draft)
+            ) {
+              return;
+            }
+            editor.remove(picked.id);
+            setOpens((count) => count + 1);
+            setAnnouncement(({ count }) => ({
+              text: `Stage ${picked.name || 'with no name'} deleted.`,
+              count: count + 1,
+            }));
+          }}
+          deleteDisabled={frozen !== undefined || !canRemoveStage(state.draft)}
+          deleteDisabledReason={
+            frozen ?? 'A workflow needs at least one stage.'
+          }
         >
           <SpaceBetween size="s">
             <SaveControls
