@@ -49,7 +49,7 @@ pub(crate) use claude_settings::{
 pub(crate) use claude_settings::{
     remove_claude_settings_mcp_rules, AWS_MCP_READ_ONLY_TOOLS, AWS_MCP_SERVER_NAME,
 };
-pub(crate) use hook_locator::{orchestration_hook_wiring, HookWiring};
+pub(crate) use hook_locator::{orchestration_hook_wirings, HookWiring};
 pub(super) use mcp_server::{
     installed_server_supports_install_info, McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME,
 };

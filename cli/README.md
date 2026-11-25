@@ -1201,6 +1201,11 @@ orchestration:
   `--no-telemetry`: a standalone document `.kiro/hooks/konductor-orchestration-hooks.json` on
   Kiro CLI v3, a `SessionStart` block in the Claude Code hooks settings file, and an `agentSpawn`
   entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `uninstall` removes them.
+- The mode applies to `konductor` and to any installed agent that loads the `k-direct-work.md`
+  context, so a fork or custom distribution that renames the orchestrator keeps the mode. On Kiro
+  CLI v2 that agent's own file gets the `agentSpawn` entry, and `doctor` checks the entry in every
+  such file. An agent that loads the routing rules instead, like the mux and cmux orchestrators,
+  always coordinates and gets no mode line.
 - Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
   read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
   (under 2,500 bytes in total). Only the mode line and the Step 1 pointer are trusted; the summary
@@ -1213,11 +1218,13 @@ orchestration:
   project root: the working directory itself or a git checkout root that contains it. For an
   install anywhere else the hook prints a fallback line (below) and the session runs as `auto`.
   Install under your home directory or the project root for coordinator mode.
-- When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
-  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
-  file, or an install outside the locations above), it prints one line,
-  `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
-- The first reply of every `konductor` session states the mode: the hook's line, or
+- When it cannot apply `coordinator` to a session of a mode agent (`konductor`, or any agent that
+  loads `k-direct-work.md`), it prints one line, `Orchestration: auto (fallback: <reason>)`, and
+  the session runs as `auto`. The reasons: unset `HOME` on Claude Code or Kiro CLI v2, an
+  unreadable or unparsable config file, an unknown value, a missing rules file, or an install
+  outside the locations above. An agent file over 1 MiB, which the hook cannot check for
+  `k-direct-work.md`, gets the same line.
+- The first reply of every mode agent session states the mode: the hook's line, or
   `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
   `coordinator` set means the hook output did not reach the session; run `konductor doctor`.
 

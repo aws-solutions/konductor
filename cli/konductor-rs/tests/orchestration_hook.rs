@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // End-to-end: `konductor __orchestration-hook` prints the coordinator
-// persona only for Konductor's `konductor` session in `coordinator` mode,
+// persona only for a mode agent's session (`konductor`, or a renamed agent
+// that loads Direct Work) in `coordinator` mode,
 // prints one fallback line for a bad config, and prints nothing (and
 // exits 0) everywhere else. Payloads are the shapes captured from live
 // Kiro v2, Kiro v3 and Claude Code sessions.
@@ -46,11 +47,15 @@ fn konductor(home: &Path, cwd: &Path, sink: &TelemetrySink) -> Command {
     command
 }
 
-fn seed_repo(agents: &[&str]) -> PathBuf {
+/// Each agent with the context files it loads.
+type AgentSpec<'a> = (&'a str, &'a [&'a str]);
+
+fn seed_repo(agents: &[AgentSpec<'_>]) -> PathBuf {
     let repo = scratch_dir("repo");
     std::fs::create_dir_all(repo.join("agents")).unwrap();
     std::fs::create_dir_all(repo.join("context")).unwrap();
-    for name in agents {
+    for (name, context) in agents {
+        let context = serde_json::to_string(context).unwrap();
         std::fs::write(
             repo.join("agents").join(format!("{name}.agent-spec.json")),
             format!(
@@ -58,13 +63,19 @@ fn seed_repo(agents: &[&str]) -> PathBuf {
   "schemaVersion": "1",
   "name": "{name}",
   "config": {{ "description": "An agent.", "model": "claude-sonnet-5", "systemPrompt": "Help." }},
-  "clientConfig": {{ "kiroCli": {{}}, "claudeCli": {{}} }}
+  "clientConfig": {{ "kiroCli": {{}}, "claudeCli": {{}} }},
+  "dependencies": {{ "context": {{ "contextNames": {context} }} }}
 }}
 "#
             ),
         )
         .unwrap();
     }
+    std::fs::write(
+        repo.join("context/k-direct-work.md"),
+        "# Direct Work\n\nDo small tasks yourself.\n",
+    )
+    .unwrap();
     std::fs::write(
         repo.join("context/k-orchestrator-routing-rules.md"),
         format!("# Rules\n\n## First\n\ntext\n\n{RULES_LAST_HEADING}\n\ntext\n"),
@@ -89,6 +100,11 @@ fn install_into(home: &Path, target: &Path, agents: &[&str]) {
 }
 
 fn install_with(home: &Path, target: &Path, agents: &[&str], flags: &[&str]) {
+    let specs: Vec<AgentSpec<'_>> = agents.iter().map(|name| (*name, &[][..])).collect();
+    install_specs(home, target, &specs, flags);
+}
+
+fn install_specs(home: &Path, target: &Path, agents: &[AgentSpec<'_>], flags: &[&str]) {
     let repo = seed_repo(agents);
     let repo_arg = repo.display().to_string();
     let sink = TelemetrySink::start();
@@ -515,8 +531,8 @@ fn claude_home_and_project(name: &str) -> (PathBuf, PathBuf) {
 /// lines show it.
 fn assert_shadowed_fallback(stdout: &str, owner_under_home: &str) {
     let expected = format!(
-        "Orchestration: auto (fallback: the install at ~/{0} owns the konductor session but its \
-         session-start hook is not wired for claude; run konductor update in ~/{0})\n",
+        "Orchestration: auto (fallback: the install at ~/{0} owns the agent of this session but \
+         its session-start hook is not wired for claude; run konductor update in ~/{0})\n",
         owner_under_home
     );
     assert_eq!(stdout, expected);
@@ -857,13 +873,270 @@ fn kiro_v2_wires_the_hook_on_konductor_only() {
     }
 }
 
+const DIRECT_WORK: &[&str] = &["k-direct-work.md"];
+const ROUTING_RULES: &[&str] = &["k-orchestrator-routing-rules.md"];
+
+/// A fork that renames the orchestrators: `acme` loads Direct Work, and
+/// `acme-mux` always coordinates, so it loads the routing rules instead.
+const RENAMED: &[AgentSpec<'static>] = &[
+    ("acme", DIRECT_WORK),
+    ("acme-mux", ROUTING_RULES),
+    ("k-developer", &[]),
+];
+
+#[test]
+fn a_renamed_agent_that_loads_direct_work_gets_the_persona_on_kiro_v3() {
+    let home = scratch_dir("renamed-v3-home");
+    install_specs(
+        &home,
+        &home,
+        RENAMED,
+        &["--harness", "kiro-v3", "--no-telemetry"],
+    );
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    let home_arg = home.display().to_string();
+
+    let kiro_home = scratch_dir("renamed-v3-kiro-home");
+    seed_kiro_session(&kiro_home, V3_SESSION, "acme");
+    let env: [(&str, &Path); 1] = [("KIRO_HOME", &kiro_home)];
+    assert_persona(
+        &fire(
+            &home,
+            &project,
+            &["--install-root", &home_arg, "--harness", "kiro-v3"],
+            &env,
+            &v3_payload(),
+        ),
+        &home,
+    );
+
+    for agent in ["acme-mux", "k-developer", "konductor"] {
+        seed_kiro_session(&kiro_home, V3_SESSION, agent);
+        assert_eq!(
+            fire(
+                &home,
+                &project,
+                &["--install-root", &home_arg, "--harness", "kiro-v3"],
+                &env,
+                &v3_payload(),
+            ),
+            "",
+            "{agent}"
+        );
+    }
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&kiro_home).ok();
+}
+
+#[test]
+fn a_renamed_agent_that_loads_direct_work_gets_the_persona_on_claude() {
+    let home = scratch_dir("renamed-claude-home");
+    install_specs(
+        &home,
+        &home,
+        RENAMED,
+        &["--harness", "claude", "--no-telemetry"],
+    );
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    let args = [
+        "--install-root",
+        &home.display().to_string(),
+        "--harness",
+        "claude",
+    ]
+    .map(str::to_string);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+
+    assert_persona_naming(
+        &fire(
+            &home,
+            &project,
+            &args,
+            &[],
+            &claude_payload(Some("acme"), "startup"),
+        ),
+        &home.join(".konductor/context/k-orchestrator-routing-rules.md"),
+    );
+    for agent in ["acme-mux", "k-developer"] {
+        assert_eq!(
+            fire(
+                &home,
+                &project,
+                &args,
+                &[],
+                &claude_payload(Some(agent), "startup")
+            ),
+            "",
+            "{agent}"
+        );
+    }
+    std::fs::remove_dir_all(&home).ok();
+}
+
+#[test]
+fn an_agent_file_too_large_to_check_gets_a_fallback_line_under_coordinator() {
+    let home = scratch_dir("oversized-claude-home");
+    install_specs(
+        &home,
+        &home,
+        RENAMED,
+        &["--harness", "claude", "--no-telemetry"],
+    );
+    // Over the 1 MiB check cap, with the Direct Work block past it.
+    let agent_file = home.join(".claude/agents/acme.md");
+    let installed = std::fs::read(&agent_file).unwrap();
+    let mut padded = vec![b'#'; 1024 * 1024 + 1];
+    padded.push(b'\n');
+    padded.extend_from_slice(&installed);
+    std::fs::write(&agent_file, padded).unwrap();
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    let args = [
+        "--install-root",
+        &home.display().to_string(),
+        "--harness",
+        "claude",
+    ]
+    .map(str::to_string);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    assert_eq!(
+        fire(
+            &home,
+            &project,
+            &args,
+            &[],
+            &claude_payload(Some("acme"), "startup")
+        ),
+        "Orchestration: auto (fallback: the agent file at ~/.claude/agents/acme.md is larger \
+         than 1 MiB, so the hook could not check whether it loads k-direct-work.md)\n"
+    );
+    set_mode(&home, "orchestration:\n  mode: auto\n");
+    assert_eq!(
+        fire(
+            &home,
+            &project,
+            &args,
+            &[],
+            &claude_payload(Some("acme"), "resume")
+        ),
+        ""
+    );
+    std::fs::remove_dir_all(&home).ok();
+}
+
+/// A shadowed hook whose owner's hook is gone names the owner, the
+/// actionable reason, even when the owner's agent file is too large to
+/// check; once the owner's hook is back, it reports the file itself.
+#[test]
+fn a_shadowed_hook_names_the_missing_owner_hook_before_an_oversized_agent_file() {
+    let home = scratch_dir("shadowed-oversized-home");
+    let claude_flags = ["--harness", "claude", "--no-telemetry"];
+    install_specs(&home, &home, RENAMED, &claude_flags);
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    install_specs(&home, &project, RENAMED, &claude_flags);
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    let agent_file = project.join(".claude/agents/acme.md");
+    let mut padded = vec![b'#'; 1024 * 1024 + 1];
+    padded.push(b'\n');
+    padded.extend_from_slice(&std::fs::read(&agent_file).unwrap());
+    std::fs::write(&agent_file, padded).unwrap();
+    let payload = claude_payload(Some("acme"), "startup");
+    let fire_from = |root: &Path| {
+        let root = root.display().to_string();
+        fire(
+            &home,
+            &project,
+            &["--install-root", &root, "--harness", "claude"],
+            &[],
+            &payload,
+        )
+    };
+
+    assert_eq!(fire_from(&home), "");
+    assert_eq!(
+        fire_from(&project),
+        "Orchestration: auto (fallback: the agent file at ~/workspace/project/.claude/agents/\
+         acme.md is larger than 1 MiB, so the hook could not check whether it loads \
+         k-direct-work.md)\n"
+    );
+
+    std::fs::remove_file(project.join(".claude/settings.local.json")).unwrap();
+    assert_shadowed_fallback(&fire_from(&home), "workspace/project");
+    std::fs::remove_dir_all(&home).ok();
+}
+
+#[test]
+fn kiro_v2_wires_the_hook_on_a_renamed_agent_that_loads_direct_work() {
+    let home = scratch_dir("renamed-v2-home");
+    install_specs(
+        &home,
+        &home,
+        RENAMED,
+        &["--harness", "kiro-cli-v2", "--no-telemetry"],
+    );
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    let orchestration_hooks = |agent: &str| -> Vec<String> {
+        let value: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(home.join(format!(".kiro/agents/{agent}.json"))).unwrap(),
+        )
+        .unwrap();
+        value["hooks"]["agentSpawn"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|entry| entry["command"].as_str().map(str::to_string))
+            .filter(|command| command.contains("__orchestration-hook"))
+            .collect()
+    };
+    let acme_hooks = orchestration_hooks("acme");
+    assert!(
+        acme_hooks.iter().any(|c| c.ends_with(&format!(
+            " __orchestration-hook --agent acme --install-root {} --harness kiro-cli-v2",
+            home.display()
+        ))),
+        "{acme_hooks:?}"
+    );
+    assert!(orchestration_hooks("acme-mux").is_empty());
+    assert!(orchestration_hooks("k-developer").is_empty());
+
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    let home_arg = home.display().to_string();
+    assert_persona(
+        &fire(
+            &home,
+            &project,
+            &[
+                "--agent",
+                "acme",
+                "--install-root",
+                &home_arg,
+                "--harness",
+                "kiro-cli-v2",
+            ],
+            &[],
+            r#"{"hook_event_name":"agentSpawn","cwd":"/p","session_id":"cb4556d5"}"#,
+        ),
+        &home,
+    );
+    std::fs::remove_dir_all(&home).ok();
+}
+
 /// A default install (no `--target`) puts the destination at `$HOME`, where
 /// `.konductor/config.yml` is the user config. Doctor must read it as the
 /// mode source and not report it as an ignored project file.
 #[test]
 fn doctor_reads_the_user_config_on_a_default_home_install() {
     let home = scratch_dir("doctor-home");
-    let repo = seed_repo(&["konductor"]);
+    let repo = seed_repo(&[("konductor", &[])]);
     let repo_arg = repo.display().to_string();
     let sink = TelemetrySink::start();
     let synth = konductor(&home, &repo, &sink)
