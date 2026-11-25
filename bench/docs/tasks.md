@@ -9,7 +9,7 @@ This document covers the task suite: tasks, fixtures, checks, rubrics, answer ke
 - `suites/lite.json`, `suites/full.json`, `suites/hard.json`, `suites/complex.json`, `suites/requirements.json`: which tasks run, on which arms, with how many replicates, and which judges.
 - `tasks/solutions/<id>/`: a reference solution, as files overlaid on the fixture. Only the validator and unit tests use it.
 - `tasks/stubs/<id>/`: a keyword-only imitation of the report, overlaid on the solution (see Mutation proof).
-- `tasks/validate-tasks.js`: offline validator. Run `node bench/tasks/validate-tasks.js`.
+- `tasks/validate-tasks.js`: offline validator. Run `node bench/tasks/validate-tasks.js`. A full run takes about 5 minutes (288 s for 140 tasks on the dev host, 2026-11-24), because it runs each hard task's hidden tests about ten times (reference twice, the untouched fixture, each partial, the controls); `hard-migrate-orders` alone takes about 70 s. It prints one line per task on stderr as it goes (`validate-tasks: 14/140 hard-migrate-orders 67.8 s`) and the summary on stdout. `--extra-tasks DIR --only-extra` checks one folder in seconds.
 - `scenarios/t*/`: the scenario pack, one folder per batch. Every batch uses the shared tools in `scenarios/lib/` (dry run, mechanical lazy and alternative answers, prompt renderer, authoring stage, hidden test helpers) through its own `scenario.config.js`; see `scenarios/lib/README.md`.
 
 The same prompt goes to every arm, so it must make sense without any add-on. Prompts never name a procedure, skill or agent. The `target` field says what the task exercises and is informational only.

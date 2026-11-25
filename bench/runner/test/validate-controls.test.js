@@ -68,6 +68,17 @@ test('the control: the same task without the vacuous check validates', () => {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('the validator prints one progress line per proved task on stderr, with its time, and keeps stdout unchanged (D-261)', () => {
+  const root = tmp();
+  try {
+    const ok = validate(root, extraDir(root, [EXISTS]));
+    assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+    assert.match(ok.stderr, /^validate-tasks: proving 1 task\(s\)$/m);
+    assert.match(ok.stderr, /^validate-tasks: 1\/1 x1 \d+\.\d s$/m);
+    assert.doesNotMatch(ok.stdout, /validate-tasks:/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('a node --test check passes on an empty workspace, so it must be written to need tests', () => {
   const root = tmp();
   try {

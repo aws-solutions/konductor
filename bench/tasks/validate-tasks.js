@@ -701,25 +701,37 @@ function proveStub(t, overlay, report) {
   report.stubs.push(`${t.id} ${failed.length}/${t.checks.length}`);
 }
 
-/** Runs each task's proofs by its kind. Returns { guards, negativeCases, stubs, hard, autonomy, real }. */
+/**
+ * Runs each task's proofs by its kind. Returns { guards, negativeCases, stubs, hard, autonomy, real }.
+ * Prints one line per task to stderr as it goes (index, id, seconds), because a full run takes minutes: hidden test
+ * suites run several times per hard task, and nothing else is printed until the summary (D-261).
+ */
 function proveAllTasks(ctx, manifest) {
   const report = { guards: 0, negativeCases: 0, stubs: [], hard: [], autonomy: [], real: [] };
-  for (const t of ctx.tasks) {
-    R = ctx.rootsOf.get(t);
-    if (t.class === 'real' && manifest && Array.isArray(t.checks)) { report.real.push(validateRealTask(t, manifest)); continue; }
-    if (t.class === 'trigger') continue;
-    if (ctx.skillevalDirs.has(R.dir)) {
-      if (t.checks.length) err(t.id, 'skilleval tasks are text-only and carry no checks');
-      if (!t.prompt.endsWith(NO_QUESTIONS)) err(t.id, 'prompt must end with the no-questions sentence');
-      if (!Array.isArray(t.rubric) || t.rubric.length < 4 || t.rubric.length > 6) err(t.id, 'skilleval rubric needs 4 to 6 items');
-      continue;
-    }
-    if (!isStr(t.fixture) || !fs.existsSync(fixtureDir(t.fixture)) || !Array.isArray(t.checks)) continue;
-    if (ctx.importDirs.has(R.dir)) { proveImportTask(t); continue; }
-    proveTask(t, report);
-  }
+  process.stderr.write(`validate-tasks: proving ${ctx.tasks.length} task(s)\n`);
+  ctx.tasks.forEach((t, i) => {
+    const started = Date.now();
+    proveOne(ctx, manifest, t, report);
+    process.stderr.write(`validate-tasks: ${i + 1}/${ctx.tasks.length} ${t.id} ${((Date.now() - started) / 1000).toFixed(1)} s\n`);
+  });
   R = DEFAULT_ROOTS;
   return report;
+}
+
+/** The proofs for one task by its kind; adds to `report`. */
+function proveOne(ctx, manifest, t, report) {
+  R = ctx.rootsOf.get(t);
+  if (t.class === 'real' && manifest && Array.isArray(t.checks)) { report.real.push(validateRealTask(t, manifest)); return; }
+  if (t.class === 'trigger') return;
+  if (ctx.skillevalDirs.has(R.dir)) {
+    if (t.checks.length) err(t.id, 'skilleval tasks are text-only and carry no checks');
+    if (!t.prompt.endsWith(NO_QUESTIONS)) err(t.id, 'prompt must end with the no-questions sentence');
+    if (!Array.isArray(t.rubric) || t.rubric.length < 4 || t.rubric.length > 6) err(t.id, 'skilleval rubric needs 4 to 6 items');
+    return;
+  }
+  if (!isStr(t.fixture) || !fs.existsSync(fixtureDir(t.fixture)) || !Array.isArray(t.checks)) return;
+  if (ctx.importDirs.has(R.dir)) { proveImportTask(t); return; }
+  proveTask(t, report);
 }
 
 function checkVerdictPatterns(tasks) {

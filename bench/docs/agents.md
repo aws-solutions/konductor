@@ -113,7 +113,7 @@ tool list, needs a new runtime or a new kind of arm. The last section says how.
 Free first. None of these calls a model:
 
 ```bash
-node bench/tasks/validate-tasks.js                  # do the shipped tasks hold together?
+node bench/tasks/validate-tasks.js                  # do the shipped tasks hold together? (about 5 min)
 node bench/runner/bench.js list-arms                # which arms exist
 node bench/runner/bench.js pr-plan --ref opt-a=origin/main --suite lite --budget-credits 100
 ```

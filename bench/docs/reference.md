@@ -335,7 +335,7 @@ node bench/runner/bench.js backfill --run $OUT [--credits] [--skills] [--write] 
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
 bench/scripts/test.sh [--tap]                                       # the full suite: node unit tests, then the Python plant tests as TAP lines
 node --test bench/physical/test/*.test.js bench/agenteval/test/*.test.js   # plant step 0 fixtures and agenteval
-node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
+node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions (about 5 min; one progress line per task on stderr)
 ```
 Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--replicate-offset N`, `--parallel N`, `--budget-credits X`,
 `--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--agent-engine v2|v3` (default v2), `--seed N`,
