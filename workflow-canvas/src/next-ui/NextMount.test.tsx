@@ -27,10 +27,7 @@ async function openPage({
   // The waits of a long poll and of the run clock are held, so a follower
   // reads only what a test answers.
   const scheduler = new EventWaits();
-  const runs: RunPort = {
-    start: vi.fn(() => Promise.resolve(RUN_ID)),
-    get: vi.fn(() => Promise.reject(new Error('The view reads no run.'))),
-  };
+  const runs: RunPort = { start: vi.fn(() => Promise.resolve(RUN_ID)) };
   const edits = acceptingEdits();
   const result = loaded(HELLO_DOCUMENT, runs, edits);
   const portsFor = vi.fn(() => ports);
@@ -61,10 +58,9 @@ describe('the page and its two views', () => {
     );
   });
 
-  it('draws the Design view, with a stop mark instead of the end node', async () => {
+  it('draws the Design view, with the mark where the run ends', async () => {
     await openPage();
 
-    expect(screen.queryByTestId('node-end')).toBeNull();
     expect(
       screen.getByRole('img', { name: 'The run ends after review' }),
     ).toBeTruthy();
@@ -149,9 +145,6 @@ describe('the run lifecycle of the page', () => {
 
     expect(ports.startRun).toHaveBeenCalledTimes(1);
     expect(runs.start).not.toHaveBeenCalled();
-    // The Run view reads a run only through its events; nothing may read
-    // `GET /api/runs/{id}`.
-    expect(runs.get).not.toHaveBeenCalled();
     expect(events.calls.length).toBeGreaterThan(0);
   });
 
@@ -206,7 +199,7 @@ describe('the run lifecycle of the page', () => {
 
   it('follows the kept run once after a reload, and reads it one way', async () => {
     const events = new HeldEvents();
-    const { runs } = await openPage({
+    await openPage({
       ports: fakeNextPorts({ readEvents: events.readEvents }),
       runMemory: {
         recall: () => RUN_ID,
@@ -219,7 +212,6 @@ describe('the run lifecycle of the page', () => {
       fireEvent.click(runTab());
     });
 
-    expect(runs.get).not.toHaveBeenCalled();
     expect(events.calls).toEqual([{ runId: RUN_ID, after: 0 }]);
   });
 

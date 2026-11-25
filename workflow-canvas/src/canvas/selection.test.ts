@@ -19,21 +19,11 @@ describe('markSelectable', () => {
   const nodes = markSelectable(GRAPH.nodes, 'stage-s2');
 
   it('lets only the stages be selected', () => {
-    expect(nodes.map((node) => node.selectable)).toEqual([
-      false,
-      true,
-      true,
-      false,
-    ]);
+    expect(nodes.map((node) => node.selectable)).toEqual([false, true, true]);
   });
 
   it('marks the node with the id as selected, and no other', () => {
-    expect(nodes.map((node) => node.selected)).toEqual([
-      false,
-      false,
-      true,
-      false,
-    ]);
+    expect(nodes.map((node) => node.selected)).toEqual([false, false, true]);
   });
 
   it('says selected in the name of the selected node for a screen reader', () => {

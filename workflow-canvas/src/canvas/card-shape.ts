@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-import { NODE_HEIGHT } from '../graph';
 import { RADIUS } from '../theme/tokens';
 
 /** The width of the line around a node, in pixels. */
 export const BORDER_WIDTH = 2;
 /** The corner radius of a card. */
 export const CARD_RADIUS = parseFloat(RADIUS.control);
-/** The corner radius of each kind of node. The End node is a pill. */
+/** The corner radius of each kind of node. */
 export const NODE_RADIUS = {
   intent: CARD_RADIUS,
   stage: CARD_RADIUS,
-  end: NODE_HEIGHT.end / 2,
 } as const;
 
 /** The clear space between a focused node and its focus ring. */

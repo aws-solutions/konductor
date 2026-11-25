@@ -439,7 +439,7 @@ async function typeInto(input: HTMLElement, value: string) {
 }
 
 describe('DesignView, the drawing', () => {
-  // Each stage, and a stop mark where the end node used to be. One drawing
+  // Each stage, and a stop mark on the one the run ends after. One drawing
   // answers both: mounting the view again for the second would only draw the
   // same one.
   it('draws each stage of the workflow, the last ending in a stop mark', async () => {
@@ -451,7 +451,6 @@ describe('DesignView, the drawing', () => {
     expect(
       screen.getByRole('img', { name: 'The run ends after review' }),
     ).toBeTruthy();
-    expect(screen.queryByTestId('node-end')).toBeNull();
   });
 });
 

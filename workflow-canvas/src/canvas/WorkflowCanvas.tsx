@@ -15,14 +15,13 @@ import type { CanvasGraph } from '../graph';
 import './canvas.css';
 import { READ_ONLY_ARIA_LABELS, SELECTABLE_ARIA_LABELS } from './aria-labels';
 import { FitWhenGrown } from './FitWhenGrown';
-import { EndNode, IntentNode, StageNode } from './nodes';
+import { IntentNode, StageNode } from './nodes';
 import { markSelectable } from './selection';
 import { CANVAS_HEIGHT, FIT_PADDING, MIN_ZOOM } from './view';
 
 const NODE_TYPES: NodeTypes = {
   intent: IntentNode,
   stage: StageNode,
-  end: EndNode,
 };
 
 const EDGE_OPTIONS: DefaultEdgeOptions = {

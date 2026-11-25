@@ -9,7 +9,6 @@ export { GOAL_MAX_LENGTH, goalProblem } from './goal';
 export {
   RunAlreadyActive,
   RunNeedsTrust,
-  RunReadRefused,
   RunStartUnsure,
   type RunMemory,
   type RunPort,
