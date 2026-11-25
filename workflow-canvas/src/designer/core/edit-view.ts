@@ -21,13 +21,16 @@ export const RAW_EDIT_REASON =
   'The text of the workflow has been typed over, so the keys of a stage cannot be changed here. Save the text, or load the file again, first.';
 
 /**
- * The text of a raw edit while it differs from the file, or `undefined` when
- * there is none. It self-clears: a save makes that text the file's, so what
- * was typed over and what is saved are the same text and nothing is pending.
+ * The text of a raw edit while one is pending, or `undefined` when there is
+ * none. A text equal to the file is still the one a save writes while the
+ * form draft has moved away from it: typing the file back over a form edit
+ * is how the author drops that edit, so it stays the chosen text. With a
+ * clean form draft the same text is the file itself, so nothing is pending.
  */
 export function rawTextOf(state: EditState): string | undefined {
   const { raw } = state;
-  return raw !== undefined && raw !== state.saved.text ? raw : undefined;
+  if (raw === undefined) return undefined;
+  return raw !== state.saved.text || formDirty(state) ? raw : undefined;
 }
 
 /** Why the stages cannot be changed now, or `undefined` when they can. */
@@ -44,9 +47,8 @@ export function textBlocker(state: EditState): string | undefined {
   return state.save.phase === 'reloading' ? RELOADING_REASON : undefined;
 }
 
-/** Whether the draft differs from the saved workflow. */
-export function isDirty(state: EditState): boolean {
-  if (rawTextOf(state) !== undefined) return true;
+// Whether the stages or the prompts of the draft differ from the file.
+function formDirty(state: EditState): boolean {
   if (!sameStages(stagesOf(state.draft), state.saved.view.stages)) return true;
   // A file whose prompts cannot be read has none that the draft could change.
   const spots = savedPrompts(state.saved);
@@ -54,6 +56,11 @@ export function isDirty(state: EditState): boolean {
     spots !== undefined &&
     state.draft.stages.some((stage, i) => stage.prompt !== spots[i]?.text)
   );
+}
+
+/** Whether the draft differs from the saved workflow. */
+export function isDirty(state: EditState): boolean {
+  return rawTextOf(state) !== undefined || formDirty(state);
 }
 
 // The writer reads the whole file, which takes a few milliseconds for a large

@@ -27,6 +27,7 @@ export {
   type EditSlot,
   type EditState,
   type SaveState,
+  type Submission,
 } from './edit-state';
 export {
   canEdit,

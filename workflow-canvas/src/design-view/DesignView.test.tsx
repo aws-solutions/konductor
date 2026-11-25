@@ -7,7 +7,7 @@ import type { StageView, WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
-import { textOf } from '../designer/core';
+import { MAX_STAGES, textOf } from '../designer/core';
 import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
@@ -1463,5 +1463,132 @@ describe('DesignView, typing over the whole text', () => {
 
     expect(yamlBox().value).toBe(`${HELLO_TEXT}# another\n`);
     expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+  });
+});
+
+describe('DesignView, saving while the text is typed over', () => {
+  const TYPED = `${HELLO_TEXT}# typed over\n`;
+
+  const yamlBox = () => screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  const addButton = () =>
+    wrapper()
+      .findAllButtons()
+      .find((one) => /^Add /.test(one.getElement().textContent ?? ''))!;
+
+  it('says why Add is off while the text is typed over', async () => {
+    drawn();
+    await settle();
+
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+
+    await act(async () => {
+      addButton().focus();
+    });
+    expect(
+      addButton().findDisabledReason()?.getElement().textContent,
+    ).toContain('typed over');
+  });
+
+  it('says the stage limit when that is why Add is off', async () => {
+    const { editorOf } = drawn();
+    await settle();
+    await act(async () => {
+      for (let n = 0; n < MAX_STAGES; n += 1) editorOf().add();
+    });
+    await settle();
+
+    await act(async () => {
+      addButton().focus();
+    });
+    expect(
+      addButton().findDisabledReason()?.getElement().textContent,
+    ).toContain('at most');
+  });
+
+  it('keeps text typed while a form save is in flight', async () => {
+    const { edits } = drawn();
+    let finish = (): void => {};
+    edits.save.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({
+              hash: SAVED_HASH,
+              view: viewOfText(HELLO_TEXT),
+              diagnostics: [],
+            });
+        }),
+    );
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await press('Save');
+
+    await typeInto(yamlBox(), TYPED);
+    await act(async () => {
+      finish();
+    });
+    await settle();
+
+    expect(yamlBox().value).toBe(TYPED);
+    expect(screen.getByTestId('save-status').textContent).toContain(
+      'Unsaved changes',
+    );
+  });
+
+  it('keeps text typed while a raw save is in flight', async () => {
+    const { edits } = drawn();
+    const newer = `${TYPED}# newer\n`;
+    let finish = (): void => {};
+    edits.save.mockImplementation(
+      (text: string) =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({
+              hash: SAVED_HASH,
+              view: viewOfText(text),
+              diagnostics: [],
+            });
+        }),
+    );
+    await settle();
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    await press('Save');
+
+    await typeInto(yamlBox(), newer);
+    await act(async () => {
+      finish();
+    });
+    await settle();
+
+    expect(yamlBox().value).toBe(newer);
+    expect(edits.save).toHaveBeenCalledWith(TYPED, HELLO_DOCUMENT.hash);
+  });
+
+  it('writes the loaded text typed over a renamed stage, leaving the file as it was', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    expect(yamlBox().value).toContain('name: drafting');
+
+    await typeInto(yamlBox(), HELLO_TEXT);
+    await settle();
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(HELLO_TEXT, HELLO_DOCUMENT.hash);
+    await openProperties();
+    expect(nameInput().value).toBe('draft');
   });
 });

@@ -204,3 +204,136 @@ describe('saving a raw edit', () => {
     expect(checked.check.revision).toBe(state.revision);
   });
 });
+
+describe('an edit made while a save is going on', () => {
+  const NEWER = `${TYPED}# newer\n`;
+
+  it('keeps raw text typed after a form save was sent', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const sending = after(
+      start,
+      { type: 'rename', id, name: 'drafting' },
+      { type: 'save' },
+    );
+    const formText = sending.submitted?.text ?? '';
+    expect(sending.submitted?.kind).toBe('form');
+
+    const typed = after(sending, { type: 'set-text', text: TYPED });
+    const state = after(typed, savedOf(formText));
+
+    expect(state.saved.text).toBe(formText);
+    expect(rawTextOf(state)).toBe(TYPED);
+    expect(textOf(state)).toBe(TYPED);
+    expect(isDirty(state)).toBe(true);
+  });
+
+  it('keeps raw text typed after a raw save was sent, over the file it wrote', () => {
+    const sending = after(
+      opened(),
+      { type: 'set-text', text: TYPED },
+      { type: 'save' },
+    );
+    expect(sending.submitted).toMatchObject({ kind: 'raw', text: TYPED });
+
+    const typed = after(sending, { type: 'set-text', text: NEWER });
+    const state = after(typed, savedOf(TYPED));
+
+    expect(state.saved.text).toBe(TYPED);
+    expect(rawTextOf(state)).toBe(NEWER);
+    expect(textOf(state)).toBe(NEWER);
+    expect(isDirty(state)).toBe(true);
+  });
+
+  it('leaves the findings of the save with the text that was written', () => {
+    const sending = after(
+      opened(),
+      { type: 'set-text', text: TYPED },
+      { type: 'save' },
+    );
+    const typed = after(sending, { type: 'set-text', text: NEWER });
+    const state = after(typed, savedOf(TYPED));
+
+    // The newer text has not been checked, so a check runs for it.
+    expect(state.check.revision).not.toBe(state.revision);
+  });
+
+  it('opens the draft from the parse when nothing was typed since', () => {
+    const state = after(
+      opened(),
+      { type: 'set-text', text: TYPED },
+      { type: 'save' },
+      savedOf(TYPED),
+    );
+
+    expect(rawTextOf(state)).toBeUndefined();
+    expect(state.check.revision).toBe(state.revision);
+  });
+
+  it('takes the answer of a form save as a form save, whatever is typed since', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const sending = after(
+      start,
+      { type: 'rename', id, name: 'drafting' },
+      { type: 'save' },
+    );
+    const formText = sending.submitted?.text ?? '';
+    const typed = after(sending, { type: 'set-text', text: TYPED });
+    const state = after(typed, savedOf(formText));
+
+    // The ids of the form draft survive, so a later form save still edits in
+    // place rather than starting over from a parse.
+    expect(state.draft.stages[0]?.id).toBe(id);
+    expect(state.draft.stages[0]?.name).toBe('drafting');
+  });
+});
+
+describe('typing the loaded text over a form edit', () => {
+  it('stays the text a save writes, so the form edit is dropped', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const renamed = after(start, { type: 'rename', id, name: 'drafting' });
+    expect(textOf(renamed)).toContain('name: drafting');
+
+    const state = after(renamed, { type: 'set-text', text: HELLO_TEXT });
+
+    expect(rawTextOf(state)).toBe(HELLO_TEXT);
+    expect(textOf(state)).toBe(HELLO_TEXT);
+    expect(isDirty(state)).toBe(true);
+  });
+
+  it('leaves the file as it was once saved, and reopens from the parse', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const state = after(
+      start,
+      { type: 'rename', id, name: 'drafting' },
+      { type: 'set-text', text: HELLO_TEXT },
+      { type: 'save' },
+    );
+    expect(state.submitted).toMatchObject({ kind: 'raw', text: HELLO_TEXT });
+
+    const written = after(state, savedOf(HELLO_TEXT));
+
+    expect(written.saved.text).toBe(HELLO_TEXT);
+    expect(written.draft.stages[0]?.name).toBe('draft');
+    expect(rawTextOf(written)).toBeUndefined();
+    expect(isDirty(written)).toBe(false);
+  });
+
+  it('is no edit when the form draft is clean, since that text is the file', () => {
+    const start = opened();
+
+    expect(reduce(start, { type: 'set-text', text: HELLO_TEXT })).toBe(start);
+  });
+
+  it('is no edit when the text is the one the form draft would write', () => {
+    const start = opened();
+    const id = start.draft.stages[0]?.id ?? '';
+    const renamed = after(start, { type: 'rename', id, name: 'drafting' });
+    const written = textOf(renamed) ?? '';
+
+    expect(reduce(renamed, { type: 'set-text', text: written })).toBe(renamed);
+  });
+});

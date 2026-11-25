@@ -455,7 +455,9 @@ export function DesignView({
             <Button
               iconName="add-plus"
               disabled={frozen !== undefined || !canAddStage(state.draft)}
-              disabledReason={`A workflow has at most ${MAX_STAGES} stages.`}
+              disabledReason={
+                frozen ?? `A workflow has at most ${MAX_STAGES} stages.`
+              }
               onClick={() => editor.add()}
             >
               Add {nextStageName(state.draft)}

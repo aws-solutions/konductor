@@ -22,6 +22,7 @@ import {
   type EditSlot,
   type EditState,
   type SaveState,
+  type Submission,
 } from './edit-state';
 import {
   canSave,
@@ -97,10 +98,14 @@ function selected(state: EditState, id: string): EditState {
  * server's parse of the new text. `changeBlocker` refuses a form edit while
  * one is pending, which is why nothing here has to re-read the YAML; the
  * core has no parser of its own and the check is the one that answers.
+ *
+ * The text is compared with the one a save would write now, not with the
+ * file: with a form edit pending, typing the file back is a change, and it
+ * is how the author drops that edit.
  */
 function textSet(state: EditState, text: string): EditState {
   if (textBlocker(state) !== undefined) return state;
-  const current = rawTextOf(state) ?? state.saved.text;
+  const current = textOf(state) ?? state.saved.text;
   if (text === current) return state;
   const phase = state.save.phase;
   const settled =
@@ -132,6 +137,10 @@ function openedAfterRaw(
   text: string,
   result: SaveResult,
 ): EditState {
+  // Text typed while the save ran is newer than what was written, so it
+  // stays the raw edit, now over the file the save made. Its own check has
+  // not answered, so the findings stay with the revision that was sent.
+  const newer = newerRawOf(state, text);
   const next = openDocument(
     {
       ...state.saved,
@@ -140,11 +149,38 @@ function openedAfterRaw(
       view: result.view,
       diagnostics: result.diagnostics,
     },
-    state.revision,
+    newer === undefined ? state.revision : submittedRevision(state),
   );
   return next
-    ? { ...next, save: { phase: 'saved' } }
+    ? {
+        ...next,
+        revision: state.revision,
+        save: { phase: 'saved' },
+        ...(newer === undefined ? {} : { raw: newer }),
+      }
     : { ...state, save: { phase: 'conflict', problem: NOT_EDITABLE } };
+}
+
+// The raw text the editor holds now, when it was typed after the save was
+// sent and is not what the save wrote.
+function newerRawOf(state: EditState, written: string): string | undefined {
+  const { submitted, raw } = state;
+  if (!submitted || state.revision <= submitted.revision) return undefined;
+  return raw !== undefined && raw !== written ? raw : undefined;
+}
+
+function submittedRevision(state: EditState): number {
+  return state.submitted?.revision ?? state.revision;
+}
+
+// What a save is being asked to write, kept so its answer is applied to that
+// text and not to whatever the editor holds when the answer arrives.
+function submissionOf(state: EditState): Submission {
+  return {
+    kind: rawTextOf(state) === undefined ? 'form' : 'raw',
+    text: textOf(state) ?? state.saved.text,
+    revision: state.revision,
+  };
 }
 
 function savedAs(
@@ -152,7 +188,9 @@ function savedAs(
   text: string,
   result: SaveResult,
 ): EditState {
-  if (state.raw !== undefined) return openedAfterRaw(state, text, result);
+  if (state.submitted?.kind === 'raw') {
+    return openedAfterRaw(state, text, result);
+  }
   // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
@@ -265,7 +303,12 @@ function step(
       return checked(state, event.revision, event.diagnostics);
     case 'save':
       return canSave(state)
-        ? { ...state, save: { phase: 'saving' }, sent: idsOf(state.draft) }
+        ? {
+            ...state,
+            save: { phase: 'saving' },
+            sent: idsOf(state.draft),
+            submitted: submissionOf(state),
+          }
         : state;
     case 'saved':
       return whileSaving(state, () => savedAs(state, event.text, event.result));
