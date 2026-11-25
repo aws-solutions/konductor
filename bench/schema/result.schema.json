@@ -418,6 +418,14 @@
         "null"
       ]
     },
+    "creditLimitMode": {
+      "enum": [
+        "soft"
+      ]
+    },
+    "creditLimitWarning": {
+      "type": "string"
+    },
     "workToolCalls": {
       "type": [
         "integer",

@@ -59,7 +59,8 @@ function liveStdioPath(finalPath, stdioDir) {
 // Spawns in its own process group so a timeout kills child tools too. The group is
 // registered so a runner interrupted by a signal can kill it.
 // `onSpawn(pid)` is called once the child exists (a plant run sends the gateway its peer then).
-function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, stdinPath = null, stdioDir = null, creditLimit = null, creditPollMs = 1000, stop = null, onSpawn = null }) {
+// `softLimit`: credits past `creditLimit` are still metered but never kill the group (--run-credit-limit-mode soft).
+function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, stdinPath = null, stdioDir = null, creditLimit = null, softLimit = false, creditPollMs = 1000, stop = null, onSpawn = null }) {
   return new Promise((resolve) => {
     const liveOut = liveStdioPath(stdoutPath, stdioDir);
     const liveErr = liveStdioPath(stderrPath, stdioDir);
@@ -105,13 +106,13 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       closeAll();
       resolve({ ...result, credits, creditLimitHit: limitHit, creditEstimate: metered?.estimate ?? null, stopped, tamperedFiles: tampered });
     };
-    // Kills the process group once the credits metered so far pass the limit, or the stop watcher has a decision.
-    // The run is then recorded as censored.
+    // Kills the process group once the credits metered so far pass the limit (not with softLimit), or the stop watcher
+    // has a decision. The run is then recorded as censored.
     const meter = creditLimit == null ? null : makeCreditMeter(liveOut);
     const watcher = meter || stop ? setInterval(() => {
       if (limitHit || stopped) return;
       if (stop) stopped = stop.poll();
-      if (!stopped && (!meter || meter.live() <= creditLimit)) return;
+      if (!stopped && (!meter || softLimit || meter.live() <= creditLimit)) return;
       if (!stopped) { limitHit = true; metered = meter.estimated() ? { estimate: meter.live() } : meter.poll(); }
       kill('SIGTERM');
       setTimeout(() => kill('SIGKILL'), 5000).unref();
@@ -301,9 +302,11 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
   let sessionId = null;
   let turn = 0;
   let spent = 0;
+  const soft = ctx.runCreditLimitMode === 'soft';
   // Credits that only arrive when a turn ends (engine v3) can be checked here, so the next turn is not started.
+  // In soft mode the next turn starts anyway; the overshoot is flagged when the run ends.
   const overLimitAfter = (exec) => {
-    if (ctx.runCreditLimit == null || spent <= ctx.runCreditLimit) return false;
+    if (soft || ctx.runCreditLimit == null || spent <= ctx.runCreditLimit) return false;
     exec.creditLimitHit = true;
     exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${spent.toFixed(3)} credits (checked when turn ${turn} ended; no further turn was started)`;
     return true;
@@ -336,7 +339,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
       const exec = await spawnWithTimeout(w.file, w.args, {
         cwd, env, timeoutMs: Math.max(1, remaining),
         stdoutPath, stderrPath: path.join(outDir, stderrFile(multi, turn)), stdinPath, stdioDir,
-        creditLimit: ctx.runCreditLimit == null ? null : Math.max(0, ctx.runCreditLimit - spent), creditPollMs: ctx.creditPollMs, stop,
+        creditLimit: ctx.runCreditLimit == null ? null : Math.max(0, ctx.runCreditLimit - spent), softLimit: soft, creditPollMs: ctx.creditPollMs, stop,
         onSpawn: plantRun ? (pid) => plantRun.onSpawn(pid) : null,
       });
       spent += exec.credits ?? 0;
@@ -373,11 +376,13 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     }
   }
   const last = execs[execs.length - 1];
+  const over = ctx.runCreditLimit != null && spent > ctx.runCreditLimit;
   return {
     exitCode: last.exitCode,
     timedOut: execs.some((e) => e.timedOut),
     creditLimitHit: execs.some((e) => e.creditLimitHit),
-    ...(ctx.runCreditLimit == null ? {} : { creditLimit: ctx.runCreditLimit, creditOvershoot: spent > ctx.runCreditLimit ? spent - ctx.runCreditLimit : null }),
+    ...(ctx.runCreditLimit == null ? {} : { creditLimit: ctx.runCreditLimit, creditOvershoot: over ? spent - ctx.runCreditLimit : null }),
+    ...(soft && ctx.runCreditLimit != null ? { creditLimitMode: 'soft', ...(over ? { creditLimitWarning: `per-run credit limit ${ctx.runCreditLimit} passed at ${spent.toFixed(3)} credits (soft mode: the run was not stopped)` } : {}) } : {}),
     stopped: execs.map((e) => e.stopped).find((x) => x && x.reason !== 'end_turn') ?? null,
     tamperedFiles: execs.flatMap((e) => e.tamperedFiles ?? []),
     wallClockMs: execs.reduce((n, e) => n + (e.wallClockMs ?? 0), 0),
@@ -430,6 +435,8 @@ function noteOutcome(meta, { agg, exec, outDir }) {
   if (exec?.creditLimitHit) meta.flags.push('creditLimit');
   else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
   if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
+  if (exec?.creditLimitMode) meta.creditLimitMode = exec.creditLimitMode;
+  if (exec?.creditLimitWarning) meta.creditLimitWarning = exec.creditLimitWarning;
   if (exec?.stopped) meta.flags.push('earlyStopped');
 }
 

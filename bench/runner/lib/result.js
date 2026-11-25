@@ -137,6 +137,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     creditsCharged: null,
     creditsSessionTotal: meta.creditsSessionTotal ?? null,
     ...(meta.creditLimit != null ? { creditLimit: meta.creditLimit, creditOvershoot: meta.creditOvershoot ?? null } : {}),
+    ...(meta.creditLimitMode ? { creditLimitMode: meta.creditLimitMode } : {}),
+    ...(meta.creditLimitWarning ? { creditLimitWarning: meta.creditLimitWarning } : {}),
     modelCalls: usd
       ? (usage ? { meteringEntries: usage.modelCalls, totalRequestCount: usage.modelCalls } : null)
       : agg

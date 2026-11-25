@@ -128,3 +128,14 @@ test('engine v3: a ledger line carries the credits read from the turn summary, n
     assert.deepEqual({ kind: entry.kind, credits: entry.credits, charged: entry.charged, censored: entry.censored }, { kind: 'run', credits: 2.5, charged: 2.5, censored: false });
   } finally { s.cleanup(); }
 });
+
+test('soft credit limit: a run over the limit writes a warning line to the run log and finishes', async () => {
+  const s = setup({ credits: 3 });
+  try {
+    Object.assign(s.ctx, { runCreditLimit: 1, runCreditLimitMode: 'soft', creditPollMs: 50 });
+    const lines = [];
+    await go(s, { replicates: 1, log: (l) => lines.push(l) });
+    assert.ok(lines.includes('warning vanilla / t1 / #1: per-run credit limit 1 passed at 3.000 credits (soft mode: the run was not stopped)'), lines.join('\n'));
+    assert.equal(s.ctx.runCreditLimitMode, 'soft');
+  } finally { s.cleanup(); }
+});

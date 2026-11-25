@@ -434,11 +434,11 @@ function modelConfigOf({ runtime, opts, agentEngine }) {
  * plant suite, the bench commit and content hashes, the real-repo pins and the tool versions, with startedAt.
  */
 /**
- * The run-config.json record of a run. `flags`: what the command line chose (suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra and the
+ * The run-config.json record of a run. `flags`: what the command line chose (suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, runCreditLimitMode (recorded only when soft), extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra and the
  * parsed `opts`). `built`: what the runner prepared (ctx, arms, variants, pythonPin, prepared, errors, armDrift, plantSuite, kiro, realPins, realCache, realTasks, interpreters, toolchainCheck). `paths`: where the repo, bench and suites live.
  */
 function buildRunConfig({ flags, built, paths }) {
-  const { suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra, opts } = flags;
+  const { suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, runCreditLimitMode, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra, opts } = flags;
   const { ctx, arms, variants, pythonPin, prepared, errors, armDrift, plantSuite, kiro, realPins, realCache, realTasks, interpreters, toolchainCheck } = built;
   const { REPO, benchDir, suitesDir } = paths;
   const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
@@ -446,7 +446,7 @@ function buildRunConfig({ flags, built, paths }) {
     suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, timeoutSecOverride: timeoutOverride, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
     pairOrder, fillBudget,
     profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
-    runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle, forcedMustLoad: armOpts.forcedMustLoad,
+    runCreditLimit, ...(runCreditLimitMode === 'soft' ? { runCreditLimitMode } : {}), extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle, forcedMustLoad: armOpts.forcedMustLoad,
     isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
     variants: variants.map((v) => ({ ...v })),
     python: pythonPin,
@@ -538,7 +538,7 @@ async function cmdRun(opts, deps = {}) {
   const desc = descriptorOf(runtimes[0]);
   const unit = desc.costUnit;
   const isUsd = unit === 'usd';
-  const { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn } = checkHarnessFlags({ opts, tasks, runtime: runtimes[0] });
+  const { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, runCreditLimitMode, stopOn } = checkHarnessFlags({ opts, tasks, runtime: runtimes[0] });
   // A harness whose agent signs its own model calls checks its credentials before anything starts (runCredentials).
   const harness = harnessFor({ runtime: runtimes[0] });
   const ccCreds = harness.runCredentials ? harness.runCredentials({ opts, deps }).creds : null;
@@ -600,7 +600,7 @@ async function cmdRun(opts, deps = {}) {
     ctx.isolation = isolation;
     ctx.hide = [...list(opts.hide), ...list(process.env.BENCH_HIDE_EXTRA)];
     ctx.mask = maskPaths({ benchDir, extraDirs, outDir, awsCredsFile });
-    Object.assign(ctx, { runCreditLimit, stopOn, maxToolCalls });
+    Object.assign(ctx, { runCreditLimit, runCreditLimitMode, stopOn, maxToolCalls });
     ctx.keyRoots = [benchDir];
     if (arms.some((a) => a.plant)) plantSuite = await setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, deps, isolation, harness, scratchDir, log });
     ctx.tripwire = tripwireOf({ opts, home, repo: REPO, tripExtra, outDir, cacheDir, cargoTarget, scratchDir, realCache });
@@ -608,7 +608,7 @@ async function cmdRun(opts, deps = {}) {
     const { interpreters, toolchainCheck } = toolchainOf(tasks, benchDir, log);
 
     runConfig = buildRunConfig({
-      flags: { suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra, opts },
+      flags: { suite, runtimes, armIds, tasks, replicates, parallel, maxAuthFailures, timeoutOverride, isUsd, budgetCredits, censoredFloor, seed, pairOrder, fillBudget, profile, aa, runCreditLimit, runCreditLimitMode, extraDirs, stopOn, maxToolCalls, armOpts, levelPlan, config, isolation, resume, stModel, stCreds, awsProfile, ccRegion, runBudgetUsd, envKeep, tripExtra, opts },
       built: { ctx, arms, variants, pythonPin, prepared, errors, armDrift, plantSuite, kiro, realPins, realCache, realTasks, interpreters, toolchainCheck },
       paths: { REPO, benchDir, suitesDir },
     });

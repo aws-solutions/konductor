@@ -21,7 +21,7 @@ const config = (agentEngine) => ({ model: 'claude-sonnet-5.5', effort: 'high', a
 const ASK = 'I found the timeout setting.\n\nShould the timeout be in seconds or milliseconds?';
 const AUTONOMY = { clarifications: [{ id: 'unit', topic: 'unit', keywords: ['seconds?', 'milliseconds?'], answer: 'Seconds.' }] };
 
-function setup(cfg, { engine, limit, autonomy = false }) {
+function setup(cfg, { engine, limit, mode, autonomy = false }) {
   const root = tmp();
   const bench = makeBench(path.join(root, 'bench'));
   if (autonomy) {
@@ -41,7 +41,7 @@ function setup(cfg, { engine, limit, autonomy = false }) {
   const ctx = {
     config: config(engine), scratchDir, authDb, envKeep: [], envInfo: { kiroCliVersion: 'fake', modelListSnapshotPath: null },
     isolation: { mode: 'none' }, tripwire: { roots: [{ dir: watch, depth: 2 }], extraExcludes: [], absExclude: [scratchDir, path.join(root, 'out')] },
-    creditPollMs: 50, ...(limit === undefined ? {} : { runCreditLimit: limit }),
+    creditPollMs: 50, ...(limit === undefined ? {} : { runCreditLimit: limit }), ...(mode === undefined ? {} : { runCreditLimitMode: mode }),
   };
   const prevPath = process.env.PATH;
   process.env.PATH = `${bin}${path.delimiter}${prevPath}`;
@@ -200,5 +200,80 @@ test('without a limit the result has no credit limit fields', async () => {
     assert.equal('creditLimit' in r, false);
     assert.equal('creditOvershoot' in r, false);
     assert.deepEqual(r.flags.filter((f) => /^creditLimit/.test(f)), []);
+  } finally { s.cleanup(); }
+});
+
+// ---- --run-credit-limit-mode ----
+
+// Context usage 20+30+40 makes a live estimate of about 11.7 credits during the turn; the turn then reports 8.
+const OVER_V3 = { contextUsage: [20, 30, 40], credits: 8, lingerMs: 600, finalText: 'all done' };
+
+for (const mode of [undefined, 'hard']) {
+  test(`${mode ?? 'no mode (the default)'}: a v3 run whose estimate passes the limit is killed, as before`, async () => {
+    const s = setup(OVER_V3, { engine: 'v3', limit: 2, mode });
+    try {
+      const r = await s.run();
+      assert.equal(r.status, 'error');
+      assert.ok(r.flags.includes('creditLimit'), r.flags.join());
+      assert.match(r.error, /per-run credit limit 2 reached/);
+      assert.equal('creditLimitMode' in r, false, 'hard mode adds no field to the result');
+      assert.equal('creditLimitWarning' in r, false);
+    } finally { s.cleanup(); }
+  });
+}
+
+test('soft: the same v3 run is not killed; it finishes, is flagged over the limit and carries a warning', async () => {
+  const s = setup(OVER_V3, { engine: 'v3', limit: 2, mode: 'soft' });
+  try {
+    const r = await s.run();
+    assert.equal(r.status, 'success', r.error);
+    assert.equal(r.finalText, 'all done');
+    assert.ok(r.flags.includes('creditLimitExceeded'), r.flags.join());
+    assert.equal(r.flags.includes('creditLimit'), false);
+    assert.equal(r.creditsCensored, false);
+    assert.equal(r.credits, 8);
+    assert.equal(r.creditOvershoot, 6);
+    assert.equal(r.creditLimitMode, 'soft');
+    assert.equal(r.creditLimitWarning, 'per-run credit limit 2 passed at 8.000 credits (soft mode: the run was not stopped)');
+    assert.equal(r.error, null);
+    assert.deepEqual(validateResult(r), []);
+  } finally { s.cleanup(); }
+});
+
+test('soft: a v2 run whose metered credits pass the limit mid-run is not killed', async () => {
+  const s = setup({ credits: 3, lingerMs: 600, finalText: 'all done' }, { engine: 'v2', limit: 1, mode: 'soft' });
+  try {
+    const r = await s.run();
+    assert.equal(r.status, 'success', r.error);
+    assert.equal(r.finalText, 'all done');
+    assert.ok(r.flags.includes('creditLimitExceeded'), r.flags.join());
+    assert.equal(r.creditOvershoot, 2);
+    assert.match(r.creditLimitWarning, /per-run credit limit 1 passed at 3\.000 credits/);
+    assert.deepEqual(validateResult(r), []);
+  } finally { s.cleanup(); }
+});
+
+test('soft conversation: over the limit when a turn ends, the next turn still starts', async () => {
+  const s = setup({ turns: [{ finalText: ASK, credits: 6 }, { finalText: 'Done.', credits: 2 }] }, { engine: 'v3', limit: 5, mode: 'soft', autonomy: true });
+  try {
+    const r = await s.run();
+    assert.equal(fs.existsSync(s.started(2)), true, 'turn 2 was spawned');
+    assert.equal(r.turns, 2);
+    assert.equal(r.credits, 8);
+    assert.ok(r.flags.includes('creditLimitExceeded'), r.flags.join());
+    assert.equal(r.flags.includes('creditLimit'), false);
+    assert.match(r.creditLimitWarning, /per-run credit limit 5 passed at 8\.000 credits/);
+    assert.deepEqual(validateResult(r), []);
+  } finally { s.cleanup(); }
+});
+
+test('soft: a run under the limit has no warning', async () => {
+  const s = setup({ credits: 2, lingerMs: 300 }, { engine: 'v3', limit: 3, mode: 'soft' });
+  try {
+    const r = await s.run();
+    assert.equal(r.status, 'success');
+    assert.deepEqual(r.flags.filter((f) => /^creditLimit/.test(f)), []);
+    assert.equal(r.creditLimitMode, 'soft');
+    assert.equal('creditLimitWarning' in r, false);
   } finally { s.cleanup(); }
 });

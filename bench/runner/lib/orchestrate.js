@@ -424,6 +424,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       const spent = unit === 'usd' ? r.costUsd : r.credits;
       const censored = unit === 'usd' ? r.costCensored : r.creditsCensored;
       log(`done ${arm.id} / ${task.id} / #${replicate}: ${r.status}, ${spent == null ? 'n/a' : spent.toFixed(3)} ${unit}${censored ? ` (censored, charged ${charge.toFixed(3)})` : ''}${r.authFailure ? ' (login failure, no turn ran, charged 0)' : ''}${r.launchFailure ? ' (agent binary could not be launched, no turn ran, charged 0)' : ''}${r.creditOvershoot > 0 ? ` (${r.creditOvershoot.toFixed(3)} over the run credit limit ${r.creditLimit})` : ''}, ${r.wallClockMs == null ? 'n/a' : (r.wallClockMs / 1000).toFixed(1) + 's'} (charged ${ledger.charged.toFixed(3)})`);
+      if (r.creditLimitWarning) log(`warning ${arm.id} / ${task.id} / #${replicate}: ${r.creditLimitWarning}`);
       log.event?.(r.status === 'success' ? 'info' : 'warn', 'cell', { arm: arm.id, task: task.id, replicate, status: r.status, spent, unit, censored: Boolean(censored), charged: charge });
     }
     if (aside) {
