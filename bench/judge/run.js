@@ -250,8 +250,12 @@ function planJudging(o) {
     }
   }
   const calls = p.units.length;
+  // The runs whose bundle cuts a file or leaves one out, so a reader can see what part of the work the judge would miss.
+  const cuts = p.judged.map((r) => ({ key: runKey(r), meta: p.bundles.get(runKey(r)).meta }))
+    .filter((c) => c.meta.truncatedFiles.length || c.meta.omittedFiles.length)
+    .map((c) => ({ key: c.key, truncatedFiles: c.meta.truncatedFiles, omittedFiles: c.meta.omittedFiles }));
   return {
-    backend: p.backend, judges: o.judges, modes: o.modes, baseline: o.baseline, runs: p.judged.length, notJudged: p.notJudged,
+    backend: p.backend, judges: o.judges, modes: o.modes, baseline: o.baseline, runs: p.judged.length, notJudged: p.notJudged, cuts,
     calls, byMode, cached, live: calls - cached - tooLarge, tooLarge,
     unpaired: p.pairErrors.length + p.gradedErrors.length,
     estimate: estimateSpend({ judgments: run.judgments, usdMode, backend: p.backend, liveCalls: calls - cached - tooLarge, liveUnits: [...liveBy.values()] }),

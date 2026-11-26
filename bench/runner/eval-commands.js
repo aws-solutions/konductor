@@ -308,6 +308,8 @@ function printJudgePlan(opts, { runDir, benchDir, judges, modes, baseline }) {
   console.log(`runs: ${d.runs} to judge, ${d.notJudged.length} not judged${d.notJudged.length ? ` (${d.notJudged.map((n) => `${n.armId}|${n.taskId}|${n.replicate}: ${n.reason}`).join('; ')})` : ''}`);
   if (d.unpaired) console.log(`${d.unpaired} comparison(s) have no baseline run and would be recorded as errors`);
   console.log(`calls: ${d.calls} (rubric ${d.byMode.rubric}, pairwise ${d.byMode.pairwise}, graded ${d.byMode.graded}) = ${judges.length} judge(s) x the runs and modes above`);
+  console.log(d.cuts.length ? `bundle cuts: ${d.cuts.length} of ${d.runs} run(s)` : 'bundle cuts: none');
+  for (const c of d.cuts) console.log(`  ${c.key}: truncatedFiles ${c.truncatedFiles.join(', ') || '-'}; omittedFiles ${c.omittedFiles.join(', ') || '-'}`);
   console.log(planTail(d));
 }
 

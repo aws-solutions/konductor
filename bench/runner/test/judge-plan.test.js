@@ -55,6 +55,21 @@ test('judge --plan in rubric mode prints backend, panel, call count and estimate
   } finally { cleanup(s.root); }
 });
 
+test('judge --plan names the files each bundle cuts or leaves out, and says none when nothing is cut', () => {
+  const s = setup();
+  try {
+    const whole = cli(s, ['--mode', 'rubric']);
+    assert.equal(whole.status, 0, whole.stderr);
+    assert.match(whole.stdout, /^bundle cuts: none$/m);
+    const cut = cli(s, ['--mode', 'rubric', '--max-file-chars', '10', '--max-bundle-chars', '10']);
+    assert.equal(cut.status, 0, cut.stderr);
+    assert.match(cut.stdout, /^bundle cuts: 2 of 2 run\(s\)$/m);
+    assert.match(cut.stdout, /^ {2}vanilla\|d1\|\d+: truncatedFiles a\.txt; omittedFiles docs\/design\.md$/m);
+    assert.match(cut.stdout, /^ {2}other\|d1\|\d+: truncatedFiles a\.txt; omittedFiles docs\/design\.md$/m);
+    assertUntouched(s);
+  } finally { cleanup(s.root); }
+});
+
 test('judge --plan counts pairwise and graded calls as two orderings per non-baseline run and judge', () => {
   const s = setup();
   try {
