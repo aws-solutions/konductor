@@ -59,8 +59,17 @@ def model_of(spec, max_usd, trace):
     if max_usd is None or not max_usd > 0:
         raise Refused(EXIT_USAGE, "model", "a bedrock model needs --max-usd, a positive spend cap")
     from strands.models.bedrock import BedrockModel
-    capped = CappedModel(BedrockModel(model_id=rest, region_name=pins["region"], max_tokens=pin["maxTokens"]), pin, max_usd, trace)
+    capped = CappedModel(BedrockModel(model_id=rest, boto_session=bedrock_session(pins["region"]), max_tokens=pin["maxTokens"]), pin, max_usd, trace)
     return capped, capped
+
+
+def bedrock_session(region):
+    """A boto3 session for Bedrock: the profile named by AWS_PROFILE (or the default chain when unset), in `region`.
+
+    Passed to BedrockModel as boto_session. An explicit session stops Strands from building its own default one,
+    which did not pick up the profile in the probe runs (NoCredentialsError)."""
+    import boto3
+    return boto3.Session(profile_name=os.environ.get("AWS_PROFILE") or None, region_name=region)
 
 
 def build_agent(model, tools, agent_file):

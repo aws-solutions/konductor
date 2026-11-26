@@ -130,6 +130,33 @@ class ModelSwitchTest(unittest.TestCase):
             self.assertEqual(caught.exception.code, launch.EXIT_USAGE)
             self.assertIn(pattern, str(caught.exception))
 
+    def test_bedrock_model_gets_an_explicit_profile_session(self):
+        """The Bedrock model is built with a boto3 session that names AWS_PROFILE and the pinned region, not Strands'
+        default session (which ignored the profile in the probe runs). No model call is made: BedrockModel is mocked."""
+        if not HAVE_STRANDS:
+            self.skipTest("needs strands-agents")
+        trace = Trace(io.StringIO())
+        pinned = sorted(load_pins()["models"])[0]
+        with mock.patch.dict(os.environ, {"AWS_PROFILE": "bench-strands"}), \
+                mock.patch("boto3.Session") as session_cls, \
+                mock.patch("strands.models.bedrock.BedrockModel") as bedrock_cls:
+            launch.model_of("bedrock:" + pinned, 5.0, trace)
+        session_cls.assert_called_once()
+        kwargs = session_cls.call_args.kwargs
+        self.assertEqual(kwargs["profile_name"], "bench-strands")
+        self.assertEqual(kwargs["region_name"], load_pins()["region"])
+        self.assertIs(bedrock_cls.call_args.kwargs["boto_session"], session_cls.return_value)
+        self.assertNotIn("region_name", bedrock_cls.call_args.kwargs)
+
+    def test_no_profile_in_environment_falls_back_to_the_default_chain(self):
+        """With AWS_PROFILE unset, the session is built with profile_name=None (the default chain), not an empty name."""
+        if not HAVE_STRANDS:
+            self.skipTest("needs strands-agents")
+        env = {k: v for k, v in os.environ.items() if k != "AWS_PROFILE"}
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch("boto3.Session") as session_cls:
+            launch.bedrock_session("us-east-1")
+        self.assertIsNone(session_cls.call_args.kwargs["profile_name"])
+
 
 if __name__ == "__main__":
     unittest.main()
