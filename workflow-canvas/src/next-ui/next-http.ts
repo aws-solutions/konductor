@@ -4,6 +4,7 @@ import { bodyOf, withTimeout } from '../api/http-api';
 import {
   BAD_REPLY,
   errorCodeOf,
+  errorFixOf,
   errorMessageOf,
   errorRunIdOf,
   isObject,
@@ -15,7 +16,11 @@ import {
 } from '../api/workflow-extras';
 import type { AgentOption } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
-import { RunAlreadyActive, RunStartUnsure } from '../execution/core/ports';
+import {
+  RunAlreadyActive,
+  RunNeedsTrust,
+  RunStartUnsure,
+} from '../execution/core/ports';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import type { ReadEvents } from '../run-client/follow-run-events';
 import { runEventsPath } from '../run-client/follow-run-events';
@@ -58,6 +63,14 @@ function activeRunOf(error: unknown): RunAlreadyActive | undefined {
     error.code === 'already_running' &&
     error.runId !== undefined
     ? new RunAlreadyActive(error.message, error.runId)
+    : undefined;
+}
+
+function trustNeededOf(error: unknown): RunNeedsTrust | undefined {
+  return error instanceof ApiError &&
+    error.code === 'trust_required' &&
+    error.fix !== undefined
+    ? new RunNeedsTrust(error.message, error.fix)
     : undefined;
 }
 
@@ -381,6 +394,9 @@ export function createNextPorts(
       response.status,
       errorCodeOf(body),
       errorRunIdOf(body),
+      [],
+      undefined,
+      errorFixOf(body),
     );
   };
   return {
@@ -408,7 +424,12 @@ export function createNextPorts(
           throw new RunStartUnsure(RUN_ACCEPTED_UNREADABLE);
         }
       } catch (error) {
-        throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
+        throw (
+          activeRunOf(error) ??
+          trustNeededOf(error) ??
+          startUnsureOf(error) ??
+          error
+        );
       }
     },
     // The long poll holds the call open, so the follower's own limit times it

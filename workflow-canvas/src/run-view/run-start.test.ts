@@ -9,6 +9,7 @@ import {
   startDisabledReason,
   startNotice,
   startsOnEnter,
+  trustRefusalOf,
   UNFOLLOWED_RUN_REASON,
   type RunStart,
 } from './run-start';
@@ -16,6 +17,14 @@ import {
 const RUN_ID = '20261024-0412-a7b3c';
 const going: RunStart = { kind: 'going', runId: RUN_ID, joined: false };
 const joined: RunStart = { kind: 'going', runId: RUN_ID, joined: true };
+const refused: RunStart = {
+  kind: 'trust',
+  message: 'The workflow is not trusted yet.',
+  fix: 'Run `konductor flow trust hello` in a terminal, then try again.',
+  goal: 'Add a greeting',
+  params: { goal: 'Add a greeting' },
+  refusal: 1,
+};
 
 describe('followedRunId', () => {
   it('names the run that is going', () => {
@@ -29,6 +38,29 @@ describe('followedRunId', () => {
     { kind: 'failed', message: 'No.' },
   ])('names no run for $kind', (start) => {
     expect(followedRunId(start)).toBeUndefined();
+  });
+});
+
+describe('trustRefusalOf', () => {
+  it('gives the refusal to show', () => {
+    expect(trustRefusalOf(refused)).toBe(refused);
+  });
+
+  it.each<RunStart>([
+    { kind: 'idle' },
+    { kind: 'starting' },
+    going,
+    { kind: 'unsure', message: 'No answer.' },
+    { kind: 'failed', message: 'No.' },
+  ])('gives none for $kind', (start) => {
+    expect(trustRefusalOf(start)).toBeUndefined();
+  });
+
+  it('still gives a refusal whose dialog was closed, so Run says why', () => {
+    expect(trustRefusalOf({ ...refused, closed: true })).toEqual({
+      ...refused,
+      closed: true,
+    });
   });
 });
 
@@ -70,6 +102,12 @@ describe('canStartRun', () => {
         runFinished: false,
         goalProblem: problem,
       }),
+    ).toBe(true);
+  });
+
+  it('starts again after a refusal for trust, once the workflow is trusted', () => {
+    expect(
+      canStartRun({ start: refused, runFinished: false, goalProblem: problem }),
     ).toBe(true);
   });
 
@@ -283,6 +321,13 @@ describe('startNotice', () => {
     ).toEqual({
       header: 'The run did not start.',
       message: 'The server said no.',
+    });
+  });
+
+  it('says why a start was refused for trust, under the Run button', () => {
+    expect(startNotice(refused)).toEqual({
+      header: 'The run did not start.',
+      message: 'The workflow is not trusted yet.',
     });
   });
 

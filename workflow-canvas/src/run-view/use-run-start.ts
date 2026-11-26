@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { messageOf } from '../api/message-of';
 import {
   RunAlreadyActive,
+  RunNeedsTrust,
   RunStartUnsure,
   type RunMemory,
 } from '../execution/core';
@@ -12,22 +14,41 @@ const START_FAILED = 'The run did not start.';
 
 const IDLE: RunStart = { kind: 'idle' };
 
-function messageOf(error: unknown): string {
+// What the person reads for a start that failed: the sentence of the error,
+// with the next step for a server that may have stopped, which is what the
+// Execution tab says for the same failure.
+function startMessageOf(error: unknown): string {
   return error instanceof Error && error.message !== ''
-    ? error.message
+    ? messageOf(error, START_FAILED)
     : START_FAILED;
 }
 
 // The server already had a run, so the view follows that one; its goal is
-// not the text of the box.
-function stateOf(error: unknown): RunStart {
+// not the text of the box. A refusal for trust carries the `fix` and the
+// goal that was sent, so the same run can be asked for again, and counts the
+// refusals in a row so a second one opens the dialog afresh.
+function stateOf(
+  error: unknown,
+  params: RunParams,
+  before: RunStart | undefined,
+): RunStart {
   if (error instanceof RunAlreadyActive) {
     return { kind: 'going', runId: error.runId, joined: true };
   }
   if (error instanceof RunStartUnsure) {
     return { kind: 'unsure', message: error.message };
   }
-  return { kind: 'failed', message: messageOf(error) };
+  if (error instanceof RunNeedsTrust) {
+    return {
+      kind: 'trust',
+      message: startMessageOf(error),
+      fix: error.fix,
+      goal: params.goal ?? '',
+      params,
+      refusal: (before?.kind === 'trust' ? before.refusal : 0) + 1,
+    };
+  }
+  return { kind: 'failed', message: startMessageOf(error) };
 }
 
 // The run that `memory` kept, as the page has it after a reload. Its goal is
@@ -72,6 +93,12 @@ export interface RunStartControls {
    * that has ended or is gone: a reload must not take it up again.
    */
   forget(): void;
+  /**
+   * Records that the dialog of this trust refusal was closed, so it stays
+   * closed while the refusal is the one on show. A refusal that comes again
+   * has a number of its own and opens the dialog.
+   */
+  closeTrust(refusal: number): void;
 }
 
 /**
@@ -109,6 +136,7 @@ export function useRunStart({
   const inFlight = useRef<AbortController>(undefined);
   const latest = useRef(source);
   const applied = useRef(source);
+  const shown = useRef<RunStart>(IDLE);
 
   useEffect(() => {
     latest.current = { start: port.start, memory };
@@ -136,6 +164,9 @@ export function useRunStart({
     inFlight.current = controller;
     const now = latest.current;
     const set = (start: RunStart) => setStarted({ source: now, start });
+    // Read before the state is replaced, so a refusal knows whether the one
+    // before it was a refusal too.
+    const before = shown.current;
     set({ kind: 'starting' });
     void now
       .start(params, controller.signal)
@@ -146,7 +177,7 @@ export function useRunStart({
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        const state = stateOf(error);
+        const state = stateOf(error, params, before);
         if (state.kind === 'going') now.memory?.remember(state.runId);
         set(state);
       })
@@ -157,8 +188,20 @@ export function useRunStart({
 
   const forget = useCallback(() => latest.current.memory?.forget(), []);
 
+  const closeTrust = useCallback((refusal: number) => {
+    setStarted((current) => {
+      if (!current) return current;
+      const { start } = current;
+      if (start.kind !== 'trust' || start.refusal !== refusal) return current;
+      return { source: current.source, start: { ...start, closed: true } };
+    });
+  }, []);
+
   const held =
     started && sameSource(started.source, source) ? started.start : undefined;
   const kept = sameSource(takenUp.source, source) ? takenUp.start : IDLE;
-  return { start: held ?? kept, begin, forget };
+  const start = held ?? kept;
+  // What the view shows now, for the next refusal to count from.
+  shown.current = start;
+  return { start, begin, forget, closeTrust };
 }

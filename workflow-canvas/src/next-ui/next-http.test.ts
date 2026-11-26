@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/api';
-import { RunAlreadyActive, RunStartUnsure } from '../execution/core/ports';
+import {
+  RunAlreadyActive,
+  RunNeedsTrust,
+  RunStartUnsure,
+} from '../execution/core/ports';
 import { createNextPorts } from './next-http';
 
 const TOKEN = 'token-1';
@@ -179,6 +183,27 @@ describe('createNextPorts, the start of a run', () => {
 
     expect(failed).toBeInstanceOf(RunAlreadyActive);
     expect((failed as RunAlreadyActive).runId).toBe(RUN_ID);
+  });
+
+  it('asks for trust with the server fix', async () => {
+    const fix =
+      'Run `konductor flow trust hello` in a terminal, then try again.';
+    const { fetchFn } = serverOf({
+      status: 409,
+      body: {
+        error: 'The workflow is not trusted yet.',
+        code: 'trust_required',
+        fix,
+      },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const failed = await ports
+      .startRun({ goal: 'Add a greeting' }, signal())
+      .catch((error: unknown) => error);
+
+    expect(failed).toBeInstanceOf(RunNeedsTrust);
+    expect((failed as RunNeedsTrust).fix).toBe(fix);
   });
 
   it('says what the server said about params it refused', async () => {

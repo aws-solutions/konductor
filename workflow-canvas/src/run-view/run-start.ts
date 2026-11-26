@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { RunParams } from './run-params';
 
 /**
  * Where starting a run is. A run that is `going` is the one the view
  * follows; `joined` means the server already had it, so its goal is not the
  * text in the Goal box. `unsure` is a start whose outcome the server did not
  * report: a run may be going, so the view offers a reload instead of a
- * second start.
+ * second start. `trust` is a start the server refused because the workflow
+ * is not trusted yet.
  */
 export type RunStart =
   | { readonly kind: 'idle' }
@@ -16,7 +18,29 @@ export type RunStart =
       readonly joined: boolean;
     }
   | { readonly kind: 'unsure'; readonly message: string }
-  | { readonly kind: 'failed'; readonly message: string };
+  | { readonly kind: 'failed'; readonly message: string }
+  | {
+      readonly kind: 'trust';
+      readonly message: string;
+      /** The `fix` of the server, which names the command that trusts it. */
+      readonly fix: string;
+      /** The goal shown by the shared trust dialog. */
+      readonly goal: string;
+      /** The complete refused request, so Run again sends the same values. */
+      readonly params: RunParams;
+      /** Counts the refusals in a row, from 1, so each has its own number. */
+      readonly refusal: number;
+      /** Set once the dialog of this refusal has been closed. */
+      readonly closed?: true;
+    };
+
+/** A start the server refused because the workflow is not trusted. */
+export type TrustRefused = Extract<RunStart, { kind: 'trust' }>;
+
+/** The trust refusal to show, or `undefined` when there is none. */
+export function trustRefusalOf(start: RunStart): TrustRefused | undefined {
+  return start.kind === 'trust' ? start : undefined;
+}
 
 /** The run the view follows, or `undefined` when there is none. */
 export function followedRunId(start: RunStart): string | undefined {
@@ -60,6 +84,9 @@ export function canStartRun({
   switch (start.kind) {
     case 'idle':
     case 'failed':
+    // The workflow has to be trusted in a terminal, and then the same run
+    // can be asked for again from here.
+    case 'trust':
       return true;
     case 'going':
       return runFinished;
@@ -119,7 +146,7 @@ const UNSURE_FIX =
 
 /** The notice to show for `start`, or `undefined` when there is nothing to say. */
 export function startNotice(start: RunStart): StartNotice | undefined {
-  if (start.kind === 'failed') {
+  if (start.kind === 'failed' || start.kind === 'trust') {
     return { header: 'The run did not start.', message: start.message };
   }
   if (start.kind === 'unsure') {

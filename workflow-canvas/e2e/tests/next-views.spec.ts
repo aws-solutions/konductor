@@ -11,6 +11,7 @@ import {
   running,
   test,
 } from '../support/next-fixtures';
+import { refuseRunsWith } from '../support/run-routes';
 import { sharedSession } from '../support/session';
 
 /** Another launch address, as a person pastes one. */
@@ -392,4 +393,79 @@ test('types a prompt into the keys of a stage', async ({ next }) => {
   await expect(next.page.getByTestId('save-status')).toContainText(
     'Unsaved changes',
   );
+});
+
+const TRUST_FIX =
+  'Run `konductor flow trust hello` in a terminal, then try again.';
+const TRUST_COMMAND = 'konductor flow trust hello';
+
+// Refuses the start with `trust_required` and its fix, as the server does for
+// a workflow nobody has trusted yet, and opens the dialog from the Run view.
+async function refuseForTrust(canvas: WorkflowCanvasPage): Promise<void> {
+  await refuseRunsWith(canvas.page, 409, {
+    error: 'The workflow is not trusted yet.',
+    code: 'trust_required',
+    fix: TRUST_FIX,
+  });
+  await canvas.selectTab('Run');
+  await canvas.runButton.click();
+  await canvas.page.getByTestId('trust-command').waitFor();
+}
+
+test('opens the trust dialog when the run needs trust', async ({ next }) => {
+  await refuseForTrust(next);
+  const dialog = next.page.getByTestId('trust-dialog');
+
+  await expect(dialog).toContainText('Trust the workflow to run it');
+  await expect(next.page.getByTestId('trust-command')).toHaveText(
+    TRUST_COMMAND,
+  );
+  await expect(dialog.getByRole('button', { name: 'Run again' })).toBeVisible();
+});
+
+test('copies the command that trusts the workflow', async ({ next }) => {
+  await next.page
+    .context()
+    .grantPermissions(['clipboard-read', 'clipboard-write']);
+  await refuseForTrust(next);
+
+  await next.page.getByRole('button', { name: 'Copy command' }).click();
+
+  const copied = await next.page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toBe(TRUST_COMMAND);
+});
+
+test('starts the run once more with Run again', async ({ next }) => {
+  await refuseForTrust(next);
+  await answerRunWith(next.page, RUN_EVENTS);
+
+  await next.page.getByRole('button', { name: 'Run again' }).click();
+
+  await expect(next.page.getByTestId('trust-dialog')).toBeHidden();
+  await expect(next.page.getByTestId('run-progress')).toContainText(
+    'Run passed.',
+  );
+});
+
+test('leaves the Run view as it was when the dialog is closed', async ({
+  next,
+}) => {
+  await refuseForTrust(next);
+
+  await next.page.getByRole('button', { name: 'Close', exact: true }).click();
+
+  await expect(next.page.getByTestId('trust-dialog')).toBeHidden();
+  const alert = next.page.getByTestId('run-start-error');
+  await expect(alert).toContainText('The run did not start.');
+  await expect(alert).toContainText(TRUST_COMMAND);
+  await expect(next.goal).toHaveValue('Add a greeting to the README');
+  await expect(next.runButton).toBeEnabled();
+});
+
+test('has no accessibility violations with the trust dialog open', async ({
+  next,
+}) => {
+  await refuseForTrust(next);
+
+  await expectNoAccessibilityViolations(next.page);
 });
