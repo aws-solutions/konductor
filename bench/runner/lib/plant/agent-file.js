@@ -18,10 +18,10 @@ const PROMPTS = byKind((rec) => rec.prompt);
 
 /**
  * The agent definition. `shimPath` is the shim copied into the run's read-only plant dir, `socketPath` the
- * run's gw.sock, `nodeBin` the node binary that runs the shim, `kind` the task's environment kind (default `conveyor-sim`),
- * which picks the one-line prompt.
+ * run's gw.sock, `nodeBin` the node binary that runs the shim, `kind` the task's environment kind, which picks the one-line
+ * prompt. Throws for an unknown or missing kind.
  */
-function plantAgent({ shimPath, socketPath, nodeBin, kind = 'conveyor-sim' }) {
+function plantAgent({ shimPath, socketPath, nodeBin, kind }) {
   return {
     name: AGENT_NAME,
     description: 'konductor bench plant operator (simulator only)',
@@ -51,8 +51,11 @@ function copyPlantAgentOut(home, outDir) {
 // one-line prompt goes on --append-system-prompt (plugins/claude-code/harness.js buildCommand).
 const MCP_CONFIG_REL = path.join('.claude', 'plant-mcp.json');
 
-/** The one-line operator prompt for environment kind `kind` (default `conveyor-sim`). */
-const plantPrompt = (kind = 'conveyor-sim') => PROMPTS[kind];
+/** The one-line operator prompt for environment kind `kind`. Throws for an unknown or missing kind: no plant is a default. */
+function plantPrompt(kind) {
+  if (!Object.hasOwn(PROMPTS, kind ?? '')) throw new Error(`no plant kind named ${JSON.stringify(kind)}`);
+  return PROMPTS[kind];
+}
 
 /** The Claude Code MCP config that runs the shim at `shimPath` on `socketPath` with `nodeBin`; nothing else. */
 function plantMcpConfig({ shimPath, socketPath, nodeBin }) {

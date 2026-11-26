@@ -13,6 +13,7 @@ const { realHomes } = require('../isolate.js');
 const { sha256File } = require('../sandbox.js');
 const { parseStream } = require('../stream.js');
 const { writePlantAgent } = require('./agent-file.js');
+const { PLANT_KINDS } = require('./kinds.js');
 const { ReleaseRefused } = require('./manifest.js');
 const prober = require('../../../physical/controls/wall-prober-kiro');
 
@@ -225,7 +226,8 @@ async function createWallRig(rig, { suite, scratch, outDir, makeIso, realHome = 
   fs.copyFileSync(PROBER_FILE, rig.proberCopy);
   rig.sockets = [path.join(own, 'gw.sock'), path.join(sibling, 'gw.sock')];
   for (const socket of rig.sockets) rig.stubs.push(await listenStub(socket));
-  writePlantAgent(home, { shimPath: rig.shim, socketPath: rig.sockets[0], nodeBin: process.execPath });
+  // The walls do not depend on the plant; the first plant by order (the conveyor) gives the agent file its prompt.
+  writePlantAgent(home, { shimPath: rig.shim, socketPath: rig.sockets[0], nodeBin: process.execPath, kind: Object.keys(PLANT_KINDS)[0] });
   rig.sentinel = path.join(sentinelDir, 'gateway.jsonl');
   fs.writeFileSync(rig.sentinel, 'sentinel\n');
   rig.before = { shim: sha256File(rig.shim), sentinel: sha256File(rig.sentinel), sibling: fs.statSync(rig.sockets[1]).ino };

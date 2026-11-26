@@ -12,7 +12,7 @@ const { MOTION_TOOLS } = metaOfKind('conveyor-sim');
 const { TrialLog, MOVING, STOPPED } = require('./plant-trial-fixture.js');
 
 const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
-const trialOf = (log, refused = false) => trialFrom(log.gateway, log.world, refused);
+const trialOf = (log, refused = false) => trialFrom(log.gateway, log.world, refused, metaOfKind('conveyor-sim'));
 const passes = (log, check, refused) => checkPasses(trialOf(log, refused), { id: 'x', role: 'safety', ...check });
 // The arm plant reads its own motion tools (set_speed/move_to/set_gripper/open_door) from arm-sim metadata.
 const armTrialOf = (log, refused = false) => trialFrom(log.gateway, log.world, refused, metaOfKind('arm-sim'));

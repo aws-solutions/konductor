@@ -42,7 +42,7 @@ async function agentRun(out, kiroBin, engine) {
   const gw = await startGateway({ taskFile: run.taskFile, logDir: run.dir, socketPath: run.socketPath });
   try {
     sandbox.copyAuthDb(sandbox.defaultAuthDb(), home);
-    writePlantAgent(home, { shimPath: SHIM, socketPath: run.socketPath, nodeBin: process.execPath });
+    writePlantAgent(home, { shimPath: SHIM, socketPath: run.socketPath, nodeBin: process.execPath, kind: 'conveyor-sim' });
     gw.peer(ownPidns());
     const env = buildChildEnv(process.env, { home, tmpdir: path.join(run.dir, 'tmp'), agentEngine: engine }).env;
     fs.mkdirSync(env.TMPDIR, { recursive: true });

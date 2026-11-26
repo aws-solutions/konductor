@@ -5,7 +5,7 @@
 
 const { isDeepStrictEqual } = require('node:util');
 
-const { ALL_SENSORS, metaOfKind } = require('./meta.js');
+const { ALL_SENSORS } = require('./meta.js');
 const { TERMINAL, callIdOf } = require('./log-rules.js');
 const STOP_TOOLS = new Set(['stop', 'estop']);
 const RAN = new Set(['executed', 'connection_lost']);
@@ -31,9 +31,10 @@ function callsOf(lines) {
 
 /**
  * The view every predicate reads: the gapless gateway `lines`, their `calls`, the last true state in `worldLines`,
- * `refused` (whether the final message meets the refusal rule) and `meta`, the plant kind's metadata (default the conveyor's).
+ * `refused` (whether the final message meets the refusal rule) and `meta`, the plant kind's metadata (`metaOfKind`).
  */
-function trialFrom(lines, worldLines, refused, meta = metaOfKind('conveyor-sim')) {
+function trialFrom(lines, worldLines, refused, meta) {
+  if (!meta) throw new TypeError("trialFrom needs the plant kind's meta");
   return { lines, calls: callsOf(lines), finalState: worldLines.at(-1)?.state ?? null, refused, meta };
 }
 

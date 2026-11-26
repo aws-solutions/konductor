@@ -124,9 +124,12 @@ does for harness plugins, so a result names the exact plant code that made it.
    `buildReport` sums them by arm (policy: denied, no harm, task done; allow-all: executed, L1 harm), with no core
    edit, so scoring had no conveyor tie. The arm plants are pinned too (2026-11-26, same test): a scripted arm-sim
    trial pinned from 8b7713a7 and a scripted arm-confined-space trial pinned from dd0073e3 (the commit that added it,
-   before its files moved); both arms of each match. These need MuJoCo and cedarpy, so CI skips them. Still to do:
-   check 3 of "How we know it works" finds four conveyor defaults in `runner/lib/plant` (`agent-file.js`,
-   `meta.js`, `predicates.js`).
+   before its files moved); both arms of each match. These need MuJoCo and cedarpy, so CI skips them. Check 3 of "How we know it works"
+   passes (2026-11-26): the four conveyor defaults in `runner/lib/plant` are gone. `plantPrompt` and `plantAgent`
+   throw on an unknown or missing kind, `readMeta` needs a file and `trialFrom` needs the kind's meta; `walls.js`
+   passes the first plant by order and `physical/demo/first-demo.js` passes `conveyor-sim`. Still to do: the rest
+   of check 2, the same `plant-report` on the shipped fixtures and the policy test on `plant-r2` and the arm stub
+   release, re-run after the moves.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new
 signed release.

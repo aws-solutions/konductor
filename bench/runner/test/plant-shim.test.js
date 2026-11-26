@@ -243,7 +243,7 @@ test('a gateway that never sends ready is killed before startGateway throws, so 
 });
 
 test('the plant agent lists built-ins by name, never @builtin or a spawn tool, and runs the shim on the socket', () => {
-  const agent = plantAgent({ shimPath: '/run/plant/shim.js', socketPath: '/run/s/gw.sock', nodeBin: '/usr/bin/node' });
+  const agent = plantAgent({ shimPath: '/run/plant/shim.js', socketPath: '/run/s/gw.sock', nodeBin: '/usr/bin/node', kind: 'conveyor-sim' });
   assert.ok(agent.tools.includes('@plant'));
   assert.ok(!agent.tools.includes('@builtin'));
   assert.ok(!agent.tools.includes('subagent'));
@@ -253,7 +253,7 @@ test('the plant agent lists built-ins by name, never @builtin or a spawn tool, a
 test('the agent file is written once into the scratch HOME and copied out', () => {
   const home = tmpDir();
   const out = tmpDir();
-  const opts = { shimPath: '/s.js', socketPath: '/g.sock', nodeBin: 'node' };
+  const opts = { shimPath: '/s.js', socketPath: '/g.sock', nodeBin: 'node', kind: 'conveyor-sim' };
   writePlantAgent(home, opts);
   assert.throws(() => writePlantAgent(home, opts), /EEXIST/);
   assert.ok(copyPlantAgentOut(home, out) > 0);

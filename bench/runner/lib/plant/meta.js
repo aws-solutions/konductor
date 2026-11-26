@@ -5,15 +5,15 @@
 // `metaOfKind` gives one kind's facts; the ALL_* names are unions over every kind. Never changes a file.
 
 const fs = require('node:fs');
-const { PLANT_KINDS, byKind } = require('./kinds.js');
+const { byKind } = require('./kinds.js');
 
-const META_PATH = PLANT_KINDS['conveyor-sim'].metaFile;
 const KNOWN_MAJOR = 1;
 
 class PlantMetaError extends Error {}
 
 /** The parsed metadata at `file`. Throws PlantMetaError unless its `version` is `plant-meta/<KNOWN_MAJOR>`. */
-function readMeta(file = META_PATH) {
+function readMeta(file) {
+  if (typeof file !== 'string') throw new TypeError('readMeta needs a file');
   const meta = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (meta.version !== `plant-meta/${KNOWN_MAJOR}`) throw new PlantMetaError(`${file} is ${JSON.stringify(meta.version)}; this reader knows plant-meta/${KNOWN_MAJOR}`);
   return meta;
