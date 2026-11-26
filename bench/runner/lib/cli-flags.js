@@ -17,7 +17,7 @@ const FLAGS = {
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',
     'judge-timeout-sec', 'bench-dir', 'allow-small-panel', 'kiro-bin', 'isolate', 'hide', 'auth-db', 'extra-tasks', 'profile',
-    'judge-backend', 'budget-usd', 'opencode-bin', 'aws-creds-file', 'aws-export-profile', 'aws-profile', 'aws-region', 'cache', 'criteria-pack', 'plan', 'rescore-quotes', 'quote-match', 'reask-unquoted',
+    'judge-backend', 'budget-usd', 'opencode-bin', 'aws-creds-file', 'aws-export-profile', 'aws-profile', 'aws-region', 'cache', 'criteria-pack', 'plan', 'rescore-quotes', 'quote-match', 'reask-unquoted', 'judge-view',
   ],
   explain: ['run', 'arm', 'task', 'rep', 'brief', 'scoring', 'bench-dir', 'extra-tasks'],
   trace: ['run', 'arm', 'task', 'rep', 'format', 'full', 'instructions', 'repo-root'],

@@ -6,7 +6,7 @@ const { createRegistry, pluginPathRoots } = require('../core/registry.js');
 const { JUDGE_SYSTEM_PROMPT, systemPromptSha256 } = require('./system-prompt.js');
 
 // Which program asks the judge model. `kiro` is the one built-in and the default. Every other backend is a registry
-// part of kind `judge-backend` from bench/plugins (FW-14): a descriptor `{ id, costUnit, label, maxPromptBytes? }` and
+// part of kind `judge-backend` from bench/plugins (FW-14): a descriptor `{ id, costUnit, label, maxPromptBytes?, offers? }` (`offers`: what judge views may need, see view/index.js) and
 // an entry module exporting `makeCaller({ timeoutMs, rawDir, log, flags })`, which returns an async ({model, prompt})
 // caller, and optionally `cacheSalt(model)` and `checkJudges(judges)` (see backendHook). `opencode`, on Amazon Bedrock,
 // is the part in bench/plugins/opencode (B-014).

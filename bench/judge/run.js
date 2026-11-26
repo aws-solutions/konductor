@@ -8,7 +8,7 @@ const { loadTasks, requireTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
-const { buildBundle } = require('./bundle.js');
+const { viewOf, chooseViewId, checkViewBackend, checkViewCaller, checkViewModes, viewCaller } = require('./view/index.js');
 const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix, reaskSuffix } = require('./prompts.js');
 const { parseJsonReply, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
 const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('./score.js');
@@ -30,6 +30,12 @@ const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 const { EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, exclusionClassOfRun, exclusionClassOfReason } = require('./exclusion.js');
 
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
+
+/** `{ viewRecord }` of the last call that made one (what a judge view saw, e.g. the read order), else {}. */
+const viewRecordOf = (calls) => {
+  const last = [...calls].reverse().find((c) => c.viewRecord);
+  return last ? { viewRecord: last.viewRecord } : {};
+};
 
 /**
  * The id of a judging pass (FW-6): the UTC day of `at` and a hash of the backend and each judge's model version, so two
@@ -74,7 +80,7 @@ async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = prompt
     calls.push({
       credits: r.credits === undefined ? 0 : r.credits, latencyMs: r.latencyMs ?? null, cached: Boolean(r.cached), ...(r.cached ? { originalCredits: r.originalCredits ?? null } : {}),
       ...(r.usd !== undefined ? { usd: r.usd, ...(r.cached ? { originalUsd: r.originalUsd ?? null } : {}), tokens: r.tokens ?? null, ...(r.retries ? { retries: r.retries } : {}) } : {}),
-      ok: !r.error,
+      ok: !r.error, ...(r.viewRecord ? { viewRecord: r.viewRecord } : {}),
     });
     if (r.error) return { error: r.error, calls, parseFailures };
     const parsed = parseJsonReply(r.text);
@@ -96,7 +102,9 @@ async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = prompt
  */
 function prepareJudging(o) {
   const { runDir, benchDir, extraDirs = [], judges, modes, baseline, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
-  const { backend, usdMode } = checkBackend({ backend: o.backend, budgetCredits, budgetUsd }, o.backendRegistry);
+  const { backend, usdMode, part } = checkBackend({ backend: o.backend, budgetCredits, budgetUsd }, o.backendRegistry);
+  const viewFlag = o.judgeView ?? null;
+  if (viewFlag !== null) chooseViewId({ flag: viewFlag });
   const run = loadRun(runDir);
   // Verdicts from two backends are not comparable, so one results directory keeps one. Files from before the label existed are kiro.
   const earlier = run.judgments ? (run.judgments.backend ?? DEFAULT_BACKEND) : null;
@@ -114,10 +122,21 @@ function prepareJudging(o) {
   const judged = candidates.filter((r) => !skipKeys.has(runKey(r)));
   for (const n of notJudged) log(`not judged ${runKey(n)}: ${n.reason}`);
   requireTasks(judged.map((r) => r.taskId), tasks, benchDir);
+  // Each task's judge view, checked against the backend and the modes before anything is built or called.
+  const viewOfTask = new Map();
+  for (const id of new Set(judged.map((r) => r.taskId))) {
+    const view = viewOf(chooseViewId({ flag: viewFlag, task: tasks.get(id) }));
+    checkViewBackend(view, part);
+    checkViewModes(view, modes);
+    viewOfTask.set(id, view);
+  }
+  const inputs = new Map();
   const bundles = new Map();
   for (const r of judged) {
     const task = tasks.get(r.taskId);
-    bundles.set(runKey(r), buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions }));
+    const input = viewOfTask.get(r.taskId).prepare({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
+    inputs.set(runKey(r), input);
+    bundles.set(runKey(r), input.bundle);
   }
   const byKey = new Map(judged.map((r) => [runKey(r), r]));
   const revisions = new Map(judged.map((r) => [r.taskId, taskRevision(tasks.get(r.taskId))]));
@@ -149,7 +168,8 @@ function prepareJudging(o) {
     const task = tasks.get(u.run.taskId);
     const answerKey = readAnswerKey(task.fixtureDir);
     if (u.kind === 'rubric') {
-      return { prompt: rubricPrompt({ task, answerKey, bundleText: bundles.get(runKey(u.run)).text }), check: (v) => validateRubricReply(v, task.rubric) };
+      const input = inputs.get(runKey(u.run));
+      return { prompt: rubricPrompt({ task, answerKey, bundleText: input.promptText, preface: input.preface }), check: (v) => validateRubricReply(v, task.rubric) };
     }
     // Order 1 puts the baseline in position A; order 2 swaps. Pairwise and graded modes share the layout.
     const mine = bundles.get(runKey(u.run)).text;
@@ -158,7 +178,11 @@ function prepareJudging(o) {
     if (u.kind === 'graded') return { prompt: gradedPrompt({ task, answerKey, bundleA, bundleB }), check: validateGradedReply };
     return { prompt: pairPrompt({ task, answerKey, bundleA, bundleB }), check: validatePairReply };
   };
-  return { run, tasks, backend, usdMode, judged, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf };
+  // The view of a unit, its input, and the cache parts that key its answers.
+  const viewOfUnit = (u) => viewOfTask.get(u.run.taskId);
+  const inputOf = (u) => inputs.get(runKey(u.run));
+  const cachePartsOf = (u) => viewOfUnit(u).cacheParts(inputOf(u));
+  return { run, tasks, backend, usdMode, judged, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf, viewOfTask, viewOfUnit, inputOf, cachePartsOf };
 }
 
 /** Mean live cost of one call over the earlier invocations recorded in a judgments file, or null when none are usable. */
@@ -219,7 +243,7 @@ function planJudging(o) {
     const { prompt, check } = p.specOf(u);
     if (Buffer.byteLength(prompt) > maxPromptBytes) { tooLarge++; continue; }
     const accept = (text) => { const parsed = parseJsonReply(text); return parsed.ok && check(parsed.value).ok; };
-    if (hasCachedReply(cacheDir, { model: u.judge, prompt, salt, accept })) cached++;
+    if (hasCachedReply(cacheDir, { model: u.judge, prompt, salt, accept, parts: p.cachePartsOf(u) })) cached++;
     else {
       const was = liveBy.get(`${u.judge}|${kind}`);
       liveBy.set(`${u.judge}|${kind}`, { judge: u.judge, kind, live: (was?.live ?? 0) + 1, promptChars: (was?.promptChars ?? 0) + prompt.length });
@@ -239,13 +263,16 @@ async function runJudging(o) {
   const { concurrency, budgetCredits, budgetUsd = null, judges, modes, baseline, limits, redactions, log = () => {} } = o;
   const backendInfo = o.backendInfo ?? null;
   const quoteRule = checkRule(o.quoteRule ?? DEFAULT_JUDGE_QUOTE_RULE, '--quote-match', JUDGE_QUOTE_RULES);
-  const { run, tasks, backend, usdMode, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf } = prepareJudging(o);
+  const { run, tasks, backend, usdMode, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf, viewOfTask, viewOfUnit, inputOf, cachePartsOf } = prepareJudging(o);
+  for (const view of new Set(viewOfTask.values())) checkViewCaller(view, o.caller);
   const versions = Object.fromEntries(judges.map((j) => [j, judgeModelVersionOf(backendInfo, j)]));
   const passId = o.passId ?? passIdOf({ backend, versions });
   const passOf = (judge) => ({ passId, judgeModelVersion: versions[judge] });
   // Kiro keeps the original cache key. Any other backend adds itself (and what its caller says matters) to the key.
   const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);
-  const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'), { salt });
+  const cacheDir = path.join(run.dir, 'judge', 'cache');
+  // One cached caller per unit: the view calls and audits, and its cache parts join the key (none for the bundle view).
+  const callerOf = (u) => withCache(viewCaller(viewOfUnit(u), o.caller, inputOf(u)), cacheDir, { salt, parts: cachePartsOf(u) });
   // Every call is a ledger line. A budget turns the ledger into a guard that stops new calls at 90% of it.
   const study = o.ledger ?? openLedger({ dir: run.dir, budget: usdMode ? budgetUsd : budgetCredits, budgetUnit: usdMode ? 'usd' : 'credits' });
 
@@ -268,6 +295,7 @@ async function runJudging(o) {
   };
   const worker = async (u) => {
     const { prompt, check } = specOf(u);
+    const caller = callerOf(u);
     let out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check });
     // D-149: a rubric reply that failed every expert: item without quoting the deliverable is asked once more before its
     // verdict counts. The re-ask is paid for like any call, so it starts only when its worst case still fits the guard.
@@ -315,7 +343,7 @@ async function runJudging(o) {
   units.forEach((u, i) => {
     const out = outs[i];
     const bundle = bundles.get(runKey(u.run));
-    const common = { judge: u.judge, ...passOf(u.judge), armId: u.run.armId, taskId: u.run.taskId, replicate: u.run.replicate };
+    const common = { judge: u.judge, ...passOf(u.judge), armId: u.run.armId, taskId: u.run.taskId, replicate: u.run.replicate, judgeView: viewOfUnit(u).id };
     if (u.kind === 'rubric') {
       const task = tasks.get(u.run.taskId);
       const matchers = matchersFor(bundle.text, bundle.expertText);
@@ -329,6 +357,7 @@ async function runJudging(o) {
         judgeError: out.error ?? null, parseFailures: out.parseFailures, calls: out.calls,
         ...(out.error || !blankExpert(criteria, bundle.expertText) ? {} : { blankExpert: true }),
         ...(out.reask ? { reask: out.reask } : {}),
+        ...viewRecordOf(out.calls),
         redactionsFired: bundle.fired, truncatedFiles: bundle.meta.truncatedFiles,
       });
     } else if (u.kind === 'graded') {
@@ -369,13 +398,14 @@ async function runJudging(o) {
     pairwise.push({ kind: 'pairwise', judge, ...passOf(judge), armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, verdict: null, positionInconsistent: false, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, judgeError: `no baseline run (${baseline}) for this task and replicate` });
   }
 
-  const judgments = mergeAndWrite(run, { passId, usdMode, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
+  const judgeViews = Object.fromEntries([...viewOfTask].map(([id, v]) => [id, v.id]).sort(([a], [b]) => a.localeCompare(b)));
+  const judgments = mergeAndWrite(run, { judgeViews, passId, usdMode, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
   return { ...judgments, ledgerLine: study.line(), guardState: study.state() };
 }
 
 // A rerun with other judges or modes keeps earlier records; a record is replaced by the same (judge, run, kind).
 // Spend accumulates across invocations: cached calls cost 0 now, so replacing a record never erases earlier spend.
-function mergeAndWrite(run, { passId, usdMode, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
+function mergeAndWrite(run, { judgeViews, passId, usdMode, judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
   const file = path.join(run.dir, 'judgments.json');
   const prev = run.judgments || { rubric: [], pairwise: [], graded: [], judges: [], modes: [] };
   // New studies are stamped; a judgments file that already exists without the stamp stays legacy, so its reports do not change.
@@ -399,7 +429,7 @@ function mergeAndWrite(run, { passId, usdMode, judges, modes, baseline, limits, 
     spentCredits: (prev.spentCredits || 0) + spent,
     spentByJudge: byJudge,
     ...(usd ? { spentUsd: (prev.spentUsd || 0) + spentUsd, spentUsdByJudge: byJudgeUsd } : {}),
-    invocations: [...(prev.invocations || []), { at: new Date().toISOString(), passId, judges, modes, spentCredits: spent, ...(usd ? { spentUsd } : {}), calls: calls.length, cachedCalls: calls.filter((c) => c.cached).length }],
+    invocations: [...(prev.invocations || []), { at: new Date().toISOString(), passId, judges, modes, judgeViews, spentCredits: spent, ...(usd ? { spentUsd } : {}), calls: calls.length, cachedCalls: calls.filter((c) => c.cached).length }],
     notJudged,
     rubric: mergeRecords(prev.rubric, rubric),
     pairwise: mergeRecords(prev.pairwise, pairwise),

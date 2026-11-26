@@ -116,7 +116,9 @@ const USAGE = `Usage:
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
        [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE | --aws-export-profile NAME] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
-       [--criteria-pack quality] [--plan] [--quote-match lenient|strict] [--rescore-quotes] [--reask-unquoted]
+       [--criteria-pack quality] [--plan] [--quote-match lenient|strict] [--rescore-quotes] [--reask-unquoted] [--judge-view bundle|read]
+       (--judge-view picks how the judge sees every run of the pass and wins over a task's judgeView; bundle, the default, pastes one block of text;
+       read gives the judge a copy of the deliverables to read with read-only tools, opencode backend under OS isolation only. See bench/docs/reference.md)
        (--aws-export-profile NAME takes the opencode backend's credentials from aws configure export-credentials --profile NAME instead of a file and asks again when fewer than
        15 minutes remain; a refresh that brings no later expiry is asked again a minute later, and only expired credentials with nothing newer stop the pass. Values are never logged.
        On either source, 3 calls in a row that fail on their credentials stop the pass: the remaining calls are recorded as skipped and the command exits 3)

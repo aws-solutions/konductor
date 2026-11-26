@@ -237,7 +237,7 @@ function renderMarkdown(report) {
   if (report.judging) {
     const jg = report.judging;
     const usd = jg.spentUsd !== null;
-    out.push('## Judging', '', judgeBackendLine(jg), '', table(['judge', 'records', 'errors', 'calls (cached)', 'parse failures', 'credits (all invocations)', ...(usd ? ['usd (all invocations)'] : []), 'median latency s', 'quote not found', 'downgraded (quote missing)'],
+    out.push('## Judging', '', judgeBackendLine(jg), '', ...(jg.judgeViews ? [judgeViewLine(jg.judgeViews), ''] : []), table(['judge', 'records', 'errors', 'calls (cached)', 'parse failures', 'credits (all invocations)', ...(usd ? ['usd (all invocations)'] : []), 'median latency s', 'quote not found', 'downgraded (quote missing)'],
       Object.entries(jg.byJudge).map(([j, s]) => [j, s.records, s.errors, `${s.calls} (${s.cachedCalls})`, s.parseFailures, f(s.credits, 3), ...(usd ? [s.usd === undefined ? 'n/a' : f(s.usd, 4)] : []), f(s.medianLatencyMs === null ? null : s.medianLatencyMs / 1000, 1), pct(s.unverifiedQuoteRate), s.evidenceDowngraded])));
     // Shown only when a judge left blank expert replies or was re-asked (D-149), so a plain report keeps its table.
     const blank = Object.entries(jg.byJudge).filter(([, s]) => s.blankExpert || s.reasked);
@@ -264,6 +264,11 @@ function judgeBackendLine(jg) {
   if (jg.backend === DEFAULT_BACKEND || !i) return `Judge backend: ${jg.backend}.`;
   const models = Object.entries(i.models || {}).map(([j, m]) => `${j} = ${m.bedrockModelId}${m.temperatureApplied ? ', temperature 0' : ', no temperature'}`).join('; ');
   return `Judge backend: opencode (opencode ${i.opencodeVersion ?? 'unknown'}, ${i.region ?? 'unknown region'}, system prompt sha256 ${String(i.systemPromptSha256 ?? '').slice(0, 12)}). Bedrock models: ${models}.`;
+}
+
+// The judge views of the records, shown only when one other than bundle was used (bench/judge/view).
+function judgeViewLine(views) {
+  return `Judge views: ${Object.entries(views).map(([v, n]) => `${v} (${n} record${n === 1 ? '' : 's'})`).join(', ')}. A read-view verdict comes from a judge that read a copy of the deliverables with read-only tools.`;
 }
 
 module.exports = { renderMarkdown, table };

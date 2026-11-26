@@ -465,6 +465,11 @@ function judgingSummary(j, isStale, stale, resultByKey = new Map()) {
     };
   }
   out.positionInconsistent = j.pairwise.filter((r) => !isStale(r) && r.positionInconsistent).length;
+  // Records per judge view (a record from before views is the bundle view). Present only when a view other than bundle
+  // was used, so a bundle-only report keeps its shape.
+  const views = {};
+  for (const r of [...j.rubric, ...j.pairwise, ...(j.graded || [])]) if (!isStale(r)) views[r.judgeView ?? 'bundle'] = (views[r.judgeView ?? 'bundle'] || 0) + 1;
+  if (Object.keys(views).some((v) => v !== 'bundle')) out.judgeViews = Object.fromEntries(Object.entries(views).sort(([a], [b]) => a.localeCompare(b)));
   return out;
 }
 

@@ -10,7 +10,7 @@ const { loadTasks, requireTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
-const { buildBundle } = require('./bundle.js');
+const { viewOf, chooseViewId, checkViewBackend, checkViewCaller, checkViewModes, viewCaller } = require('./view/index.js');
 const { validateRubricReply, parseJsonReply } = require('./validate.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
@@ -30,9 +30,11 @@ const readQuality = (runDir) => {
 
 /**
  * What a pass over a run would cost: per run, the criteria a judge is asked about. No model call.
+ * Each task's judge view (`judgeView` flag, then the task, then bundle) must serve the pack mode, and the backend
+ * registry part `part`, when given, must offer what it needs.
  * Returns { runs: [{ key, judged, auto, absent, na, calls }], calls, notJudged }.
  */
-function planPack({ run, tasks, benchDir, limits, explicitLimits = {}, redactions, thePack, judges }) {
+function planPack({ run, tasks, benchDir, limits, explicitLimits = {}, redactions, thePack, judges, judgeView = null, part = null }) {
   const plan = [];
   const notJudged = [];
   requireTasks(run.runs.filter((x) => x.result.status !== 'budget_skipped' && !notJudgedReason(x)).map((x) => x.taskId), tasks, benchDir);
@@ -40,10 +42,14 @@ function planPack({ run, tasks, benchDir, limits, explicitLimits = {}, redaction
     const why = notJudgedReason(r);
     if (why) { notJudged.push({ armId: r.armId, taskId: r.taskId, replicate: r.replicate, reason: why }); continue; }
     const task = tasks.get(r.taskId);
-    const bundle = buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
+    const view = viewOf(chooseViewId({ flag: judgeView, task }));
+    checkViewModes(view, ['pack']);
+    if (part) checkViewBackend(view, part);
+    const input = view.prepare({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
+    const { bundle } = input;
     const app = pack.applicability(thePack, task, bundle.files, { deleted: bundle.deleted });
     const count = (st) => app.criteria.filter((c) => c.status === st).length;
-    plan.push({ run: r, task, bundle, app, judged: count('judged'), auto: count('auto'), absent: count('absent'), na: count('na'), calls: count('judged') ? judges.length : 0 });
+    plan.push({ run: r, task, view, input, bundle, app, judged: count('judged'), auto: count('auto'), absent: count('absent'), na: count('na'), calls: count('judged') ? judges.length : 0 });
   }
   return { plan, notJudged, calls: plan.reduce((n, p) => n + p.calls, 0) };
 }
@@ -51,14 +57,14 @@ function planPack({ run, tasks, benchDir, limits, explicitLimits = {}, redaction
 const judgedItemsOf = (p) => p.app.criteria.filter((c) => c.status === 'judged').map((c) => c.criterion);
 
 function packPromptOf(p, redactions) {
-  return pack.packPrompt({ task: p.task, answerKey: readAnswerKey(p.task.fixtureDir), bundleText: p.bundle.text, changesText: pack.redactedChanges(p.app.stats, redactions), criteria: judgedItemsOf(p) });
+  return pack.packPrompt({ task: p.task, answerKey: readAnswerKey(p.task.fixtureDir), bundleText: p.input.promptText, changesText: pack.redactedChanges(p.app.stats, redactions), criteria: judgedItemsOf(p) });
 }
 
 /** planPack plus what the CLI needs to show before a pass: backend, calls served by the cache, and the estimated spend. */
 function describePackPlan(o) {
   const { run, judges, redactions, thePack } = o;
-  const { backend, usdMode } = checkBackend({ backend: o.backend }, o.backendRegistry);
-  const base = planPack(o);
+  const { backend, usdMode, part } = checkBackend({ backend: o.backend }, o.backendRegistry);
+  const base = planPack({ ...o, part });
   const salt = o.cacheSalt ?? (usdMode ? planSalt(backend, o.backendRegistry) : null);
   const cacheDir = path.join(run.dir, 'judge', 'cache');
   const maxPromptBytes = promptBytesFor(backend);
@@ -71,7 +77,7 @@ function describePackPlan(o) {
     const accept = (text) => { const parsed = parseJsonReply(text); return parsed.ok && validateRubricReply(parsed.value, items).ok; };
     for (const judge of judges) {
       if (Buffer.byteLength(prompt) > maxPromptBytes) tooLarge++;
-      else if (hasCachedReply(cacheDir, { model: judge, prompt, salt, accept })) cached++;
+      else if (hasCachedReply(cacheDir, { model: judge, prompt, salt, accept, parts: p.view.cacheParts(p.input) })) cached++;
       else { liveBy.get(judge).live++; liveBy.get(judge).promptChars += prompt.length; }
     }
   }
@@ -83,7 +89,7 @@ async function runPackJudging(o) {
   if (o.plan) throw new Error('runPackJudging makes model calls and cannot honor --plan; call describePackPlan instead');
   const { runDir, benchDir, extraDirs = [], judges, concurrency, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
   const thePack = o.pack;
-  const { backend, usdMode } = checkBackend({ backend: o.backend, budgetCredits, budgetUsd }, o.backendRegistry);
+  const { backend, usdMode, part } = checkBackend({ backend: o.backend, budgetCredits, budgetUsd }, o.backendRegistry);
   const run = loadRun(runDir);
   const earlier = readQuality(run.dir);
   if (earlier && (earlier.backend ?? DEFAULT_BACKEND) !== backend) {
@@ -95,11 +101,14 @@ async function runPackJudging(o) {
   judges.forEach((j) => checkJudgeModel(j, subject));
   checkPanel(judges);
   const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);
-  const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'), { salt });
+  const cacheDir = path.join(run.dir, 'judge', 'cache');
+  // One cached caller per run: the view calls and audits, and its cache parts join the key (none for the bundle view).
+  const callerOf = (p) => withCache(viewCaller(p.view, o.caller, p.input), cacheDir, { salt, parts: p.view.cacheParts(p.input) });
   // A ledger of its own: the study ledger in the results directory feeds the default report, which must not change.
   const study = o.ledger ?? openLedger({ dir: path.join(run.dir, 'judge', 'quality-pack'), budget: usdMode ? budgetUsd : budgetCredits, budgetUnit: usdMode ? 'usd' : 'credits' });
 
-  const { plan, notJudged, calls: plannedCalls } = planPack({ run, tasks, benchDir, limits, explicitLimits, redactions, thePack, judges });
+  const { plan, notJudged, calls: plannedCalls } = planPack({ run, tasks, benchDir, limits, explicitLimits, redactions, thePack, judges, judgeView: o.judgeView ?? null, part });
+  for (const view of new Set(plan.map((p) => p.view))) checkViewCaller(view, o.caller);
   for (const n of notJudged) log(`not judged ${runKey(n)}: ${n.reason}`);
   log(`quality pack ${thePack.id} (revision ${thePack.revision}): ${plan.length} run(s), ${plannedCalls} judge call(s) planned (${plan.filter((p) => p.calls).length} run(s) x ${judges.length} judge(s)); the other criteria are scored without a call`);
 
@@ -115,7 +124,7 @@ async function runPackJudging(o) {
     const judgedItems = judgedItemsOf(p);
     if (!judgedItems.length) return { skipped: true, calls: [], parseFailures: 0 };
     const prompt = packPromptOf(p, redactions);
-    const out = await judgeOnce({ caller, model: judge, prompt, maxPromptBytes, check: (v) => validateRubricReply(v, judgedItems) });
+    const out = await judgeOnce({ caller: callerOf(p), model: judge, prompt, maxPromptBytes, check: (v) => validateRubricReply(v, judgedItems) });
     const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.credits ?? 0), 0);
     const liveUsd = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.usd || 0), 0);
     spent += live; spentUsd += liveUsd;
@@ -140,7 +149,7 @@ async function runPackJudging(o) {
     const criteria = [...replied, ...pack.absentCriteria(items), ...pack.autoCriteria(thePack, items)];
     const failed = Boolean(out.error);
     return {
-      judge, armId: p.run.armId, taskId: p.run.taskId, replicate: p.run.replicate,
+      judge, armId: p.run.armId, taskId: p.run.taskId, replicate: p.run.replicate, judgeView: p.view.id,
       taskRevision: taskRevision(p.task), packRevision: thePack.revision,
       artifacts: { declared: p.app.declared, present: Object.entries(p.app.state).filter(([, v]) => v.s === 'present').map(([k]) => k) },
       criteria: failed ? [...pack.absentCriteria(items), ...pack.autoCriteria(thePack, items)] : criteria,

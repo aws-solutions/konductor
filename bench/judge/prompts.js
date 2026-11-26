@@ -39,14 +39,15 @@ function head(task, answerKey) {
   return `TASK GIVEN TO THE AGENT:\n${task.prompt}\n\nRUBRIC:\n${rubricLines(task.rubric)}${weakAnswerLines(task)}${adjudicationLines(task)}\n\nANSWER KEY (judge only):\n${answerKey ?? '(none provided)'}`;
 }
 
-function rubricPrompt({ task, answerKey, bundleText }) {
+// `preface`: a judge view's own instructions (view/index.js), put after the rules and above the task; none for the bundle view.
+function rubricPrompt({ task, answerKey, bundleText, preface = null }) {
   return `You are grading one AI agent output against a rubric. Be strict and literal.
 
 ${RULES}
 - For each criterion choose pass (fully met), partial (partly met) or fail (not met or not shown).
 - evidence: a short quote (under 200 characters) copied exactly from the output that supports the verdict. If nothing in the output supports it, write "(nothing in the output)".
 
-${head(task, answerKey)}
+${preface ? `${preface}\n\n` : ''}${head(task, answerKey)}
 
 OUTPUT:
 ${fenced('OUTPUT', bundleText)}

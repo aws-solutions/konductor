@@ -286,6 +286,16 @@
         }
       }
     },
+    "judgeView": {
+      "description": "How the judge sees a run (bench/judge/view): bundle (default, one pasted block) or read (a copy read with read-only tools, opencode backend only). full, conversation and notes are reserved and refused as not built yet.",
+      "enum": [
+        "bundle",
+        "read",
+        "full",
+        "conversation",
+        "notes"
+      ]
+    },
     "bundleLimits": {
       "type": "object",
       "additionalProperties": false,

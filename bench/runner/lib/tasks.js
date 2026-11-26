@@ -7,6 +7,7 @@ const { validate, loadSchema } = require('./schema.js');
 const { withPluginTypes } = require('./check-types.js');
 const real = require('./real.js');
 const { v3Errors, targetsOf, catalogOfRepo } = require('./task-v3.js');
+const { viewIdError } = require('../../judge/view/ids.js');
 const { scriptedToAutonomy } = require('./autonomy.js');
 const { withAskChannel } = require('./ask-channel.js');
 const { judgedRubric } = require('./expert-rubric.js');
@@ -66,7 +67,8 @@ function readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots, hiddenRoot, a
   const catalog = () => (cat ??= catalogOfRepo(benchDir));
   for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
     const task = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-    const errors = [...validate(schema, task), ...v3Errors(task)];
+    const viewError = task.judgeView === undefined ? null : viewIdError(task.judgeView);
+    const errors = [...validate(schema, task), ...v3Errors(task), ...(viewError ? [`judgeView: ${viewError}`] : [])];
     if (errors.length) throw new Error(`invalid task file ${file}:\n  ${errors.join('\n  ')}`);
     if (tasks.has(task.id)) throw new Error(`duplicate task id ${task.id} (${file})`);
     // The v3 target fields, mapped from an old `target` when the file has none (N1). Read this, not `target`.

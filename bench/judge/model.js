@@ -97,15 +97,17 @@ function makeCmdCaller(cmd, { timeoutMs }) {
   });
 }
 
-function cacheFileOf(dir, { model, prompt, salt = null }) {
+// `parts` (a judge view's cacheParts) are added after the prompt; without them the key is the one from before judge views.
+function cacheFileOf(dir, { model, prompt, salt = null, parts = null }) {
   const extra = salt ? salt(model) : null;
-  const sha = crypto.createHash('sha256').update(extra === null ? `${model}\n${prompt}` : `${extra}\n${model}\n${prompt}`).digest('hex');
+  const base = extra === null ? `${model}\n${prompt}` : `${extra}\n${model}\n${prompt}`;
+  const sha = crypto.createHash('sha256').update(parts?.length ? `${base}\n${parts.join('\n')}` : base).digest('hex');
   return { sha, file: path.join(dir, `${sha}.json`) };
 }
 
 /** True when a stored reply would be served for this call. Reads only; used to plan a pass without calling anything. */
-function hasCachedReply(dir, { model, prompt, salt = null, accept = null }) {
-  const { file } = cacheFileOf(dir, { model, prompt, salt });
+function hasCachedReply(dir, { model, prompt, salt = null, accept = null, parts = null }) {
+  const { file } = cacheFileOf(dir, { model, prompt, salt, parts });
   if (!fs.existsSync(file)) return false;
   try {
     const e = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -118,16 +120,18 @@ function hasCachedReply(dir, { model, prompt, salt = null, accept = null }) {
 // A call may pass `accept(text)`. A reply it rejects is returned to the caller but never written, and a stored reply it
 // rejects (or one that is not readable JSON) counts as a miss and is asked for again. The rejected file is kept next to the
 // new one as <key>.rejected.json before a valid reply replaces it.
-function withCache(caller, dir, { salt = null } = {}) {
+// `parts` are the judge view's cache parts; a reply's `viewRecord` (what the view saw, e.g. the read order) is stored and
+// served with it.
+function withCache(caller, dir, { salt = null, parts = null } = {}) {
   return async ({ model, prompt, accept = null }) => {
-    const { sha, file } = cacheFileOf(dir, { model, prompt, salt });
+    const { sha, file } = cacheFileOf(dir, { model, prompt, salt, parts });
     let stale = false;
     if (fs.existsSync(file)) {
       let e = null;
       try { e = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { e = null; }
       if (e && typeof e.response === 'string' && (!accept || accept(e.response))) {
         return {
-          text: e.response, credits: 0, originalCredits: e.credits, latencyMs: e.latencyMs, cached: true,
+          text: e.response, credits: 0, originalCredits: e.credits, latencyMs: e.latencyMs, cached: true, ...(e.viewRecord ? { viewRecord: e.viewRecord } : {}),
           ...(e.usd !== undefined ? { usd: 0, originalUsd: e.usd, tokens: e.tokens ?? null } : {}),
         };
       }
@@ -140,7 +144,7 @@ function withCache(caller, dir, { salt = null } = {}) {
         try { fs.copyFileSync(file, path.join(dir, `${sha}.rejected.json`), fs.constants.COPYFILE_EXCL); } catch { /* an earlier rejected copy stays */ }
       }
       fs.writeFileSync(file, JSON.stringify({
-        model, promptSha: sha, prompt, response: r.text, credits: r.credits, latencyMs: r.latencyMs,
+        model, promptSha: sha, prompt, ...(parts?.length ? { cacheParts: parts } : {}), response: r.text, credits: r.credits, latencyMs: r.latencyMs, ...(r.viewRecord ? { viewRecord: r.viewRecord } : {}),
         ...(r.usd !== undefined ? { backend: OPENCODE_BACKEND, bedrockModelId: r.bedrockModelId ?? null, usd: r.usd, tokens: r.tokens ?? null } : {}),
       }));
     }

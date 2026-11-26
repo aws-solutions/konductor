@@ -231,7 +231,7 @@ async function cmdJudge(opts) {
   let j;
   try {
     j = await runJudging({
-      runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, caller, smallPanel: small,
+      runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, caller, smallPanel: small, judgeView: judgeViewOf(opts),
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
@@ -290,11 +290,14 @@ async function cmdRescoreQuotes(opts) {
   console.log(r.file ? `wrote ${r.file}; judgments.json was not changed. Report with a scoring file that sets "quotes": "lenient" (profiles/scoring-lenient-quotes.json)` : 'strict check only: nothing written');
 }
 
+// --judge-view: the judge view for every task of the pass (it wins over a task's judgeView); null when absent.
+const judgeViewOf = (opts) => (opts['judge-view'] === undefined ? null : String(opts['judge-view']));
+
 // judge --plan for the rubric, pairwise and graded modes: the same preparation as the pass, no caller.
 function printJudgePlan(opts, { runDir, benchDir, judges, modes, baseline }) {
   const chosen = judgeBackendOf(opts, judges);
   const d = planJudging({
-    runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, backend: chosen.backend,
+    runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, backend: chosen.backend, judgeView: judgeViewOf(opts),
     limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']),
     budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
     budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
@@ -316,7 +319,7 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
   const redactions = loadRedactions(opts['redact-file']);
   if (opts.plan) {
     const chosen = judgeBackendOf(opts, judges);
-    const d = describePackPlan({ run, tasks: loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir, limits, explicitLimits, redactions, thePack, judges, backend: chosen.backend });
+    const d = describePackPlan({ run, tasks: loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir, limits, explicitLimits, redactions, thePack, judges, backend: chosen.backend, judgeView: judgeViewOf(opts) });
     console.log(`judge plan for ${runDir}: quality pack ${thePack.id}, revision ${thePack.revision}`);
     console.log(backendLine(opts, chosen, judges));
     for (const p of d.plan) console.log(`${p.run.armId}|${p.run.taskId}|${p.run.replicate}: ${p.judged} judged, ${p.auto} counted by program, ${p.absent} scored fail (artifact not produced), ${p.na} n/a`);
@@ -330,7 +333,7 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
   let j;
   try {
     j = await runPackJudging({
-      runDir, benchDir, extraDirs: extraDirsOf(opts), judges, caller, pack: thePack,
+      runDir, benchDir, extraDirs: extraDirsOf(opts), judges, caller, pack: thePack, judgeView: judgeViewOf(opts),
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
