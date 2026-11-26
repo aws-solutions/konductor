@@ -144,7 +144,7 @@ test('the plugin kit passes Strands and names what a broken plugin lacks', () =>
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('a plant folder reads as a plugin of kind "plant" only when the caller allows that kind; its meta has no id (B-003 step 3b)', () => {
+test('a plant folder reads as a plugin of kind "plant"; its meta has no id (B-003 step 3b)', () => {
   const root = tmp();
   try {
     const dir = path.join(root, 'lamp-sim');
@@ -152,7 +152,15 @@ test('a plant folder reads as a plugin of kind "plant" only when the caller allo
     write(path.join(dir, 'kind.py'), 'ENV_KIND = "lamp-sim"\n');
     const manifest = { benchApi: PLUGIN_API, kind: 'plant', name: 'lamp-sim', version: '1.0.0', meta: 'meta.json', entry: 'kind.py' };
     write(path.join(dir, 'plugin.json'), JSON.stringify(manifest));
-    assert.match(readPlugin(dir).refused.why, /kind "plant" is not one of harness, judge-backend, check-type/, 'a plant is no plugin of the bench registry');
+    assert.equal(readPlugin(dir).plugin.kind, 'plant', 'a plant is a plugin kind of the bench registry');
+    const reg = createRegistry({ pluginRoots: [root] });
+    assert.deepEqual([reg.refused(), reg.parts('plant').map((x) => x.name), reg.parts('harness')], [[], ['lamp-sim'], []],
+      'a plant under a plugin root loads, and is no harness');
+    assert.deepEqual(reg.record().map((r) => [r.name, r.kind]), [['lamp-sim', 'plant']], 'run-config.json records it');
+    const h = plugin(tmp(), 'h', { parts: [{ kind: 'plant', meta: 'meta.js', entry: 'harness.js' }] });
+    assert.match(readPlugin(h).refused.why, /parts\[0\]: kind "plant" is not one of harness, judge-backend, check-type/,
+      'a plant is a plugin of its own, never a part of another');
+    fs.rmSync(path.dirname(h), { recursive: true, force: true });
     const { plugin: p } = readPlugin(dir, ['plant']);
     assert.deepEqual([p.name, p.kind, p.version, p.entry, p.meta], ['lamp-sim', 'plant', '1.0.0', path.join(dir, 'kind.py'), { version: 1 }]);
     assert.equal(p.sha256, folderHash(dir));

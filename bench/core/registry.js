@@ -18,8 +18,9 @@ const path = require('node:path');
 
 /** The major version of the plugin interface this core accepts. */
 const PLUGIN_API = 1;
-// `judge-backend` parts are read by judge/backends.js (FW-14), `check-type` parts by runner/lib/check-types.js.
-const KINDS = Object.freeze(['harness', 'judge-backend', 'check-type']);
+// `judge-backend` parts are read by judge/backends.js (FW-14), `check-type` parts by runner/lib/check-types.js,
+// `plant` plugins by runner/lib/plant/kinds.js (B-003).
+const KINDS = Object.freeze(['harness', 'judge-backend', 'check-type', 'plant']);
 // Folders the plugin hash skips: caches, not code.
 const HASH_SKIP = new Set(['node_modules', '__pycache__', '.pytest_cache']);
 
@@ -39,9 +40,10 @@ function folderHash(dir) {
   return h.digest('hex');
 }
 
-// A kind that is no plugin of this registry, but whose folders read the same way (plant folders, B-003 step 3b): the
-// caller passes it in `kinds`. Its meta is a JSON file with no `id`, so only the folder name ties the two.
+// Kinds whose meta is a JSON file with no `id` (plant folders, B-003 step 3b), so only the folder name ties the two.
+// Such a kind is a plugin of its own, never a part of another.
 const META_WITHOUT_ID = Object.freeze(['plant']);
+const PART_KINDS = Object.freeze(KINDS.filter((k) => !META_WITHOUT_ID.includes(k)));
 
 /** Why the manifest `m` of folder `dir` cannot load as one of `kinds`, or null when it can. */
 function manifestProblem(m, dir, kinds) {
@@ -65,7 +67,7 @@ function manifestProblem(m, dir, kinds) {
   if (!Array.isArray(m.parts)) return '"parts" must be a list of { kind, meta, entry }';
   const used = [m.kind];
   for (const [i, p] of m.parts.entries()) {
-    if (!KINDS.includes(p?.kind)) return `parts[${i}]: kind ${JSON.stringify(p?.kind)} is not one of ${KINDS.join(', ')}`;
+    if (!PART_KINDS.includes(p?.kind)) return `parts[${i}]: kind ${JSON.stringify(p?.kind)} is not one of ${PART_KINDS.join(', ')}`;
     if (used.includes(p.kind)) return `parts[${i}]: kind "${p.kind}" is already a part of this plugin`;
     used.push(p.kind);
     const why = fileProblem(p);

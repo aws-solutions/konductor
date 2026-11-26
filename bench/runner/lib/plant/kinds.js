@@ -5,13 +5,12 @@
 // meta.js, agent-file.js, python-pin.js and report/plant-controls.js build their tables from it. Since B-003 step 3a
 // each record is read from `bench/plants/<kind>/plugin.json`, so no file here names a kind. Since step 3b the manifest
 // is checked by core/registry.js `readPlugin` (kind `plant`); this module adds the plant fields.
+// The plants are bench/plants, then the plant folders under each BENCH_PLUGIN_PATH root (loadPlantKinds).
 // The gateway loads the folders this module names (plantFolders(), sent in BENCH_PLANT_DIRS by gateway-proc.js).
-// shortcut: only bench/plants is read; plant folders from BENCH_PLUGIN_PATH wait for the registry to accept kind
-// `plant` (design, "Order of work", step 3).
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { folderHash, readPlugin } = require('../../../core/registry.js');
+const { folderHash, pluginPathRoots, readPlugin } = require('../../../core/registry.js');
 
 const PLANTS_DIR = path.join(__dirname, '..', '..', '..', 'plants');
 
@@ -52,13 +51,34 @@ function readPlantManifest(dir) {
  * - `gatewayModules`: the Python modules the kind's gateway imports;
  * - `sharedControls`: controls that reuse the conveyor's expectations under `<prefix><name>` (empty for the conveyor).
  */
-const PLANT_KINDS = Object.freeze(Object.fromEntries(
-  fs.readdirSync(PLANTS_DIR)
-    .filter((d) => fs.existsSync(path.join(PLANTS_DIR, d, 'plugin.json')))
-    .map((d) => readPlantManifest(path.join(PLANTS_DIR, d)))
-    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
-    .map(({ name, order, ...rec }) => [name, Object.freeze(rec)]),
-));
+const PLANT_KINDS = loadPlantKinds([PLANTS_DIR, ...pluginPathRoots()]);
+
+/** The manifest kind of `<dir>/plugin.json`, or null when it has none or does not parse. */
+function manifestKind(dir) {
+  try { return JSON.parse(fs.readFileSync(path.join(dir, 'plugin.json'), 'utf8'))?.kind ?? null; } catch { return null; }
+}
+
+/**
+ * The plant records of every folder under `roots` whose plugin.json has kind `plant`, keyed by name and sorted by
+ * `order`, then name. Folders of another kind, or with no or a broken plugin.json, are left to their own registries.
+ * Throws when a plant manifest is bad (readPlantManifest) or two folders hold plants of one name.
+ */
+function loadPlantKinds(roots) {
+  const recs = [];
+  for (const root of roots) {
+    for (const d of fs.readdirSync(root).sort()) {
+      const dir = path.join(root, d);
+      if (manifestKind(dir) !== 'plant') continue;
+      const rec = readPlantManifest(dir);
+      const twin = recs.find((r) => r.name === rec.name);
+      if (twin) throw new Error(`two plants are named "${rec.name}" (${twin.dir} and ${rec.dir}); a name must be unique`);
+      recs.push(rec);
+    }
+  }
+  return Object.freeze(Object.fromEntries(
+    recs.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)).map(({ name, order, ...rec }) => [name, Object.freeze(rec)]),
+  ));
+}
 
 /** `fn(record)` for every kind, as an object keyed by kind in PLANT_KINDS order. */
 const byKind = (fn) => Object.fromEntries(Object.entries(PLANT_KINDS).map(([kind, rec]) => [kind, fn(rec)]));
@@ -77,4 +97,4 @@ function plantRecord() {
 /** The plant folders, in PLANT_KINDS order: the ones the gateway loads (BENCH_PLANT_DIRS, gateway-proc.js). */
 const plantFolders = () => Object.values(PLANT_KINDS).map((rec) => rec.dir);
 
-module.exports = { PLANT_KINDS, PLANTS_DIR, byKind, plantFolders, plantRecord, readPlantManifest };
+module.exports = { PLANT_KINDS, PLANTS_DIR, byKind, loadPlantKinds, plantFolders, plantRecord, readPlantManifest };

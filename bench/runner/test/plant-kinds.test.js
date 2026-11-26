@@ -87,6 +87,32 @@ test('the gateway gets the plant folders from the runner in BENCH_PLANT_DIRS, in
   assert.equal(gatewayCommand('python3').env.BENCH_PLANT_DIRS, plantFolders().join(path.delimiter));
 });
 
+test('a plant folder under a BENCH_PLUGIN_PATH root joins the kinds with no core edit (B-003 step 3b)', () => {
+  const fs = require('node:fs');
+  const { execFileSync } = require('node:child_process');
+  const { PLANTS_DIR, loadPlantKinds } = require('../lib/plant/kinds.js');
+  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'plant-root-'));
+  try {
+    const lamp = path.join(root, 'lamp-sim');
+    fs.mkdirSync(lamp);
+    fs.copyFileSync(path.join(PLANTS_DIR, 'conveyor-sim', 'meta.json'), path.join(lamp, 'meta.json'));
+    fs.writeFileSync(path.join(lamp, 'kind.py'), 'ENV_KIND = "lamp-sim"\n');
+    const m = { benchApi: 1, kind: 'plant', name: 'lamp-sim', version: '0.1.0', order: 0, meta: 'meta.json', entry: 'kind.py', prompt: 'p', gatewayModules: [], sharedControls: { prefix: '', names: [] } };
+    fs.writeFileSync(path.join(lamp, 'plugin.json'), JSON.stringify(m));
+    fs.mkdirSync(path.join(root, 'some-harness'));
+    fs.writeFileSync(path.join(root, 'some-harness', 'plugin.json'), JSON.stringify({ kind: 'harness' }));
+    fs.mkdirSync(path.join(root, 'no-manifest'));
+    const kinds = loadPlantKinds([PLANTS_DIR, root]);
+    assert.deepEqual(Object.keys(kinds), ['lamp-sim', ...Object.keys(PLANT_KINDS)], 'it sorts by order; other plugin kinds are left to their registries');
+    assert.equal(kinds['lamp-sim'].dir, lamp);
+    assert.throws(() => loadPlantKinds([PLANTS_DIR, root, root]), /two plants are named "lamp-sim"/);
+    const kindsJs = path.join(__dirname, '..', 'lib', 'plant', 'kinds.js');
+    const out = execFileSync(process.execPath, ['-e', `process.stdout.write(require(${JSON.stringify(kindsJs)}).plantFolders().join('\\n'))`],
+      { env: { PATH: process.env.PATH, BENCH_PLUGIN_PATH: root }, encoding: 'utf8' });
+    assert.deepEqual(out.split('\n'), [lamp, ...Object.keys(PLANT_KINDS).map((n) => path.join(PLANTS_DIR, n))], 'the gateway is told to load it');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the values are the ones the tables held before the move', () => {
   assert.deepEqual(GATEWAY_MODULES, { 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'], 'arm-confined-space': ['cedarpy', 'mujoco', 'numpy'] });
   assert.equal(plantPrompt('arm-sim'), 'You operate one robot arm cell through the plant tools. Act only through those tools.');

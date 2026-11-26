@@ -6,8 +6,8 @@
 **Quick start:** [a Strands agent](how-to/strands-agent.md) · [an agent on Amazon Bedrock AgentCore](how-to/agentcore-agent.md)
 (path 2 there is a new plugin, in five steps).
 
-Date: 2026-11-25. Covers plugin API 1, which has three kinds: `harness`, `judge-backend` and `check-type` (see "A judge
-backend" and "A check type" below).
+Date: 2026-11-25. Covers plugin API 1, which has four kinds: `harness`, `judge-backend`, `check-type` and `plant` (see "A judge
+backend" and "A check type" below; a plant's fields are in `docs/reference.md`, and a plant guide is still to come).
 
 ## The problem
 
@@ -221,7 +221,8 @@ the conveyor or the arm plant follows the same path: a harness plugin with `plan
 ## A plugin outside this repo
 
 Set `BENCH_PLUGIN_PATH` to one or more folders outside this repo, joined by `:`. Each folder holds plugin folders the
-way `bench/plugins` does, and the bench reads them after `bench/plugins` for harnesses, judge backends and check types. A bad
+way `bench/plugins` does, and the bench reads them after `bench/plugins` for harnesses, judge backends and check types, and after
+`bench/plants` for plants. A bad
 plugin there is refused with its reason, as in `bench/plugins`. An entry that is not an absolute path, or not a folder,
 stops the bench with an error. An outside plugin cannot reach the SDK by `../../sdk`, so it names your bench
 checkout's SDK folder: `require('/path/to/repo/bench/sdk')`.

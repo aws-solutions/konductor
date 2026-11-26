@@ -45,7 +45,7 @@ function pluginRoot(name, entry = JSON_PATH_ENTRY) {
 }
 
 test('check-type is a registry kind, and with no plugin the list is the eight built-ins', () => {
-  assert.deepEqual(KINDS, ['harness', 'judge-backend', 'check-type']);
+  assert.deepEqual(KINDS, ['harness', 'judge-backend', 'check-type', 'plant']);
   const reg = checkTypeRegistry([]);
   assert.deepEqual(reg.ids(), CHECK_TYPES);
   assert.deepEqual(reg.record(), []);

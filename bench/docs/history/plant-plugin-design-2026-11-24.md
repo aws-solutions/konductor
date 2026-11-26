@@ -108,7 +108,11 @@ does for harness plugins, so a result names the exact plant code that made it.
    `plant_folders` in `physical/sim/__init__.py` reads it (each entry absolute, with a `plugin.json`); unset, it is
    every folder of `bench/plants`. Both the `sim` package path and the gateway's `kinds.py` use that one list, so the
    gateway loads only the folders the runner named. No log line names a folder, so logs do not change.
-   Left for 3b: the registry accepts kind `plant`, so a plant folder from `BENCH_PLUGIN_PATH` joins `PLANT_KINDS`.
+   3b, plants from `BENCH_PLUGIN_PATH` (built 2026-11-26): `plant` is a kind of the registry (`KINDS` in
+   `core/registry.js`), so a plant folder under a plugin root loads, is recorded in `plugins`, and is never a part
+   of another plugin. `loadPlantKinds` in `runner/lib/plant/kinds.js` reads `bench/plants`, then each
+   `BENCH_PLUGIN_PATH` root, keeps the folders of kind `plant`, sorts them by `order`, and refuses two plants of one
+   name. `plantFolders()` then names the outside folder to the gateway too.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new
