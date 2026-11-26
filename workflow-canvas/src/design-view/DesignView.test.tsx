@@ -1504,6 +1504,38 @@ describe('DesignView, typing over the whole text', () => {
     );
   });
 
+  it('saves the text shown after Redo back over the same chain', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    await typeInto(nameInput(), 'drafted');
+    await settle();
+    await press('Undo');
+    await settle();
+    const earlier = yamlBox().value;
+    const typed = `${earlier}# typed over\n`;
+    await typeText(typed);
+    await settle();
+    await press('Undo');
+    await settle();
+    await press('Undo');
+    await settle();
+
+    await press('Redo');
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+
+    await press('Redo');
+    await settle();
+    expect(yamlBox().value).toBe(typed);
+    await press('Save');
+    await settle();
+    expect(edits.save).toHaveBeenLastCalledWith(typed, HELLO_DOCUMENT.hash);
+  });
+
   it('steps back over a key of a stage and then over a raw edit', async () => {
     drawn();
 
@@ -1653,6 +1685,41 @@ describe('DesignView, saving while the text is typed over', () => {
     expect(edits.save).toHaveBeenCalledWith(TYPED, HELLO_DOCUMENT.hash);
     expect(yamlBox().value).toBe(TYPED);
     expect(screen.getByTestId('save-status').textContent).toContain('Saved');
+  });
+
+  it('keeps Undo off while a raw save runs on a text that Undo adopted', async () => {
+    const { edits } = drawn();
+    const held = heldSave(edits);
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    await typeInto(nameInput(), 'drafted');
+    await settle();
+    await press('Undo');
+    await settle();
+    const earlier = yamlBox().value;
+    await typeInto(yamlBox(), `${earlier}# typed over\n`);
+    await settle();
+    await press('Undo');
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
+
+    await press('Save');
+
+    expect(isOff(button('Undo'))).toBe(true);
+    await act(async () => {
+      fireEvent.keyDown(yamlBox(), { key: 'z', ctrlKey: true });
+    });
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
+    expect(edits.save).toHaveBeenLastCalledWith(earlier, HELLO_DOCUMENT.hash);
+
+    await act(async () => {
+      held()(earlier);
+    });
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
   });
 
   it('keeps the blocked box reachable, so its text can be read and copied', async () => {
