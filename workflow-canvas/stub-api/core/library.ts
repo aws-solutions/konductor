@@ -3,6 +3,7 @@
 import { isMap } from 'yaml';
 import { ApiError } from './errors.ts';
 import { entriesOf, parseDocuments } from './yaml-subset.ts';
+import { checkWorkflowText } from './validator.ts';
 
 /** One workflow advertised by the shipped library. */
 export interface LibraryEntry {
@@ -62,17 +63,19 @@ function declaresName(text: string): boolean {
   );
 }
 
+function invalidReady(entry: ShippedWorkflow): boolean {
+  if (entry.status !== 'ready') return false;
+  if (entry.text === undefined || declaresName(entry.text)) return true;
+  const name = entry.name.slice('library/'.length);
+  return checkWorkflowText(entry.text, name).view === null;
+}
+
 /** The library rows in their display order, without workflow text. */
 export function listLibrary(
   entries: readonly ShippedWorkflow[] = SHIPPED_LIBRARY,
 ): LibraryEntry[] {
-  if (
-    entries.some(
-      (entry) =>
-        entry.status === 'ready' &&
-        (entry.text === undefined || declaresName(entry.text)),
-    )
-  ) {
+  const names = new Set(entries.map((entry) => entry.name));
+  if (names.size !== entries.length || entries.some(invalidReady)) {
     throw new ApiError(
       'io_error',
       'The server could not read or write its files.',

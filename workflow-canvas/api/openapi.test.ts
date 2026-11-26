@@ -911,6 +911,52 @@ describe('workflow canvas API contract', () => {
         false,
       );
     });
+    it('keeps ordinary workflow identities out of library lookup space', () => {
+      const detail = response('GET /api/library/{name}').example;
+      const view = detail['view'] as Record<string, unknown>;
+      expect(
+        valueMatchesSchema(spec.components.schemas['WorkflowView']!, {
+          ...view,
+          name: detail['name'],
+        }),
+      ).toBe(false);
+      const ordinary = namedExample(
+        jsonBodyOf(spec, 'GET /api/workflow', '200'),
+        'existing',
+      );
+      expect(
+        valueMatchesSchema(spec.components.schemas['WorkflowDocument']!, {
+          ...ordinary,
+          name: detail['name'],
+        }),
+      ).toBe(false);
+    });
+
+    it('matches detail and copy view identities to their requests', () => {
+      const detail = response('GET /api/library/{name}').example;
+      const detailView = detail['view'] as Record<string, unknown>;
+      expect(detailView['name']).toBe(
+        String(detail['name']).slice('library/'.length),
+      );
+      const copy = response('POST /api/library/{name}/copy').example;
+      const copyView = copy['view'] as Record<string, unknown>;
+      const request = jsonBodyOf(spec, 'POST /api/library/{name}/copy')
+        .example as Record<string, unknown>;
+      expect(copy['name']).toBe(request['as']);
+      expect(copyView['name']).toBe(request['as']);
+    });
+
+    it('requires unique lookup ids in a library list', () => {
+      const media = jsonBodyOf(spec, 'GET /api/library', '200');
+      const list = media.example as { entries: Record<string, unknown>[] };
+      const unique = (entries: Record<string, unknown>[]) =>
+        new Set(entries.map((entry) => entry['name'])).size === entries.length;
+      expect(unique(list.entries)).toBe(true);
+      expect(unique([...list.entries, { ...list.entries[0]! }])).toBe(false);
+      expect(JSON.stringify(spec.components.schemas['LibraryList'])).toContain(
+        'Lookup ids are unique',
+      );
+    });
   });
 
   describe('what two servers must do alike', () => {
