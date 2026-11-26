@@ -42,7 +42,7 @@ describe('the key table', () => {
 });
 
 describe('what a build reads', () => {
-  it('reads the keys of slice 1 and no others', () => {
+  it('reads the keys of slices 1 and 2 and no others', () => {
     expect(builtInKeys(TOP_KEYS)).toEqual([
       'format',
       'name',
@@ -56,12 +56,14 @@ describe('what a build reads', () => {
       'agent',
       'prompt',
       'prompt_file',
+      'outputs',
     ]);
   });
 
   it('puts a slice after another by the order of SLICES', () => {
     expect(isBuiltIn('1')).toBe(true);
-    for (const slice of SLICES.slice(1)) {
+    expect(isBuiltIn('2')).toBe(true);
+    for (const slice of SLICES.slice(2)) {
       expect(isBuiltIn(slice), slice).toBe(false);
     }
   });

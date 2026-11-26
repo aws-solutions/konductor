@@ -4,6 +4,7 @@ import {
   HASH_PATTERN,
   isName,
   MAX_TEXT_BYTES,
+  quoteValue,
   RUN_ID_PATTERN,
 } from './contract.ts';
 import { AGENTS, type Agent } from './agents.ts';
@@ -114,18 +115,20 @@ export class WorkflowApi {
 
   /**
    * Starts a run of the saved root workflow and returns its id. The refusals
-   * come in the order of the contract: the file, the workflow, trust, a run
-   * that is active, the harness. The workflow is trusted only while the file
-   * still has the bytes it had when the stub started.
+   * come in the order of the contract: the file, the workflow, the params,
+   * trust, a run that is active, the harness. The workflow is trusted only
+   * while the file still has the bytes it had when the stub started.
    */
-  startRun(goal: string): { run_id: string } {
+  startRun(params: Record<string, string>): { run_id: string } {
     const file = this.store.read(this.root);
     if (!file) {
       throw new ApiError('not_found', 'The workflow has not been saved yet.');
     }
     const check = checkWorkflowText(file.text, this.root);
     if (!check.view) throw invalidWorkflow(check);
-    const stageNames = check.view.stages.map((stage) => stage.name);
+    const view = check.view;
+    resolveParams(params, view);
+    const stageNames = view.stages.map((stage) => stage.name);
     if (this.trustedHash !== file.hash) throw untrusted(this.root);
     this.findOtherRun();
     const active = this.runs.activeRunId();
@@ -150,8 +153,8 @@ export class WorkflowApi {
     const runId = this.runs.start(
       this.root,
       stageNames,
-      goal,
-      this.planOfRun(),
+      params.goal ?? '',
+      this.planOfRun(view),
     );
     return { run_id: runId };
   }
@@ -214,9 +217,12 @@ export class WorkflowApi {
     };
   }
 
-  private planOfRun(): RunPlan {
-    const { blocks } = this.behavior;
-    return blocks ? { block: { at: blocks.stage, reason: blocks.reason } } : {};
+  private planOfRun(view: WorkflowView): RunPlan {
+    const { blocks, unwrittenOutput } = this.behavior;
+    if (blocks) return { block: { at: blocks.stage, reason: blocks.reason } };
+    return declares(view, unwrittenOutput)
+      ? { unwritten: unwrittenOutput }
+      : {};
   }
 
   // A missing name is the root; a malformed one is refused.
@@ -241,6 +247,48 @@ export class WorkflowApi {
 // stands in the workflow's default goal, or its outcome.
 function goalOfOther(view: WorkflowView): string {
   return view.params?.goal?.default ?? view.intent.outcome;
+}
+
+// A run takes the goal and the params the workflow declares, and nothing
+// else. The HTTP layer has already checked the shape of each value, so what
+// is left needs the declaration: a name the file does not declare, and a
+// required param with neither a value nor a default. A name is matched as an
+// own key, so an inherited name such as `constructor` is undeclared.
+function resolveParams(
+  params: Record<string, string>,
+  view: WorkflowView,
+): void {
+  const declared = view.params ?? {};
+  for (const name of Object.keys(params)) {
+    if (name === 'goal' || Object.hasOwn(declared, name)) continue;
+    throw new ApiError(
+      'bad_params',
+      `The workflow does not declare the param ${quoteValue(name)}.`,
+    );
+  }
+  for (const [name, param] of Object.entries(declared)) {
+    const missing =
+      param.required === true &&
+      !Object.hasOwn(params, name) &&
+      param.default === undefined;
+    if (missing) {
+      throw new ApiError(
+        'bad_params',
+        `The param ${quoteValue(name)} is required and has no default, so the run needs a value for it.`,
+      );
+    }
+  }
+}
+
+// Whether a stage of the workflow declares the output named. An own-key
+// check, so an inherited name such as `constructor` is not taken as declared.
+function declares(
+  view: WorkflowView,
+  named: { stage: string; output: string } | undefined,
+): named is { stage: string; output: string } {
+  if (!named) return false;
+  const stage = view.stages.find((found) => found.name === named.stage);
+  return Object.hasOwn(stage?.outputs ?? {}, named.output);
 }
 
 function emptyDocument(name: string): WorkflowDocument {

@@ -14,6 +14,12 @@ export interface Behavior {
    * stage if the list is shorter, and that stage is blocked for this reason.
    */
   blocks?: { stage: number; reason: StageReason };
+  /**
+   * A declared output that the run leaves unwritten, so that stage is
+   * blocked with `OUTPUT_MISSING`. It is ignored unless the stage declares
+   * the output. A run writes every declared output otherwise.
+   */
+  unwrittenOutput?: { stage: string; output: string };
 }
 
 export interface Fixture {

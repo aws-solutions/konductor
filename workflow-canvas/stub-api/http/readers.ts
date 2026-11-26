@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { codePointLength, MAX_GOAL_CHARS } from '../core/contract.ts';
+import {
+  codePointLength,
+  isParamName,
+  MAX_GOAL_CHARS,
+  MAX_PARAM_CHARS,
+  quoteValue,
+} from '../core/contract.ts';
 import { ApiError, badRequest } from '../core/errors.ts';
 
 /** Reads one value of a request body, or throws the error to answer with. */
@@ -51,22 +57,40 @@ export function object<T extends object>(shape: {
   };
 }
 
-/** The `params` of a run: only a `goal`, which must be 1 to 2048 characters. */
-const runParams: Reader<{ goal: string }> = (value) => {
+/**
+ * The `params` of a run: a `goal` of 1 to 2048 characters, and any other
+ * param by name, each of at most 64 KiB. Whether the workflow declares a
+ * param is the API's question, not the reader's; this checks only the shape
+ * of each value.
+ */
+const runParams: Reader<Record<string, string>> = (value) => {
   if (!isRecord(value)) throw badRequest();
-  const { goal, ...others } = value;
   const badParams = (message: string) => new ApiError('bad_params', message);
-  if (Object.keys(others).length > 0)
-    throw badParams('Only a goal is allowed.');
+  const { goal, ...others } = value;
   if (goal === undefined) throw badParams('The run needs a goal.');
-  const text = string(goal);
-  const length = codePointLength(text);
-  if (length < 1) throw badParams('The run needs a goal.');
-  if (length > MAX_GOAL_CHARS) {
-    throw badParams(`The goal is longer than ${MAX_GOAL_CHARS} characters.`);
+  const text = paramValue(goal, 'goal', MAX_GOAL_CHARS);
+  if (codePointLength(text) < 1) throw badParams('The run needs a goal.');
+  const params: Record<string, string> = { goal: text };
+  for (const [name, given] of Object.entries(others)) {
+    if (!isParamName(name)) {
+      throw badParams(`${quoteValue(name)} is not a param name.`);
+    }
+    params[name] = paramValue(given, name, MAX_PARAM_CHARS);
   }
-  return { goal: text };
+  return params;
 };
+
+// Every param is a string, within the limit for its name.
+function paramValue(value: unknown, name: string, max: number): string {
+  const text = string(value);
+  if (codePointLength(text) > max) {
+    throw new ApiError(
+      'bad_params',
+      `${quoteValue(name)} is longer than ${max} characters.`,
+    );
+  }
+  return text;
+}
 
 export const readSessionRequest = object<{ code: string }>({
   code: boundedString(1, 256),
@@ -90,6 +114,6 @@ export const readCheckRequest = object<{
   text: string,
 });
 
-export const readRunRequest = object<{ params: { goal: string } }>({
+export const readRunRequest = object<{ params: Record<string, string> }>({
   params: runParams,
 });

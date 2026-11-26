@@ -218,3 +218,52 @@ describe('the history of one workflow', () => {
     expect(runs.get(other)?.workflow).toBe('other');
   });
 });
+
+describe('a declared output that a run leaves unwritten', () => {
+  const start = (stage: string, output: string) =>
+    runs.start('hello', ['draft', 'review'], GOAL, {
+      unwritten: { stage, output },
+    });
+
+  it('blocks that stage with OUTPUT_MISSING, and halts the run', () => {
+    const runId = start('draft', 'design');
+    clock.advance(STAGE_MS * 3);
+    const run = runs.get(runId);
+    expect(run?.status).toBe('halted');
+    expect(run?.exit_code).toBe(1);
+    expect(run?.stages).toEqual({
+      draft: { status: 'blocked', reason: 'OUTPUT_MISSING' },
+      review: { status: 'pending' },
+    });
+  });
+
+  it('passes the stages before it', () => {
+    const runId = start('review', 'notes');
+    clock.advance(STAGE_MS * 3);
+    expect(statusesOf(runId)).toEqual(['passed', 'blocked']);
+  });
+
+  it('passes every stage when no output is named', () => {
+    const runId = runs.start('hello', ['draft', 'review'], GOAL);
+    clock.advance(STAGE_MS * 3);
+    expect(statusesOf(runId)).toEqual(['passed', 'passed']);
+  });
+
+  it('leaves the run alone when the stage named is not in it', () => {
+    const runId = start('gone', 'design');
+    clock.advance(STAGE_MS * 3);
+    expect(statusesOf(runId)).toEqual(['passed', 'passed']);
+  });
+
+  it('keeps a block the caller asked for over an unwritten output', () => {
+    const runId = runs.start('hello', ['draft', 'review'], GOAL, {
+      block: { at: 0, reason: 'RESULT_MISSING' },
+      unwritten: { stage: 'review', output: 'notes' },
+    });
+    clock.advance(STAGE_MS * 3);
+    expect(runs.get(runId)?.stages['draft']).toEqual({
+      status: 'blocked',
+      reason: 'RESULT_MISSING',
+    });
+  });
+});
