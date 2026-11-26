@@ -541,9 +541,9 @@ breaks.
   save: a warning or a note is shown as a note (a warning or info alert, and
   the text under the field in the warning style) and Save stays on.
 - **A refused save** (422) shows its findings in the Design view's warning
-  list, alongside any findings from the live check. A refusal with no error
-  among its findings shows the sentence of the server as a failure, so it is
-  never silent.
+  list. Those findings stay until the text changes; checking the unchanged text
+  does not clear them. A refusal with no error among its findings shows the
+  sentence of the server as a failure, so it is never silent.
 - **A conflict** (409) means the file changed after the page loaded. Nothing
   is written, and an alert says so. If the file already holds the text that was
   sent (the 409 names its hash, and the page reads the file), the earlier write
