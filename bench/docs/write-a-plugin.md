@@ -142,9 +142,12 @@ the template, so a plugin that breaks fails the suite.
 ## A judge backend
 
 A `judge-backend` plugin adds a program that asks the judge models. Its `plugin.json` has `"kind": "judge-backend"`;
-its `meta` file exports `{ id, costUnit, label, maxPromptBytes? }`, where `costUnit` is `credits` or `usd` and decides
-which budget flag the judge takes (`--budget-credits` or `--budget-usd`), and `maxPromptBytes` is the largest prompt it
-takes (default 120000). Its `entry` module exports `makeCaller({ timeoutMs, rawDir, log, flags })`, which returns an
+its `meta` file exports `{ id, costUnit, label, maxPromptBytes?, offers? }`, where `costUnit` is `credits` or `usd` and decides
+which budget flag the judge takes (`--budget-credits` or `--budget-usd`), `maxPromptBytes` is the largest prompt it
+takes (default 120000), and `offers` lists what judge views may need from it (`readTools` for the read view; see
+[reference.md](reference.md#judge-views)). A backend that offers `readTools` gets `readCopy` ({ files, sha }) on a read-view
+call and must return the judge's tool calls as `readTrace`, and its caller says what it has at run time with `offers()`
+(for example `isolation`) and `why(missing)`. Its `entry` module exports `makeCaller({ timeoutMs, rawDir, log, flags })`, which returns an
 async `({ model, prompt })` function that resolves `{ text, credits, usd?, latencyMs, error? }`. `flags` are the judge
 command's own options. The entry may also export `checkJudges(judges)`, which throws on a judge it cannot serve, before
 any call, and `cacheSalt(model)`, the text that keys a cached answer to this backend's setup.

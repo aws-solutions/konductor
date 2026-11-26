@@ -131,6 +131,16 @@ test('the judge command\'s caller resolves --isolate for the read view; when iso
   } finally { s.cleanup(); }
 });
 
+const realMode = require('../../runner/lib/isolate.js').workingMode();
+test('a read call under real OS isolation runs and reads its copy', { skip: realMode ? false : 'this host refuses user namespaces (DEBT D-6)' }, async () => {
+  const s = setup({ mode: 'readall' });
+  try {
+    const r = await s.mk({ isolation: { mode: realMode, hide: [] }, isolate: undefined })({ model: 'glm-5', prompt: PROMPT, readCopy: COPY });
+    assert.equal(r.error, undefined, r.error);
+    assert.deepEqual(r.readTrace.tools.filter((t) => t.tool === 'read').length, 2);
+  } finally { s.cleanup(); }
+});
+
 // The whole pass: runJudging on the opencode backend with a task whose judgeView is read.
 function pass(mode, { files = { 'a.txt': 'fixed\n' }, isolation = { mode: 'unshare', hide: [] }, absPaths = false } = {}) {
   const s = setup({ mode, absPaths });

@@ -114,6 +114,10 @@ Fixtures have at most 15 files (40 for fixtures used only by `hard` tasks, at le
 
 `suites/full.json` lists every task except the `hard` ones. `suites/lite.json` lists exactly the 5 tasks tagged `lite`, each with `timeoutSec` at most 600, `"parallel": 1`, at least 3 fixtures and at least 4 classes, and no two on the same fix: `simple-fix-failing-test` and `simple-explain-file` (textkit), `orch-input-validation` and `review-inventory-security` (inventory-api), `design-hold-service` (product-spec). Tasks that cannot finish in 600 s (for example `sop-spec-workflow`) stay full only.
 
+## Judge view
+
+`"judgeView"` picks how the judge sees this task's runs: `bundle` (the default, one pasted block) or `read` (a copy of the deliverables read with read-only tools; opencode backend under OS isolation, rubric mode only). `full`, `conversation` and `notes` are reserved and refused as not built yet. `judge --judge-view` wins over it. See [reference.md](reference.md#judge-views).
+
 ## Judge panel
 
 Both suites list `"judges": ["gpt-5.6-luna", "deepseek-3.2", "glm-5"]`: three model families, none Claude, none the subject's family. The validator uses the runner's `checkPanel` and `checkJudgeModel` and fails on fewer than 3 judges or two of one family. `qwen3-coder-next` and `minimax-m2.5` are alternates; swap one in with `--judges` on the `judge` command.
