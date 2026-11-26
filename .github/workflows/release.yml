@@ -198,13 +198,17 @@ jobs:
           # leg skips the musl-toolchain install step entirely (see "Install
           # musl toolchain"'s `if:` guard below).
           #
-          # `macos-14` is confirmed GA and arm64 by default as of this edit
-          # (EOL Nov 2026 per actions/runner-images), but GitHub's `-latest`
-          # labels migrate over time -- re-check
-          # https://github.com/actions/runner-images#available-images
-          # if there's a lag between this edit and merge.
+          # `macos-latest` (arm64), not a pinned version. This leg was
+          # pinned to `macos-14`; GitHub retired every macOS 14 image on
+          # 2026-11-02, so the leg stopped starting ("The configuration
+          # 'macos-14-arm64-us-default' is not supported") and `publish`,
+          # which needs `build.result == 'success'`, stopped publishing
+          # releases. A pinned image buys little here: Rust's
+          # `aarch64-apple-darwin` deployment target does not follow the
+          # builder's SDK, so a `-latest` migration does not change which
+          # macOS versions the binary runs on.
           - arch: aarch64-macos
-            runner: macos-14
+            runner: macos-latest
             target: aarch64-apple-darwin
             primary: false
     runs-on: ${{ matrix.runner }}
@@ -305,7 +309,7 @@ jobs:
           cp mcp/target/release/skill-lookup-mcp "$ASSET_DIR/$MCP_BIN_ASSET_NAME"
 
           # sha256sum has no equivalent on the aarch64-macos leg
-          # (macos-14 lacks it on PATH), so this falls back to
+          # (macOS lacks it on PATH), so this falls back to
           # shasum -a 256. Its output uses the same two-space
           # separator that install::artifact::parse_sidecar
           # requires; a single space parses as malformed.
