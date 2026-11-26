@@ -152,6 +152,47 @@ describe('App', () => {
     expect(screen.getByTestId('run-live-status').textContent).toBe('');
   });
 
+  it.each([
+    {
+      when: 'the root file is missing',
+      document: { ...HELLO_DOCUMENT, text: null, hash: null, view: null },
+    },
+    {
+      when: 'the root file is invalid',
+      document: {
+        ...HELLO_DOCUMENT,
+        text: 'format: nope\n',
+        view: null,
+        diagnostics: [
+          {
+            message: 'The format is not known.',
+            line: 1,
+            path: 'format',
+            severity: 'error' as const,
+          },
+        ],
+      },
+    },
+  ])('opens Library when $when', async ({ document }) => {
+    const next = fakeNextPorts({
+      listLibrary: async () => [
+        {
+          name: 'library/k-adversarial-pull-request-review',
+          title: 'Adversarial pull request review',
+          summary: 'Review a pull request.',
+          status: 'ready',
+        },
+      ],
+    });
+    render(<App load={settled(loaded(document))} nextPortsFor={() => next} />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+
+    expect(
+      await screen.findByText('Adversarial pull request review'),
+    ).toBeTruthy();
+  });
+
   it('lets Tab reach only the selected view in the switch', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 

@@ -100,6 +100,11 @@ export function LibraryView({ ports }: { ports: NextPorts }) {
         {state.phase === 'loading' && (
           <StatusIndicator type="loading">Loading Library</StatusIndicator>
         )}
+        {state.phase === 'loaded' && state.entries.length === 0 && (
+          <Box color="text-status-inactive">
+            No shipped workflows are available.
+          </Box>
+        )}
         {state.phase === 'loaded' &&
           state.entries.map((entry) => (
             <EntryCard key={entry.name} entry={entry} />

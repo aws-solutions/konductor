@@ -33,6 +33,18 @@ test('lists ready and planned workflows with focusable unavailable actions', asy
   }
 });
 
+test('shows an empty Library explicitly', async ({ canvas }) => {
+  await canvas.page.route('**/api/library', (route) =>
+    route.fulfill({ json: { entries: [] } }),
+  );
+
+  await canvas.page.getByRole('tab', { name: 'Library' }).click();
+
+  await expect(
+    canvas.page.getByText('No shipped workflows are available.'),
+  ).toBeVisible();
+});
+
 test('has no accessibility violations in the Library in both themes', async ({
   canvas,
 }) => {

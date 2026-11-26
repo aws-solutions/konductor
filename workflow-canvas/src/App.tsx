@@ -205,7 +205,7 @@ export function App({
     ...(runMemory && nextRunPorts !== NO_RUN_PORTS ? { runMemory } : {}),
   });
   const nextRun = nextRunner.lifecycle;
-  const views: PageView<ViewId>[] =
+  const workflowViews: PageView<ViewId>[] =
     editor && nextPorts && runs && loaded && checks
       ? [
           {
@@ -235,19 +235,25 @@ export function App({
               />
             ),
           },
-          {
-            id: 'library',
-            label: 'Library',
-            content: <LibraryView ports={nextPorts} />,
-          },
         ]
-      : // Before there is a workflow to draw: the load is still going, it
-        // failed, or it holds nothing to draw. The gate says which, in both
-        // views, and never reaches a child without a workflow.
-        LOADING_VIEWS.map((view) => ({
-          ...view,
-          content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
-        }));
+      : LOADING_VIEWS.filter((candidate) => candidate.id !== 'library').map(
+          (candidate) => ({
+            ...candidate,
+            content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
+          }),
+        );
+  const views: PageView<ViewId>[] = [
+    ...workflowViews,
+    {
+      id: 'library',
+      label: 'Library',
+      content: nextPorts ? (
+        <LibraryView ports={nextPorts} />
+      ) : (
+        <WorkflowGate result={result}>{() => null}</WorkflowGate>
+      ),
+    },
+  ];
   useEffect(
     () => swapRisk?.set({ draft: unsaved, run: nextRun.active }),
     [swapRisk, unsaved, nextRun.active],
