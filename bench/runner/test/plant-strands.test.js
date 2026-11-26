@@ -148,7 +148,7 @@ test('only the pinned Bedrock model is priced; any other model is refused before
     (({ id, region, inputUsdPerMTok, outputUsdPerMTok, maxTokens }) => ({ id, region, inputUsdPerMTok, outputUsdPerMTok, maxTokens }))(strands.bedrockModelOf('bedrock:qwen.qwen3-coder-next')),
     { id: 'qwen.qwen3-coder-next', region: 'us-east-1', inputUsdPerMTok: 0.5, outputUsdPerMTok: 1.2, maxTokens: 4096 },
   );
-  for (const m of ['bedrock:us.anthropic.claude-sonnet-5-5', 'openai:gpt-5', '', 'qwen.qwen3-coder-next']) assert.throws(() => strands.bedrockModelOf(m), /pinned id \(qwen\.qwen3-coder-next\)/, m);
+  for (const m of ['bedrock:us.anthropic.claude-sonnet-5-5', 'openai:gpt-5', '', 'qwen.qwen3-coder-next']) assert.throws(() => strands.bedrockModelOf(m), /pinned id \(qwen\.qwen3-coder-next, anthropic\.claude-sonnet-5-5, global\.anthropic\.claude-sonnet-5-5\)/, m);
 });
 
 test('a Bedrock run gets what is left of the budget as its hard cap, and only its profile keys and region', () => {

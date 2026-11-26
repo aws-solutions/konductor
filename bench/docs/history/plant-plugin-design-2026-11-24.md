@@ -1,6 +1,6 @@
 # Design: plants as plugins
 
-Date: 2026-11-24. Status: steps 1 and 2 built (2026-11-25; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
+Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
 
 ## The problem
 
@@ -75,6 +75,11 @@ does for harness plugins, so a result names the exact plant code that made it.
    two existing kinds in one module. No folder moves yet, no output change.
 2. Python side: `kinds.py` builds `KINDS` from a list of kind files; the two existing blocks move into two files.
 3. Move each built-in into `bench/plants/<name>/` with its manifest, keeping `envVersion` and `sim_version`.
+   3a (built 2026-11-25): each kind's Node record is a `bench/plants/<kind>/plant.json` (`benchApi`, `kind: "plant"`,
+   `name`, `order`, `meta`, `prompt`, `gatewayModules`, `sharedControls`), read and checked by
+   `runner/lib/plant/kinds.js`, which no longer names a kind. `meta` still points at `physical/schemas`, and
+   `sharedControls` stands in for `controls.js`. Left for 3b: move `meta.json`, `kind.py` and the simulator into the
+   folders (Python reads them too), read the folders through `core/registry.js`, and record each folder hash.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new

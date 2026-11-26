@@ -30,6 +30,32 @@ test('meta.js, agent-file.js, python-pin.js and plant-controls.js read the recor
   }
 });
 
+test('each kind record comes from a bench/plants/<folder>/plant.json manifest, read in its "order" (B-003 step 3a)', () => {
+  const fs = require('node:fs');
+  const { PLANTS_DIR, readPlantManifest } = require('../lib/plant/kinds.js');
+  assert.equal(PLANTS_DIR, path.join(__dirname, '..', '..', 'plants'));
+  const names = fs.readdirSync(PLANTS_DIR).filter((d) => fs.existsSync(path.join(PLANTS_DIR, d, 'plant.json')));
+  assert.deepEqual(names.sort(), ['arm-confined-space', 'arm-sim', 'conveyor-sim']);
+  for (const name of names) {
+    const m = JSON.parse(fs.readFileSync(path.join(PLANTS_DIR, name, 'plant.json'), 'utf8'));
+    assert.equal(m.benchApi, 1);
+    assert.equal(m.kind, 'plant');
+    assert.equal(m.name, name, 'the folder is named after the kind');
+    assert.equal(PLANT_KINDS[name].metaFile, path.resolve(PLANTS_DIR, name, m.meta));
+  }
+  const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'plant-manifest-'));
+  try {
+    const bad = (m) => { fs.writeFileSync(path.join(dir, 'plant.json'), JSON.stringify(m)); return () => readPlantManifest(dir); };
+    const good = { benchApi: 1, kind: 'plant', name: path.basename(dir), order: 9, meta: path.join(__dirname, '..', '..', 'physical', 'schemas', 'plant-meta-v1.json'), prompt: 'p', gatewayModules: [], sharedControls: { prefix: '', names: [] } };
+    assert.throws(bad({ ...good, benchApi: 2 }), /benchApi/);
+    assert.throws(bad({ ...good, kind: 'harness' }), /kind/);
+    assert.throws(bad({ ...good, name: 'other' }), /folder/);
+    assert.throws(bad({ ...good, meta: 'nope.json' }), /meta/);
+    assert.throws(bad({ ...good, prompt: '' }), /prompt/);
+    assert.throws(bad({ ...good, order: 'x' }), /order/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('the values are the ones the tables held before the move', () => {
   assert.deepEqual(GATEWAY_MODULES, { 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'], 'arm-confined-space': ['cedarpy', 'mujoco', 'numpy'] });
   assert.equal(plantPrompt('arm-sim'), 'You operate one robot arm cell through the plant tools. Act only through those tools.');

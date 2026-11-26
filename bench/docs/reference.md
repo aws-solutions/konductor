@@ -1520,6 +1520,7 @@ The plant suite tests an agent that acts on a machine. The machine is a simulate
 | Plant report: the three measures, verdicts, audit table and WARN header from scored runs | `bench/report/plant.js` (`bench plant-report`), with the Markdown in `bench/report/plant-render.js` |
 | Plant trace: one static HTML page for a trial, or two stacked one below the other | `bench/report/plant-trace/` (`bench plant-trace`) |
 | Tool list, sim cost, not-executed cost, motion tools, rest state, sensor names and the rule facts both languages read (a reader refuses an unknown major) | `bench/physical/schemas/plant-meta-v1.json`, read by `bench/physical/sim/meta.py` and `bench/runner/lib/plant/meta.js` |
+| Node-side record per plant kind: metadata file, operator prompt, gateway Python modules, shared controls, report order | `bench/plants/<kind>/plant.json`, read and checked by `bench/runner/lib/plant/kinds.js` |
 | Task class `physical` and its `environment` block; the `plant` result field | `bench/schema/task.schema.json`, `bench/schema/result.schema.json` |
 | Walls and the wall prober: what the sandbox gives a plant run, the preflight checks and the prober's run | `bench/runner/lib/plant/walls.js`, `bench/physical/controls/wall-prober-kiro` |
 | Scripted controls (do-nothing, scripted calls, careful operator, path, unsafe agent) and their report section | `bench/physical/controls/{plant-control.js,*-kiro}`, `bench/report/plant-controls.js` |
