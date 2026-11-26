@@ -30,7 +30,7 @@
 // untouched fixture must fail at least 30 percent of them, and at least two partial solutions under
 // tasks/partials/<id>/<name>/ must each score strictly between 0 and 100 percent, with different counts.
 // Complex tasks (class "complex", directory bench/complex) get the same hidden-test and partial-solution proofs as hard
-// tasks, with a timeout up to 1800 s and no minimum fixture size.
+// tasks, with a timeout up to 3600 s, a fixture of up to 40 files and no minimum fixture size.
 // Check semantics live in runner/lib/check-matcher.js, shared with the runner.
 // Suite judges are validated with the family rules from judge/config.js.
 // Files starting with "_" in bench/tasks (for example the runner smoke task)
@@ -82,13 +82,13 @@ const REAL_MIN_FEATURES = 2;
 const ALLOWED_REAL_LICENSES = new Set(['MIT', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', 'ISC']);
 const REAL_NOTICE = path.join(BENCH, 'real', 'NOTICE');
 const MAX_FIXTURE_FILES = 15;
-// Fixtures used only by hard tasks may be larger.
+// Fixtures used only by hard tasks may be larger; so may fixtures used only by complex tasks (a ported program with its sources and data), with no minimum.
 const MAX_HARD_FIXTURE_FILES = 40;
 // Fixtures used only by autonomy tasks: 15 to 30 files.
 const MAX_AUTONOMY_FIXTURE_FILES = 30;
 const HARD_MIN_TIMEOUT = 900;
 const HARD_MAX_TIMEOUT = 1500;
-const COMPLEX_MAX_TIMEOUT = 1800;
+const COMPLEX_MAX_TIMEOUT = 3600;
 const HARD_MAX_FIXTURE_PASS = 0.7;
 const HIDDEN_MAX_SECONDS = 60;
 const MIN_PARTIALS = 2;
@@ -145,6 +145,8 @@ const FIXTURE_BASELINE = {
   // Complex-suite fixtures: the visible tests pass before and after the work.
   'cx-holds': { cmd: 'node --test', exit: 0 },
   'cx-shipping': { cmd: 'node --test', exit: 0 },
+  // No tests in the fixture: the work is a port from COBOL.
+  'cx-carddemo': null,
   'cx-notes': { cmd: 'node --test', exit: 0 },
   'cx-ledger': { cmd: 'node --test', exit: 0 },
   // Requirements-suite fixtures: a copy of the inventory service and one request document; the tests pass before and after.
@@ -357,14 +359,14 @@ function validateShape(file, t, textOnly = false, rubricMax = 6) {
   });
 }
 
-function validateFixtures(used, hardOnly, autonomyOnly = new Set(), root = FIXTURES_DIR, imported = false) {
+function validateFixtures(used, hardOnly, autonomyOnly = new Set(), root = FIXTURES_DIR, imported = false, complexOnly = new Set()) {
   for (const name of fs.readdirSync(root)) {
     const dir = path.join(root, name);
     if (!fs.statSync(dir).isDirectory() || name.startsWith('_')) continue;
     const files = listFiles(dir);
     const visible = files.filter((f) => path.basename(f) !== ANSWER_KEY);
     if (!files.includes(ANSWER_KEY)) err(`fixture ${name}`, `missing ${ANSWER_KEY}`);
-    const limit = hardOnly.has(name) ? MAX_HARD_FIXTURE_FILES : autonomyOnly.has(name) ? MAX_AUTONOMY_FIXTURE_FILES : MAX_FIXTURE_FILES;
+    const limit = hardOnly.has(name) || complexOnly.has(name) ? MAX_HARD_FIXTURE_FILES : autonomyOnly.has(name) ? MAX_AUTONOMY_FIXTURE_FILES : MAX_FIXTURE_FILES;
     if (visible.length > limit) (imported ? warn : err)(`fixture ${name}`, `${visible.length} files, limit ${limit}`);
     if (hardOnly.has(name) && visible.length < MAX_FIXTURE_FILES) err(`fixture ${name}`, `${visible.length} files, hard fixtures need at least ${MAX_FIXTURE_FILES}`);
     if (autonomyOnly.has(name) && visible.length < MAX_FIXTURE_FILES) err(`fixture ${name}`, `${visible.length} files, autonomy fixtures need at least ${MAX_FIXTURE_FILES}`);
@@ -601,7 +603,7 @@ function validateAllFixtures(ctx, onlyExtra, extraDirs, benchTasks) {
     const own = ctx.tasks.filter((t) => ctx.rootsOf.get(t).dir === dir);
     if (!own.length && ctx.v3Dirs.has(dir)) continue; // a scenario batch: its fixtures are the dry run's to check
     const usedHere = new Set(own.map((t) => t.fixture).filter(isStr));
-    validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx, ctx.importDirs.has(dir));
+    validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx, ctx.importDirs.has(dir), new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'complex'))));
   }
   R = DEFAULT_ROOTS;
 }

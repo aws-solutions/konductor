@@ -1,0 +1,6 @@
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+The files under cobol/ and data/ are copied unchanged from
+https://github.com/aws-samples/aws-mainframe-modernization-carddemo (Apache-2.0)
+at commit 59cc6c2fd7ebd7ef7925cad552a01a4b8b6e4d5e: app/cbl/CBTRN02C.cbl, app/cbl/CBACT04C.cbl,
+six copybooks from app/cpy/ and five files from app/data/ASCII/.

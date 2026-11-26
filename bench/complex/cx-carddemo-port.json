@@ -1,0 +1,104 @@
+{
+  "id": "cx-carddemo-port",
+  "class": "complex",
+  "target": null,
+  "prompt": "This repository holds two batch jobs from the CardDemo mainframe sample, in COBOL under cobol/: daily card posting (CBTRN02C) and monthly interest (CBACT04C). Port both to Python 3, standard library only.\n\ndocs/REQUIREMENTS.md gives the rules. docs/INTERFACE.md gives the command line, the file names and the record layouts. Where either differs from the COBOL, the document wins. Read the COBOL for anything they leave open. Sample input files are in data/.\n\nPut the code in the package carddemo_port (an empty one is there), so that `python3 -m carddemo_port post --in DIR --out DIR` and `python3 -m carddemo_port interest --in DIR --out DIR --run-date YYYY-MM-DD` behave as INTERFACE.md says. Money is Decimal, never float.\n\nWrite tests under tests/ that run with `python3 -m unittest discover -s tests -t .`. Give every rule id in REQUIREMENTS.md a hand-worked case, and test the command line on small input files. Write README.md with how to run both jobs and the tests, and a short table of where the port differs from the COBOL and why.\n\nRun both jobs on the files in data/ and check that the results make sense. Do not edit anything under cobol/, data/ or docs/. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "cx-carddemo",
+  "hidden": "cx-carddemo-port",
+  "timeoutSec": 3600,
+  "authorship": {
+    "family": "claude",
+    "model": "claude (auto-selected, exact model not recorded)",
+    "source": {
+      "url": "https://github.com/aws-samples/aws-mainframe-modernization-carddemo",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-25",
+      "use": "quoted"
+    },
+    "date": "2026-11-25",
+    "singleFamily": true,
+    "note": "The hidden tests, the reference port and docs/INTERFACE.md were written by Claude-family workers, and the subject model is Claude, so author and subject share a family. NEEDS a recheck by a non-Claude family before any score is used (not yet run; it is a paid call). The rules in docs/REQUIREMENTS.md were signed off by the owner (P5, P7, I2, I3, I4, no fees). The expected outputs in hidden/golden were written by the reference port itself."
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 70
+    },
+    {
+      "type": "cmd",
+      "cmd": "out=$(python3 -m unittest discover -s tests -t . 2>&1); rc=$?; [ $rc -eq 0 ] && echo \"$out\" | grep -Eq '^Ran ([2-9][0-9]|[0-9]{3,}) tests'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs",
+      "allowAdditions": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "cobol"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "allowAdditions": true
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 -c \"import ast,sys,importlib.util as U,pathlib as P;t=[ast.parse(p.read_text()) for p in P.Path('carddemo_port').rglob('*.py')];m={a.name.split('.')[0] for x in t for n in ast.walk(x) if isinstance(n,ast.Import) for a in n.names}|{n.module.split('.')[0] for x in t for n in ast.walk(x) if isinstance(n,ast.ImportFrom) and n.level==0 and n.module};m.discard('carddemo_port');b=[k for k in m if U.find_spec(k) is None or 'packages' in str(U.find_spec(k).origin)];print(sorted(b));sys.exit(1 if b or not m else 0)\"",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(cat carddemo_port/*.py | wc -l)\" -gt 150 ] && ! grep -rEn 'float\\(|: float|-> float' carddemo_port",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "python3? -m carddemo_port post"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "python3? -m carddemo_port interest"
+    },
+    {
+      "type": "min_matches",
+      "path": "README.md",
+      "pattern": "\\b(P5|P7|I2|I3|I4)\\b",
+      "min": 5
+    }
+  ],
+  "rubric": [
+    {
+      "id": "rules-as-written",
+      "criterion": "The five rules the requirements mark for review (P5 payments net against charges, P7 duplicate ids, I2 no rate stops the run, I3 truncation, I4 no interest on a zero or credit balance) are built as REQUIREMENTS.md writes them, not as the COBOL does. The README table of differences from the COBOL lists them honestly, and each point the documents leave open is named as an assumption in the final message instead of being decided silently.",
+      "weight": 3
+    },
+    {
+      "id": "money-and-records",
+      "criterion": "Money is Decimal from the first read to the last write. The zoned-number codec and the record layouts are each defined once, cover all ten sign digits both ways, and have tests of their own. Rounding is done on the number, not on its text.",
+      "weight": 2
+    },
+    {
+      "id": "failure-safety",
+      "criterion": "Bad input stops the run with exit code 2 and a message that names the file and the line but no card number or amount. Output is all or nothing: nothing is written on failure, no temporary file is left, and a non-empty output directory is never written into.",
+      "weight": 2
+    },
+    {
+      "id": "own-tests",
+      "criterion": "The agent's own tests give each rule id a hand-worked case with expected values worked out by hand, not copied from the program's output. They cover every reject code and the command line, and each would fail if its rule were broken. New code is not covered only by one big run on the sample files.",
+      "weight": 2
+    },
+    {
+      "id": "verification-evidence",
+      "criterion": "The final message reports that the tests were run and what they showed, says how the run on data/ was checked (for example that posted amounts equal the change in account and category balances), and lists the places where the port differs from the COBOL.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

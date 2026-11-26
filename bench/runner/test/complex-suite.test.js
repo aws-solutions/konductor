@@ -29,13 +29,13 @@ test('the suite resolves its extra directory and lists every task file in it', (
   for (const id of s.taskIds) assert.ok(tasks.has(id), id);
 });
 
-test('every complex task has hidden tests, a 1800 s timeout, at most six rubric items and a cx- id', () => {
+test('every complex task has hidden tests, a timeout from 900 to 3600 s, at most six rubric items and a cx- id', () => {
   const tasks = loadTasks(BENCH_DIR, { extraDirs: [COMPLEX] });
   for (const f of files) {
     const t = tasks.get(f.replace(/\.json$/, ''));
     assert.match(t.id, /^cx-/);
     assert.equal(t.class, 'complex');
-    assert.equal(t.timeoutSec, 1800);
+    assert.ok(t.timeoutSec >= 900 && t.timeoutSec <= 3600, t.id);
     assert.ok(t.rubric.length >= 3 && t.rubric.length <= 6, t.id);
     assert.ok(t.checks.some((c) => c.type === 'tests'), t.id);
     assert.ok(fs.existsSync(path.join(COMPLEX, 'solutions', t.id)), `${t.id} solution`);
