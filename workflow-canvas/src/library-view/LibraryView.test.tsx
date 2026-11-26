@@ -84,6 +84,14 @@ describe('LibraryView', () => {
     expect(await screen.findByText(READY.title)).toBeTruthy();
   });
 
+  it('shows an explicit empty state', async () => {
+    subject({ listLibrary: vi.fn(() => Promise.resolve([])) });
+
+    expect(
+      await screen.findByText('No shipped workflows are available.'),
+    ).toBeTruthy();
+  });
+
   it('shows a failed list request', async () => {
     subject({
       listLibrary: vi.fn(() => Promise.reject(new Error('Library failed.'))),
