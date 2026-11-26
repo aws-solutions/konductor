@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 
 /** One view of the page: a segment of the switch and the panel it shows. */
 export interface PageView<Id extends string> {
@@ -21,13 +21,21 @@ export function ModeSwitch<Id extends string>({
   active,
   onChange,
   ariaLabel,
+  focusRequest = 0,
 }: {
   views: readonly PageView<Id>[];
   active: Id;
   onChange: (id: Id) => void;
   ariaLabel: string;
+  /** A changed non-zero value moves focus to the active tab. */
+  focusRequest?: number;
 }) {
   const buttons = useRef(new Map<Id, HTMLButtonElement>());
+
+  useEffect(() => {
+    if (focusRequest)
+      buttons.current.get(active)?.focus({ preventScroll: true });
+  }, [active, focusRequest]);
 
   const select = (id: Id) => {
     onChange(id);

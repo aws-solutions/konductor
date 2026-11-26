@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MODE_STORAGE_KEY } from './theme/mode';
 import { App } from './App';
 import { HELLO_DOCUMENT, failed, loaded } from './test-support/fixtures';
 import { createSwapRisk } from './launch/swap-guard';
+import { ApiError } from './api/api';
+import { COPY_UNCERTAIN_CODE } from './next-ui/next-http';
 import { fakeNextPorts } from './test-support/next-ports';
 import type { LoadResult } from './workflow/load-workflow';
 
@@ -202,9 +204,6 @@ describe('App', () => {
     expect(
       screen.getByRole('tab', { name: 'Run' }).getAttribute('tabindex'),
     ).toBe('-1');
-    expect(
-      screen.getByRole('tab', { name: 'Library' }).getAttribute('tabindex'),
-    ).toBe('-1');
   });
 
   it('renders the Design and Run views with Design selected', () => {
@@ -215,11 +214,6 @@ describe('App', () => {
     ).toBe('true');
     expect(
       screen.getByRole('tab', { name: 'Run' }).getAttribute('aria-selected'),
-    ).toBe('false');
-    expect(
-      screen
-        .getByRole('tab', { name: 'Library' })
-        .getAttribute('aria-selected'),
     ).toBe('false');
   });
 
@@ -269,7 +263,18 @@ describe('App', () => {
     expect(within(panel).getByLabelText('Goal')).toBeTruthy();
   });
 
-  it('opens the shipped workflow list from the page header', async () => {
+  it('opens a library copy in Design as an editable workflow', async () => {
+    const copy = {
+      ...HELLO_DOCUMENT,
+      name: 'review-copy',
+      text:
+        HELLO_DOCUMENT.text?.replace('name: hello', 'name: review-copy') ??
+        null,
+      view: HELLO_DOCUMENT.view && {
+        ...HELLO_DOCUMENT.view,
+        name: 'review-copy',
+      },
+    };
     const next = fakeNextPorts({
       listLibrary: async () => [
         {
@@ -279,16 +284,148 @@ describe('App', () => {
           status: 'ready',
         },
       ],
+      copyLibrary: async () => copy,
     });
     render(
       <App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={() => next} />,
     );
-
     fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Start from Adversarial pull request review',
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
 
     expect(
-      await screen.findByText('Adversarial pull request review'),
+      await screen.findByRole('heading', { level: 1, name: 'review-copy' }),
     ).toBeTruthy();
+    const designTab = screen.getByRole('tab', { name: 'Design' });
+    expect(designTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(designTab);
+    expect(screen.getByTestId('yaml-text').hasAttribute('readonly')).toBe(
+      false,
+    );
+  });
+
+  it('drops the old run, history, and check source after copying', async () => {
+    let root = 'hello';
+    let remembered: string | undefined = '20261024-0412-a7b3c';
+    const runMemory = {
+      recall: () => remembered,
+      remember: (runId: string) => {
+        remembered = runId;
+      },
+      forget: () => {
+        remembered = undefined;
+      },
+    };
+    const validate = vi.fn(async (request: { name?: string; text: string }) => {
+      void request;
+      return {
+        errors: 0,
+        warnings: 0,
+        infos: 0,
+        view: null,
+        diagnostics: [],
+      };
+    });
+    const copy = {
+      ...HELLO_DOCUMENT,
+      name: 'review-copy',
+      view: HELLO_DOCUMENT.view && {
+        ...HELLO_DOCUMENT.view,
+        name: 'review-copy',
+      },
+    };
+    const next = fakeNextPorts({
+      validate,
+      listLibrary: async () => [
+        {
+          name: 'library/k-adversarial-pull-request-review',
+          title: 'Adversarial pull request review',
+          summary: 'Review a pull request.',
+          status: 'ready',
+        },
+      ],
+      listRuns: async () =>
+        root === 'hello'
+          ? [
+              {
+                run_id: '20261024-0412-a7b3c',
+                started_at: '2026-10-24T04:12:05Z',
+                status: 'running',
+                goal: 'Old goal',
+                goal_truncated: false,
+              },
+            ]
+          : [],
+      copyLibrary: async () => {
+        root = 'review-copy';
+        return copy;
+      },
+    });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <App
+        load={settled(loaded(HELLO_DOCUMENT))}
+        runMemory={runMemory}
+        nextPortsFor={() => next}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Start from Adversarial pull request review',
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
+    await screen.findByRole('heading', { level: 1, name: 'review-copy' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+
+    expect(await screen.findByText('No run yet.')).toBeTruthy();
+    expect(screen.queryByTestId('run-history-row')).toBeNull();
+    expect(remembered).toBeUndefined();
+    expect(validate.mock.calls.map(([request]) => request.name)).toContain(
+      'review-copy',
+    );
+    confirm.mockRestore();
+  });
+
+  it('blocks edits and runs when a committed copy cannot be reconciled', async () => {
+    const uncertain = new ApiError(
+      'Reload the page before editing or running anything.',
+      200,
+      COPY_UNCERTAIN_CODE,
+    );
+    const next = fakeNextPorts({
+      listLibrary: async () => [
+        {
+          name: 'library/k-adversarial-pull-request-review',
+          title: 'Adversarial pull request review',
+          summary: 'Review a pull request.',
+          status: 'ready',
+        },
+      ],
+      copyLibrary: async () => Promise.reject(uncertain),
+    });
+    render(
+      <App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={() => next} />,
+    );
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Start from Adversarial pull request review',
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
+
+    expect((await screen.findByText(uncertain.message)).textContent).toBe(
+      uncertain.message,
+    );
+    expect(screen.queryByTestId('yaml-text')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+    expect(screen.queryByLabelText('Goal')).toBeNull();
   });
 
   it('says a run uses the saved workflow when Design has unsaved changes', async () => {

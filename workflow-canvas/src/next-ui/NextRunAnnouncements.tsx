@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useRef } from 'react';
 import '../execution/announcements.css';
 import type { ReasonSentence } from '../execution/core/stage-detail';
 import type { RunLifecycle } from '../run-view/run-start';
@@ -11,14 +12,28 @@ import type { RunLifecycle } from '../run-view/run-start';
 export function NextRunAnnouncements({
   run,
   reasonSentence,
+  announcement = '',
 }: {
   run: RunLifecycle;
   reasonSentence: ReasonSentence;
+  announcement?: string;
 }) {
-  const status =
+  const runStatus =
     run.reason === undefined
       ? run.status
       : `${run.status} ${reasonSentence(run.reason) ?? run.reason}`;
+  const seen = useRef({
+    announcement,
+    runStatus,
+    latest: announcement === '' ? 'run' : 'page',
+  });
+  let latest = seen.current.latest;
+  if (announcement !== seen.current.announcement) {
+    latest = announcement === '' ? 'run' : 'page';
+  }
+  if (runStatus !== seen.current.runStatus) latest = 'run';
+  seen.current = { announcement, runStatus, latest };
+  const status = latest === 'page' ? announcement : runStatus;
   return (
     <>
       <div
