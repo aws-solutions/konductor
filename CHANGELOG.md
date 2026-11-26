@@ -12,6 +12,30 @@ reference.
 
 ## [Unreleased]
 
+### Security
+
+- Behavior change for `allowlist_patterns` in the persistent-memory validator: with an allowlist
+  set, only `https` links pass, and an IP-literal host passes only when a pattern spells it
+  exactly. `*` still matches exactly one label. A new `**` leading label matches one or more
+  (`**.example.com` covers `docs.aws.example.com` but not `example.com`). Patterns now match the
+  URL's hostname only, so a query string, fragment or userinfo can no longer carry an allowed
+  suffix (for example `https://evil%2Ecom?.example.com/x`), and a host with an encoded dot or raw
+  non-ASCII characters is rejected. Every `scheme://` is checked in any letter case, including a
+  second link glued to an allowed one, and `http`, `https`, `ws`, `wss` and `ftp` are checked
+  with any number of slashes, so `https:evil.test` and `https:/evil.test` no longer skip the
+  allowlist. `file:` is a link only with two or more slashes, so `file:line` is prose. Punctuation
+  that closes a markdown link, quote or emphasis right after the host no longer blocks an allowed
+  link. A backslash-escaped colon or a character reference in the scheme (`https\://`,
+  `https&#58;//`) is checked like a plain one, and a tab or CR inside a link is removed before the
+  check. Consecutive lines are also checked joined, with the line breaks removed, so a link split
+  across lines is caught, even when one half is already in the file; a joined link blocks only when
+  it crosses a line break next to a new line. Inside a quoted URL attribute such as `href` or a
+  `<...>` link destination, a space does not end the link, so `https://docs.example.com @evil.test/`
+  there is checked as a link to `evil.test`. A bare scheme inside a code span or emphasis
+  (`` `https:` ``) is prose. Links without a scheme (`//host`, `www.host`) are not checked. The URL
+  check runs in one `python3` call per write. An interpreter failure during the check is reported as
+  an environment problem.
+
 ## [2.0.0] - 2026-11-25
 
 ### Upgrade notes

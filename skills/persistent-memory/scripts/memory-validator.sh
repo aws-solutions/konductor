@@ -220,24 +220,247 @@ else
   BUDGET="$MEMORY_MAX"
 fi
 
-# URL allowlist loaded from config above; if empty, all URLs are allowed
+# check_write_urls <n> <m> <line>... <entry>... <pattern>...: checks every
+# link in the write against the allowlist in a single python3 call, so all URL
+# rules live in one place. The <m> lines are every non-blank line of the
+# write, in order, each prefixed with two flags: C when it directly follows
+# another non-blank line or N when a blank line (or the start) comes before
+# it, then n for a new line or e for one already in the file. The <n>
+# entries are the derived entries of the new lines. The python side prints one
+# verdict per entry, OK or BLOCKED:<url> for its first blocked link, then one
+# JOINED:OK or JOINED:BLOCKED:<url> line for links split across lines, and
+# exits 1 if anything is blocked, 0 otherwise. Any other result is an
+# interpreter failure.
+check_write_urls() {
+  python3 - "$@" "${ALLOWLIST_PATTERNS[@]}" <<'PYEOF'
+import html, re, sys
+from urllib.parse import unquote
 
-url_allowed() {
-  local url="$1"
-  # If no allowlist configured, all URLs are permitted
-  if [[ ${#ALLOWLIST_PATTERNS[@]} -eq 0 ]]; then
-    return 0
-  fi
-  local host
-  host="$(printf '%s\n' "$url" | sed -E 's|https?://([^/]+).*|\1|')"
-  for pattern in "${ALLOWLIST_PATTERNS[@]}"; do
-    local regex
-    regex="$(echo "$pattern" | sed 's/\./\\./g; s/\*/[^.]*/g')"
-    if [[ "$host" =~ ^${regex}$ ]]; then
-      return 0
-    fi
-  done
-  return 1
+# What counts as a link:
+# - A special scheme (http, https, ws, wss, ftp) followed by any number of /
+#   or \, zero included. A browser parses https:evil.test and
+#   https:/evil.test as https://evil.test. Text that is only trailing
+#   punctuation after the colon ("Use https:, not http:.") is prose.
+# - Any other scheme, file included, followed by at least two / or \, as in
+#   file:// or git+ssh:// links. Without them, "Note: see", "key:value" or
+#   "file:line" is prose: file: with fewer slashes names a local path, never
+#   a host.
+# The scan restarts right after each scheme's slashes, so a link glued to
+# another one, or carried in its query, is checked on its own.
+SPECIAL = {"http", "https", "ws", "wss", "ftp"}
+SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):([/\\]*)(\S*)")
+# Punctuation that closes a sentence, markdown link, quote, code span or
+# emphasis, as in [a](https://docs.example.com) or `https:`. None of it can
+# appear in a plain hostname. After a bare scheme it is prose; after a host
+# it is not part of the host.
+CLOSING = r"[.,;:!?)\]}'\"`>*_~]"
+PROSE_TAIL = re.compile(CLOSING + "*")
+HOST_TAIL = re.compile(CLOSING + "+$")
+# A markdown renderer drops a backslash before ASCII punctuation and decodes
+# character references, so https\://x and https&#58;//x still render as links.
+MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
+
+# A URL parser removes every ASCII tab, CR and LF before it parses, so
+# https:<TAB>//evil.test opens https://evil.test. Line breaks are handled by
+# joining consecutive new lines; see joined_links.
+URL_STRIPPED = re.compile(r"[\t\r]")
+
+def _md(t): return MD_ESCAPE.sub(r"\1", t)
+def _strip(f): return lambda t: URL_STRIPPED.sub("", f(t))
+
+# The text as written plus each way a renderer or URL parser can decode it.
+# A link that any of them shows must pass.
+_DECODINGS = [
+    lambda t: t, _md, html.unescape,
+    lambda t: html.unescape(_md(t)), lambda t: _md(html.unescape(t)),
+]
+TRANSFORMS = _DECODINGS + [_strip(f) for f in _DECODINGS]
+
+def renderings(text):
+    return dict.fromkeys(f(text) for f in TRANSFORMS)
+
+# Inside a quoted URL attribute or a <...> link destination a space does not
+# end the URL: a URL parser percent-encodes it, and before an @ it is only
+# userinfo. Such a link runs to the closing quote or >. With no closing quote
+# or > the attribute never ends, nothing renders as a link, and the link ends
+# at whitespace as in bare text. Other attributes (title, alt) and bare text
+# always end at whitespace.
+ENCLOSED = re.compile(
+    r"""(?i)(?:\b(?:href|src|action|formaction|cite|poster|background|data|xlink:href)\s*=\s*(["'])|\]\(\s*(<))\s*$"""
+)
+
+def link_end(text, m):
+    opener = ENCLOSED.search(text, 0, m.start())
+    if not opener:
+        return m.end()
+    close = text.find(">" if opener.group(2) else opener.group(1), m.start(3))
+    if close < 0:
+        return m.end()
+    # A URL parser strips spaces from both ends of the value.
+    end = close
+    while end > m.start(3) and text[end - 1] == " ":
+        end -= 1
+    # A tab or CR is removed before parsing; the rendering without them
+    # reads this link whole, so this one stops where it used to.
+    return m.end() if URL_STRIPPED.search(text, m.start(), end) else end
+
+def links(text):
+    pos = 0
+    while (m := SCHEME.search(text, pos)):
+        end = link_end(text, m)
+        scheme, slashes, rest = m.group(1).lower(), m.group(2), text[m.start(3):end]
+        pos = m.start(3)
+        if scheme in SPECIAL:
+            is_link = (rest and (slashes or not PROSE_TAIL.fullmatch(rest))) or len(slashes) > 2
+        else:
+            is_link = len(slashes) >= 2 and (rest or len(slashes) > 2)
+        if is_link:
+            yield scheme, m.group(0)[: m.start(3) - m.start()], rest, m.start(), end, end != m.end()
+
+# How an ordinary entry line begins: a list, quote or heading marker, or a
+# date or origin tag, each followed by whitespace. When a link seems to run
+# into the next line and the next line's part of it is only one of these, the
+# link ended at the line break and the next line is a new entry. A link read
+# to a closing quote or > cannot end at a line break, so this never applies
+# to it.
+NEW_ENTRY_START = re.compile(
+    r"[-*+]|>+|#{1,6}|[0-9]+[.)]|\[[0-9]{4}-[0-9]{2}-[0-9]{2}\]|\[origin:(agent|user)\]"
+)
+
+# Links that cross a line break when consecutive lines are joined with the
+# breaks removed, as a URL parser does inside a quoted href. A run holds both
+# new lines and lines already in the file, so a split link cannot be written
+# one half per write. Only a link that crosses a break next to a new line
+# counts: one inside a single line is checked on its own (or, for a line
+# already in the file, not at all), and one split only across lines already
+# in the file does not block an unrelated write.
+def joined_links(run):
+    for f in TRANSFORMS:
+        pieces = [f(line) for line, _ in run]
+        text = "".join(pieces)
+        breaks, pos = [], 0
+        for i, piece in enumerate(pieces[:-1]):
+            pos += len(piece)
+            breaks.append((pos, run[i][1] or run[i + 1][1]))
+        for scheme, start, rest, a, b, enclosed in links(text):
+            crossed = [k for k, _ in breaks if a < k < b]
+            if not any(touches_new for k, touches_new in breaks if a < k < b):
+                continue
+            tail = text[crossed[0]:b]
+            if not enclosed and len(crossed) == 1 and NEW_ENTRY_START.fullmatch(tail):
+                continue
+            yield scheme, start, rest
+
+# The authority ends at the first / ? # or backslash. Closing punctuation at
+# its end, userinfo before the last @ and a numeric port are dropped. Anything
+# that is not a plain ASCII host afterwards (an empty host, an encoded dot, a
+# raw non-ASCII label, a bracketed address) fails closed: allowlist an IDN by
+# its xn-- form.
+def authority_host(rest):
+    authority = re.split(r"[/?#\\]", rest, maxsplit=1)[0]
+    authority = HOST_TAIL.sub("", authority)
+    return authority.rsplit("@", 1)[-1]
+
+def hostname(rest):
+    authority = authority_host(rest)
+    host, sep, port = authority.rpartition(":")
+    if not sep:
+        host = authority
+    elif not port.isdigit():
+        return None
+    if re.search(r"(?i)%2e", host):
+        return None
+    host = unquote(host)
+    if host.endswith("."):
+        host = host[:-1]
+    # Check before lowercasing: str.lower() folds some non-ASCII letters
+    # (U+212A KELVIN SIGN) into ASCII ones.
+    if not re.fullmatch(r"[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*", host):
+        return None
+    return host.lower()
+
+# A host whose last label is a number is an IPv4 address to a browser, in any
+# spelling: 16909060, 0x1020304, 0177.0.0.1, 1.2.3.4.
+def is_ip_literal(host):
+    return re.fullmatch(r"[0-9]+|0x[0-9a-f]*", host.rsplit(".", 1)[-1]) is not None
+
+def label_matches(label, pattern):
+    regex = "[^.]*".join(re.escape(part) for part in pattern.split("*"))
+    return re.fullmatch(regex, label) is not None
+
+# Case-insensitive. "*" matches within one label, so "*.example.com" covers
+# docs.example.com but not a.b.example.com. A "**" that is the whole leftmost
+# label matches one or more labels, never the apex. An IP-literal host
+# matches only a pattern without "*" that spells it exactly.
+def host_matches(host, pattern):
+    if is_ip_literal(host):
+        return "*" not in pattern and host == pattern.lower().rstrip(".")
+    want = pattern.lower().rstrip(".").split(".")
+    have = host.split(".")
+    if want[0] == "**":
+        rest = want[1:]
+        if len(have) <= len(rest):
+            return False
+        have = have[len(have) - len(rest):]
+        want = rest
+    elif len(have) != len(want):
+        return False
+    return all(label_matches(h, w) for h, w in zip(have, want))
+
+def allowed(scheme, rest, patterns):
+    # Only a link read to its closing quote or > can hold a space. A space in
+    # its host makes a URL parser fail, so nothing opens and nothing is
+    # blocked: "https:" left open at the end of one line before an ordinary
+    # entry that happens to hold a quote. Past an @ the space is userinfo and
+    # the host after it is checked as usual.
+    if " " in authority_host(rest):
+        return True
+    if scheme != "https":
+        return False
+    host = hostname(rest)
+    return host is not None and any(host_matches(host, p) for p in patterns)
+
+def first_blocked(found, patterns):
+    for scheme, start, rest, *_ in found:
+        if not allowed(scheme, rest, patterns):
+            return start + rest
+    return None
+
+def main():
+    n, m = int(sys.argv[1]), int(sys.argv[2])
+    lines = sys.argv[3:3 + m]
+    entries = sys.argv[3 + m:3 + m + n]
+    patterns = sys.argv[3 + m + n:]
+    status = 0
+    for entry in entries:
+        url = None
+        for text in renderings(entry):
+            url = first_blocked(links(text), patterns)
+            if url:
+                break
+        print("OK" if url is None else "BLOCKED:" + url)
+        status = status or (url is not None)
+    runs = []
+    for line in lines:
+        item = (line[2:], line[1] == "n")
+        if line[0] == "C" and runs:
+            runs[-1].append(item)
+        else:
+            runs.append([item])
+    url = None
+    for run in runs:
+        if len(run) > 1 and any(new for _, new in run):
+            if (url := first_blocked(joined_links(run), patterns)):
+                break
+    print("JOINED:OK" if url is None else "JOINED:BLOCKED:" + url)
+    return 1 if (status or url) else 0
+
+try:
+    status = main()
+except Exception:
+    sys.exit(3)
+sys.exit(status)
+PYEOF
 }
 
 # Strip the optional leading date and then the origin tag, in the order step 4a
@@ -388,6 +611,75 @@ if [[ -f "$TARGET" ]]; then
   done < "$TARGET"
 fi
 
+url_interpreter_failure() {
+  echo "REJECT: could not invoke the interpreter needed to check the entry's URLs against the allowlist (exit ${URL_CHECK_FAILED}). This is an environment problem (e.g. python3 missing or not executable), not a problem with the proposed content. Fix the environment, then retry." >&2
+  exit 1
+}
+
+# Run the URL check once for the whole write, before the per-line checks, so
+# that links split across lines can be joined. A new line is a non-blank line
+# not already in the file. Only new lines are checked on their own; lines
+# already in the file join runs with them, and a blank line ends a run.
+URL_VERDICTS=()
+URL_JOINED="JOINED:OK"
+URL_CHECK_FAILED=""
+if [[ ${#ALLOWLIST_PATTERNS[@]} -gt 0 ]]; then
+  url_lines=()
+  url_entries=()
+  run_flag="N"
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^[[:space:]]*$ ]]; then
+      run_flag="N"
+      continue
+    fi
+    if printf '%s\n' "$EXISTING" | grep -qxF -- "$line"; then
+      url_lines+=("${run_flag}e$line")
+    else
+      url_lines+=("${run_flag}n$line")
+      url_entries+=("$(derive_entry "$line")")
+    fi
+    run_flag="C"
+  done <<< "$PROPOSED"
+  if [[ ${#url_entries[@]} -gt 0 ]]; then
+    set +e
+    url_output="$(check_write_urls "${#url_entries[@]}" "${#url_lines[@]}" "${url_lines[@]}" "${url_entries[@]}")"
+    url_status=$?
+    set -e
+    # A read loop, not mapfile: macOS still ships bash 3.2.
+    url_results=()
+    while IFS= read -r verdict; do
+      url_results+=("$verdict")
+    done <<< "$url_output"
+    expected=$(( ${#url_entries[@]} + 1 ))
+    if [[ ( "$url_status" -ne 0 && "$url_status" -ne 1 ) || ${#url_results[@]} -ne $expected ]]; then
+      URL_CHECK_FAILED="$url_status"
+    else
+      any_blocked=""
+      for verdict in "${url_results[@]:0:${#url_entries[@]}}"; do
+        case "$verdict" in
+          OK) ;;
+          BLOCKED:*) any_blocked=1 ;;
+          *) URL_CHECK_FAILED="$url_status" ;;
+        esac
+      done
+      URL_JOINED="${url_results[${#url_entries[@]}]}"
+      case "$URL_JOINED" in
+        JOINED:OK) ;;
+        JOINED:BLOCKED:*) any_blocked=1 ;;
+        *) URL_CHECK_FAILED="$url_status" ;;
+      esac
+      # The exit status must agree with the verdicts.
+      if [[ -z "$URL_CHECK_FAILED" ]]; then
+        if [[ -n "$any_blocked" && "$url_status" -ne 1 ]] || [[ -z "$any_blocked" && "$url_status" -ne 0 ]]; then
+          URL_CHECK_FAILED="$url_status"
+        fi
+      fi
+      [[ -z "$URL_CHECK_FAILED" ]] && URL_VERDICTS=("${url_results[@]:0:${#url_entries[@]}}")
+    fi
+  fi
+fi
+url_index=0
+
 # Validate proposed entries. Every non-blank line is checked -- bullets,
 # numbered items, headings, paragraphs, blockquotes, etc. -- not just
 # bullet lines (CWE-20 fix).
@@ -415,13 +707,18 @@ while IFS= read -r line; do
     exit 1
   fi
 
-  # 3a. External URLs
-  while IFS= read -r url; do
-    if ! url_allowed "$url"; then
-      echo "REJECT: blocked external URL: $url" >&2
+  # 3a. External URLs, from the check_write_urls verdicts computed above.
+  if [[ ${#ALLOWLIST_PATTERNS[@]} -gt 0 ]]; then
+    if [[ -n "$URL_CHECK_FAILED" ]]; then
+      url_interpreter_failure
+    fi
+    url_verdict="${URL_VERDICTS[$url_index]}"
+    url_index=$((url_index + 1))
+    if [[ "$url_verdict" == BLOCKED:* ]]; then
+      echo "REJECT: blocked external URL: ${url_verdict#BLOCKED:}" >&2
       exit 1
     fi
-  done < <(printf '%s\n' "$entry" | grep -oE 'https?://[^[:space:]]+' || true)
+  fi
 
   # 3b. Code blocks
   if [[ "$entry" == *'```'* ]]; then
@@ -467,6 +764,12 @@ while IFS= read -r line; do
     exit 1
   fi
 done <<< "$PROPOSED"
+
+# 3d. A link split across consecutive new lines, found by check_write_urls.
+if [[ "$URL_JOINED" == JOINED:BLOCKED:* ]]; then
+  echo "REJECT: blocked external URL: ${URL_JOINED#JOINED:BLOCKED:} (split across lines)" >&2
+  exit 1
+fi
 
 # 4. Budget check
 # `wc -m` only counts characters in a UTF-8-aware locale; under C/POSIX

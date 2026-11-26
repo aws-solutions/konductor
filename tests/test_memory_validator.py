@@ -36,6 +36,7 @@ Run:  cd tests && pytest test_memory_validator.py
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -94,6 +95,24 @@ def test_script_exists_and_is_executable():
     assert os.access(VALIDATOR, os.X_OK), f"script not executable: {VALIDATOR}"
 
 
+# macOS ships bash 3.2 as /bin/bash, which `#!/usr/bin/env bash` resolves to
+# there, and CI runs only on Linux. Pin the script to bash 3.2 builtins and
+# syntax so a write does not fail with "command not found" on macOS.
+_BASH4_ONLY = re.compile(
+    r"\b(mapfile|readarray|coproc)\b|declare -[aA]*A|local -n|declare -n"
+    r"|\$\{[A-Za-z_][A-Za-z0-9_]*(,,?|\^\^?)\}|&>>|\|&"
+)
+
+
+def test_script_uses_only_bash_3_2_features():
+    hits = [
+        f"{n}: {line.strip()}"
+        for n, line in enumerate(VALIDATOR.read_text().splitlines(), 1)
+        if not line.lstrip().startswith("#") and _BASH4_ONLY.search(line)
+    ]
+    assert not hits, "bash 4 only feature(s):\n" + "\n".join(hits)
+
+
 def test_canonical_config_present_is_read_and_enforced(tmp_path):
     """Config present at the single canonical path works: an entry
     containing a URL outside the configured allowlist is REJECTed."""
@@ -111,10 +130,9 @@ def test_canonical_config_allows_urls_matching_its_own_allowlist(tmp_path):
     match the canonical config's allowlist must still be accepted --
     proving the canonical config's patterns are actually being applied,
     not just causing a blanket rejection. Uses the exact host
-    "example.com" (not a subdomain): url_allowed() matches the host
-    against the pattern with an anchored `^...$` regex, so
-    "docs.example.com" would NOT match an "example.com" pattern --
-    confirmed against the real script before pinning this fixture."""
+    "example.com" (not a subdomain): a pattern with no "*" matches only
+    that exact hostname, so "docs.example.com" would NOT match an
+    "example.com" pattern."""
     write_config(tmp_path / ".konductor" / "memory-config.json", ["example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
     proposed = "- [2026-08-01] [origin:agent] See https://example.com/guide for details\n"
@@ -1335,3 +1353,707 @@ def test_editing_an_existing_untagged_entry_requires_a_tag(tmp_path):
     result = run_validator("- [2026-01-01] Hand-written legacy fact, edited\n", target, cwd=tmp_path)
     assert result.returncode == 1
     assert "no [origin:agent] or [origin:user] tag" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# URL allowlist matching. Every scheme:// occurrence is checked, including
+# one glued to or nested in another URL, and only https passes. The special
+# schemes (http, https, ws, wss, ftp, file) count as a link with any number of
+# slashes or backslashes after the colon, zero included, as a browser reads
+# them. The pattern is compared with the URL's hostname only: the authority
+# ends at the first / ? # or backslash, userinfo and port are dropped, and a
+# host that is not plain ASCII after percent-decoding (an encoded dot, raw
+# non-ASCII, a bracketed address) is rejected. A "*" label matches exactly
+# one label; a leading "**" label matches one or more. An IPv4 host in any
+# spelling matches only an exact pattern.
+# ---------------------------------------------------------------------------
+
+_ALLOWLIST = ["*.example.com", "docs.example.org", "api-*.example.net"]
+
+
+def _url_verdict(tmp_path: Path, url: str) -> subprocess.CompletedProcess:
+    write_config(tmp_path / ".konductor" / "memory-config.json", _ALLOWLIST)
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = f"- [2026-11-20] [origin:agent] Reference: {url}\n"
+    return run_validator(proposed, target, cwd=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # The allowed suffix sits in the query string or fragment, not the host.
+        "https://evil%2Ecom?.example.com/x",
+        "https://attacker#.example.com",
+        "https://evil.test/.example.com",
+        "https://evil.test\\@docs.example.com",
+        # Userinfo that looks like an allowed host; the real host is evil.test.
+        "https://docs.example.com@evil.test/",
+        "https://docs.example.com:443@evil.test/",
+        # Encoded dot inside the host, with no query trick.
+        "https://evil%2ecom.example.com",
+        # Non-ASCII host and other characters outside a plain hostname.
+        "https://ex\u00e4mple.example.com",
+        "https://docs\u3002example.com",
+        "https://[::1].example.com",
+        "https://docs.example.com:notaport/",
+        # Upper-case scheme is still a URL and must still be checked.
+        "HTTPS://evil.test/",
+        # "*.example.com" covers exactly one label, not two or more.
+        "https://docs.aws.example.com/guide",
+        "https://a.b.c.example.com/x?y=1#z",
+        # "*.example.com" does not cover the apex or a look-alike suffix.
+        "https://example.com/",
+        "https://notexample.com/",
+        "https://example.com.evil.test/",
+        # A pattern without "*" matches only that exact host.
+        "https://a.docs.example.org/",
+        # A "*" inside a label stays within that label.
+        "https://api-v1.evil.example.net/",
+        # Only https passes, in any case, even for an allowed host.
+        "HTTP://evil.test/x",
+        "http://docs.example.com/",
+        "HTTP://docs.example.com/",
+        "http://docs.example.org/",
+        # Every scheme:// token is checked, not only http(s).
+        "ftp://evil.test/x",
+        "ftp://docs.example.com/x",
+        "FTP://docs.example.com/x",
+        "ws://docs.example.com/",
+        "file://docs.example.com/etc/passwd",
+        "git+ssh://docs.example.com/repo",
+        "xhttps://docs.example.com/",
+        # A second link glued to an allowed one is checked on its own.
+        "[a](https://docs.example.com/)[b](https://evil.test/)",
+        "[a](https://docs.example.com/)[b](ftp://evil.test/)",
+        "https://docs.example.com/a,https://evil.test/",
+        "https://docs.example.com/?next=https://evil.test/",
+        # A backslash for a slash still makes a URL.
+        "https:/\\evil.test/x",
+        "https:\\\\evil.test/x",
+        # A dot-free numeric host, before a ? or anywhere else, is an IPv4 address.
+        "https://16909060?.example.com/x",
+        "https://16909060/",
+        "https://1.2.3.4#.example.com",
+        # IPv4 in decimal, hex, octal and dotted-quad spellings.
+        "https://0x1020304/",
+        "https://0X1020304/",
+        "https://0177.0.0.1/",
+        "https://127.0.0.1/",
+        "https://127.1/",
+        "https://evil.0x7f/",
+    ],
+)
+def test_url_allowlist_rejects_non_matching_hosts(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 1, f"{url!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://docs.example.com/guide",
+        "https://docs.example.com/x?y=1#z",
+        # Userinfo and port are not part of the host.
+        "https://user:pw@docs.example.com:8443/path",
+        "https://evil.test:x@docs.example.com/",
+        # Hostnames compare case-insensitively; a trailing root dot is the same host.
+        "https://Docs.Example.COM/",
+        "https://docs.example.com./",
+        # Punycode is plain ASCII and matches like any other label.
+        "https://xn--exmple-cua.example.com/",
+        # A percent-encoded letter decodes to the same host.
+        "https://ex%61mple.example.com/",
+        "https://docs.example.org/",
+        "https://api-v1.example.net/",
+        # An upper-case https scheme, or a backslash for a slash, is still https.
+        "HTTPS://docs.example.com/",
+        "https:\\\\docs.example.com/x",
+        # A numeric label is fine when the last label is not a number.
+        "https://1.example.com/",
+        "https://16909060.example.com/",
+        "https://0x7f.example.com/",
+        # Two glued links that are both allowed.
+        "[a](https://docs.example.com/)[b](https://api.example.com/)",
+        # A bare scheme with no host is not a link.
+        "starts with https:// always",
+    ],
+)
+def test_url_allowlist_accepts_matching_hosts(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 0, f"{url!r} was rejected: {result.stderr}"
+
+
+def test_bare_star_pattern_allows_only_single_label_hosts(tmp_path):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] See https://intranet/a\n"
+    assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
+
+    for url in ("https://docs.example.org/a", "https://evil%2Ecom/a"):
+        proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
+        result = run_validator(proposed, target, cwd=tmp_path)
+        assert result.returncode == 1, f"{url!r}: {result.stderr}"
+        assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "pattern, url, allowed",
+    [
+        # A leading "**" label matches one or more labels under the suffix.
+        ("**.example.com", "https://docs.example.com/", True),
+        ("**.example.com", "https://docs.aws.example.com/", True),
+        ("**.example.com", "https://a.b.c.example.com/x", True),
+        ("**.example.com", "https://Docs.AWS.Example.COM./", True),
+        # ...but never the apex, a look-alike suffix or another domain.
+        ("**.example.com", "https://example.com/", False),
+        ("**.example.com", "https://notexample.com/", False),
+        ("**.example.com", "https://a.notexample.com/", False),
+        ("**.example.com", "https://example.com.evil.test/", False),
+        ("**.example.com", "https://docs.example.com.evil.test/", False),
+        ("**.example.com", "https://evil.test/", False),
+        ("**.example.com", "http://docs.aws.example.com/", False),
+        # A bare "**" allows any plain https hostname.
+        ("**", "https://docs.example.org/", True),
+        ("**", "https://intranet/", True),
+        ("**", "https://evil%2Ecom/", False),
+        # A "**" that is not the whole leftmost label stays within one label.
+        ("api-**.example.net", "https://api-v1.example.net/", True),
+        ("api-**.example.net", "https://api-v1.evil.example.net/", False),
+        ("**x.example.com", "https://a.bx.example.com/", False),
+    ],
+)
+def test_double_star_pattern_matches_one_or_more_labels(tmp_path, pattern, url, allowed):
+    write_config(tmp_path / ".konductor" / "memory-config.json", [pattern])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert (result.returncode == 0) == allowed, f"{pattern!r} {url!r}: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # A browser reads a special scheme with any number of / or \ after the
+        # colon, zero included, as a full URL with that host.
+        "https:/evil.test/x",
+        "https:evil.test",
+        "https:evil.test/x",
+        "https:\\evil.test/x",
+        "https:\\/evil.test/x",
+        "https:///evil.test/x",
+        "HTTPS:evil.test",
+        "HtTpS:/evil.test",
+        "https:@evil.test/",
+        "https:docs.example.com@evil.test/",
+        "https:.evil.test/",
+        "[a](https:evil.test)",
+        "<https:evil.test>",
+        "Note:https:evil.test",
+        "https://docs.example.com/?next=https:evil.test",
+        "[a](https://docs.example.com/)[b](https:/evil.test)",
+        # An empty host never passes.
+        "https:///",
+        "https:/?x",
+        "https:#.example.com",
+        "https:/#.example.com",
+        "https:?.example.com",
+        # Every other special scheme is rejected in any slash form.
+        "http:docs.example.com",
+        "http:/docs.example.com",
+        "HTTP:docs.example.com",
+        "ws:docs.example.com",
+        "wss:/docs.example.com",
+        "ftp:docs.example.com",
+        "ftp:/evil.test/x",
+        # file: names a host only after two slashes, and those forms stay links.
+        "file://evil.test/x",
+        "FILE://x",
+        "file:\\\\evil.test\\x",
+        "file:///etc/passwd",
+    ],
+)
+def test_special_scheme_with_fewer_slashes_is_still_checked(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 1, f"{url!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https:docs.example.com/x",
+        "https:/docs.example.com",
+        "https:\\docs.example.com/x",
+        "https:///docs.example.com/",
+        "HTTPS:docs.example.org",
+    ],
+)
+def test_https_with_fewer_slashes_to_an_allowed_host_is_accepted(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 0, f"{url!r} was rejected: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Note: see the docs",
+        "Note:see the docs",
+        "time 10:30 daily",
+        "ratio 3:1",
+        "Step 2: run it",
+        "key:value pairs",
+        "the http: header",
+        "Use https:, not http:.",
+        "(see http:)",
+        "mailto:ops@example.org",
+        "git+ssh:repo",
+        "xhttps:evil.test",
+        "httpsx:evil.test",
+        # Code spans and emphasis around a bare scheme name are prose too.
+        "Always use `https:` URLs",
+        "Prefer **https:** over http",
+        "the `ws:` scheme",
+        "_http:_ is old",
+        "~~http:~~ removed",
+        "> see https:>",
+        # file: with zero or one slash names a local path, never a host, so it
+        # is prose, as in "file:line" in a review note. file:// is still a link.
+        "Cite findings as file:line in reviews",
+        "cite as file:42",
+        "file:/tmp/x",
+        "file:docs.example.com",
+        "FILE:\\tmp",
+    ],
+)
+def test_prose_with_a_colon_is_not_a_link(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Punctuation that closes a markdown link, quote or emphasis is not
+        # part of the host.
+        "see [docs](https://docs.example.com) here",
+        "(https://docs.example.com)",
+        "<https://docs.example.com>",
+        "https://docs.example.com, then",
+        "https://docs.example.com).",
+        '"https://docs.example.com"',
+        "'https://docs.example.com'",
+        "`https://docs.example.com`",
+        "**https://docs.example.com**",
+        "_https://docs.example.com_",
+        "[a](https://evil.test@docs.example.com)",
+        "https://docs.example.com:443)",
+    ],
+)
+def test_allowed_link_with_trailing_prose_punctuation_is_accepted(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[a](https://evil.test)",
+        "<https://evil.test>",
+        "**https://evil.test**",
+        "`https://evil.test`",
+        "(https://docs.example.com.evil.test)",
+        "[a](https://docs.example.com)@evil.test)",
+        "https://docs.example.com)evil.test",
+        "[a](http://docs.example.com)",
+    ],
+)
+def test_blocked_link_with_trailing_prose_punctuation_is_still_rejected(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # A markdown renderer turns a backslash-escaped colon or an HTML
+        # character reference back into a plain scheme.
+        "[a](https\\://evil.test/x)",
+        "https\\:evil.test",
+        "[a](https&#58;//evil.test)",
+        "[a](https&#x3a;//evil.test)",
+        "[a](https&colon;//evil.test)",
+        "[a](https:&#47;&#47;evil.test)",
+        "[a](http\\://docs.example.com)",
+        "[a](ftp&#58;//docs.example.com)",
+    ],
+)
+def test_escaped_or_entity_encoded_scheme_is_still_checked(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[a](https\\://docs.example.com/x)",
+        "[a](https&#58;//docs.example.com)",
+        "path C:\\Users\\me",
+        "Tom &amp; Jerry: a note",
+    ],
+)
+def test_escaped_scheme_to_an_allowed_host_is_accepted(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # A URL parser removes ASCII tab, CR and LF before parsing.
+        '<a href="https:\t//evil.test/">x</a>',
+        '<a href="https:/\t/evil.test/">x</a>',
+        '<a href="https://docs.example.com\t.evil.test/">x</a>',
+        '<a href="https://docs.example.com\r.evil.test/">x</a>',
+        "[a](ht\ttps://evil.test/)",
+    ],
+)
+def test_tab_or_carriage_return_inside_a_link_is_still_checked(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+def test_tab_inside_an_allowed_link_is_accepted(tmp_path):
+    result = _url_verdict(tmp_path, '<a href="https:\t//docs.example.com/">x</a>')
+    assert result.returncode == 0, result.stderr
+
+
+def _write_verdict(tmp_path: Path, proposed: str, existing: str | None = None):
+    write_config(tmp_path / ".konductor" / "memory-config.json", _ALLOWLIST)
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    if existing is not None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(existing)
+    return run_validator(proposed, target, cwd=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "proposed",
+    [
+        # A URL parser drops the line break inside a quoted href.
+        '- [2026-11-24] [origin:agent] Reference: <a href="https:\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https://docs.example.com\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="htt\n[origin:agent]ps://evil.test/">x</a>\n',
+        # Tab, CR and escapes inside a split link are still decoded.
+        '- [2026-11-24] [origin:agent] See <a href="https:\t\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https:\r\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https\\:\n[origin:agent]@evil.test/">x</a>\n',
+        '- [2026-11-24] [origin:agent] See <a href="https&#58;\n[origin:agent]@evil.test/">x</a>\n',
+        # A link split over three lines.
+        '- [2026-11-24] [origin:agent] See <a href="https:\n[origin:agent]//\n[origin:agent]@evil.test/">x</a>\n',
+    ],
+)
+def test_link_split_across_new_lines_is_checked_joined(tmp_path, proposed):
+    result = _write_verdict(tmp_path, proposed)
+    assert result.returncode == 1, f"{proposed!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "proposed",
+    [
+        # A split link to an allowed host passes.
+        '- [2026-11-24] [origin:agent] See <a href="https://docs.example.com/a\n[origin:agent]b">x</a>\n',
+        # A bare scheme or an allowed link at the end of a line, followed by
+        # an ordinary next entry, is not a split link.
+        "- [2026-11-24] [origin:agent] Use https:\n- [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Prefer http:\n[2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use https:\n[origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use ws:\n* [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use https:\n1. [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] See https://docs.example.com\n- [2026-11-24] [origin:agent] Next\n",
+        "- [2026-11-24] [origin:agent] See https://docs.example.com\n[2026-11-24] [origin:agent] Next\n",
+        "- [2026-11-24] [origin:agent] the `https:`\n- [2026-11-24] [origin:agent] Next fact\n",
+        "- [2026-11-24] [origin:agent] Use https:\n\n[origin:agent]@evil.test is a host name\n",
+    ],
+)
+def test_ordinary_lines_after_a_bare_scheme_are_not_joined_into_a_link(tmp_path, proposed):
+    result = _write_verdict(tmp_path, proposed)
+    assert result.returncode == 0, f"{proposed!r} was rejected: {result.stderr}"
+
+
+_SPLIT_HEAD = '- [2026-11-20] [origin:agent] Old <a href="https:'
+_SPLIT_TAIL = '[origin:agent]@evil.test/">x</a>'
+_OTHER = "- [2026-11-20] [origin:agent] Unrelated fact"
+
+
+@pytest.mark.parametrize(
+    "existing, proposed",
+    [
+        # The new line completes a split href below an existing line.
+        (f"{_SPLIT_HEAD}\n", f"{_SPLIT_HEAD}\n{_SPLIT_TAIL}\n"),
+        # ...above an existing line.
+        (f"{_SPLIT_TAIL}\n", f"{_SPLIT_HEAD}\n{_SPLIT_TAIL}\n"),
+        # ...between two existing lines.
+        (
+            '- [2026-11-20] [origin:agent] Old <a href="https:\n[origin:agent]@evil.test/">x</a>\n',
+            '- [2026-11-20] [origin:agent] Old <a href="https:\n[origin:agent]//\n[origin:agent]@evil.test/">x</a>\n',
+        ),
+    ],
+)
+def test_new_line_that_completes_a_split_link_with_existing_lines_is_rejected(
+    tmp_path, existing, proposed
+):
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 1, f"{proposed!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "second",
+    ['[origin:agent] ">x</a>', '[origin:agent]">x</a>'],
+)
+def test_quoted_href_closed_on_a_line_that_is_only_an_entry_start_is_checked(tmp_path, second):
+    # The value runs to its closing quote, so it cannot end at the line
+    # break, and the next line's entry start is part of the URL.
+    first = '- [2026-11-25] [origin:agent] <a href="https://docs.example.com @evil.test/'
+    # In one write, or in two with either half already in the file.
+    for existing in (None, f"{first}\n", f"{second}\n"):
+        result = _write_verdict(tmp_path, f"{first}\n{second}\n", existing=existing)
+        assert result.returncode == 1, f"{second!r} {existing!r} was accepted: {result.stderr}"
+        assert "blocked external URL" in result.stderr, result.stderr
+
+
+def test_split_link_only_across_existing_lines_does_not_block_an_unrelated_write(tmp_path):
+    existing = f"{_SPLIT_HEAD}\n{_SPLIT_TAIL}\n"
+    proposed = f"{existing}\n- [2026-11-24] [origin:agent] New fact\n"
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 0, result.stderr
+    # Directly below, with no blank line, the new entry still starts like an
+    # ordinary entry, so it does not extend the old link either.
+    proposed = f"{existing}- [2026-11-24] [origin:agent] New fact\n"
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "existing, new_line",
+    [
+        (f"{_SPLIT_HEAD}\n", "- [2026-11-24] [origin:agent] Next fact"),
+        (f"{_SPLIT_HEAD}\n", "[2026-11-24] [origin:agent] Next fact"),
+        (f"{_SPLIT_HEAD}\n", "[origin:agent] Next fact"),
+        ("- [2026-11-20] [origin:agent] See https://docs.example.com\n", "* [2026-11-24] [origin:agent] Next"),
+        (f"{_OTHER}\n", "- [2026-11-24] [origin:agent] Use https:"),
+        # The next entry holds a quote, which closes the old open href, but a
+        # host with a space in it is not a URL a parser accepts.
+        (f"{_SPLIT_HEAD}\n", '- [2026-11-24] [origin:agent] He said "hi"'),
+    ],
+)
+def test_existing_line_next_to_an_ordinary_new_entry_is_accepted(tmp_path, existing, new_line):
+    for proposed in (f"{existing}{new_line}\n", f"{new_line}\n{existing}"):
+        result = _write_verdict(tmp_path, proposed, existing=existing)
+        assert result.returncode == 0, f"{proposed!r} was rejected: {result.stderr}"
+
+
+def test_blocked_link_inside_one_existing_line_is_not_rescanned(tmp_path):
+    existing = "- [2026-11-20] [origin:agent] Old mirror https://evil.test/x\n"
+    for proposed in (
+        f"{existing}\n- [2026-11-24] [origin:agent] New fact\n",
+        f"{existing}- [2026-11-24] [origin:agent] New fact\n",
+    ):
+        result = _write_verdict(tmp_path, proposed, existing=existing)
+        assert result.returncode == 0, f"{proposed!r}: {result.stderr}"
+
+
+def test_blank_line_still_ends_a_run_that_includes_existing_lines(tmp_path):
+    existing = f"{_SPLIT_HEAD}\n"
+    proposed = f"{_SPLIT_HEAD}\n\n{_SPLIT_TAIL} is a sentence\n"
+    result = _write_verdict(tmp_path, proposed, existing=existing)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Inside a quoted URL attribute or a <...> link destination, a space
+        # does not end the URL: before an @ it is userinfo, and the host is
+        # what follows.
+        '<a href="https://docs.example.com @evil.test/">x</a>',
+        "<a href='https://docs.example.com @evil.test/'>x</a>",
+        '<A HREF = "https://docs.example.com @evil.test/">x</a>',
+        '<img src="https://docs.example.com @evil.test/x.png">',
+        '<a href=" https://docs.example.com @evil.test/">x</a>',
+        "[a](<https://docs.example.com @evil.test/>)",
+        '<a href="https://docs.example.com @evil\t.test/">x</a>',
+        # Spaces at either end of the value are stripped before parsing.
+        '<a href="https://evil.test ">x</a>',
+        '<a href="https://docs.example.com/ok">x</a> <a href="https://docs.example.com @evil.test/">y</a>',
+    ],
+)
+def test_space_inside_a_quoted_url_attribute_does_not_end_the_link(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '<a href="https://docs.example.com/a b">x</a>',
+        '<a href="https://docs.example.com/">x y</a>',
+        "[a](<https://docs.example.com/a b>)",
+        '<a href="https://docs.example.com ">x</a>',
+        # A space in the host makes the URL fail to parse, so nothing opens.
+        '<a href="https://evil.test x">y</a>',
+        # A non-URL attribute is prose: its spaces still end a link.
+        '<abbr title="see https://docs.example.com for more">x</abbr>',
+        '[a](https://docs.example.com "title with spaces")',
+    ],
+)
+def test_allowed_link_inside_a_quoted_url_attribute_is_accepted(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
+def test_space_before_an_at_on_the_next_line_of_a_split_href_is_checked(tmp_path):
+    for second in ("[origin:agent] @evil.test/\">x</a>", "- [origin:agent] @evil.test/\">x</a>"):
+        proposed = f'- [2026-11-24] [origin:agent] See <a href="https://\n{second}\n'
+        result = _write_verdict(tmp_path, proposed)
+        assert result.returncode == 1, f"{second!r} was accepted: {result.stderr}"
+        assert "blocked external URL" in result.stderr, result.stderr
+
+
+def test_non_https_urls_pass_without_an_allowlist(tmp_path):
+    # No allowlist means every URL is allowed, whatever its scheme.
+    write_config(tmp_path / ".konductor" / "memory-config.json", [])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] Mirror at ftp://evil.test/x and http://evil.test/y\n"
+    assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["ftp://evil.test/b", "HTTPS:evil.test/x", "https:/evil.test", "https:\\\\evil.test/x"],
+)
+def test_reject_message_names_the_blocked_url_exactly(tmp_path, url):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = f"- [2026-11-23] [origin:agent] See {url} for details\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert result.returncode == 1
+    assert f"REJECT: blocked external URL: {url}\n" in result.stderr, result.stderr
+
+
+def test_a_blocked_url_rejects_the_entry_after_an_allowed_one(tmp_path):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] See https://docs.example.com/a and ftp://evil.test/b\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert result.returncode == 1
+    assert "blocked external URL: ftp://evil.test/b" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "pattern, url, allowed",
+    [
+        # An IP-literal host matches only a wildcard-free pattern that spells it exactly.
+        ("127.0.0.1", "https://127.0.0.1/", True),
+        ("127.0.0.1", "https://127.0.0.1./x", True),
+        ("16909060", "https://16909060/", True),
+        ("127.0.0.1", "https://2130706433/", False),
+        ("127.0.0.1", "https://0x7f000001/", False),
+        ("127.0.0.*", "https://127.0.0.1/", False),
+        ("*.0.0.1", "https://127.0.0.1/", False),
+        ("*", "https://10.0.0.1/", False),
+        ("*", "https://16909060/", False),
+        ("*", "https://intranet/", True),
+        ("**", "https://10.0.0.1/", False),
+        ("**", "https://127.0.0.1/", False),
+        ("**", "https://16909060/", False),
+        ("**", "https://0x7f000001/", False),
+        ("**.0.0.1", "https://127.0.0.1/", False),
+    ],
+)
+def test_ip_literal_hosts_need_an_exact_pattern(tmp_path, pattern, url, allowed):
+    write_config(tmp_path / ".konductor" / "memory-config.json", [pattern])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert (result.returncode == 0) == allowed, f"{pattern!r} {url!r}: {result.stderr}"
+
+
+# ---------------------------------------------------------------------------
+# The URL check runs in python3. When the interpreter fails, the entry is
+# still rejected, but the message names an environment problem rather than
+# claiming a URL was blocked. The stub runs the real interpreter for every
+# other python3 call (config parsing, the budget count) and fails only the
+# URL check, which it recognizes by the BLOCKED: marker that check prints.
+# ---------------------------------------------------------------------------
+
+
+def _url_check_stub(fake_bin: Path, body: str) -> None:
+    real = subprocess.run(
+        ["bash", "-c", "command -v python3"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    stub = fake_bin / "python3"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [[ "${1:-}" == "-" ]]; then\n'
+        '  script="$(cat)"\n'
+        '  if [[ "$script" == *"BLOCKED:"* ]]; then\n'
+        f"    {body}\n"
+        "  fi\n"
+        f'  exec "{real}" "$@" <<< "$script"\n'
+        "fi\n"
+        f'exec "{real}" "$@"\n'
+    )
+    stub.chmod(0o755)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "exit 2",
+        "exit 127",
+        # Exit 1 without the BLOCKED: marker is a crash, not a verdict.
+        "echo 'Traceback (most recent call last):' >&2; exit 1",
+        # Exit 0 without the OK marker is not a verdict either.
+        "exit 0",
+    ],
+)
+def test_url_check_interpreter_failure_is_reported_as_environment(tmp_path, body):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    fake_bin = tmp_path / "fakebin"
+    fake_bin.mkdir()
+    _url_check_stub(fake_bin, body)
+    env = {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+
+    for url in ("https://evil.test/x", "https://docs.example.com/x"):
+        proposed = f"- [2026-11-23] [origin:agent] See {url}\n"
+        result = run_validator(proposed, target, cwd=tmp_path, env=env)
+        assert result.returncode == 1, f"{body!r} {url!r} must fail closed: {result.stderr}"
+        assert not target.exists()
+        assert "could not invoke the interpreter" in result.stderr, result.stderr
+        assert "blocked external URL" not in result.stderr, result.stderr
+
+
+def test_url_check_runs_once_per_write_not_once_per_entry_or_url(tmp_path):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    fake_bin = tmp_path / "fakebin"
+    fake_bin.mkdir()
+    log = tmp_path / "calls.log"
+    _url_check_stub(fake_bin, f'echo call >> "{log}"')
+    env = {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+    links = " ".join(f"https://d{i}.example.com/" for i in range(8))
+    proposed = (
+        f"- [2026-11-23] [origin:agent] Links {links}\n"
+        f"- [2026-11-23] [origin:agent] More https://a.example.com/ https://b.example.com/\n"
+    )
+    result = run_validator(proposed, target, cwd=tmp_path, env=env)
+    assert result.returncode == 0, result.stderr
+    assert log.read_text().count("call") == 1
