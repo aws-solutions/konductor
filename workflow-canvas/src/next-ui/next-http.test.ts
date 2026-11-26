@@ -6,7 +6,7 @@ import {
   RunNeedsTrust,
   RunStartUnsure,
 } from '../execution/core/ports';
-import { createNextPorts } from './next-http';
+import { COPY_UNCERTAIN_CODE, createNextPorts } from './next-http';
 
 const TOKEN = 'token-1';
 const RUN_ID = '20261024-0412-a7b3c';
@@ -65,6 +65,23 @@ function serverOf(
           ? reply.body
           : Promise.reject(new SyntaxError('not JSON')),
     } as unknown as Response;
+  });
+  return { calls, fetchFn: fetchFn as unknown as typeof fetch };
+}
+
+function sequenceServerOf(
+  replies: readonly { status?: number; body: unknown }[],
+) {
+  const calls: string[] = [];
+  let next = 0;
+  const fetchFn = vi.fn(async (path: unknown) => {
+    calls.push(String(path));
+    const reply = replies[next++] ?? { status: 500, body: {} };
+    const status = reply.status ?? 200;
+    return new Response(JSON.stringify(reply.body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
   });
   return { calls, fetchFn: fetchFn as unknown as typeof fetch };
 }
@@ -131,6 +148,18 @@ describe('createNextPorts, the library', () => {
     waits: 'The workflow needs human gates.',
   };
 
+  const detailDocument = {
+    ...DOCUMENT,
+    name: ready.name,
+    read_only: true,
+    view: { ...DOCUMENT.view, name: 'k-adversarial-pull-request-review' },
+  };
+  const copyDocument = (name: string) => ({
+    ...DOCUMENT,
+    name,
+    view: { ...DOCUMENT.view, name },
+  });
+
   it('lists ready and planned entries', async () => {
     const { calls, fetchFn } = serverOf({
       body: { entries: [ready, planned] },
@@ -184,6 +213,118 @@ describe('createNextPorts, the library', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+
+  it('opens a ready entry read-only', async () => {
+    const name = 'library/k-adversarial-pull-request-review';
+    const { calls, fetchFn } = serverOf({ body: detailDocument });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.getLibrary(name)).resolves.toMatchObject({
+      name,
+      readOnly: true,
+    });
+    expect(calls[0]?.path).toBe(`/api/library/${encodeURIComponent(name)}`);
+  });
+
+  it('copies a ready entry under the requested name', async () => {
+    const name = 'library/k-adversarial-pull-request-review';
+    const { calls, fetchFn } = serverOf({ body: copyDocument('review-copy') });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.copyLibrary(name, 'review-copy')).resolves.toMatchObject(
+      { name: 'review-copy', readOnly: false },
+    );
+    expect(calls[0]?.path).toBe(
+      `/api/library/${encodeURIComponent(name)}/copy`,
+    );
+    expect(calls[0]?.init).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ as: 'review-copy' }),
+    });
+  });
+
+  it('recovers a committed copy after an unreadable success body', async () => {
+    let root = 'hello';
+    const calls: string[] = [];
+    const fetchFn = vi.fn(async (path: unknown, init: RequestInit = {}) => {
+      calls.push(String(path));
+      if (init.method === 'POST') {
+        root = 'review-copy';
+        return new Response(JSON.stringify({ copied: true }), { status: 200 });
+      }
+      return new Response(JSON.stringify(copyDocument(root)), {
+        status: 200,
+      });
+    }) as unknown as typeof fetch;
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.copyLibrary(ready.name, 'review-copy'),
+    ).resolves.toMatchObject({ name: 'review-copy', readOnly: false });
+    expect(root).toBe('review-copy');
+    expect(calls).toEqual([
+      `/api/library/${encodeURIComponent(ready.name)}/copy`,
+      '/api/workflow',
+    ]);
+  });
+
+  it.each([
+    ['the recovery read fails', { status: 500, body: { error: 'Failed.' } }],
+    ['another workflow is open', { body: DOCUMENT }],
+  ])('blocks after an unreadable copy when %s', async (_, recovery) => {
+    const { fetchFn } = sequenceServerOf([
+      { body: { copied: true } },
+      recovery,
+    ]);
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const failure = await ports
+      .copyLibrary(ready.name, 'review-copy')
+      .catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).code).toBe(COPY_UNCERTAIN_CODE);
+  });
+
+  it.each([
+    ['an editable detail', { ...detailDocument, read_only: false }],
+    ['another detail name', { ...detailDocument, name: 'library/another' }],
+    ['no parsed view', { ...detailDocument, view: null }],
+    ['a null hash', { ...detailDocument, hash: null }],
+    ['a malformed hash', { ...detailDocument, hash: 'not-a-hash' }],
+    [
+      'a mismatched view name',
+      { ...detailDocument, view: { ...detailDocument.view, name: 'other' } },
+    ],
+  ])('refuses a detail with %s', async (_, document) => {
+    const { fetchFn } = serverOf({ body: document });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.getLibrary(ready.name)).rejects.toThrow(ApiError);
+  });
+
+  it.each([
+    ['a read-only flag', { ...copyDocument('review-copy'), read_only: true }],
+    ['a null hash', { ...copyDocument('review-copy'), hash: null }],
+    ['a malformed hash', { ...copyDocument('review-copy'), hash: 'bad' }],
+    [
+      'a mismatched view name',
+      {
+        ...copyDocument('review-copy'),
+        view: { ...DOCUMENT.view, name: 'other' },
+      },
+    ],
+  ])('reconciles a copy with %s', async (_, badCopy) => {
+    const { calls, fetchFn } = sequenceServerOf([
+      { body: badCopy },
+      { body: copyDocument('review-copy') },
+    ]);
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.copyLibrary(ready.name, 'review-copy'),
+    ).resolves.toMatchObject({ name: 'review-copy' });
+    expect(calls[1]).toBe('/api/workflow');
   });
 
   it.each([
