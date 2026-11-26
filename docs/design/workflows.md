@@ -147,6 +147,28 @@ stages:
 | D55 | Comments above the first stage travel with it on delete or move                             | [1b decisions](workflows-1b-decisions.md#saving-in-place)      |
 | D56 | The strict whole-group deadline holds for GNU `timeout` only                                | [Limits](workflows-spec.md#limits)                             |
 | D57 | A stage is TIMEOUT only when the harness reports TimedOut                                   | [Limits](workflows-spec.md#limits)                             |
+| D58 | The shipped agents name their model once, and the synth system converts it per tool         | [Open questions](workflows-plan.md#open-questions)             |
+| D59 | The manifest exempts only a markdown file whose front matter has no config key              | [Trust](workflows-spec.md#trust)                               |
+| D60 | A link to a regular file is read as a file, and a refusal names its path and cause          | [Trust](workflows-spec.md#trust)                               |
+| D61 | A repo agent file that Claude could read as the agent or as config makes its tools Unknown  | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D62 | The run state keeps the goal of a run, so the run history can list it                       | [Run states](workflows-spec.md#run-stage-and-check-states)     |
+| D63 | A Claude `tools` item that starts with `-` makes the whole list Unknown                     | [Trust](workflows-spec.md#trust)                               |
+| D64 | A Claude reply is kept to 16 MiB, and a cut reply is named in the failure note              | [Limits](workflows-spec.md#limits)                             |
+| D65 | A `---` inside Claude agent front matter makes the file Unreadable                          | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D66 | Claude markdown is read lossy, and a Kiro JSON file that cannot be read is no definition    | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D67 | A Kiro agent is found by its JSON `name`, and the mention check reads the front matter only | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D68 | The trust scan, the manifest and the record are tightened after review of #175              | [Trust](workflows-spec.md#trust)                               |
+| D69 | Kiro 3 agent files are found at any depth, as .json and .md, and a vague one refuses        | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D70 | A declared Kiro markdown agent shows unreadable tools, and does not refuse                  | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D71 | Kiro markdown closes its front matter at a line start, and no front matter is no agent      | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D72 | The #175 review rounds end at `258790f46` and the chain rebase starts                       | [Trust](workflows-spec.md#trust)                               |
+| D73 | The Kiro summary and the launcher share one by-name lookup, and a markdown agent is refused | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D74 | The Claude launcher check uses the by-name lookup of the run, not an `<id>.md` file name    | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D75 | The real-server run of the stub suite skips the library cases, and the run cases are fixed  | [1g-2](workflows-plan.md#1g-2-agent-list-fields-and-history)   |
+| D76 | `flow trust` compares the Kiro catalogs, and a V2 file in a subfolder is refused            | [Finding the agent](workflows-spec.md#harness-invocation)      |
+| D77 | The Claude harness reads `result` from the head of a reply when the whole parse fails       | [Limits](workflows-spec.md#limits)                             |
+| D78 | The Kiro launch uses absolute `PATH` folders, needs `kill`, and stops on SIGQUIT too        | [Limits](workflows-spec.md#limits)                             |
+| D79 | `flow trust` checks the summary against both harness catalogs, whatever the index says      | [Trust](workflows-spec.md#trust)                               |
 
 - **D1. One YAML file per workflow, with an ordered list of stages.** Why: a flat list reads in order, and it maps onto
   Kiro's `sequence` and Claude's `pipeline()`, which keeps exports possible. Rejected: Kiro's node tree, which authors
@@ -698,6 +720,372 @@ stages:
   [1d](workflows-plan.md#1d-stage-prompt-and-the-runner-on-the-fake-harness) and
   [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: restore the elapsed check. The fake harness
   suffix is text only.
+- **D58. The shipped agents name their model once, in the canonical spec, and the synth system converts it for each
+  tool.** The base is the `model` of `agents/*.agent-spec.json`, which is `claude-sonnet-5.5`. The system that already
+  converts the canonical form for Claude, Kiro v2 and Kiro v3 is `cli/konductor-rs/src/cli/synth/`. Its Claude writer
+  has converted the model since #105, merged on 30 October: `claude_model_id` turns a Kiro dotted id such as
+  `claude-sonnet-5.5` into `claude-sonnet-5-5`, turns `auto` into `inherit`, and passes any other string through, so an
+  install writes the dashed form into every Claude agent file. No "model-id" step is needed. Kiro keeps the canonical
+  form. Why: on the build the checks ran on, Claude Code knows the dash form only, and a hand run of 1f-2 with the dotted
+  name fell back to Opus, and three runs ended 503. One base and one converter leave
+  no second map to drift, and the fix reaches every Claude install, not only the runner. Rejected: a second mapping in
+  the harness, a hand-written model string in harness code, and renaming the shipped specs, which would change the Kiro
+  agents and the benchmark pin. Consequences: D11 holds, because a stage uses the model in the agent file that the
+  install wrote. A Claude run of an installed shipped agent uses the converted model. The conformance suite and the `hello-plan`
+  scratch agents are built from the synth output, and the conformance suite's own model constant gets a guard or a
+  comment against drift (1f-2, #232, open). Not verified: whether Claude Code outside this machine accepts the dotted form. Rules: plan [open
+  questions](workflows-plan.md#open-questions). Reverse: write the canonical name verbatim again and rename the shipped
+  specs.
+- **D59. The install manifest exempts a file from the trust hash only if it is a markdown file whose front matter is
+  readable and has no key that can carry config.** The manifest is a file of the repo, so it vouches for itself. Only a
+  markdown file can be left out, and only when its front matter has none of `hooks`, `mcpServers`, `permissionMode`,
+  `tools`, `allowedTools`, `allowed-tools` or `memory`. Every other file is hashed whatever the manifest says: the
+  settings and MCP files, the files under `.claude/hooks/` and `.kiro/agents/`, a script or any other file that a skill
+  or a command can run, a markdown file whose front matter this build cannot read in full (D61), and a markdown file
+  that is not UTF-8. D68 inverted the first rule of this decision: it listed the files that always count, and a file
+  that the manifest recorded was left out unless it was on that list. Why: a repo that ships its own manifest could otherwise list a hook or an agent file
+  it wrote, and the run would skip it. Rejected: keeping the exemption for every listed file, which is a bypass of the
+  hash; dropping it, which would ask on every project install. Consequences: the agent files and skills of a project
+  install that carry those keys now count toward the hash, so an update that changes them asks again once. Per-file
+  hashes in the install index in the home folder would lift the restriction
+  ([deferred](workflows-spec.md#deferred-to-a-later-slice)). Rules: [Trust](workflows-spec.md#trust), plan step
+  [1e](workflows-plan.md#1e-trust). Reverse: exempt every file the manifest records, as before. D68 holds
+  the current rule.
+- **D60. A link to a regular file is read as that file, and a refusal of the scan names its path and cause.** In the
+  tool configuration scan and in the Claude agent catalog, a link to a regular file counts as the file: the scan hashes
+  the bytes of its target together with the link's own path, and the catalog reads the target. A link to a folder and a
+  link that leads nowhere are refused with the path named, and so are the limits that stay: 512 entries, depth 4, 1
+  MiB for a file and 16 MiB of files in all (D68), and a link in place of a folder above a covered path, such as
+  `.claude` (D68). The exit 77 message and `flow check` name the path that refused and the cause. The halt after a re-check names
+  the first path that differs or cannot be read, and the reason, also in the stage's failure note. It says "changed
+  since the run started" when no confirmation was needed. Why: Claude Code follows a link to a file, so a hash that
+  stopped at the link would not cover what runs, and a refusal that named no file gave the user nothing to fix. Raising
+  the limits or exempting assets would shrink what the hash covers. Rejected: following a link to a folder, and raising
+  the caps. Consequences: a skill with large or linked assets is refused until a scoped escape exists (a hash of a
+  link target, a size frame, or an exempt kind of non-executable asset), which is listed in the [open
+  questions](workflows-plan.md#open-questions). Rules: [Trust](workflows-spec.md#trust), plan step
+  [1e](workflows-plan.md#1e-trust). Reverse: refuse every link again and drop the names from the messages.
+- **D61. A repo agent file whose front matter Claude Code could read as the agent's id, or as carrying config, makes
+  the agent's tools Unknown.** The Claude catalog finds an agent by its `name` (D32). A file is `Unreadable` when its
+  front matter is not fully readable, or its `name` key is not a plain `name:` line at column 0, and its text mentions
+  the id, as written or once the escapes of a double-quoted value are decoded. The catalog then takes that file as the
+  definition, so the search stops at its folder and the home file is not shown in its place. The summary names the file
+  and reads "tools: unreadable" plus the reason, and the runner pre-approves nothing. The forms are listed under
+  [Finding the agent](workflows-spec.md#harness-invocation). A plain `name:` value that is another agent stays
+  readable, even when it contains the id (`k-developer-frontend`), and so does a file whose front matter never
+  mentions the id. The install manifest never hides a file whose front matter cannot be read (D59). Why: Claude Code
+  runs the repo file, so a summary that skipped it would show the home agent, and the user would confirm a file that
+  does not run (D32, D44). The reviewer found a new form in several rounds, so one rule over the class replaced a list
+  of forms. A seeded test against a YAML 1.2 reader with anchors and aliases resolved checks the rule. Rejected: naming
+  the forms one at a time, and rewriting the front matter parser onto `workflow_core::yaml` before the step merges. The
+  rewrite is a follow-up, because the reader decides refusals and the tests of the review rounds are its safety net.
+  The user may still take it before the merge. Consequences: the rule refuses some files that are safe, with no
+  override. The hash covers every file under `.claude/agents/` whatever the rule says, so existing trust records stay
+  valid. Rules: [Finding the agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust).
+  Reverse: name the forms one by one again, or replace the reader with the engine's YAML loader and keep the test.
+- **D62. The run state keeps the goal of a run.** `.konductor/runs/<run-id>/state.json` gains an optional `goal` key
+  that holds the goal text. The run history (`listRuns`) returns the goal of each run, including a run that another
+  process started, cut at 2048 characters. A state document written before the key reads with an empty goal. The
+  history lists the runs of the open workflow, newest first. The state keeps whole seconds, so runs of one second are
+  ordered by the creation time of their folders, then by id. `listRuns` reads under the dead-owner rule with `getRun`,
+  through one shared function (D22, D36). Why: the contract's run summary has a goal, and the state document did not
+  hold one. The goal is the user's own text, it already goes to the agent and into the run folder, and
+  `.konductor/runs/` is git-ignored. Rejected: leaving the goal out, which leaves the history of the Run view without
+  goals. Consequences: the goal text sits on disk in the run folder, with the rest of the state. The key has its own
+  commit, so it can be dropped with `listRuns`. Rules: [Where run state
+  lives](workflows-spec.md#run-stage-and-check-states), plan step
+  [1g-2](workflows-plan.md#1g-2-agent-list-fields-and-history). Reverse: drop the key and `listRuns`, and skip the
+  history tests of the real-server run again.
+- **D63. A Claude `tools` item that starts with `-` makes the whole list Unknown.** The runner passes the rules as the
+  argument after `--allowedTools`, so a repo-controlled item such as `--some-flag` would stand where an option can. On
+  the build the checks ran on, the CLI reads it as a value, but that is undocumented and can change. Why: it only
+  narrows what is passed (D19). Rejected: relying on that reading. Consequences: an agent with such an item has an
+  Unknown list until it is rewritten, as in D35, and its session gets no pre-approved tools. Rules:
+  [Trust](workflows-spec.md#trust), plan step [1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance). Reverse:
+  allow a leading `-` and pass the rules as one `--allowedTools=<rules>` argument.
+- **D64. The Claude harness keeps the last 16 MiB of a session's output, and a reply that was cut is named in the
+  failure note.** The Claude reply is one JSON document, and its `result` comes before `usage` and
+  `permission_denials`. With the 1 MiB tail of the other harnesses, a long reply lost its start, and a stage that had
+  succeeded was reported as failed with "no result". The Claude harness keeps more, and D77 adds a head to the launcher.
+  When a reply cannot be read and the output hit the cap, the failure note says that the output was truncated and
+  names the cap. Why: the cause of the failure must show. Rejected: reading `result` from the kept tail of a cut reply,
+  which is a follow-up in the [open questions](workflows-plan.md#open-questions). Consequences: a Claude reply over 16
+  MiB still fails the stage, unless exit status 0 and a `result` in the kept head let the harness read it (D77). Rules: [Limits](workflows-spec.md#limits), plan step
+  [1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance). Reverse: keep 1 MiB for Claude and keep the note.
+- **D65. Claude agent front matter ends at the first `---` after the opening line, and a `---` inside it makes the
+  file Unreadable.** Claude Code splits the front matter lazily: it ends at the first `---` that follows the opening
+  fence, wherever that `---` stands in its line. So Claude reads `name: k-architect---` as the name `k-architect`
+  followed by the end of the front matter, while a reader that looks for a closing `---` line ends the front matter
+  later and reads another agent. A file with a `---` before its closing `---` line is `Unreadable` (D61). A stem file
+  shows its tools as unknown, another file counts when its text mentions the id, and the hash scan hashes the file
+  (D59). Why: a reviewer found that `name: k-architect---` reads as another agent here and as `k-architect` in Claude
+  Code. Rejected: copying the lazy split into this build, because the build would then follow a parser that Claude
+  Code can change. Consequences: a file with a `---` inside its front matter, such as a description that contains a
+  dash rule, gets an Unknown `tools` line until it is rewritten. Rules:
+  [Finding the agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust). Reverse: drop
+  the form from the Unreadable list and from the 1e tests. D59 and D61 stay as they are. The cut is Claude's. A Kiro
+  markdown agent is cut at the first line that starts with `---` (D71). Refusal: at the #175 head
+  (`258790f46`) a lone file with this form does not refuse. `flow run` and `flow trust` show it with "tools: unreadable"
+  plus the reason, pre-approve no tool, and ask for the hash as usual, and `flow check` still prints the hash, because
+  the hash covers the file. Only an ambiguous agent exits 77 with `tool_config_unreadable` (two files declare the id,
+  or a Claude file declares it under another file name, D32, D67), and so does an unreadable config entry (D60, D68).
+  Two files that both have this form for the id are ambiguous.
+- **D66. A Claude agent file that is not UTF-8 is read lossy, and a Kiro agent JSON file that this build cannot read
+  is never shown as a definition.** The lossy read, with each bad byte read as U+FFFD, is for the Claude markdown path
+  only. A Node.js reader does the same, so the file is checked as Claude Code would read it. A Kiro JSON file is never
+  shown with tools unless this build can read it as JSON. A lenient reader finds the id (nesting to 128 levels, and a
+  repeated key that is not read, are accepted), and a file that is not UTF-8, does not parse, or repeats `name` or
+  `allowedTools` is an unreadable candidate. If its text mentions the id, as written or once the JSON escapes are
+  decoded, it is ambiguous whatever its file name is. If it does not, it counts only when its file name is
+  `<id>.json`, as unreadable and not ambiguous. The search stops at its folder and does not go on to a home file. This
+  text replaces the earlier "strict" Kiro read, and a number that overflows an f64, such as `1e999`, also makes a file
+  unparseable, as both Kiro engines refuse it (D69): the code at the #175 head (`258790f46`) reads leniently to find the id and
+  still fails closed on what it shows, which D-104 changed. Why: what Kiro does with such a file cannot be checked
+  here, so the build fails closed. Rejected: a lossy read for both paths. Consequences: a Kiro agent file that is not
+  UTF-8 or not JSON blocks the run when it mentions the id, and shows its agent as unreadable when it is called
+  `<id>.json` and does not. Refusal: a lone unreadable `<id>.json` that does not mention the id does not exit 77.
+  `flow run` and `flow trust` show "tools: unreadable" plus the reason, pre-approve no tool, and ask for the hash, and
+  `flow check` prints the hash. An ambiguous candidate exits 77 with `tool_config_unreadable`.
+  Rules: [Finding the agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust).
+  Reverse: make the read lossy for both paths.
+- **D67. A Kiro agent is found by the `name` in its JSON, and the mention check reads the front matter only.** Four
+  rules, one amend. (1) For Claude markdown, the check for the id looks only at the text up to the first `---` after
+  the opening fence, where Claude Code ends the front matter (D65). A file that names the id only in its body is not a
+  candidate. (2) Kiro CLI names an agent by the `name` string in its JSON, so the catalog indexes the
+  `.kiro/agents/**/*.json` files, in subfolders too (D69), by `name`, as it does for Claude markdown. A file whose `name` differs is not that agent,
+  and `other.json` with `"name":"<id>"` is. A file `<id>.json` that is an object with no `name` is an ambiguous
+  candidate, because Kiro 3 then takes the file name for the id (D68). Two files with that name make the agent
+  ambiguous: `flow run` and `flow trust` print the summary text, then exit 77 with `tool_config_unreadable`, whatever
+  `--trust` or `--yes` says, and `flow check` prints "tools: unreadable" with the reason and still prints the hash. A
+  file that is not UTF-8 or not JSON follows D66 and D68: ambiguous when its text mentions the id, unreadable when it
+  is called `<id>.json`, and not looked at otherwise. The working folder still wins over the home folder. (3) A Claude `tools:` value with text on an indented
+  line after it makes the whole list Unknown, because the harness reads a longer list than this build does. (4) A `*`
+  anywhere in a `tools` list means every tool, and the summary shows `*` alone. Why: the #175 description records three
+  gaps found in review. A sibling agent whose body hands work to `k-developer` became a candidate and made the id
+  ambiguous, with no override. Kiro finds an agent by `name`, so a file lookup by name `<id>.json` could describe a
+  file that Kiro does not run. A continued `tools` value and a `*` item were read as a shorter list than Claude reads.
+  Each gap let an agent file read one way here and another way in the harness. Rejected: keeping the whole-file
+  mention check, and keeping the Kiro lookup by file name. Consequences: the mention check of D61 and D65 now covers
+  the front matter only, and a Kiro agent in a file with another name is found. The hash is unchanged, so existing trust
+  records stay valid. Refusal, by tip: a lone Unreadable file (D61, D65, D66) does not exit 77 at the #175 head (`258790f46`). A
+  duplicate Kiro name, a duplicate Claude name, a Claude file whose stem is not the id (D32), and a Kiro candidate
+  that mentions the id but cannot be read (D68) do. Rules: [Finding the
+  agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust). Reverse: drop the amend.
+  The mention check goes back to the whole text, Kiro files are looked up as `<id>.json`, and a continued `tools` line
+  and `*` are read as before.
+- **D68. The trust scan, the manifest exemption and the trust record are tightened after the review of #175.** One
+  amend, nine rules. (1) The install manifest exempts only a markdown file whose front matter is readable and has none
+  of `hooks`, `mcpServers`, `permissionMode`, `tools`, `allowedTools`, `allowed-tools` or `memory` (D59). A script such
+  as `.claude/skills/x/scripts/run.sh` is hashed. (2) Before the prompt, the runner loads the record and checks that its
+  folder can be written, so a damaged, newer or unreadable record, or a folder that cannot be written, is refused with
+  exit 74 and a yes is never followed by a failure. (3) A link in place of a folder above a covered path
+  (`.claude -> /elsewhere`) is refused with its path (D60). (4) The scan stops at 16 MiB of files in all, over every
+  folder it searches, and says so. This is the scan cap and has nothing to do with the 16 MiB cap on a Claude reply
+  (D64). (5) The refusal for a run with no terminal leaves `trust_hash` out of its `--json` envelope, so a script
+  cannot feed the hash straight back to `--trust`. The refusal for a `--trust` that does not match keeps both hashes.
+  (6) A Kiro agent file is read leniently to find the id, and a file this build cannot read is an unreadable
+  candidate: ambiguous when its text mentions the id, whatever its file name is, and so is an `<id>.json` object with
+  no `name` (D66, D67). (7) A Claude `memory` key is a carrying key. With a `tools` list the tools are unreadable unless
+  the `memory` value is a plain word of letters that is not `user`, `project` or `local` (`memory: none`), whatever form
+  the value is written in (D69), because Claude Code adds Read, Write and Edit, and the summary lists `memory` on the "also
+  sets" line. (8) Documented, not fixed: `flow trust --yes` records trust with no terminal and no summary, so any
+  process that runs as the user can grant trust that way, and can edit `~/.konductor/trust.json`, which has only its
+  file mode. (9) Documented, not fixed: the tool configuration is checked before each stage, not after the last stage
+  and not during a session, so a change made by the last stage shows at the next `flow run`. Why: two independent
+  reviews of #175 at `45bd53cd8` found a manifest that vouched for a script, a refusal that came after the prompt, a
+  link above a covered folder, an unbounded scan, a hash handed out in a refusal, a Kiro file that Kiro loads and this
+  build refused to look at, and a `memory` grant that the summary missed. Rejected: keeping the list of files that
+  always count, which let any other recorded file escape the hash. Consequences: a project install asks again for
+  files that the old rule left out, such as a script. A scan over 16 MiB is refused. The trust text states what the
+  record does not protect against. Rules: [Trust](workflows-spec.md#trust), plan step [1e](workflows-plan.md#1e-trust).
+  Reverse: drop the amend. D59 and D60 go back to their text before it, and D67 stays.
+- **D69. Kiro 3 agent files are found at any depth, as `.json` and `.md`, and one that this build cannot place
+  refuses the run.** Kiro CLI 3.6.2, the real harness, loads `.kiro/agents/**/*.md` and `.json` files in subfolders at
+  any depth, dotfiles included, and a pre-approved shell tool ran with no prompt from such a file. Kiro 2 loads the
+  top-level `.json` files only, and this build cannot tell which engine a run uses, so the catalog looks at all of
+  them, as deep as the config scan goes. Five rules. (1) The catalog walks `.kiro/agents` and its subfolders for `.json`
+  and `.md`. A subfolder `.json` file follows the rule of a top-level one (D66, D67). (2) A markdown agent is read like
+  the Claude path (D61), with the Kiro cut of the front matter (D71): its id is the front matter `name`, or its file
+  stem when it has none. A file that opens a front matter block with no `name` and has the id for its stem is
+  ambiguous, and so is one whose front matter this build cannot read in full and that may name the id. A file with no
+  front matter block is not a candidate (D71). An ambiguous case exits 77 with `tool_config_unreadable`, whatever `--trust`
+  or `--yes` says. (3) A Claude `memory` value is read in any form: a plain word of letters that is not `user`,
+  `project` or `local` leaves the tools readable, and a tab and a comment, a value on the next line, a quoted or escaped
+  value, an alias, a tag and a block scalar leave them unreadable (D68). (4) `useLegacyMcpJson` is a key a Kiro agent
+  also sets, and the summary names it. (5) A JSON number that overflows an f64 makes the file unparseable, so it falls
+  under the mention rule (D66). The hash already covered these files, dotfiles included. Why: a hand run of kiro-cli 3.6.2
+  against #175 at `2231dc412` loaded agent files that the catalog never looked at, and a pre-approved shell tool ran
+  with no prompt, so the summary did not show a grant that the harness gave. Rejected: reading the top-level `.json` files only, which
+  is right for Kiro 2 and wrong for Kiro 3. Consequences: a Kiro markdown file that opens a front matter block with no `name` and has the id for its stem
+  blocks the run until it is renamed or given a `name`. Parked, not designed (follow-up 23): `disallowedTools`
+  is not subtracted from `tools`, so the summary can show more than the harness grants (an over-show, low); a link to a
+  folder under `.claude/skills` is refused, such as `.claude/skills/foo -> ../../.agents/skills/foo`; the 512-entry
+  cap refuses a tree of about 400 skills; and `~/.kiro` markdown and subfolder JSON files in the home folder are not
+  checked, because it is not tested that Kiro 3 loads them. Stop rule: after the next red-team pass, if nothing grants
+  more than the summary shows, the parked items stay parked and #175 goes to merge review. Rules:
+  [Finding the agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust). Reverse: drop
+  the amend. D68 stays.
+- **D70. A declared Kiro markdown agent shows unreadable tools and does not refuse the run.** A `.kiro/agents` markdown
+  file whose front matter `name` is the id declares the agent, with the front matter cut as D71 says. This build does not read the tools and permission rules
+  of a Kiro markdown agent, so the summary line reads "tools: unreadable" plus the reason (the tools are Unknown), the
+  runner pre-approves nothing, and the user is asked for the hash as usual. `flow check` prints the hash, which covers
+  the file. Why: a Kiro markdown agent is a normal file of a normal install, so refusing every one would block runs
+  that are safe to ask about, and the line already says that the summary cannot list its tools. Rejected: marking
+  every Kiro markdown agent ambiguous. Consequences: the user confirms a hash for an agent whose tools the summary does
+  not list. The Kiro harness of step 1f-1 still refuses to start a session for it (D73). Rules:
+  [Finding the agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust). Reverse: mark
+  every Kiro markdown agent ambiguous, so `flow run` and `flow trust` exit 77 for it.
+- **D71. A Kiro markdown agent closes its front matter at the first line that starts with `---`, and a markdown file
+  with no front matter block is not a Kiro candidate.** Claude's cut is unchanged: the first `---` anywhere after the
+  opening fence (D65). For a Kiro `.md` file, `----`, `---x` and `--- # c` close the front matter, an indented ` ---`
+  does not, and a `---` inside a line is plain text, so the `name` after `description: a---b` is read. A file with no
+  opening `---` line has no front matter, and Kiro does not load it, so it is hashed and nothing more. The prompt file
+  of a JSON agent (`<id>.md`, `prompts/<id>.md`) is therefore not a second declaration of `<id>.json`. A file that
+  opens a block in a form this build does not take (a byte order mark, a blank line first, `---yaml`) still opens one:
+  it is a candidate when the block mentions the id, and it may take its stem for the id like any nameless file. Why: a
+  hand run of Kiro 3.6.2 loaded an agent with `description: a---b` before `name` and ran its shell tool with no prompt,
+  because this build applied the Claude cut and hid the name (7 variants). The same pass showed an ordinary repo, with
+  `<id>.json` next to its prompt file `<id>.md`, refused as a double declaration. Rejected: one cut for both harnesses,
+  which is wrong for one of them. Consequences: a Kiro markdown file with no front matter is never an agent here. Parked
+  (follow-up 24, not designed): a nameless subfolder file as ambiguous, a trailing no-break space or U+2003 in `name`,
+  exact-case names, the meaning of `allowedTools` patterns on V2 and V3 (`@builtin`), workspace reads that need no
+  prompt, V3 rewriting a project JSON once, home agents deeper than 4 levels, and a linked `.kiro/agents`. Rules:
+  [Finding the agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust). Reverse: drop
+  the amend. D69 stays.
+- **D72. The review rounds of #175 end at its head `258790f46`, and the chain rebase starts.** The stop rule of D69
+  is met. The narrow red-team pass on `258790f46`, limited to the D71 case and the prompt-file layout, found no form
+  where the harness grants more than the summary shows: 73 real Kiro 3 loads, none hidden, and two Claude fuzz seeds
+  with no bad case. #175 (step 1e) is final for this round, with CI green and approval. The over-claims and display
+  gaps that the pass listed are parked as follow-up 25 and are not promises of this design. The rebase round goes one
+  step at a time, in this order: 1f-1, then 1f-2, then 1f-3, then 1g. A new comment on #175 restarts the loop only if it
+  names a form where the harness grants more than the summary shows. The form list in the spec was redone from
+  `agent_catalog.rs` at this head. Why: a review loop with no stop rule does not end, and the chain steps are built on
+  1e. Rules: [Finding the agent](workflows-spec.md#harness-invocation), [Trust](workflows-spec.md#trust), plan steps
+  [1e](workflows-plan.md#1e-trust) and 1f-1 to 1g. Reverse: reopen the review of #175, and hold the chain.
+- **D73. The Kiro summary and the launcher share one by-name lookup, and a Kiro markdown agent is refused at the
+  launcher.** The agent a Kiro session runs is found by the `name` in its JSON (D67, D69), by one lookup and one lenient parse
+  that the trust summary, the engine pick and the Kiro harness all use (D78). The launcher does not look for `.kiro/agents/<id>.json`. The
+  engine (V2 or V3, D16) is read from the text of the one JSON file that declares the agent. A Kiro markdown agent has
+  no engine shape, so it has no engine, and so does an agent with two candidate files, a file this build cannot read,
+  and a V2-shaped file below the top level of `.kiro/agents/` (D76).
+  The harness then refuses with a plain message and no session starts. `flow run` makes the same check before the
+  first stage and before the trust question, and a failure there is exit 64, as for a file with neither or both engine
+  shapes. `flow check`, `flow show` and `flow trust` are unchanged: a Kiro markdown agent shows "tools: unreadable" and
+  does not refuse there (D70). Why: ihmaws found that the summary and the launcher could read different Kiro files.
+  For example, `k-developer.json` with the `name` `dev-old` and `team/dev.json` with the `name` `k-developer` gave a
+  summary of one file and a session of the other. Rejected: keeping a file-name lookup in the launcher, which is two
+  rules for one agent. Consequences: a Kiro markdown agent cannot run a stage until a JSON agent file of that id is
+  used, and `flow run` on the Kiro harness reports an ambiguous agent as exit 64 before the trust
+  question, while `flow trust` exits 77 for it. This is the behavior of #231 (step 1f-1), merged (squash `fa0694023`). Rules: [Finding the agent](workflows-spec.md#harness-invocation), plan step
+  [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: drop the amend in #231 (squash `fa0694023`).
+- **D74. The Claude launcher check uses the by-name lookup of the run, not an `<id>.md` file name.** Before a run on
+  Claude Code, the check that every stage's agent is visible uses the same catalog lookup as the run: the agent is
+  found by the `name` in its front matter (D32, D44). It does not look for `.claude/agents/<id>.md`. Why: one rule for
+  the check and for the run, so a renamed agent file cannot pass one and fail the other, as in D73. Rejected: a file
+  name check, which would contradict the lookup of 1f-1 and be a second rule. Consequences: the check passes for an
+  agent in a file with another name, and the trust gate still refuses a Claude file that declares the id under another
+  file name (D32, exit 77). The ACP harnesses of 1f-3 use the same lookup. This depends on #232 (step 1f-2), which is
+  not merged: the text describes its head `435c773bd`. Rules: [Finding the agent](workflows-spec.md#harness-invocation),
+  plan step [1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance). Reverse: restore the file name check in #232
+  (`435c773bd`).
+- **D75. The real-server run of the stub suite skips the 34 library cases, and the 3 run cases are fixed or skipped
+  with a reason.** The base of the 1g steps now holds the workflow library list, entry and copy operations (contract
+  1.11.0) and an optional `name` on `POST /api/run` (1.12.0). Against the real server the stub suite then fails 37 new
+  cases: 34 in the library cases, because the real server does not serve those endpoints, and 3 in the run cases,
+  because the run endpoint does not take the name yet. The 34 library cases are skipped on the real server only, each
+  with a named reason in the skip list, by the mechanism of the `getRunEvents` skips (the skip list of the stub
+  suite and its README list). Serving the library is a new feature and not a gap-fill, so it is its own later
+  step (follow-up 28). The 3 run cases are looked at first. If the server fix is small (about 150 lines or less) and
+  needs no design choice, it is made inside #356, in the commit that builds the run endpoint. Otherwise they are
+  skipped with a named reason in the same way. `scripts/e2e-real.sh` is diagnosed once these two are settled, fixed if
+  the cause is the same base move, and a case for a feature the real server lacks gets the same named skip. No test
+  is deleted. Why: a test of a feature the real server does not have is a lawful `NOT_SUPPORTED`, as the `getRunEvents`
+  skips are, and a server change to the run endpoint may be a small contract gap, so it is checked before any skip.
+  Rejected: serving the library inside 1g, which adds a feature to a step that is already large, and deleting the
+  tests. Consequences: until the library step, the real-server suite shows the library skips, the library views of the
+  page have no data on the real server, and `flow view` still lists no shipped workflows. This depends on #327 and
+  #356 (step 1g), which are open and not merged. Rules: plan steps [1g](workflows-plan.md#1g-canvas-server-in-rust-and-flow-view)
+  and [1g-2](workflows-plan.md#1g-2-agent-list-fields-and-history). Reverse: delete the new skips and serve the
+  library.
+- **D76. `flow trust` compares the Kiro catalogs whenever its catalog is not the Kiro one, and a Kiro V2 file in a
+  subfolder has no clear engine.** This is the behavior of #231 (step 1f-1), merged (squash `fa0694023`). The text names no tests. (A) `flow trust` has no `--harness`, and it builds its summary from the catalog that a `flow run` without
+  `--harness` would use. When that is the Kiro catalog (only a Kiro runner is recorded in the install index), nothing
+  is compared. In every other case (no index, only `claude`, both runners, or neither) the summary comes from the
+  Claude catalog when only `claude` is recorded and from the search from the working folder otherwise, and a
+  `flow run --harness kiro-cli` needs no install record, so the comparison runs whatever the index says. The same holds
+  for the Claude catalog (D79). It builds the Kiro catalog of the project root and, for each agent of the workflow that
+  either search finds, compares the file that the search from the working folder picks with the file that the Kiro
+  project-root search picks. A file with unknown tools is not a mismatch when both searches pick it. If the files
+  differ, if one search finds none, or if either side is ambiguous, `flow trust` prints both files and exits 77 with
+  `tool_config_unreadable`, whatever `--trust` or `--yes` says, and records no hash, in the same shape as the Claude
+  mismatch check of 1f-2 (D44). The search from the working folder is not a superset of the Kiro search: the nearest
+  folder that has the agent wins, so it can show a different file, and not more files. (B) Kiro 2 loads only top-level
+  `.json` files of `.kiro/agents/`. A file of the V2 shape (an `allowedTools` list) below the top level leaves the
+  engine unclear, like a markdown agent (D73), and `flow run` fails before the first stage with a plain message, exit
+  64, and starts no session. A subfolder file of the V3 shape (`permissions.rules`) keeps working, because Kiro 3
+  loads it. Why: ihmaws found on #231 that the user could confirm one agent file while another ran: a trust summary
+  built from the nearest file, and a `--v2` flag for a file that Kiro 2 never loads. Both fail closed. Rejected:
+  leaving the fallback catalog as it was, and passing `--v2` for a subfolder file. Consequences: when the summary is not built
+  from the Kiro catalog, `flow trust` refuses a repo whose agent file in the working folder differs from the
+  one at the project root, and a V2 agent kept in a subfolder cannot run until it is moved to the top level or
+  converted to V3. Rules: [Finding the agent](workflows-spec.md#harness-invocation), plan step
+  [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: drop the 1f-1 amends (#231).
+- **D77. The Claude harness reads `result` from the head of the reply when the whole reply does not parse, and the
+  launcher keeps a head on request.** This is the intended behavior of #231 (step 1f-1, merged, squash `fa0694023`) and
+  #232 (step 1f-2, open and not merged). The launcher gains `Launch.keep_head_bytes` (a count of bytes, default 0, which changes
+  nothing) and `Launched.head` (the first `keep_head_bytes` bytes of stdout). The Kiro harness sets 0. The Claude
+  harness sets 64 KiB. When the whole reply does not parse and the exit status is 0, the Claude harness scans the head
+  for the top-level `result` string field, with a bounded parse of an escaped string, and takes that. The 16 MiB tail
+  and the truncation note of D64 stay. Why: knihit found that a session that exits 0 with a valid `result` was still
+  judged `ResultMissing` when the reply was longer than the kept tail, and `result` comes before `usage`,
+  `modelUsage` and `permission_denials`, so it sits in the head. Reading it removes a false failure at a small cost.
+  The launcher change is in #231, in the commit that introduced the launcher, because #231 was already being amended
+  (D76) when this was decided and one push and one rebase of the chain is less work than two. Rejected: a larger tail only, and a change to
+  the Claude harness that does not touch the launcher, which cannot see the head. Consequences: a Claude reply over 16
+  MiB with a readable `result` in its head passes the stage when the exit status is 0, and otherwise still fails with
+  the truncation note. Rules: [Limits](workflows-spec.md#limits), plan steps
+  [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli) and
+  [1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance). Reverse: drop the amends in #231 and #232. The 16 MiB
+  tail and the truncation note stay.
+- **D78. The Kiro harness runs `kiro-cli` from absolute `PATH` folders only, starts nothing without `kill`, and stops
+  on SIGQUIT too.** This is the behavior of #231 (step 1f-1), merged (squash `fa0694023`). (B2) `kiro-cli` is looked up in the absolute folders of `PATH` only, as `timeout` and `gtimeout` are. A
+  relative or empty entry (`PATH=/usr/bin:` or `:.`) could let a file in the repo stand in for it, and the trust hash
+  covers tool configuration files and not programs. When it is not found, `flow run` exits 64 before the first stage
+  with a plain message, and `konductor doctor` uses the same lookup. (B3) Without the `kill` program (`/bin/kill` or
+  `/usr/bin/kill`) no session starts, and the stage ends as not started with a note that names it, because with
+  `timeout` a leaderless run would leave the program with no limit. (B4) SIGQUIT (Ctrl-\) ends the session group like
+  SIGINT, SIGTERM and SIGHUP do. (B5) The launcher prints one line when it starts to stop the session, and a second
+  signal during the grace is ignored. The stage is `blocked` with `SESSION_FAILED`, the run is `halted`, and the exit
+  code is 1, as for any halted run. There is no separate interrupted status. (B9) The agent lookup and the engine pick
+  use one lenient parse of the agent file (D66, D73). (B1) A session group has no leader when the owner is dead and a
+  member outlives the leader: when `timeout` is killed, and also when the program ends by itself with a background
+  child. The sweep then warns and drops the record, and the child keeps running with no limit. This is tracked in issue
+  #388. The limit holds without the owner only with GNU `timeout` or `gtimeout` on the `PATH`. Why: B2 was a program
+  that the repo controls, run without a prompt. B3 left a session with no limit. The rest are cheap fixes, or
+  statements in the text that were not true. Rejected: searching a relative `PATH` entry, and starting the session
+  without `kill`. Consequences: `flow run` and `doctor` fail on a machine whose only `kiro-cli` sits in a relative
+  `PATH` entry, and a machine with no `kill` runs no Kiro session. Rules: [Limits](workflows-spec.md#limits),
+  [sessions that outlive a killed owner](workflows-spec.md#run-stage-and-check-states), plan step
+  [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: drop the amends in #231.
+- **D79. `flow trust` checks the summary against the catalog of each harness it was not built from, whatever the install
+  index says.** This is the intended behavior of #232 (step 1f-2), which is open and not merged, on top of D76
+  (#231, merged, squash `fa0694023`). `flow trust` has no `--harness`. Its summary comes from `trust_catalog`: the Kiro catalog when only a
+  Kiro runner is recorded in the install index, the Claude catalog when only `claude` is recorded, and the search from
+  the working folder in every other case (no index, both runners, or neither). Two checks follow, and each runs
+  whenever `trust_catalog` is not that harness's own catalog. The Kiro check compares, for each agent, the file of the
+  summary with the file of the Kiro project-root search (D76). The Claude check compares it with the file of the
+  Claude catalog: the project root, the folders above it up to the git top folder, then the home folder, where the
+  nearest definition wins. A later `flow run --harness claude` or `--harness kiro-cli` needs no install record, so the
+  checks do not depend on the index. Files are compared by their resolved path, with links resolved, and not by the
+  label a catalog shows, because a label is relative for the first folder searched and absolute for a folder above it.
+  When the files differ, when only one search finds a file, or when either side is ambiguous, `flow trust` prints both
+  files, exits 77 with `tool_config_unreadable` and records no hash, whatever `--trust` or `--yes` says. Where the two
+  pick the same file, nothing is added. Why: the trust hash is the same whichever catalog built the summary, so the
+  record would otherwise cover the run of a file that the summary did not show (ihmaws, #232). Rejected: checking only
+  the harness that the index resolves, and comparing the labels. Consequences: with an index that records only
+  `claude`, `flow trust` still refuses when a Kiro agent file in the working folder differs from the one at the project
+  root. Rules: [Trust](workflows-spec.md#trust), plan steps [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli)
+  and [1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance). Reverse: drop the 1f-2 amends (#232).
 
 ## How it works
 

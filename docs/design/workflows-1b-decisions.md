@@ -82,6 +82,8 @@ Choices made in the canvas for step 1b (the Designer and Execution tabs on the f
   leave behind does not exist."
   `OUTPUT_UNCHANGED` "A file that the stage must leave behind was not created or changed by the stage." `CHECK_FAILED`
   "A check that the stage must pass failed."
+- **A stage that passed reads Passed**, on its node and in its status, and so does the end of a run that passed. `Done`
+  stays for the intent node, which is done once a run has it. One word names one state.
 - **The trust dialog offers a command, with Copy, only when the `fix` has one pair of backticks and the text between
   them matches `^konductor flow trust [a-z0-9][a-z0-9-]{0,63}$`**, the contract's `Name` pattern after the command, and
   the name is the one of the workflow on the page. Otherwise it shows the `fix` sentence alone, as plain text, and Run
@@ -105,6 +107,9 @@ Choices made in the canvas for step 1b (the Designer and Execution tabs on the f
 - **The harness is any string that is not empty**, in the session, the run and the kept session, and an unknown value
   is shown as it is. The contract says a response enum may gain values, and the page only shows the harness. An empty
   or missing harness is a bad reply. There is no control to pick a harness.
+- **The page reads each stage's `kind` and `range`, the `stage_fields` of the workflow answer and a run's
+  `goal_truncated`**, as the contract defines them. A workflow answer with no `stage_fields` is a bad reply, so the page
+  does not load against a server that does not send it (1g-2, D47).
 - **`RunView.harness` is parsed so the reply stays in line with the contract**, though the page shows only the
   session's harness.
 - **A blocked stage with a missing or empty `reason` is a blocked stage with no reason.** It shows its name and no

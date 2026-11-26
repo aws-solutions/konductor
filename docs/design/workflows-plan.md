@@ -173,6 +173,49 @@ Each step is its own reviewable change on a branch named `<step>-<slug>`, such a
 `1c-core`. A change that touches `workflow-canvas/` runs the canvas CI. A change from the engine track runs the new
 workspace job.
 
+### What the first release shows in the canvas
+
+These facts are read from the canvas on the integration branch (at `704bce753d4dfb722cef4893b1e58d85b0b94543`). A
+canvas step that changes one of them changes this list.
+
+- **The page has three views: Design, Run and Library.** The Designer and Execution tabs, and the `?ui=next` and
+  `?ui=classic` queries, are gone. An address that still carries one of them opens the page like any other.
+- **The Design view edits three keys and cannot rearrange.** It edits a stage's `name`, `agent` and `prompt`, adds a
+  stage at the end and deletes one (off for the last stage, because a workflow keeps one). A save keeps every other
+  byte of the file. A stage with a `prompt_file`, with both keys, or with a prompt that is an alias, an anchor or a tag
+  keeps its prompt read-only, and a note says that saving a prompt ends trust. The YAML pane takes the whole text:
+  typing over it freezes Add and every stage field until that text is saved or typed back, and Save writes it as
+  shown. There is no way to drag a node, link two nodes or reorder the stages, which run in the order of the file.
+- **The Run view starts a run and follows it.** It has a Goal box and a Run button, and a box for each other param the
+  workflow declares, in the order of the file, with the declared default filled in and its description. Run stays off,
+  with a reason, while a required param has no value and no default. A progress line and a bar show how far the run has
+  got. Each stage is a button that shows its detail: where it is, its console lines and, for a blocked stage, the reason
+  code and one sentence. The console lines are live only, as the server drops them a minute after the run ends. A
+  Checks panel lists the checks the workflow declares with the state the run reports for each, `deferred` until a run
+  reports one and then `verified` or the state the run gives, and each stage carries the states of the checks its
+  `done_when` waits for. A list of the past runs, with their goals, sits below. While the Design view has unsaved
+  changes, a note says that a run uses the saved file.
+- **A `trust_required` answer opens the trust dialog over the Run view.** It shows the sentence of the server and, when
+  the `fix` holds `konductor flow trust` and the name of the open workflow in backticks, the command with Copy and Run
+  again. Any other
+  `fix` shows the sentence alone. The page never grants trust. Closing the dialog leaves the error in an alert under the
+  Goal box and the Run button, as every other start error is shown.
+- **The Library view lists the shipped workflows.** It calls `GET /api/library` and shows each entry as Ready or
+  Planned, with the reason for a planned one. Preview and Start from are off, with a reason, because preview and copy
+  are not in this build. The contract and the stub already define the entry and copy operations.
+- **The history list, the stage detail, the progress strip and the console pane are part of the Run view.** The console
+  has lines to show only when the server serves events, which a real server does after [1h](#1h-run-events), and then
+  only for Kiro, because the `claude -p` json output has no live lines.
+- **Keys the page reads, and keys it does not use yet.** The contract is at 1.12.0: 1.11.0 adds the library list, entry
+  and copy operations, and 1.12.0 adds an optional `name` to `POST /api/run`, so a stale page can show the workflow it
+  names before anything starts. It reads `outputs`, typed params, `done_when` and `intent.accept[].run` (1.9.0 and 1.10.0). The page uses
+  the params, the checks, their `done_when` ids and their states. A stage's `outputs` and the references in a prompt
+  are read by the contract and the stub, and no view draws them yet.
+- **Live output for Claude needs the events step.** The ACP harness
+  ([1f-3](#1f-3-acp-harness-optional)) gives live updates for Claude too, and they reach the canvas through the event
+  sink of 1h.
+- **The page loads only against a server that has 1g-2.** It needs `stage_fields`, which 1g-2 serves (D47).
+
 ## Slice 1: Skeleton
 
 A file of stages and `file` checks that runs in the runner and opens in the canvas. Slice 1 adds the keys `format`,
@@ -732,7 +775,7 @@ after 1g.
   changes the workflow, a prompt-only edit included, leaves the record, and the next Run answers `trust_required`. A
   test that runs after a save first confirms the workflow with `konductor flow trust <name> --yes`.
 - **Demo:** you can run `flow view hello-plan`, edit a prompt in the browser and save, confirm the changed workflow with
-  the command the `trust_required` dialog shows, and run it on a real harness.
+  the command the `trust_required` dialog shows, and run it on a real harness. The page loads only with 1g-2 (D47).
 
 ### 1g-2: Agent list, fields and history
 
@@ -921,7 +964,7 @@ A step is done when all of these hold:
 - The demo works with the fake harness, and once by hand on each real harness the step adds.
 - Docs and an example file ship in the same change.
 - Contract tests pass: `npm run api:lint`, the drift test, and the stub test suite against the real server once 1g
-  exists.
+  exists. No CI job runs that suite yet (see the open questions), so it runs by hand.
 
 ## Open questions
 
@@ -953,3 +996,24 @@ A step is done when all of these hold:
 - Whether the members of a leaderless session group can be found by a marker, Linux first (issue #388). A group is
   leaderless when `timeout` is killed with the owner, and also when the program ends by itself with a background
   child after the owner was killed. Open. Until then the sweep warns once and drops the record (D49).
+- The shipped agents' model id (D58). The conversion exists: `claude_model_id` in the Claude writer of `synth/` (#105)
+  writes `claude-sonnet-5-5` into every Claude agent file an install writes, so no "model-id" step is needed. The
+  conformance suite's own model constant gets a guard or a comment against drift in 1f-2 (#232, open).
+- The agent front matter reader (D61) is hand written. Replacing it with `workflow_core::yaml` and a key extraction,
+  failing closed, is a follow-up that the user may take before step 1e merges.
+- Parked after the red-team of #175 at `2231dc412` (D69), not designed: `disallowedTools` is not subtracted from
+  `tools`, so the summary can show more than the harness grants; a link to a folder under `.claude/skills` is refused,
+  and `.claude/skills/foo -> ../../.agents/skills/foo` is a common layout; the 512-entry cap refuses a tree of about 400
+  skills; and `~/.kiro/agents` markdown and subfolder JSON files in the home folder are not checked, because it is not
+  tested that Kiro 3 loads them. Stop rule: if the next red-team pass finds nothing that grants more than the summary
+  shows, they stay parked and #175 goes to merge review. The pass on `258790f46` found none (D72), so they stay parked.
+  The over-claims and display gaps of that pass are follow-up 25 and are not promised here.
+- A scoped escape for large or linked skill assets in the config scan (D60): a hash of a link target, a size frame, or
+  an exempt kind of non-executable asset. Until then the limits refuse the run and name the path.
+- A tolerant read of a Claude reply that was cut at the 16 MiB cap, from its head and tail (D64). The read of `result`
+  from the head is D77; a tolerant read that also uses the kept tail stays open.
+- Serving the workflow library on the real server (follow-up 28, D75): the list, entry and copy operations of contract
+  1.11.0, and with them the Library view's data and the `name` on `POST /api/run` that the page sends. It is its own
+  step, after 1g. Until then the library cases of the stub suite are skipped on the real server.
+- A CI job that builds `konductor` and runs the canvas contract suite and `scripts/e2e-real.sh` against the real
+  server. No job does today, so the real-server run of the contract suite is by hand.

@@ -239,6 +239,80 @@ How the runner starts each runner harness. The conformance check re-tests these 
   ([Which definition wins](#harness-invocation)), and the question of a repo file that shares an id with an installed
   agent stays [deferred](#deferred-to-a-later-slice). The rule concerns only the id the stage asks for: an unrelated
   agent whose name differs from its file stem blocks nothing (D32).
+- **Agent files this build cannot read.** This list is read from `agent_catalog.rs` at the #175 head `258790f46`. Each
+  case says what the build does: **refuses** means `flow run` and `flow trust` print the summary and exit 77 with
+  `tool_config_unreadable`, whatever `--trust` or `--yes` says, while `flow check` still prints the hash;
+  **shows unreadable** means the summary names the file and says "tools: unreadable" plus the reason, the runner
+  pre-approves nothing, and the user is asked for the hash as usual. The hash covers every file under `.claude/agents/`
+  and `.kiro/agents/` in both cases. The search stops at the nearest folder that has a file for the id and does not go
+  on to a home file. A file that names the id only in its body is not a candidate.
+  - **Claude agent files** (`.md` under `.claude/agents/` and its subfolders; a link to a regular file counts as that
+    file; a byte that is not UTF-8 reads as U+FFFD, D66). The front matter opens at a first line that is `---` and ends
+    at the first `---` after it, wherever that `---` stands in its line, as Claude Code splits it (D65). "Mentions" is a
+    literal match, with the case as given, on the front matter up to that first `---`, and on that text once the
+    escapes of a double-quoted value are decoded (D61, D67). A file is an **unreadable candidate** when it mentions the
+    id in one of these forms:
+    - front matter that is not fully readable, or a `name` key that is not a plain `name:` line at column 0: a quoted
+      key, a space before the colon, flow style, an indented root mapping, a value that is empty or starts with `|`,
+      `>`, `&`, `*`, `!`, `{` or `[`, and two `name` keys;
+    - a `name` value that is an alias (`*n`), also with the alias on the next line, and an alias in an entry whose key
+      this build cannot read, when the id appears anywhere in the front matter;
+    - a double-quoted `name` value with a backslash escape (`"k\u002darchitect"`), also over several lines, and a
+      backslash before a carriage return;
+    - a plain `name:` value that is the id once it is cut at a tab before `#`;
+    - a line break other than LF or CRLF in the front matter: a lone carriage return, NEL (U+0085), LS (U+2028) or PS
+      (U+2029);
+    - an opening `---` line that this build does not take, such as one after a byte order mark or a blank line, or
+      `---yaml`;
+    - a `---` inside the front matter before its closing `---` line, such as `name: k-architect---` (D65);
+    - a file that cannot be read at all (not a regular file, over 1 MiB, or an error) when its file stem is the id,
+      because the name inside cannot be seen. Any other unreadable file is not looked at.
+
+    A plain `name:` value that is another agent (`k-developer-frontend`), a readable front matter with no `name`, a
+    file with no front matter, and a front matter that never mentions the id are not candidates. **Outcome:** a lone
+    unreadable candidate **shows unreadable**. A lone file that declares the id **refuses** when its file stem is not
+    `<id>`, and shows its tools when it is `<id>.md`. Two or more candidates in the folder, of any mix, **refuse**.
+  - **Claude `tools` and `memory`** (the file is a definition, and its tools are Unknown, so it **shows unreadable**
+    and never refuses): more than one `tools` key; a list that is not a plain inline or block list (`|`, `>`, `&`, `*`,
+    `!`, `{`); a `[...]` list that is not closed or has a quoted item; a parenthesis that is not closed or a comma
+    inside parentheses in a `[...]` list; an item outside `[A-Za-z0-9_*:.-]+` other than the `Agent(...)` form, such as
+    `Bash(git status)` (D31, D35); a `tools:` value with text on an indented line after it (`tools: Read` then
+    `  , Write`) (D67); and a `memory` key with a `tools` list, unless its value is a plain word of letters that is not
+    `user`, `project` or `local` (D68, D69). A list that has `*` is shown as `*` alone. An empty list pre-approves
+    nothing. No `tools` key means every tool is available and none is pre-approved. `permissionMode`, `hooks`,
+    `mcpServers` and `memory` are named on the "also sets" line.
+  - **Kiro JSON files** (`.json` under `.kiro/agents/` at any depth, dotfiles included, D69). Kiro CLI names an agent
+    by the `name` in its JSON, not by file name (D67). A file whose `name` is the id (a string) declares it, shows its
+    `allowedTools` as the tools, and shows unreadable when there is no `allowedTools` list of strings. A file whose
+    `name` differs or is not a string is not that agent. Kiro loads files that a strict JSON reader refuses, so this
+    build reads leniently (nesting to 128 levels, a repeated key that it does not read) and never shows the tools of a
+    file it cannot rely on (D66, D68). A file that is not UTF-8, does not parse, repeats `name` or `allowedTools`, or
+    holds a number that overflows an f64 (`1e999`) is an **ambiguous candidate** when its text mentions the id, as
+    written or once the JSON escapes are decoded, whatever its file name is. An `<id>.json` object with no `name` (or
+    only `Name`, or `{}`) is ambiguous too, because Kiro 3 takes the file name for the id. **Outcome:** two files that
+    declare the id, and any ambiguous candidate, **refuse**. An `<id>.json` that cannot be read and does not mention the
+    id **shows unreadable** and does not refuse. `permissions`, `hooks`, `mcpServers`, `includeMcpJson`,
+    `useLegacyMcpJson` and `toolsSettings` are named on the "also sets" line.
+  - **Kiro markdown files** (`.md` under `.kiro/agents/` at any depth, dotfiles included; Kiro 3 only, but this build
+    cannot tell which engine runs, D69). Kiro ends the front matter at the first line that starts with `---` (`----`,
+    `---x` and `--- # c` end it too, an indented ` ---` does not), so a `---` inside a line is plain text and the `name`
+    after it counts (D71). The Claude cut is not used here. The id is the front matter `name`, or the file stem when
+    there is none. A file with no front matter block is not a candidate, so the prompt file of a JSON agent
+    (`<id>.md`, `prompts/<id>.md`) is not a second declaration (D71). **Outcome:** a declared agent **shows
+    unreadable**, because this build does not read the tools of a Kiro markdown agent, and does not refuse in the
+    summary or in `flow trust` (D70). The Kiro harness refuses to start a session for it (D73). A file
+    that opens a front matter block with no `name` and the id for its stem is ambiguous, and so is one whose front
+    matter this build cannot read in full (the forms of the Claude list above, except a `---` inside the front matter, read on the Kiro cut; a byte that is not
+    UTF-8 reads as U+FFFD) and that may name
+    the id, or whose opening `---` line is in a form this build does not take: all of these **refuse**. Two files that
+    declare the id **refuse**. A file called `<id>.md` that cannot be read **shows unreadable**.
+  - **Entries the scan cannot read** are not agent forms and are listed under [Trust](#trust): a link to a folder or a
+    link that leads nowhere, a link in place of `.claude` or `.kiro`, a folder over 512 entries or 4 levels, a file over
+    1 MiB, more than 16 MiB in all, and a name that is not UTF-8. These **refuse**, `flow check` prints `trust hash:
+    none`, and no hash is given.
+
+  The install manifest never hides an Unreadable file ([Trust](#trust), D59). The over-claims and display gaps that the
+  last red-team pass listed are follow-up 25 and are not promised here.
 - **Which definition wins.** Claude Code documents its order when definitions share a name: managed settings, then
   `--agents`, then the project's `.claude/agents/` (the directory closest to the working directory wins), then
   `~/.claude/agents/`, then plugins ([Sources](workflows.md#sources)). The runner passes no `--agents`, so a repo
@@ -505,6 +579,20 @@ agent file wins over an installed agent with the same id ([Which definition wins
 working folder's definition wins over the home folder's, as Kiro does (D42), and step 1f-1 confirms it. One question is
 [deferred](#deferred-to-a-later-slice): whether the runner refuses a stage whose agent id a repo file shares with an
 installed agent.
+
+`flow trust` has no `--harness`, and its summary comes from the catalog that a `flow run` without `--harness` would
+use: the Kiro catalog when only a Kiro runner is recorded, the Claude catalog when only `claude` is recorded, and the
+search from the working folder otherwise. Whenever that is not the Kiro catalog, whatever the install index says, it
+builds the Kiro catalog of the project root as well, because a run with `--harness kiro-cli` needs no install record. For each agent of the workflow it compares the file that the search from the working folder picks with
+the file that the Kiro search picks. If they differ, if only one search finds a file, or if either side is ambiguous,
+it exits 77 with `tool_config_unreadable`, names both files, and records no hash, whatever `--trust` or `--yes` says.
+A file with unknown tools is not a mismatch when both searches pick it. The nearest-wins
+search can show a different file, not a superset of the Kiro files (D76; #231 is merged, squash `fa0694023`).
+Whenever the summary catalog is not the Claude catalog, whatever the index says, it makes the same check against the
+Claude catalog (the project root, the folders above it up to the git top folder, then the home folder), because a run
+with `--harness claude` needs no install record either. The two files are compared by their resolved path and not by the
+label a catalog shows. A difference, a file found by one search only, or an ambiguous side exits 77 with
+`tool_config_unreadable`, names both files and records no hash (D79, intended behavior of #232, which is open).
 
 ## Diagnostics and codes
 
@@ -849,6 +937,23 @@ Each item has a slice or a design that owns it, and a rule until then.
   `update` keep the file hashes in the install index in the home folder, and compare against those, which would lift
   the restriction of D59. It changes the index schema and the install, update and uninstall paths, so it is separate
   from the trust gate. The [Threats](workflows.md#threats) table records the residual risk.
+- **The agent front matter reader on the engine's YAML loader.** Decided in: D61. The reader of agent front matter is
+  hand written, and the rules of D61 stand in for a real parser. The rewrite uses `workflow_core::yaml` and a
+  key extraction, and fails closed. Until then the generated test of D61 is the check.
+- **Parked after the red-team of #175 at `2231dc412`.** Decided in: D69. Not designed. The summary can show more than
+  the harness grants when `disallowedTools` is not subtracted from `tools` (an over-show). A link to a folder under
+  `.claude/skills` is refused, so the layout `.claude/skills/foo -> ../../.agents/skills/foo` costs usability. The 512
+  entry cap refuses a tree of about 400 skills. `~/.kiro/agents` markdown files and subfolder JSON files in the home
+  folder are not checked, because it is not tested that Kiro 3 loads them. Until then the rules of [Trust](#trust)
+  hold. Stop rule: if the next red-team pass finds nothing that grants more than the summary shows, these stay parked. The
+  pass on `258790f46` found none (D72), so they stay parked. The over-claims and display gaps of that pass are follow-up 25 and
+  are not promised here.
+- **Serving the workflow library on the real server.** Decided in: D75. The contract has the library list, entry and
+  copy operations (1.11.0), and the real server does not serve them yet. Until the later step that does, the
+  real-server run of the stub suite skips those cases with a reason.
+- **A scoped escape for large or linked skill assets in the config scan.** Decided in: D60. Until then the limits of
+  [Trust](#trust) hold: a link to a folder, 512 entries, depth 4, 1 MiB for a file and 16 MiB in all refuse the run with
+  the path named.
 - **Trust at stage start for real harnesses.** Owner: [step 1e](workflows-plan.md#1e-trust), which builds the check
   before each session ([Trust](#trust)) in the runner, in front of the harness port. Steps 1f-1 and 1f-2 only start
   every session through the runner. A session refused because the files changed halts the run with `SESSION_FAILED` and
