@@ -7,7 +7,6 @@ import {
   type CanvasGraph,
   type GraphEdge,
   type GraphNode,
-  type EndGraphNode,
   type IntentGraphNode,
   type StageGraphNode,
   type StageSpec,
@@ -18,8 +17,6 @@ import {
 
 /** The id of the node that draws the intent. */
 export const INTENT_ID = 'intent';
-/** The id of the node that draws the end. */
-export const END_ID = 'end';
 
 /**
  * The id of the node that draws a stage, from its `id`, or from its name if
@@ -70,26 +67,9 @@ function stageNode(
   };
 }
 
-function endNode(): Unplaced<EndGraphNode> {
-  return {
-    id: END_ID,
-    ariaLabel: 'End',
-    type: 'end',
-    height: NODE_HEIGHT.end,
-    data: {},
-  };
-}
-
 /** A short name for a node, to say which nodes an edge joins. */
 function titleOf(node: GraphNode): string {
-  switch (node.type) {
-    case 'intent':
-      return 'intent';
-    case 'stage':
-      return `stage ${node.data.name}`;
-    case 'end':
-      return 'end';
-  }
+  return node.type === 'intent' ? 'intent' : `stage ${node.data.name}`;
 }
 
 // One edge from each node to the next.
@@ -108,35 +88,16 @@ function chain(nodes: readonly GraphNode[]): GraphEdge[] {
 }
 
 /**
- * How to draw the workflow. The defaults are what the page drew before the
- * option was there.
+ * Turns a workflow into what the canvas draws: the intent and the stages in
+ * list order, in one column, joined by run-order edges, with a stop mark on
+ * each stage that no other stage follows.
  */
-export interface GraphOptions {
-  /**
-   * Ends each leaf stage with a stop mark instead of drawing one end node.
-   * Off by default, so a caller that has not moved over keeps the end node.
-   */
-  readonly stopMarks?: boolean;
-}
-
-/**
- * Turns a workflow into what the canvas draws: the intent, the stages in list
- * order, and the end, in one column, joined by run-order edges. With
- * `stopMarks` the end node gives way to a stop mark on each stage that no
- * other stage follows.
- */
-export function buildGraph(
-  spec: WorkflowSpec,
-  harness: string,
-  options: GraphOptions = {},
-): CanvasGraph {
+export function buildGraph(spec: WorkflowSpec, harness: string): CanvasGraph {
   const nodes = stackDown<UnplacedNode>([
     intentNode(spec),
     ...spec.stages.map((stage, index) =>
       stageNode(stage, harness, placeOf(spec.stages, index)),
     ),
-    ...(options.stopMarks ? [] : [endNode()]),
   ]);
-  const graph = { nodes, edges: chain(nodes) };
-  return options.stopMarks ? withStopMarks(graph) : graph;
+  return withStopMarks({ nodes, edges: chain(nodes) });
 }

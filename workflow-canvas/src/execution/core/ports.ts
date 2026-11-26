@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { RunView } from '../../api/types';
 
 /**
- * The calls of the API that a run needs, already tied to a session. The
+ * The call of the API that a run needs, already tied to a session. The
  * page depends on this port; `workflow/load-workflow.ts` builds the adapter.
- * A call rejects when its signal aborts, and gives up on its own when the
- * server does not answer, so the caller never waits for ever.
+ * The call rejects when its signal aborts, and gives up on its own when the
+ * server does not answer, so the caller never waits for ever. The events of
+ * a run that was started come in through `ReadEvents` in `run-client/`.
  */
 export interface RunPort {
   /**
@@ -15,11 +15,6 @@ export interface RunPort {
    * and when the workflow must be trusted first, with `RunNeedsTrust`.
    */
   start(goal: string, signal: AbortSignal): Promise<string>;
-  /**
-   * Reads the state of the run with the id. It rejects with `RunReadRefused`
-   * when the server will not give the run, so the caller does not try again.
-   */
-  get(runId: string, signal: AbortSignal): Promise<RunView>;
 }
 
 /** A run was asked for while another is active; `runId` is the active one. */
@@ -59,17 +54,9 @@ export class RunNeedsTrust extends Error {
   }
 }
 
-/** A read that failed in a way that reading again cannot fix. */
-export class RunReadRefused extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'RunReadRefused';
-  }
-}
-
 /**
  * The only source of time for the core, so a test can move it by hand. The
- * timer adapter lives in the layer that draws the tab.
+ * timer adapter lives in the layer that draws the views.
  */
 export interface Scheduler {
   /** Resolves after `ms` milliseconds, or at once when the signal aborts. */
@@ -88,10 +75,3 @@ export interface RunMemory {
   /** Drops the run that was remembered, once it has ended or is gone. */
   forget(): void;
 }
-
-/** A memory that keeps nothing, for a page that does not survive a reload. */
-export const NO_RUN_MEMORY: RunMemory = {
-  recall: () => undefined,
-  remember: () => undefined,
-  forget: () => undefined,
-};

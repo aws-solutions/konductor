@@ -39,6 +39,8 @@ export const test = base.extend<{ sample: void; designer: DesignerPage }>({
   ],
   designer: async ({ canvas }, use) => {
     await canvas.expectWorkflowDrawn();
-    await use(new DesignerPage(canvas.page));
+    const designer = new DesignerPage(canvas.page);
+    await designer.openProperties();
+    await use(designer);
   },
 });

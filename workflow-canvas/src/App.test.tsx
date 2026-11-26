@@ -1,25 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { MODE_STORAGE_KEY } from './theme/mode';
 import { App } from './App';
-import { FakeScheduler } from './test-support/fake-scheduler';
-import {
-  HELLO_DOCUMENT,
-  failed,
-  helloRun,
-  loaded,
-} from './test-support/fixtures';
+import { HELLO_DOCUMENT, failed, loaded } from './test-support/fixtures';
 import { createSwapRisk } from './launch/swap-guard';
+import { fakeNextPorts } from './test-support/next-ports';
 import type { LoadResult } from './workflow/load-workflow';
 
 const settled = (result: LoadResult) => Promise.resolve(result);
+
+const ports = () => fakeNextPorts();
 
 // The top bar measures itself, and jsdom has no layout, so it shows its
 // buttons in the overflow menu. The measuring copy is hidden from the
@@ -38,7 +29,9 @@ afterEach(() => {
 
 describe('App', () => {
   it('shows "Workflow canvas" as the title until a workflow loads', () => {
-    render(<App load={new Promise<LoadResult>(() => {})} />);
+    render(
+      <App load={new Promise<LoadResult>(() => {})} nextPortsFor={ports} />,
+    );
 
     const main = screen.getByRole('main');
     expect(
@@ -50,7 +43,7 @@ describe('App', () => {
   });
 
   it('titles the page with the name of the loaded workflow', async () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     const main = screen.getByRole('main');
     expect(
@@ -59,7 +52,12 @@ describe('App', () => {
   });
 
   it('keeps "Workflow canvas" as the title when the load failed', async () => {
-    render(<App load={settled(failed('The launch code is not valid.'))} />);
+    render(
+      <App
+        load={settled(failed('The launch code is not valid.'))}
+        nextPortsFor={ports}
+      />,
+    );
 
     await screen.findByText('The launch code is not valid.');
     expect(
@@ -68,7 +66,7 @@ describe('App', () => {
   });
 
   it('moves between the views with the arrow keys, Home and End', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
     const designer = screen.getByRole('tab', { name: 'Design' });
     const execution = screen.getByRole('tab', { name: 'Run' });
     designer.focus();
@@ -93,26 +91,30 @@ describe('App', () => {
   });
 
   it('announces nothing while the workflow is loading', () => {
-    render(<App load={new Promise<LoadResult>(() => {})} />);
+    render(
+      <App load={new Promise<LoadResult>(() => {})} nextPortsFor={ports} />,
+    );
 
     expect(screen.getByTestId('run-live-status').textContent).toBe('');
   });
 
   it('announces nothing to run when the load failed', async () => {
-    render(<App load={settled(failed('The launch code is not valid.'))} />);
+    render(
+      <App
+        load={settled(failed('The launch code is not valid.'))}
+        nextPortsFor={ports}
+      />,
+    );
 
     await screen.findByText('The launch code is not valid.');
     expect(screen.getByTestId('run-live-status').textContent).toBe('');
   });
 
-  it('says the run is ready once the workflow has loaded', async () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+  it('announces nothing before a run is started', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
+    await screen.findByTestId('node-stage-draft');
 
-    await waitFor(() =>
-      expect(screen.getByTestId('run-live-status').textContent).toBe(
-        'Ready. Press Run to start.',
-      ),
-    );
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
   });
 
   it.each([
@@ -139,14 +141,14 @@ describe('App', () => {
       shown: 'The format is not known.',
     },
   ])('announces nothing to run when $when', async ({ document, shown }) => {
-    render(<App load={settled(loaded(document))} />);
+    render(<App load={settled(loaded(document))} nextPortsFor={ports} />);
 
     await screen.findByText(shown, { exact: false });
     expect(screen.getByTestId('run-live-status').textContent).toBe('');
   });
 
   it('lets Tab reach only the selected view in the switch', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     expect(
       screen.getByRole('tab', { name: 'Design' }).getAttribute('tabindex'),
@@ -156,8 +158,8 @@ describe('App', () => {
     ).toBe('-1');
   });
 
-  it('renders the Designer and Execution tabs with Designer selected', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+  it('renders the Design and Run views with Design selected', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     expect(
       screen.getByRole('tab', { name: 'Design' }).getAttribute('aria-selected'),
@@ -172,7 +174,7 @@ describe('App', () => {
     const pending = new Promise<LoadResult>((resolve) => {
       finish = resolve;
     });
-    render(<App load={pending} />);
+    render(<App load={pending} nextPortsFor={ports} />);
     expect(screen.getByText('Loading the workflow')).toBeTruthy();
 
     finish(loaded(HELLO_DOCUMENT));
@@ -181,43 +183,65 @@ describe('App', () => {
     expect(screen.queryByText('Loading the workflow')).toBeNull();
   });
 
-  it('draws the workflow on the Designer tab', async () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+  it('draws the workflow on the Design view', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     expect(await screen.findByTestId('node-stage-draft')).toBeTruthy();
   });
 
-  it('shows the error on the Designer tab when the load failed', async () => {
-    render(<App load={settled(failed('The launch code is not valid.'))} />);
+  it('shows the error on the Design view when the load failed', async () => {
+    render(
+      <App
+        load={settled(failed('The launch code is not valid.'))}
+        nextPortsFor={ports}
+      />,
+    );
 
     expect(
       await screen.findByText('The launch code is not valid.'),
     ).toBeTruthy();
   });
 
-  it('draws the workflow with a Run button on the Execution tab', async () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+  it('offers the Goal box and Run on the Run view', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
+    await screen.findByTestId('node-stage-draft');
 
     fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
     const panel = screen.getByRole('tabpanel', { name: 'Run' });
-    expect(await within(panel).findByTestId('node-stage-draft')).toBeTruthy();
-    expect(within(panel).getByRole('button', { name: 'Run' })).toBeTruthy();
+    expect(
+      await within(panel).findByRole('button', { name: 'Run' }),
+    ).toBeTruthy();
+    expect(within(panel).getByLabelText('Goal')).toBeTruthy();
   });
 
-  it('keeps the loaded workflow when the tabs are switched back and forth', async () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
-    await screen.findByTestId('node-end');
+  it('says a run uses the saved workflow when Design has unsaved changes', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
+    await screen.findByTestId('node-stage-draft');
+    fireEvent.change(screen.getByTestId('yaml-text'), {
+      target: { value: 'name: hello\n' },
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+
+    expect(screen.getByTestId('unsaved-note').textContent).toContain(
+      'A run uses the saved workflow',
+    );
+  });
+
+  it('keeps the loaded workflow when the views are switched back and forth', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
+    await screen.findByTestId('node-stage-draft');
 
     fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
 
-    expect(screen.getByTestId('node-end')).toBeTruthy();
+    expect(screen.getByTestId('node-stage-draft')).toBeTruthy();
     expect(screen.queryByText('Loading the workflow')).toBeNull();
   });
 
   it('shows the top bar with the page name and a theme button', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     expect(themeButton('light').textContent).toBe('Theme: light');
     expect(themeButton('light').getAttribute('aria-label')).toBe(
@@ -226,7 +250,7 @@ describe('App', () => {
   });
 
   it('shows the breadcrumb Workflows > the open workflow, with no dead link', async () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     const trail = await screen.findByRole('navigation', {
       name: 'Breadcrumbs',
@@ -239,7 +263,7 @@ describe('App', () => {
   });
 
   it('switches to the dark mode, remembers it and switches back', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     fireEvent.click(themeButton('light'));
 
@@ -258,14 +282,14 @@ describe('App', () => {
   it('starts in the mode that was saved', () => {
     window.localStorage.setItem(MODE_STORAGE_KEY, 'dark');
 
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(themeButton('dark').textContent).toBe('Theme: dark');
   });
 
   it('does not save a mode that nobody chose', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
     expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBeNull();
   });
@@ -274,44 +298,33 @@ describe('App', () => {
 describe('App and the risk of opening another workflow', () => {
   it('has nothing at risk before anything is changed or run', async () => {
     const swapRisk = createSwapRisk();
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} swapRisk={swapRisk} />);
-    await screen.findByTestId('node-end');
+    render(
+      <App
+        load={settled(loaded(HELLO_DOCUMENT))}
+        swapRisk={swapRisk}
+        nextPortsFor={ports}
+      />,
+    );
+    await screen.findByTestId('node-stage-draft');
 
     expect(swapRisk.get()).toEqual({ draft: false, run: false });
   });
 
-  it('reports unsaved changes in the Designer', async () => {
+  it('reports unsaved changes in the Design view', async () => {
     const swapRisk = createSwapRisk();
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} swapRisk={swapRisk} />);
-    await screen.findByTestId('node-end');
+    render(
+      <App
+        load={settled(loaded(HELLO_DOCUMENT))}
+        swapRisk={swapRisk}
+        nextPortsFor={ports}
+      />,
+    );
+    await screen.findByTestId('node-stage-draft');
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'name' }), {
-      target: { value: 'write' },
+    fireEvent.change(screen.getByTestId('yaml-text'), {
+      target: { value: 'name: hello\n' },
     });
 
     expect(swapRisk.get()).toEqual({ draft: true, run: false });
-  });
-
-  it('reports a run that is being followed', async () => {
-    const swapRisk = createSwapRisk();
-    const runs = {
-      start: vi.fn().mockResolvedValue(helloRun(0).runId),
-      get: vi.fn().mockResolvedValue(helloRun(0)),
-    };
-    render(
-      <App
-        load={settled(loaded(HELLO_DOCUMENT, runs))}
-        scheduler={new FakeScheduler()}
-        swapRisk={swapRisk}
-      />,
-    );
-    await screen.findByTestId('node-end');
-    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Run' }));
-
-    await waitFor(() =>
-      expect(swapRisk.get()).toEqual({ draft: false, run: true }),
-    );
   });
 });

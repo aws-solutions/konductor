@@ -2,14 +2,19 @@
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { test } from '../support/fixtures';
 import {
-  answerRunsWith,
+  answerRunWith,
+  blocked,
+  passed,
   refuseRunsWith,
-  runReply,
+  runFinished,
+  runPassed,
+  running,
+  type RunEventBody,
 } from '../support/run-routes';
 import { TAB_NAMES, WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 for (const name of TAB_NAMES) {
-  test(`${name} tab has no axe violations`, async ({ canvas }) => {
+  test(`the ${name} view has no axe violations`, async ({ canvas }) => {
     await canvas.selectTab(name);
     await canvas.expectTabLoaded(name);
 
@@ -17,7 +22,7 @@ for (const name of TAB_NAMES) {
   });
 }
 
-test('Designer tab has no axe violations when the workflow did not load', async ({
+test('the page has no axe violations when the workflow did not load', async ({
   page,
 }) => {
   const canvas = new WorkflowCanvasPage(page);
@@ -28,42 +33,51 @@ test('Designer tab has no axe violations when the workflow did not load', async 
 });
 
 // The stub runs one run at a time, so these answer the run calls themselves.
-const RUN_STATES = [
-  ['a stage running', runReply('running', ['running', 'pending'])],
-  ['a failed stage', runReply('halted', ['blocked', 'pending'])],
-  ['a passed run', runReply('passed', ['passed', 'passed'])],
-] as const;
+const RUN_STATES: readonly (readonly [string, readonly RunEventBody[]])[] = [
+  ['a stage running', [running(1, 'draft')]],
+  [
+    'a stage that stopped the run',
+    [blocked(1, 'draft', 'RESULT_MISSING'), runFinished(2, 'halted')],
+  ],
+  [
+    'a run that passed',
+    [passed(1, 'draft'), passed(2, 'review'), runPassed(3)],
+  ],
+];
 
-for (const [name, reply] of RUN_STATES) {
-  test(`Execution tab has no axe violations with ${name}`, async ({
+for (const [name, events] of RUN_STATES) {
+  test(`the Run view has no axe violations with ${name}`, async ({
     canvas,
   }) => {
-    await answerRunsWith(canvas.page, reply);
+    await answerRunWith(canvas.page, events);
     await canvas.selectTab('Run');
     await canvas.expectTabLoaded('Run');
 
     await canvas.runButton.click();
-    await canvas.badge('node-end').waitFor();
+    await canvas.runStatus.waitFor();
 
     await expectNoAccessibilityViolations(canvas.page);
   });
 }
 
-test('Execution tab has no axe violations with a failed stage in the dark mode', async ({
+test('the Run view has no axe violations with a stopped run in the dark mode', async ({
   canvas,
 }) => {
-  await answerRunsWith(canvas.page, runReply('halted', ['blocked', 'pending']));
+  await answerRunWith(canvas.page, [
+    blocked(1, 'draft', 'RESULT_MISSING'),
+    runFinished(2, 'halted'),
+  ]);
   await canvas.switchTheme();
   await canvas.selectTab('Run');
   await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
-  await canvas.badge('node-end').waitFor();
+  await canvas.runStatus.waitFor();
 
   await expectNoAccessibilityViolations(canvas.page);
 });
 
-test('Execution tab has no axe violations with the error of the API shown', async ({
+test('the Run view has no axe violations with the error of the API shown', async ({
   canvas,
 }) => {
   await refuseRunsWith(canvas.page, 409, {
@@ -79,7 +93,7 @@ test('Execution tab has no axe violations with the error of the API shown', asyn
   await expectNoAccessibilityViolations(canvas.page);
 });
 
-test('Execution tab has no axe violations with a goal that cannot be run', async ({
+test('the Run view has no axe violations with a goal that cannot be run', async ({
   canvas,
 }) => {
   await canvas.selectTab('Run');
@@ -104,7 +118,7 @@ async function openTrustDialog(canvas: WorkflowCanvasPage) {
   await canvas.page.getByTestId('trust-command').waitFor();
 }
 
-test('Execution tab has no axe violations with the trust dialog open', async ({
+test('the Run view has no axe violations with the trust dialog open', async ({
   canvas,
 }) => {
   await openTrustDialog(canvas);
@@ -112,7 +126,7 @@ test('Execution tab has no axe violations with the trust dialog open', async ({
   await expectNoAccessibilityViolations(canvas.page);
 });
 
-test('Execution tab has no axe violations with the trust dialog open in the dark mode', async ({
+test('the Run view has no axe violations with the trust dialog open in the dark mode', async ({
   canvas,
 }) => {
   await canvas.switchTheme();

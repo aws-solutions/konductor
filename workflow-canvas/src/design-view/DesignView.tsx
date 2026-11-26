@@ -26,13 +26,11 @@ import {
   type ShortcutKey,
 } from '../designer-view/use-edit-history';
 import { useYamlDraft } from '../designer-view/use-yaml-draft';
-import type {
-  CheckAnswer,
-  DraftStatus,
-  ValidatePort,
-} from '../designer-view/yaml-draft';
+import type { DraftStatus, ValidatePort } from '../designer-view/yaml-draft';
 import {
   canAddStage,
+  canEdit,
+  canRemoveStage,
   changeBlocker,
   fileBlocker,
   KNOWN_AGENTS,
@@ -40,6 +38,7 @@ import {
   nextStageName,
   promptFieldOf,
   rawTextOf,
+  READ_ONLY_REASON,
   textBlocker,
   textOf,
   writeBlocker,
@@ -52,7 +51,13 @@ import type { Scheduler } from '../execution/core/ports';
 import { buildGraph, stageNodeId } from '../graph';
 import '../execution/announcements.css';
 import './design-view.css';
-import { FINDINGS_PER_PAGE, findingsPage, nextShown } from './findings';
+import {
+  FINDINGS_PER_PAGE,
+  findingsPage,
+  mergeFindings,
+  nextShown,
+  type Finding,
+} from './findings';
 import {
   SAVABLE_KEYS,
   fieldValuesOf,
@@ -95,9 +100,9 @@ const count = (n: number) => n.toLocaleString('en-US');
  * thousands of findings, so `findingsPage` gives a page of them at a time and
  * the list says how many are left.
  */
-function Findings({ answer }: { answer: CheckAnswer | undefined }) {
+function Findings({ diagnostics }: { diagnostics: readonly Finding[] }) {
   const [shown, setShown] = useState(FINDINGS_PER_PAGE);
-  const { page, left, more } = findingsPage(answer, shown);
+  const { page, left, more } = findingsPage({ diagnostics }, shown);
   if (page.length === 0) return null;
   return (
     <Alert
@@ -107,8 +112,10 @@ function Findings({ answer }: { answer: CheckAnswer | undefined }) {
     >
       <ul>
         {page.map((finding, index) => (
-          <li key={`${finding.line}-${finding.code}-${index}`}>
-            Line {finding.line}: {finding.message}
+          <li key={`${finding.line}-${finding.path}-${index}`}>
+            {finding.line === undefined
+              ? finding.message
+              : `Line ${finding.line}: ${finding.message}`}
           </li>
         ))}
       </ul>
@@ -281,6 +288,20 @@ export function DesignView({
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
+  const showingEarlier = history.text !== text;
+  // The list is about the text on screen. The editor's check, which holds a
+  // refused save's findings, is about the draft, so it joins only while the
+  // box shows the draft's text and its line numbers point into it.
+  const findings = useMemo(
+    () =>
+      mergeFindings(
+        answer?.diagnostics ?? [],
+        !showingEarlier && state.check.revision === state.revision
+          ? state.check.diagnostics
+          : [],
+      ),
+    [answer, showingEarlier, state.check, state.revision],
+  );
   // The view of the text as it is now, when a check of it has answered with
   // one. Anything else is a view of an earlier text, which names the stages
   // of this draft only while no stage was added, deleted or moved since.
@@ -294,14 +315,12 @@ export function DesignView({
     }),
     [state.saved.view, state.draft.stages],
   );
-  const graph = useMemo(
-    () => buildGraph(spec, harness, { stopMarks: true }),
-    [spec, harness],
-  );
+  const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
   const { select } = editor;
   // Counts the times a stage has been chosen in the drawing, so the side
   // column opens its keys each time, as the drawing says it will.
   const [opens, setOpens] = useState(0);
+  const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -331,6 +350,7 @@ export function DesignView({
   // does not move.
   // The keys of a stage describe the file. While the text has been typed
   // over they cannot be changed, and this says why.
+  const editable = canEdit(state);
   const frozen = changeBlocker(state);
   const fileView = opened.answer?.view ?? null;
   const viewStage = picked
@@ -392,12 +412,23 @@ export function DesignView({
       const undoing = asked === 'undo';
       const next = undoing ? undoText : redoText;
       const adopts = undoing ? undoAdopts : redoAdopts;
-      if (next === undefined || (adopts && blocked !== undefined)) return;
+      if (!editable || next === undefined || (adopts && blocked !== undefined))
+        return;
       if (adopts) editor.setText(next);
       if (undoing) undo();
       else redo();
     },
-    [blocked, editor, redo, redoAdopts, redoText, undo, undoAdopts, undoText],
+    [
+      blocked,
+      editable,
+      editor,
+      redo,
+      redoAdopts,
+      redoText,
+      undo,
+      undoAdopts,
+      undoText,
+    ],
   );
 
   const onKeyDown = useCallback(
@@ -424,7 +455,6 @@ export function DesignView({
           sources: state.draft.stages.map((one) => sources.of(one.id)),
         })
       : undefined;
-  const showingEarlier = history.text !== text;
 
   return (
     <section
@@ -435,8 +465,21 @@ export function DesignView({
       <h2 className="wf-visually-hidden" id={headingId}>
         Design
       </h2>
+      <div
+        className="wf-visually-hidden"
+        role="status"
+        data-testid="designer-live"
+      >
+        <span key={announcement.count}>{announcement.text}</span>
+      </div>
       <SpaceBetween size="m">
-        {frozen !== undefined && (
+        {!editable && (
+          <Alert type="info" data-testid="read-only-note">
+            {READ_ONLY_REASON} You can look at the stages and select one, but
+            not change them.
+          </Alert>
+        )}
+        {editable && frozen !== undefined && (
           <Alert type="info" data-testid="stage-keys-frozen">
             {frozen}
           </Alert>
@@ -471,7 +514,7 @@ export function DesignView({
         )}
         <CheckLine status={draft.status} failure={draft.failure} />
         <EditAlerts state={state} onReload={editor.reload} />
-        <Findings answer={answer} />
+        <Findings diagnostics={findings} />
         <DesignerLayout
           drawing={<WorkflowCanvas graph={graph} selection={selection} />}
           yaml={{
@@ -503,6 +546,25 @@ export function DesignView({
               editor.setPrompt(picked.id, typed);
             }
           }}
+          onStageDelete={() => {
+            if (
+              !picked ||
+              frozen !== undefined ||
+              !canRemoveStage(state.draft)
+            ) {
+              return;
+            }
+            editor.remove(picked.id);
+            setOpens((count) => count + 1);
+            setAnnouncement(({ count }) => ({
+              text: `Stage ${picked.name || 'with no name'} deleted.`,
+              count: count + 1,
+            }));
+          }}
+          deleteDisabled={frozen !== undefined || !canRemoveStage(state.draft)}
+          deleteDisabledReason={
+            frozen ?? 'A workflow needs at least one stage.'
+          }
         >
           <SpaceBetween size="s">
             <SaveControls
@@ -527,8 +589,11 @@ export function DesignView({
               <Button
                 iconName="undo"
                 disabled={
-                  !history.canUndo || (undoAdopts && blocked !== undefined)
+                  !editable ||
+                  !history.canUndo ||
+                  (undoAdopts && blocked !== undefined)
                 }
+                disabledReason={editable ? undefined : READ_ONLY_REASON}
                 onClick={onUndo}
               >
                 Undo
@@ -536,8 +601,11 @@ export function DesignView({
               <Button
                 iconName="redo"
                 disabled={
-                  !history.canRedo || (redoAdopts && blocked !== undefined)
+                  !editable ||
+                  !history.canRedo ||
+                  (redoAdopts && blocked !== undefined)
                 }
+                disabledReason={editable ? undefined : READ_ONLY_REASON}
                 onClick={onRedo}
               >
                 Redo

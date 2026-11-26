@@ -5,9 +5,7 @@ import {
   NODE_WIDTH,
   SEQUENCE_IN,
   SEQUENCE_OUT,
-  type EndGraphNode,
   type IntentGraphNode,
-  type NodeStatus,
   type StageGraphNode,
 } from '../graph';
 import {
@@ -51,16 +49,6 @@ function SequenceOut() {
   );
 }
 
-// The state of a node in a run, as a word in a coloured pill.
-function StatusBadge({ status }: { status: NodeStatus | undefined }) {
-  if (!status) return null;
-  return (
-    <span className="wf-badge" data-testid="status-badge">
-      {status.label}
-    </span>
-  );
-}
-
 /**
  * The card behind the content of a node: one rounded outline, with the focus
  * ring and its gap drawn around it.
@@ -93,17 +81,12 @@ function NodeShape({ height, radius }: { height: number; radius: number }) {
 /** The start of the workflow: the outcome it is for, with a run order out. */
 export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
   return (
-    <div
-      className="wf-node wf-node-intent"
-      data-testid="node-intent"
-      data-state={data.status?.state}
-    >
+    <div className="wf-node wf-node-intent" data-testid="node-intent">
       <NodeShape height={NODE_HEIGHT.intent} radius={NODE_RADIUS.intent} />
       <div className="wf-node-title">intent</div>
       <div className="wf-node-intent-outcome" title={data.outcome}>
         {data.outcome}
       </div>
-      <StatusBadge status={data.status} />
       <SequenceOut />
     </div>
   );
@@ -115,7 +98,6 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
     <div
       className="wf-node wf-node-stage"
       data-testid={`node-stage-${data.name}`}
-      data-state={data.status?.state}
     >
       <NodeShape height={NODE_HEIGHT.stage} radius={NODE_RADIUS.stage} />
       <SequenceIn />
@@ -125,7 +107,6 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
       <div className="wf-node-sub" title={`${data.agent} · ${data.harness}`}>
         {data.agent} · {data.harness}
       </div>
-      <StatusBadge status={data.status} />
       {data.endsRun ? (
         <span className="wf-node-stop">
           <StopMark stage={data.name} state={data.stopState} />
@@ -133,22 +114,6 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
       ) : (
         <SequenceOut />
       )}
-    </div>
-  );
-}
-
-/** The finish of the workflow, with a run order in and, after a run, its result. */
-export function EndNode({ data }: NodeProps<FlowNode<EndGraphNode>>) {
-  return (
-    <div
-      className="wf-node wf-node-end"
-      data-testid="node-end"
-      data-state={data.status?.state}
-    >
-      <NodeShape height={NODE_HEIGHT.end} radius={NODE_RADIUS.end} />
-      <SequenceIn />
-      <div className="wf-node-title">end</div>
-      <StatusBadge status={data.status} />
     </div>
   );
 }

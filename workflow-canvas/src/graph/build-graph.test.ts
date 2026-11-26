@@ -14,15 +14,21 @@ const HELLO: WorkflowSpec = {
 };
 
 describe('buildGraph', () => {
-  it('draws the intent, each stage in list order, then the end', () => {
+  it('draws the intent, then each stage in list order', () => {
     const { nodes } = buildGraph(HELLO, 'kiro-cli');
 
     expect(nodes.map((node) => [node.id, node.type])).toEqual([
       ['intent', 'intent'],
       ['stage-draft', 'stage'],
       ['stage-review', 'stage'],
-      ['end', 'end'],
     ]);
+  });
+
+  it('marks the last stage as the one the run ends after', () => {
+    const { nodes } = buildGraph(HELLO, 'kiro-cli');
+
+    expect(nodes.at(-1)).toMatchObject({ data: { endsRun: true } });
+    expect(nodes[1]?.data).not.toHaveProperty('endsRun');
   });
 
   it('keeps the order of the stages as the workflow lists them', () => {
@@ -30,7 +36,7 @@ describe('buildGraph', () => {
 
     const ids = buildGraph(reversed, 'kiro-cli').nodes.map((node) => node.id);
 
-    expect(ids).toEqual(['intent', 'stage-review', 'stage-draft', 'end']);
+    expect(ids).toEqual(['intent', 'stage-review', 'stage-draft']);
   });
 
   it('gives the intent its outcome', () => {
@@ -46,7 +52,12 @@ describe('buildGraph', () => {
 
     expect(stages.map((node) => node.data)).toEqual([
       { name: 'draft', agent: 'k-developer', harness: 'kiro-cli' },
-      { name: 'review', agent: 'k-quality-assurance', harness: 'kiro-cli' },
+      {
+        name: 'review',
+        agent: 'k-quality-assurance',
+        harness: 'kiro-cli',
+        endsRun: true,
+      },
     ]);
   });
 
@@ -71,7 +82,6 @@ describe('buildGraph', () => {
       'Intent: Add a greeting to the README',
       'Stage draft, agent k-developer, harness kiro-cli',
       'Stage review, agent k-quality-assurance, harness kiro-cli',
-      'End',
     ]);
   });
 
@@ -81,7 +91,6 @@ describe('buildGraph', () => {
     expect(edges.map((edge) => edge.ariaLabel)).toEqual([
       'Run order from intent to stage draft',
       'Run order from stage draft to stage review',
-      'Run order from stage review to end',
     ]);
   });
 
@@ -91,7 +100,6 @@ describe('buildGraph', () => {
     expect(edges.map((edge) => [edge.source, edge.target])).toEqual([
       ['intent', 'stage-draft'],
       ['stage-draft', 'stage-review'],
-      ['stage-review', 'end'],
     ]);
   });
 
@@ -130,10 +138,6 @@ describe('buildGraph', () => {
         x: -NODE_WIDTH / 2,
         y: NODE_HEIGHT.intent + NODE_HEIGHT.stage + 2 * NODE_GAP,
       },
-      {
-        x: -NODE_WIDTH / 2,
-        y: NODE_HEIGHT.intent + 2 * NODE_HEIGHT.stage + 3 * NODE_GAP,
-      },
     ]);
   });
 
@@ -144,15 +148,14 @@ describe('buildGraph', () => {
       [NODE_WIDTH, NODE_HEIGHT.intent],
       [NODE_WIDTH, NODE_HEIGHT.stage],
       [NODE_WIDTH, NODE_HEIGHT.stage],
-      [NODE_WIDTH, NODE_HEIGHT.end],
     ]);
   });
 
-  it('draws a workflow with no stages as the intent joined to the end', () => {
+  it('draws a workflow with no stages as the intent on its own', () => {
     const { nodes, edges } = buildGraph({ ...HELLO, stages: [] }, 'kiro-cli');
 
-    expect(nodes.map((node) => node.id)).toEqual(['intent', 'end']);
-    expect(edges.map((edge) => edge.id)).toEqual(['intent->end']);
+    expect(nodes.map((node) => node.id)).toEqual(['intent']);
+    expect(edges).toEqual([]);
   });
 
   it('does not change the workflow it is given', () => {
@@ -183,7 +186,6 @@ describe('buildGraph', () => {
       'intent',
       'stage-s1',
       'stage-s2',
-      'end',
     ]);
     expect(graph.nodes[1]).toMatchObject({ data: { name: 'draft' } });
   });
@@ -225,7 +227,6 @@ describe('buildGraph, for stages that share a name', () => {
       'Stage review (1 of 3), agent k-developer, harness kiro-cli',
       'Stage review (2 of 3), agent k-developer, harness kiro-cli',
       'Stage ship, agent k-developer, harness kiro-cli',
-      'End',
     ]);
   });
 });

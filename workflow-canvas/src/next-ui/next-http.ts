@@ -29,7 +29,7 @@ import type { StartRun } from '../run-view/run-params';
 import type { ListRuns } from '../run-view/use-run-history';
 
 /*
- * The calls that the newer views need and the page's API client does
+ * The calls that the views need and the page's API client does
  * not have yet: the extra fields of the workflow, the agents, the past runs,
  * the events of a run, the start of a run with its params, the state of the
  * run's checks and a check of a text that keeps the lines of each stage. They talk to the relative `/api`,
@@ -48,7 +48,7 @@ const NO_SESSION =
   'The page has no session with the server. Reload it with a fresh launch address.';
 
 const SESSION_UNKNOWN =
-  'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
+  'The server no longer knows this session. It may have been started again. Start `flow view` again and open the address it prints. An address works once.';
 
 /** The status that says the server no longer knows the session. */
 const SESSION_LOST_STATUS = 401;
@@ -328,7 +328,7 @@ function checkAnswerOf(body: unknown): CheckAnswer {
 }
 
 /**
- * Builds the calls of the newer views for one loaded workflow. The
+ * Builds the calls of the views for one loaded workflow. The
  * token is the one that workflow was loaded with, read once and held here,
  * so a session opened later, or one that is still waiting for its first
  * load, is never addressed by these calls. Each loaded workflow gets its own

@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Page } from '@playwright/test';
-import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
+import { expect, openDeclaringChecks, test } from '../support/fixtures';
 import {
   answerRunWith,
-  expect,
-  openDeclaringChecks,
   passed,
   runPassed,
   running,
-  test,
-} from '../support/next-fixtures';
+} from '../support/run-routes';
 import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 const RUN_EVENTS = [
@@ -40,57 +37,57 @@ async function ranWithChecks(
 }
 
 test('lists the check the workflow declares, with its state from the run', async ({
-  next,
+  canvas,
 }) => {
-  await next.selectTab('Run');
+  await canvas.selectTab('Run');
 
   // The stub's workflow declares one check and no stage waits for it.
   await expect(
-    next.page.getByRole('heading', { name: 'Checks' }),
+    canvas.page.getByRole('heading', { name: 'Checks' }),
   ).toBeVisible();
-  await expect(next.page.getByText('readme-exists')).toBeVisible();
-  await expect(next.page.getByText('No stage waits for it.')).toBeVisible();
-  await expect(next.page.getByTestId('check-state-readme-exists')).toHaveText(
+  await expect(canvas.page.getByText('readme-exists')).toBeVisible();
+  await expect(canvas.page.getByText('No stage waits for it.')).toBeVisible();
+  await expect(canvas.page.getByTestId('check-state-readme-exists')).toHaveText(
     'Deferred',
   );
 });
 
 test('reads the state from the server once a run has started', async ({
-  next,
+  canvas,
 }) => {
-  await next.selectTab('Run');
+  await canvas.selectTab('Run');
   const reads: string[] = [];
-  next.page.on('request', (request) => {
+  canvas.page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
     if (/^\/api\/runs\/[^/]+$/.test(path)) reads.push(path);
   });
 
-  await next.runButton.click();
+  await canvas.runButton.click();
 
   // The stub runs the workflow for real here, and its answer is the state of
   // the one check it declares: no stage waits for it, so it stays deferred.
   await expect.poll(() => reads.length, { timeout: 10_000 }).toBeGreaterThan(0);
-  await expect(next.page.getByTestId('check-state-readme-exists')).toHaveText(
+  await expect(canvas.page.getByTestId('check-state-readme-exists')).toHaveText(
     'Deferred',
   );
 });
 
 test('shows no read error after a run whose read reports no check', async ({
-  next,
+  canvas,
 }) => {
-  await answerRunWith(next.page, RUN_EVENTS);
-  await next.selectTab('Run');
+  await answerRunWith(canvas.page, RUN_EVENTS);
+  await canvas.selectTab('Run');
 
-  await next.runButton.click();
-  await expect(next.page.getByTestId('run-progress')).toContainText(
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
 
-  await expect(next.page.getByTestId('check-state-readme-exists')).toHaveText(
+  await expect(canvas.page.getByTestId('check-state-readme-exists')).toHaveText(
     'Deferred',
   );
   await expect(
-    next.page.getByText('There is no run with this id.'),
+    canvas.page.getByText('There is no run with this id.'),
   ).toHaveCount(0);
 });
 
@@ -156,12 +153,6 @@ test('reads the run for its checks a bounded number of times, never polling', as
     ),
   ).rejects.toThrow();
   expect(reads).toHaveLength(2);
-});
-
-test('draws no checks panel for the views it replaced', async ({ page }) => {
-  await page.goto(`/?ui=classic#${STUB_LAUNCH_CODE}`);
-
-  await expect(page.getByRole('heading', { name: 'Checks' })).toHaveCount(0);
 });
 
 test('has no accessibility violations with the checks shown', async ({

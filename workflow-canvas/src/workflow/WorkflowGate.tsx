@@ -12,7 +12,7 @@ export interface DrawableWorkflow {
 }
 
 /**
- * Shows what a tab shows before it has a workflow to draw: a message while
+ * Shows what the page shows before it has a workflow to draw: a message while
  * the load is under way (`result` is `undefined`), when it failed, or when
  * there is nothing to draw. Once there is a workflow it renders `children`.
  */

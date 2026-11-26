@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { fakeNextPorts } from '../test-support/next-ports';
 import type { WorkflowApi } from '../api/api';
 import { createHttpApi } from '../api/http-api';
 import { HELLO_DOCUMENT, HELLO_SESSION } from '../test-support/fixtures';
@@ -25,7 +26,11 @@ function pageWith(createSession: WorkflowApi['createSession']) {
   function Root() {
     const load = useWorkflowSource(source);
     return (
-      <App load={load} notice={<LaunchWait load={load} source={source} />} />
+      <App
+        load={load}
+        notice={<LaunchWait load={load} source={source} />}
+        nextPortsFor={() => fakeNextPorts()}
+      />
     );
   }
   render(<Root />);
@@ -114,7 +119,11 @@ describe('LaunchWait', () => {
     function Root() {
       const load = useWorkflowSource(source);
       return (
-        <App load={load} notice={<LaunchWait load={load} source={source} />} />
+        <App
+          load={load}
+          notice={<LaunchWait load={load} source={source} />}
+          nextPortsFor={() => fakeNextPorts()}
+        />
       );
     }
     render(<Root />);

@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { CheckAnswer, CheckDiagnostic } from '../designer-view/yaml-draft';
+export interface Finding {
+  readonly message: string;
+  readonly line: number | undefined;
+  readonly path: string;
+  readonly severity: string;
+}
+
+interface FindingsAnswer {
+  readonly diagnostics: readonly Finding[];
+}
 
 /** How many findings of the check are shown at once. */
 export const FINDINGS_PER_PAGE = 20;
@@ -12,7 +21,7 @@ const ORDER: readonly string[] = ['error', 'warning', 'info'];
 // Where a finding ranks: by its severity, worst first. A severity this page
 // does not know ranks after the ones it does, so it never pushes an error off
 // the list.
-function rankOf(finding: CheckDiagnostic): number {
+function rankOf(finding: Finding): number {
   const rank = ORDER.indexOf(finding.severity);
   return rank < 0 ? ORDER.length : rank;
 }
@@ -24,9 +33,7 @@ function rankOf(finding: CheckDiagnostic): number {
  * behind a finding of a lower severity. `Array#sort` is stable, so findings
  * of the same severity keep the order the server sent them in.
  */
-function worstFirst(
-  all: readonly CheckDiagnostic[],
-): readonly CheckDiagnostic[] {
+function worstFirst(all: readonly Finding[]): readonly Finding[] {
   return [...all]
     .sort((a, b) => rankOf(a) - rankOf(b))
     .slice(0, FINDINGS_SHOWN_MOST);
@@ -35,7 +42,7 @@ function worstFirst(
 /** The page of findings to draw, and what is left over. */
 export interface FindingsPage {
   /** The findings to list now, worst first. */
-  readonly page: readonly CheckDiagnostic[];
+  readonly page: readonly Finding[];
   /** How many the server sent that this page does not list. */
   readonly left: number;
   /** How many more the next page would add, or 0 when there is no next page. */
@@ -51,7 +58,7 @@ export interface FindingsPage {
  * can offer it and stop offering it at the limit.
  */
 export function findingsPage(
-  answer: CheckAnswer | undefined,
+  answer: FindingsAnswer | undefined,
   shown: number,
 ): FindingsPage {
   const all = answer?.diagnostics ?? [];
@@ -66,6 +73,25 @@ export function findingsPage(
     left: all.length - page.length,
     more: Math.min(FINDINGS_PER_PAGE, room, sorted.length - page.length),
   };
+}
+
+export function mergeFindings(
+  ...lists: readonly (readonly Finding[])[]
+): readonly Finding[] {
+  const seen = new Set<string>();
+  return lists.flatMap((list) =>
+    list.filter((finding) => {
+      const key = JSON.stringify([
+        finding.severity,
+        finding.path,
+        finding.line,
+        finding.message,
+      ]);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  );
 }
 
 /** How many findings to show after the person asks for the next page. */

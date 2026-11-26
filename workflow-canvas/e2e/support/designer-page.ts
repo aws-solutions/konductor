@@ -9,7 +9,7 @@ export type SaveStatus =
   | 'Saved'
   | 'Loaded again from the server';
 
-/** Page object for the editing parts of the Designer tab. */
+/** Page object for the editing parts of the Design view. */
 export class DesignerPage {
   readonly name: Locator;
   readonly agent: Locator;
@@ -23,13 +23,20 @@ export class DesignerPage {
   readonly saveStatus: Locator;
   readonly conflict: Locator;
   readonly problems: Locator;
-  /** The alert region of the Designer: conflicts, a file loaded again, failed saves. */
+  /** The alerts of the view: conflicts, a file loaded again, failed saves. */
   readonly alerts: Locator;
   readonly selected: Locator;
   /** The canvas that draws the stages. */
   readonly graph: Locator;
 
+  /** The sub-tab that shows the keys of the stage that is picked. */
+  readonly propertiesTab: Locator;
+  /** The sub-tab that shows the text of the workflow. */
+  readonly yamlTab: Locator;
+
   constructor(readonly page: Page) {
+    this.propertiesTab = page.getByRole('tab', { name: 'Properties' });
+    this.yamlTab = page.getByRole('tab', { name: 'YAML' });
     this.name = page.getByRole('textbox', { name: 'name', exact: true });
     this.agent = page.getByRole('button', { name: /^agent / });
     this.prompt = page.getByRole('textbox', { name: 'prompt', exact: true });
@@ -42,10 +49,25 @@ export class DesignerPage {
     this.save = page.getByRole('button', { name: 'Save', exact: true });
     this.saveStatus = page.getByTestId('save-status');
     this.conflict = page.getByTestId('conflict');
-    this.problems = page.getByTestId('problems');
+    this.problems = page.getByTestId('yaml-problems');
     this.alerts = page.getByTestId('edit-alerts');
     this.selected = page.getByText('Selected:');
     this.graph = page.getByRole('region', { name: 'Workflow graph' });
+  }
+
+  /**
+   * Opens the Properties sub-tab, where the keys of the picked stage are. The
+   * view opens on YAML, so a test that reads or types a key opens this first.
+   */
+  async openProperties(): Promise<void> {
+    await this.propertiesTab.click();
+    await expect(this.name).toBeVisible();
+  }
+
+  /** Opens the YAML sub-tab, where the text and its problems are. */
+  async openYaml(): Promise<void> {
+    await this.yamlTab.click();
+    await expect(this.page.getByTestId('yaml-text')).toBeVisible();
   }
 
   /** The node of the stage with the name. */

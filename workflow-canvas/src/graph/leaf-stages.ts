@@ -5,8 +5,8 @@ export type { StopMarkState };
 
 /**
  * The ids of the stage nodes that no other stage follows, in the order of the
- * nodes. An edge to a node that is not a stage, such as the end, does not
- * count, so the answer is the same with or without an end node.
+ * nodes. An edge to a node that is not a stage does not count, so the intent
+ * at the head of the graph changes no answer.
  */
 export function leafStages(graph: CanvasGraph): string[] {
   const stages = graph.nodes.filter((node) => node.type === 'stage');

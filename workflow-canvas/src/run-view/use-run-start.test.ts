@@ -258,7 +258,7 @@ describe('useRunStart', () => {
     warn.mockRestore();
   });
 
-  it('says what to do about a server that may have stopped, as the Execution tab does', async () => {
+  it('says what to do about a server that may have stopped', async () => {
     const start = vi.fn(() =>
       Promise.reject(new ApiError('The server did not answer.', 503)),
     );

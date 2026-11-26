@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-import { HELLO_VIEW } from '../../src/test-support/fixtures';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
+import { HELLO_VIEW } from '../../src/test-support/fixtures';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
+import { expect, test } from '../support/fixtures';
 import {
   answerRunWith,
-  expect,
+  blocked,
   passed,
+  refuseRunsWith,
+  runFinished,
   runPassed,
   runRow,
   running,
-  test,
-} from '../support/next-fixtures';
-import { refuseRunsWith } from '../support/run-routes';
+} from '../support/run-routes';
 import { sharedSession } from '../support/session';
 
 /** Another launch address, as a person pastes one. */
@@ -33,25 +34,24 @@ const stopMark = (canvas: WorkflowCanvasPage) =>
   canvas.graph.getByRole('img', { name: /^The run ends after/ });
 
 test('draws the stages of the workflow, the last one with a stop mark', async ({
-  next,
+  canvas,
 }) => {
-  await expect(next.node('node-stage-draft')).toBeVisible();
-  await expect(next.node('node-stage-review')).toBeVisible();
-  await expect(stopMark(next)).toHaveAccessibleName(
+  await expect(canvas.node('node-stage-draft')).toBeVisible();
+  await expect(canvas.node('node-stage-review')).toBeVisible();
+  await expect(stopMark(canvas)).toHaveAccessibleName(
     'The run ends after review',
   );
-  await expect(next.graph.getByTestId('node-end')).toHaveCount(0);
 });
 
-test('offers the text of the workflow to type over', async ({ next }) => {
-  const box = next.page.getByTestId('yaml-text');
+test('offers the text of the workflow to type over', async ({ canvas }) => {
+  const box = canvas.page.getByTestId('yaml-text');
 
   await expect(box).toBeEditable();
   await expect(box).toHaveValue(/name: hello/);
 });
 
 test('saves the text shown after Undo and Redo over a raw edit', async ({
-  next,
+  canvas,
 }) => {
   const savedView = {
     ...HELLO_VIEW,
@@ -60,7 +60,7 @@ test('saves the text shown after Undo and Redo over a raw edit', async ({
     ),
   };
   const saved: string[] = [];
-  await next.page.route('**/api/workflow', async (route) => {
+  await canvas.page.route('**/api/workflow', async (route) => {
     if (route.request().method() !== 'PUT') return route.fallback();
     const body = route.request().postDataJSON() as { text?: unknown };
     if (typeof body.text !== 'string') throw new Error('Save has no text.');
@@ -73,41 +73,75 @@ test('saves the text shown after Undo and Redo over a raw edit', async ({
       },
     });
   });
-  await next.page.getByRole('tab', { name: 'Properties' }).click();
-  await next.page.getByLabel('name', { exact: true }).fill('drafting');
-  await next.page.getByRole('tab', { name: 'YAML' }).click();
-  const yaml = next.page.getByTestId('yaml-text');
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  await canvas.page.getByLabel('name', { exact: true }).fill('drafting');
+  await canvas.page.getByRole('tab', { name: 'YAML' }).click();
+  const yaml = canvas.page.getByTestId('yaml-text');
   const beforeRaw = await yaml.inputValue();
   const typed = `${beforeRaw}# typed over\n`;
   await yaml.fill(typed);
 
-  await next.page.keyboard.press('ControlOrMeta+z');
+  await canvas.page.keyboard.press('ControlOrMeta+z');
 
   await expect(yaml).toHaveValue(beforeRaw);
-  await next.page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(next.page.getByTestId('save-status')).toHaveText('Saved');
+  await canvas.page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(canvas.page.getByTestId('save-status')).toHaveText('Saved');
   expect(saved).toEqual([beforeRaw]);
 
-  await next.page.keyboard.press('ControlOrMeta+Shift+z');
+  await canvas.page.keyboard.press('ControlOrMeta+Shift+z');
 
   await expect(yaml).toHaveValue(typed);
-  await next.page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(next.page.getByTestId('save-status')).toHaveText('Saved');
+  await canvas.page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(canvas.page.getByTestId('save-status')).toHaveText('Saved');
   expect(saved).toEqual([beforeRaw, typed]);
 });
 
-test('shows the text of the workflow under YAML', async ({ next }) => {
-  const yaml = next.page.getByRole('tabpanel', { name: 'YAML' });
+test('keeps every workflow control read-only when the server says so', async ({
+  page,
+}) => {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', async (route) => {
+    const response = await route.fetch();
+    const document = (await response.json()) as object;
+    await route.fulfill({ json: { ...document, read_only: true } });
+  });
+  const canvas = new WorkflowCanvasPage(page);
+
+  await canvas.open(STUB_LAUNCH_CODE);
+  await canvas.expectWorkflowDrawn();
+
+  await expect(page.getByTestId('read-only-note')).toContainText(
+    'The workflow is read-only.',
+  );
+  await expect(page.getByTestId('yaml-text')).not.toBeEditable();
+  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /^Add / })).toBeDisabled();
+
+  await page.getByRole('tab', { name: 'Properties' }).click();
+  const properties = page.getByRole('tabpanel', { name: 'Properties' });
+  await expect(
+    properties.getByLabel('name', { exact: true }),
+  ).not.toBeEditable();
+  await expect(properties.getByLabel('agent', { exact: true })).toBeDisabled();
+  await expect(
+    properties.getByRole('button', { name: 'Delete stage' }),
+  ).toBeDisabled();
+});
+
+test('shows the text of the workflow under YAML', async ({ canvas }) => {
+  const yaml = canvas.page.getByRole('tabpanel', { name: 'YAML' });
 
   await expect(yaml).toContainText('name: hello');
   await expect(yaml).toContainText('agent: k-developer');
 });
 
 test('shows the keys of the picked stage under Properties', async ({
-  next,
+  canvas,
 }) => {
-  await next.page.getByRole('tab', { name: 'Properties' }).click();
-  const properties = next.page.getByRole('tabpanel', { name: 'Properties' });
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  const properties = canvas.page.getByRole('tabpanel', { name: 'Properties' });
 
   await expect(properties.getByLabel('name', { exact: true })).toHaveValue(
     'draft',
@@ -116,281 +150,373 @@ test('shows the keys of the picked stage under Properties', async ({
   await expect(properties.getByLabel('prompt_file')).toBeVisible();
 });
 
-test('opens the stage that is clicked in the drawing', async ({ next }) => {
-  await next.node('node-stage-review').click();
-  await next.page.getByRole('tab', { name: 'Properties' }).click();
+test('opens the stage that is clicked in the drawing', async ({ canvas }) => {
+  await canvas.node('node-stage-review').click();
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
 
   await expect(
-    next.page
+    canvas.page
       .getByRole('tabpanel', { name: 'Properties' })
       .getByLabel('name', { exact: true }),
   ).toHaveValue('review');
 });
 
-test('checks a changed stage and marks its lines in the text', async ({
-  next,
+test('deletes a stage from Properties and focuses its neighbour', async ({
+  canvas,
 }) => {
-  await next.page.getByRole('tab', { name: 'Properties' }).click();
-  const name = next.page
+  await canvas.node('node-stage-review').click();
+  const properties = canvas.page.getByRole('tabpanel', { name: 'Properties' });
+  const name = properties.getByLabel('name', { exact: true });
+  await expect(name).toHaveValue('review');
+
+  await properties.getByRole('button', { name: 'Delete stage' }).click();
+
+  await expect(canvas.page.getByTestId('node-stage-review')).toHaveCount(0);
+  await expect(name).toHaveValue('draft');
+  await expect(name).toBeFocused();
+  await expect(canvas.page.getByTestId('designer-live')).toHaveText(
+    'Stage review deleted.',
+  );
+  await expect(
+    properties.getByRole('button', { name: 'Delete stage' }),
+  ).toBeDisabled();
+});
+
+test('checks a changed stage and marks its lines in the text', async ({
+  canvas,
+}) => {
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  const name = canvas.page
     .getByRole('tabpanel', { name: 'Properties' })
     .getByLabel('name', { exact: true });
 
   await name.fill('drafting');
 
-  await expect(next.page.getByTestId('yaml-check-status')).toContainText(
+  await expect(canvas.page.getByTestId('yaml-check-status')).toContainText(
     'The text is valid',
   );
-  await next.page.getByRole('tab', { name: 'YAML' }).click();
-  await expect(next.page.getByRole('tabpanel', { name: 'YAML' })).toContainText(
-    'are stage drafting',
-  );
+  await canvas.page.getByRole('tab', { name: 'YAML' }).click();
+  await expect(
+    canvas.page.getByRole('tabpanel', { name: 'YAML' }),
+  ).toContainText('are stage drafting');
 });
 
-test('goes back to the text before an edit, and comes back to it', async ({
-  next,
+test('shows a diagnostic when the server refuses a save', async ({
+  canvas,
 }) => {
-  await next.page.getByRole('tab', { name: 'Properties' }).click();
-  await next.page
+  await canvas.page.route('**/api/workflow', async (route) => {
+    if (route.request().method() !== 'PUT') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 422,
+      json: {
+        error: 'The workflow has errors.',
+        code: 'invalid_workflow',
+        diagnostics: [
+          {
+            code: 'RESERVED_NAME',
+            severity: 'error',
+            path: 'stages[0].name',
+            line: 7,
+            column: 11,
+            end_line: 7,
+            end_column: 19,
+            message: 'The server does not allow this stage name.',
+          },
+        ],
+      },
+    });
+  });
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  await canvas.page
     .getByRole('tabpanel', { name: 'Properties' })
     .getByLabel('name', { exact: true })
     .fill('drafting');
 
-  await next.page.getByRole('button', { name: 'Undo' }).click();
+  await canvas.page.getByRole('button', { name: 'Save' }).click();
 
-  await expect(next.page.getByTestId('earlier-text-note')).toBeVisible();
-  await next.page.getByRole('button', { name: 'Redo' }).click();
-  await expect(next.page.getByTestId('earlier-text-note')).toHaveCount(0);
+  await expect(canvas.page.getByTestId('yaml-problems')).toContainText(
+    'Line 7: The server does not allow this stage name.',
+  );
+  await expect(
+    canvas.page.getByRole('button', { name: 'Save' }),
+  ).toBeDisabled();
+});
+
+test('goes back to the text before an edit, and comes back to it', async ({
+  canvas,
+}) => {
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  await canvas.page
+    .getByRole('tabpanel', { name: 'Properties' })
+    .getByLabel('name', { exact: true })
+    .fill('drafting');
+
+  await canvas.page.getByRole('button', { name: 'Undo' }).click();
+
+  await expect(canvas.page.getByTestId('earlier-text-note')).toBeVisible();
+  await canvas.page.getByRole('button', { name: 'Redo' }).click();
+  await expect(canvas.page.getByTestId('earlier-text-note')).toHaveCount(0);
 });
 
 test('opens the Run view with the default goal of the workflow', async ({
-  next,
+  canvas,
 }) => {
-  await next.selectTab('Run');
+  await canvas.selectTab('Run');
 
-  await expect(next.goal).toHaveValue('Add a greeting to the README');
-  await expect(next.runButton).toBeEnabled();
-  await expect(next.page.getByText('No run yet.')).toBeVisible();
+  await expect(canvas.goal).toHaveValue('Add a greeting to the README');
+  await expect(canvas.runButton).toBeEnabled();
+  await expect(canvas.page.getByText('No run yet.')).toBeVisible();
 });
 
 test('follows a run to Passed and lists it among the past runs', async ({
-  next,
+  canvas,
 }) => {
-  await answerRunWith(next.page, RUN_EVENTS);
-  await next.selectTab('Run');
+  await answerRunWith(canvas.page, RUN_EVENTS);
+  await canvas.selectTab('Run');
 
-  await next.runButton.click();
+  await canvas.runButton.click();
 
-  await expect(next.page.getByTestId('run-progress')).toContainText(
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
-  await expect(next.page.getByTestId('run-history-row')).toHaveCount(1);
+  await expect(canvas.page.getByTestId('run-history-row')).toHaveCount(1);
+});
+
+test('shows and announces why a stage halted the run', async ({ canvas }) => {
+  await answerRunWith(canvas.page, [
+    blocked(1, 'draft', 'RESULT_MISSING'),
+    runFinished(2, 'halted'),
+  ]);
+  await canvas.selectTab('Run');
+
+  await canvas.runButton.click();
+
+  const sentence = 'The final message of the session has no result line.';
+  await expect(canvas.page.getByText(sentence, { exact: true })).toBeVisible();
+  await expect(canvas.runLiveStatus).toContainText(sentence);
 });
 
 test('offers another run once the run has passed, with the goal to edit', async ({
-  next,
+  canvas,
 }) => {
-  await answerRunWith(next.page, RUN_EVENTS);
-  await next.selectTab('Run');
+  await answerRunWith(canvas.page, RUN_EVENTS);
+  await canvas.selectTab('Run');
 
-  await next.runButton.click();
-  await expect(next.page.getByTestId('run-progress')).toContainText(
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
 
-  await expect(next.goal).toHaveValue('Add a greeting to the README');
-  await expect(next.goal).toBeEditable();
-  await expect(next.runButton).toBeEnabled();
+  await expect(canvas.goal).toHaveValue('Add a greeting to the README');
+  await expect(canvas.goal).toBeEditable();
+  await expect(canvas.runButton).toBeEnabled();
 });
 
 test('does not take a run that has passed up again after a reload', async ({
-  next,
+  canvas,
 }) => {
-  await answerRunWith(next.page, RUN_EVENTS);
-  await next.selectTab('Run');
-  await next.runButton.click();
-  await expect(next.page.getByTestId('run-progress')).toContainText(
+  await answerRunWith(canvas.page, RUN_EVENTS);
+  await canvas.selectTab('Run');
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
 
-  await next.page.reload();
-  await next.title.waitFor();
-  await next.selectTab('Run');
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Run');
 
-  await expect(next.page.getByText('No run yet.')).toBeVisible();
-  await expect(next.goal).toHaveValue('Add a greeting to the README');
-  await expect(next.runButton).toBeEnabled();
+  await expect(canvas.page.getByText('No run yet.')).toBeVisible();
+  await expect(canvas.goal).toHaveValue('Add a greeting to the README');
+  await expect(canvas.runButton).toBeEnabled();
 });
 
-test('follows one run after a reload, and takes its stages only from the events', async ({
-  next,
+test('follows one run after a reload, and reads it only through the events', async ({
+  canvas,
 }) => {
-  await answerRunWith(next.page, RUN_EVENTS);
+  await answerRunWith(canvas.page, RUN_EVENTS);
   const reads: string[] = [];
-  next.page.on('request', (request) => {
+  canvas.page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
     if (path.startsWith('/api/runs')) reads.push(path);
   });
-  await next.selectTab('Run');
-  await next.runButton.click();
-  await expect(next.page.getByTestId('run-progress')).toContainText(
+  await canvas.selectTab('Run');
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Run');
+
+  // The passed run is forgotten. A whole-run read was only for its checks.
+  await expect(canvas.page.getByText('No run yet.')).toBeVisible();
   const whileRunning = reads.filter((path) =>
     /^\/api\/runs\/[^/]+$/.test(path),
   ).length;
-
-  await next.page.reload();
-  await next.title.waitFor();
-  await next.selectTab('Run');
-
-  // The run that passed is forgotten, so nothing is followed. The whole run
-  // is read only for the state of its checks, and the reloaded page, which
-  // follows no run, reads it no further.
-  await expect(next.page.getByText('No run yet.')).toBeVisible();
   expect(
     reads.filter((path) => /^\/api\/runs\/[^/]+$/.test(path)),
   ).toHaveLength(whileRunning);
 });
 
 test('follows a run that is still going once after a reload', async ({
-  next,
+  canvas,
 }) => {
-  await answerRunWith(next.page, [running(1, 'draft')], [runRow('running')], {
+  await answerRunWith(canvas.page, [running(1, 'draft')], [runRow('running')], {
     finished: false,
   });
-  await next.selectTab('Run');
-  await next.runButton.click();
-  await expect(next.page.getByTestId('run-progress')).toContainText('draft');
+  await canvas.selectTab('Run');
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText('draft');
 
   const follows: string[] = [];
-  next.page.on('request', (request) => {
+  canvas.page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
     if (path.endsWith('/events')) follows.push(path);
   });
-  await next.page.reload();
-  await next.title.waitFor();
-  await next.selectTab('Run');
-  await expect(next.page.getByTestId('run-progress')).toContainText('draft');
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Run');
+  await expect(canvas.page.getByTestId('run-progress')).toContainText('draft');
 
   // One follower reads the run: the events of one run id, and no read of the
   // whole run beside it.
   expect(new Set(follows).size).toBe(1);
-  await expect(next.goal).toHaveValue('');
+  await expect(canvas.goal).toHaveValue('');
 });
 
 test('follows the run through a look at the Design view, and drops it for another workflow', async ({
-  next,
+  canvas,
 }) => {
-  await answerRunWith(next.page, [running(1, 'draft')], [runRow('running')], {
+  await answerRunWith(canvas.page, [running(1, 'draft')], [runRow('running')], {
     finished: false,
   });
-  await next.selectTab('Run');
-  await next.runButton.click();
-  await expect(next.page.getByTestId('run-progress')).toContainText('draft');
+  await canvas.selectTab('Run');
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText('draft');
 
   // The page follows the run, so the Design view takes no follower off it.
-  await next.selectTab('Design');
+  await canvas.selectTab('Design');
   await answerRunWith(
-    next.page,
+    canvas.page,
     [running(1, 'draft'), passed(2, 'draft'), running(3, 'review')],
     [runRow('running')],
     { finished: false },
   );
-  await next.page.waitForResponse((answer) => answer.url().includes('/events'));
-  await next.selectTab('Run');
+  await canvas.page.waitForResponse((answer) =>
+    answer.url().includes('/events'),
+  );
+  await canvas.selectTab('Run');
 
   // What came while the Design view was up is on the page.
-  await expect(next.page.getByTestId('run-progress')).toContainText('review');
+  await expect(canvas.page.getByTestId('run-progress')).toContainText('review');
 
   // Another workflow is another session, so its Run view follows no run of
   // the one that was left. The session of the pasted address is one the
   // server knows, so the load works and the page really swaps.
-  await next.page.route('**/api/session', (route) =>
+  await canvas.page.route('**/api/session', (route) =>
     route.fulfill({ json: { ...sharedSession(), harness: 'other-harness' } }),
   );
-  const asked = next.page.waitForEvent('dialog');
-  await next.page.evaluate((code) => (window.location.hash = code), OTHER_CODE);
+  const asked = canvas.page.waitForEvent('dialog');
+  await canvas.page.evaluate(
+    (code) => (window.location.hash = code),
+    OTHER_CODE,
+  );
   await (await asked).accept();
-  await next.title.waitFor();
-  await next.selectTab('Run');
-  await expect(next.page.getByText('No run yet.')).toBeVisible();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Run');
+  await expect(canvas.page.getByText('No run yet.')).toBeVisible();
 
   // Nothing reads the run of the workflow that was left: the wait for such a
   // read runs out, where a follower still on it would read within a second.
   await expect(
-    next.page.waitForRequest(
+    canvas.page.waitForRequest(
       (request) =>
         new URL(request.url()).pathname === `/api/runs/${RUN_ID}/events`,
       { timeout: 1500 },
     ),
   ).rejects.toThrow();
-  await expect(next.goal).toBeEditable();
+  await expect(canvas.goal).toBeEditable();
 });
 
-test('carries a run reloaded part-way through to its end', async ({ next }) => {
-  await answerRunWith(next.page, [running(1, 'draft')], [runRow('running')], {
+test('carries a run reloaded part-way through to its end', async ({
+  canvas,
+}) => {
+  await answerRunWith(canvas.page, [running(1, 'draft')], [runRow('running')], {
     finished: false,
   });
-  await next.selectTab('Run');
-  await next.runButton.click();
-  await expect(next.page.getByTestId('run-progress')).toContainText('draft');
-  await next.page.reload();
-  await next.title.waitFor();
-  await next.selectTab('Run');
-  await expect(next.page.getByTestId('run-progress')).toContainText('draft');
+  await canvas.selectTab('Run');
+  await canvas.runButton.click();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText('draft');
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Run');
+  await expect(canvas.page.getByTestId('run-progress')).toContainText('draft');
 
   // The run ends while the reloaded page follows it.
-  await answerRunWith(next.page, RUN_EVENTS);
+  await answerRunWith(canvas.page, RUN_EVENTS);
 
-  await expect(next.page.getByTestId('run-progress')).toContainText(
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
-  await expect(next.page.getByText('No run yet.')).toBeHidden();
-  await expect(next.goal).toHaveValue('Add a greeting to the README');
-  await expect(next.runButton).toBeEnabled();
+  await expect(canvas.page.getByText('No run yet.')).toBeHidden();
+  await expect(canvas.goal).toHaveValue('Add a greeting to the README');
+  await expect(canvas.runButton).toBeEnabled();
 });
 
-test('draws the views it replaced through ?ui=classic', async ({ page }) => {
-  await page.route('**/api/session', (route) =>
-    route.fulfill({ json: sharedSession() }),
-  );
-  const canvas = new WorkflowCanvasPage(page);
+// The page once drew these views only for `?ui=next`, and the one before
+// them for `?ui=classic`. The query is gone; a link that still carries one
+// opens the page all the same.
+for (const query of ['ui=next', 'ui=classic']) {
+  test(`opens the two views for an address with ?${query}`, async ({
+    page,
+  }) => {
+    await page.route('**/api/session', (route) =>
+      route.fulfill({ json: sharedSession() }),
+    );
+    const canvas = new WorkflowCanvasPage(page);
 
-  await canvas.open(STUB_LAUNCH_CODE);
+    await page.goto(`/?${query}#${STUB_LAUNCH_CODE}`);
+    await canvas.title.waitFor();
 
-  await expect(canvas.node('node-end')).toBeVisible();
-  await expect(page.getByTestId('yaml-text')).toHaveCount(0);
+    await canvas.expectWorkflowDrawn();
+    await expect(page.getByTestId('yaml-text')).toBeVisible();
+  });
+}
+
+test('has no accessibility violations on either view', async ({ canvas }) => {
+  await expectNoAccessibilityViolations(canvas.page);
+
+  await canvas.selectTab('Run');
+
+  await expectNoAccessibilityViolations(canvas.page);
 });
 
-test('has no accessibility violations on either view', async ({ next }) => {
-  await expectNoAccessibilityViolations(next.page);
+test('draws both views in the dark mode', async ({ canvas }) => {
+  await canvas.switchTheme();
 
-  await next.selectTab('Run');
+  await expect(stopMark(canvas)).toBeVisible();
 
-  await expectNoAccessibilityViolations(next.page);
-});
+  await canvas.selectTab('Run');
 
-test('draws both views in the dark mode', async ({ next }) => {
-  await next.switchTheme();
-
-  await expect(stopMark(next)).toBeVisible();
-
-  await next.selectTab('Run');
-
-  await expect(next.runButton).toBeVisible();
+  await expect(canvas.runButton).toBeVisible();
 });
 
 // Saving the prompt is covered by e2e/editing, where the specs that write to
 // the stub run one at a time; this one only types.
-test('types a prompt into the keys of a stage', async ({ next }) => {
-  const properties = next.page.getByRole('tabpanel', { name: 'Properties' });
-  await next.page.getByRole('tab', { name: 'Properties' }).click();
+test('types a prompt into the keys of a stage', async ({ canvas }) => {
+  const properties = canvas.page.getByRole('tabpanel', { name: 'Properties' });
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
   const prompt = properties.getByLabel('prompt', { exact: true });
 
   await expect(prompt).toBeEditable();
   await prompt.fill('Write a warmer greeting to README.md.');
 
-  await expect(next.page.getByTestId('save-status')).toContainText(
+  await expect(canvas.page.getByTestId('save-status')).toContainText(
     'Unsaved changes',
   );
 });
@@ -412,60 +538,62 @@ async function refuseForTrust(canvas: WorkflowCanvasPage): Promise<void> {
   await canvas.page.getByTestId('trust-command').waitFor();
 }
 
-test('opens the trust dialog when the run needs trust', async ({ next }) => {
-  await refuseForTrust(next);
-  const dialog = next.page.getByTestId('trust-dialog');
+test('opens the trust dialog when the run needs trust', async ({ canvas }) => {
+  await refuseForTrust(canvas);
+  const dialog = canvas.page.getByTestId('trust-dialog');
 
   await expect(dialog).toContainText('Trust the workflow to run it');
-  await expect(next.page.getByTestId('trust-command')).toHaveText(
+  await expect(canvas.page.getByTestId('trust-command')).toHaveText(
     TRUST_COMMAND,
   );
   await expect(dialog.getByRole('button', { name: 'Run again' })).toBeVisible();
 });
 
-test('copies the command that trusts the workflow', async ({ next }) => {
-  await next.page
+test('copies the command that trusts the workflow', async ({ canvas }) => {
+  await canvas.page
     .context()
     .grantPermissions(['clipboard-read', 'clipboard-write']);
-  await refuseForTrust(next);
+  await refuseForTrust(canvas);
 
-  await next.page.getByRole('button', { name: 'Copy command' }).click();
+  await canvas.page.getByRole('button', { name: 'Copy command' }).click();
 
-  const copied = await next.page.evaluate(() => navigator.clipboard.readText());
+  const copied = await canvas.page.evaluate(() =>
+    navigator.clipboard.readText(),
+  );
   expect(copied).toBe(TRUST_COMMAND);
 });
 
-test('starts the run once more with Run again', async ({ next }) => {
-  await refuseForTrust(next);
-  await answerRunWith(next.page, RUN_EVENTS);
+test('starts the run once more with Run again', async ({ canvas }) => {
+  await refuseForTrust(canvas);
+  await answerRunWith(canvas.page, RUN_EVENTS);
 
-  await next.page.getByRole('button', { name: 'Run again' }).click();
+  await canvas.page.getByRole('button', { name: 'Run again' }).click();
 
-  await expect(next.page.getByTestId('trust-dialog')).toBeHidden();
-  await expect(next.page.getByTestId('run-progress')).toContainText(
+  await expect(canvas.page.getByTestId('trust-dialog')).toBeHidden();
+  await expect(canvas.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
 });
 
 test('leaves the Run view as it was when the dialog is closed', async ({
-  next,
+  canvas,
 }) => {
-  await refuseForTrust(next);
+  await refuseForTrust(canvas);
 
-  await next.page.getByRole('button', { name: 'Close', exact: true }).click();
+  await canvas.page.getByRole('button', { name: 'Close', exact: true }).click();
 
-  await expect(next.page.getByTestId('trust-dialog')).toBeHidden();
-  const alert = next.page.getByTestId('run-start-error');
+  await expect(canvas.page.getByTestId('trust-dialog')).toBeHidden();
+  const alert = canvas.page.getByTestId('run-start-error');
   await expect(alert).toContainText('The run did not start.');
   await expect(alert).toContainText(TRUST_COMMAND);
-  await expect(next.goal).toHaveValue('Add a greeting to the README');
-  await expect(next.runButton).toBeEnabled();
+  await expect(canvas.goal).toHaveValue('Add a greeting to the README');
+  await expect(canvas.runButton).toBeEnabled();
 });
 
 test('has no accessibility violations with the trust dialog open', async ({
-  next,
+  canvas,
 }) => {
-  await refuseForTrust(next);
+  await refuseForTrust(canvas);
 
-  await expectNoAccessibilityViolations(next.page);
+  await expectNoAccessibilityViolations(canvas.page);
 });

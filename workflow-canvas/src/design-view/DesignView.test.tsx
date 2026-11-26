@@ -7,8 +7,14 @@ import type { StageView, WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
-import { MAX_STAGES, textOf } from '../designer/core';
-import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
+import { MAX_STAGES, READ_ONLY_REASON, textOf } from '../designer/core';
+import {
+  SaveConflict,
+  SaveLost,
+  SaveRefused,
+  SessionLost,
+} from '../designer/core/ports';
+import { oneCheck } from '../next-ui/one-check';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
   acceptingEdits,
@@ -269,6 +275,7 @@ function Harness({
   validate,
   stageFields = FIELDS,
   agents,
+  useOneCheck = false,
   onEditor,
 }: {
   document?: WorkflowDocument;
@@ -280,12 +287,26 @@ function Harness({
   ) => Promise<CheckAnswer>;
   stageFields?: StageFieldsByKind;
   agents?: readonly { readonly id: string; readonly summary: string }[];
+  useOneCheck?: boolean;
   /** Hands the editor to the test, which other views of the page also hold. */
   onEditor?: (editor: Editor) => void;
 }) {
+  const checks = useMemo(
+    () => oneCheck(validate, workflow.name),
+    [validate, workflow.name],
+  );
+  const editorEdits = useMemo(
+    () => (useOneCheck ? { ...edits, check: checks.check } : edits),
+    [checks.check, edits, useOneCheck],
+  );
   const workflowRef = useMemo(
-    () => ({ harness: 'kiro-cli', document: workflow, edits, runs: NO_RUNS }),
-    [workflow, edits],
+    () => ({
+      harness: 'kiro-cli',
+      document: workflow,
+      edits: editorEdits,
+      runs: NO_RUNS,
+    }),
+    [workflow, editorEdits],
   );
   const editor = useEditor(workflowRef, scheduler);
   if (editor) onEditor?.(editor);
@@ -295,7 +316,7 @@ function Harness({
       editor={editor}
       loaded={workflowRef}
       harness="kiro-cli"
-      validate={validate}
+      validate={useOneCheck ? checks.validate : validate}
       scheduler={scheduler}
       stageFields={stageFields}
       {...(agents ? { agents } : {})}
@@ -310,6 +331,7 @@ function drawn({
   openedRecovers = false,
   openedHeld = false,
   agents,
+  useOneCheck = false,
 }: {
   document?: WorkflowDocument;
   /** The answers of the checks that follow an edit, in order. */
@@ -322,6 +344,7 @@ function drawn({
   openedHeld?: boolean;
   /** The agents on offer for the `agent` key. */
   agents?: readonly { readonly id: string; readonly summary: string }[];
+  useOneCheck?: boolean;
 } = {}) {
   const scheduler = new FakeScheduler();
   const edits = acceptingEdits();
@@ -351,6 +374,7 @@ function drawn({
       edits={edits}
       scheduler={scheduler}
       validate={validate}
+      useOneCheck={useOneCheck}
       onEditor={(one) => {
         held.editor = one;
       }}
@@ -439,7 +463,7 @@ async function typeInto(input: HTMLElement, value: string) {
 }
 
 describe('DesignView, the drawing', () => {
-  // Each stage, and a stop mark where the end node used to be. One drawing
+  // Each stage, and a stop mark on the one the run ends after. One drawing
   // answers both: mounting the view again for the second would only draw the
   // same one.
   it('draws each stage of the workflow, the last ending in a stop mark', async () => {
@@ -451,7 +475,97 @@ describe('DesignView, the drawing', () => {
     expect(
       screen.getByRole('img', { name: 'The run ends after review' }),
     ).toBeTruthy();
-    expect(screen.queryByTestId('node-end')).toBeNull();
+  });
+});
+
+describe('DesignView, a read-only workflow', () => {
+  it('keeps every workflow control read-only and says why', async () => {
+    drawn({ document: { ...HELLO_DOCUMENT, readOnly: true } });
+    await settle();
+
+    expect(screen.getByTestId('read-only-note').textContent).toContain(
+      READ_ONLY_REASON,
+    );
+    await openProperties();
+
+    expect(nameInput().readOnly).toBe(true);
+    expect(promptInput().readOnly).toBe(true);
+    expect(
+      wrapper()
+        .findSelect()!
+        .findTrigger()
+        .getElement()
+        .hasAttribute('disabled'),
+    ).toBe(true);
+
+    const controls = ['Save', 'Delete stage'];
+    const add = screen.getByRole('button', { name: /^Add / });
+    expect(isOff(add)).toBe(true);
+    for (const label of controls) expect(isOff(button(label))).toBe(true);
+
+    for (const control of [add, ...controls.map(button)]) {
+      await act(async () => control.focus());
+      const cloudscape = wrapper()
+        .findAllButtons()
+        .find((one) => one.getElement() === control);
+      expect(
+        cloudscape?.findDisabledReason()?.getElement().textContent,
+      ).toContain(READ_ONLY_REASON);
+    }
+
+    await openYaml();
+    const yaml = screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+    expect(yaml.readOnly).toBe(true);
+    expect(panelOf('YAML').textContent).toContain(READ_ONLY_REASON);
+  });
+
+  it('keeps history controls off when a reload makes the workflow read-only', async () => {
+    const { edits, editorOf } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+
+    edits.reload.mockResolvedValue({ ...HELLO_DOCUMENT, readOnly: true });
+    await act(async () => {
+      editorOf().reload();
+    });
+    await settle();
+
+    for (const label of ['Undo', 'Redo']) {
+      const control = button(label);
+      expect(isOff(control)).toBe(true);
+      await act(async () => control.focus());
+      const cloudscape = wrapper()
+        .findAllButtons()
+        .find((one) => one.getElement() === control);
+      expect(
+        cloudscape?.findDisabledReason()?.getElement().textContent,
+      ).toContain(READ_ONLY_REASON);
+    }
+
+    await openYaml();
+    const yaml = screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+    expect(yaml.value).toBe(HELLO_TEXT);
+
+    for (const label of ['Undo', 'Redo']) {
+      await act(async () => {
+        fireEvent.click(button(label));
+      });
+      expect(yaml.value).toBe(HELLO_TEXT);
+    }
+
+    for (const modifiers of [
+      { ctrlKey: true },
+      { metaKey: true },
+      { ctrlKey: true, shiftKey: true },
+      { metaKey: true, shiftKey: true },
+    ]) {
+      await act(async () => {
+        fireEvent.keyDown(yaml, { key: 'z', ...modifiers });
+      });
+      expect(yaml.value).toBe(HELLO_TEXT);
+    }
   });
 });
 
@@ -577,6 +691,41 @@ describe('DesignView, the Properties tab', () => {
         'k-architect · kiro-cli',
       ),
     ).toBeTruthy();
+  });
+
+  it('deletes the first stage, selects the next one and moves focus to its name', async () => {
+    drawn();
+    await openProperties();
+
+    await act(async () => {
+      fireEvent.click(button('Delete stage'));
+    });
+
+    expect(screen.queryByTestId('node-stage-draft')).toBeNull();
+    expect(nameInput().value).toBe('review');
+    expect(document.activeElement).toBe(nameInput());
+    expect(screen.getByTestId('designer-live').textContent).toBe(
+      'Stage draft deleted.',
+    );
+    expect(isOff(button('Delete stage'))).toBe(true);
+  });
+
+  it('selects the stage before one deleted later in the workflow', async () => {
+    drawn();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('node-stage-review'));
+    });
+
+    await act(async () => {
+      fireEvent.click(button('Delete stage'));
+    });
+
+    expect(screen.queryByTestId('node-stage-review')).toBeNull();
+    expect(nameInput().value).toBe('draft');
+    expect(document.activeElement).toBe(nameInput());
+    expect(screen.getByTestId('designer-live').textContent).toBe(
+      'Stage review deleted.',
+    );
   });
 
   // The keys of the file as it was loaded, and which of them can be edited:
@@ -1094,6 +1243,38 @@ describe('DesignView, what went wrong with a save', () => {
     await settle();
   };
 
+  const saveOnlyFinding = {
+    message: 'The saved name is not allowed.',
+    path: 'stages[0].name',
+    line: 7,
+    severity: 'error',
+  } as const;
+
+  const expectSaveState = (status: string, disabled: boolean) => {
+    expect(screen.getByTestId('save-status').textContent).toContain(status);
+    expect(isOff(button('Save'))).toBe(disabled);
+  };
+
+  const expectFindings = (...messages: string[]) => {
+    const list = screen.getByTestId('yaml-problems');
+    for (const message of messages) expect(list.textContent).toContain(message);
+  };
+
+  const expectNoFindings = () => {
+    expect(screen.queryByTestId('yaml-problems')).toBeNull();
+  };
+
+  const startFromRefusedSave = async (edits: FakeEdits) => {
+    edits.save.mockRejectedValueOnce(
+      new SaveRefused('The workflow has errors.', [saveOnlyFinding]),
+    );
+
+    await changeThenSave();
+
+    expectFindings(saveOnlyFinding.message);
+    expectSaveState('Unsaved changes', true);
+  };
+
   it('says why an ordinary save failed', async () => {
     const { edits } = drawn();
     edits.save.mockRejectedValue(new Error('The server said no.'));
@@ -1103,6 +1284,199 @@ describe('DesignView, what went wrong with a save', () => {
     const alerts = screen.getByTestId('edit-alerts');
     expect(alerts.textContent).toContain('The workflow was not saved');
     expect(alerts.textContent).toContain('The server said no.');
+  });
+
+  it('shows the findings of a refused save until the draft changes', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(
+      new SaveRefused('The workflow has errors.', [
+        {
+          message: 'The saved name is not allowed.',
+          path: 'stages[0].name',
+          line: 7,
+          severity: 'error',
+        },
+        {
+          message: 'The workflow has an unsupported combination.',
+          path: '',
+          line: undefined,
+          severity: 'error',
+        },
+      ]),
+    );
+
+    await changeThenSave();
+
+    const problems = screen.getByTestId('yaml-problems');
+    expect(problems.textContent).toContain(
+      'Line 7: The saved name is not allowed.',
+    );
+    expect(problems.textContent).toContain(
+      'The workflow has an unsupported combination.',
+    );
+    expect(problems.textContent).not.toContain('Line undefined');
+
+    await typeInto(nameInput(), 'drafting-again');
+
+    expect(screen.queryByTestId('yaml-problems')).toBeNull();
+  });
+
+  it('lists a finding once when the check and refused save report it', async () => {
+    const { edits, scheduler } = drawn({ answers: [badAnswer] });
+    const finding = {
+      message: badAnswer.diagnostics[0]!.message,
+      path: badAnswer.diagnostics[0]!.path,
+      line: badAnswer.diagnostics[0]!.line,
+      severity: badAnswer.diagnostics[0]!.severity,
+    } as const;
+    edits.save.mockRejectedValue(
+      new SaveRefused('The workflow has errors.', [finding]),
+    );
+    edits.check.mockImplementation(() => new Promise(() => undefined));
+
+    await changeThenSave();
+    await checkNow(scheduler);
+
+    expect(
+      within(screen.getByTestId('yaml-problems')).getAllByRole('listitem'),
+    ).toHaveLength(1);
+  });
+
+  it('lists a refused-save finding only while YAML shows the text that was refused', async () => {
+    const { edits } = drawn();
+    await startFromRefusedSave(edits);
+
+    await press('Undo');
+    await settle();
+
+    expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
+    expectNoFindings();
+    expectSaveState('Unsaved changes', true);
+    const save = button('Save');
+    await act(async () => save.focus());
+    expect(
+      wrapper()
+        .findAllButtons()
+        .find((one) => one.getElement() === save)
+        ?.findDisabledReason()
+        ?.getElement().textContent,
+    ).toContain('Fix the problems in the workflow first.');
+
+    await press('Redo');
+    await settle();
+
+    expectFindings(saveOnlyFinding.message);
+    expectSaveState('Unsaved changes', true);
+  });
+
+  it('replaces a refused-save finding when a later check reports a different one', async () => {
+    const { edits, scheduler } = drawn();
+    await startFromRefusedSave(edits);
+    edits.check.mockResolvedValue({
+      view: HELLO_DOCUMENT.view,
+      diagnostics: [
+        {
+          message: 'The live check found another problem.',
+          path: 'stages[0].agent',
+          line: 8,
+          severity: 'error',
+        },
+      ],
+    });
+
+    await typeInto(nameInput(), 'drafting-again');
+    await checkNow(scheduler);
+
+    expectFindings('The live check found another problem.');
+    expect(screen.getByTestId('yaml-problems').textContent).not.toContain(
+      saveOnlyFinding.message,
+    );
+    expectSaveState('Unsaved changes', true);
+  });
+
+  it('clears a refused-save finding when a later check finds none', async () => {
+    const { edits, scheduler } = drawn();
+    await startFromRefusedSave(edits);
+
+    await typeInto(nameInput(), 'drafting-again');
+    await checkNow(scheduler);
+
+    expectNoFindings();
+    expectSaveState('Unsaved changes', false);
+  });
+
+  it('keeps a refused-save finding when unchanged text has a cached clean answer', async () => {
+    const { edits, scheduler, validate } = drawn({ useOneCheck: true });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+    edits.save.mockRejectedValueOnce(
+      new SaveRefused('The workflow has errors.', [saveOnlyFinding]),
+    );
+
+    await press('Save');
+    await settle();
+    await checkNow(scheduler);
+
+    expectFindings(saveOnlyFinding.message);
+    expectSaveState('Unsaved changes', true);
+    expect(
+      validate.mock.calls.filter(([request]) =>
+        request.text.includes('name: drafting'),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('clears a refused-save finding when the same workflow is loaded again', async () => {
+    const { edits, editorOf } = drawn();
+    await startFromRefusedSave(edits);
+
+    await act(async () => {
+      editorOf().reload();
+    });
+    await settle();
+
+    expectNoFindings();
+    expectSaveState('Loaded again from the server', true);
+  });
+
+  it('clears a refused-save finding when another workflow is opened', async () => {
+    const { edits, open } = drawn();
+    await startFromRefusedSave(edits);
+
+    await open(OTHER_WORKFLOW);
+    await settle();
+
+    expectNoFindings();
+    expectSaveState('No changes', true);
+  });
+
+  it('clears a refused-save finding when a reload makes the workflow read-only', async () => {
+    const { edits, editorOf } = drawn();
+    await startFromRefusedSave(edits);
+    edits.reload.mockResolvedValue({ ...HELLO_DOCUMENT, readOnly: true });
+
+    await act(async () => {
+      editorOf().reload();
+    });
+    await settle();
+
+    expectNoFindings();
+    expectSaveState('Loaded again from the server', true);
+  });
+
+  it('keeps a refused-save finding cleared while a later save is in flight', async () => {
+    const { edits, scheduler } = drawn();
+    await startFromRefusedSave(edits);
+    await typeInto(nameInput(), 'drafting-again');
+    await checkNow(scheduler);
+    edits.save.mockImplementation(() => new Promise(() => undefined));
+
+    await press('Save');
+
+    expectNoFindings();
+    expectSaveState('Saving', true);
   });
 
   it('says a save whose answer was lost may not have finished', async () => {

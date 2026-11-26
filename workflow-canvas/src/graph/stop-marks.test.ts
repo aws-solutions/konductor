@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { END_ID, buildGraph, stageNodeId } from './build-graph';
+import { buildGraph, stageNodeId } from './build-graph';
 import { withStopMarks } from './stop-marks';
 import {
   SEQUENCE_IN,
@@ -32,18 +32,6 @@ function stage(name: string): GraphNode {
   };
 }
 
-function end(): GraphNode {
-  return {
-    id: END_ID,
-    ariaLabel: 'End',
-    type: 'end',
-    position: place,
-    width: 280,
-    height: 48,
-    data: {},
-  };
-}
-
 function edge(source: string, target: string): GraphEdge {
   return {
     id: `${source}->${target}`,
@@ -55,16 +43,14 @@ function edge(source: string, target: string): GraphEdge {
   };
 }
 
-// A graph that forks: one stage, then two that follow it and nothing else,
-// each joined to the end. The builder draws a line, so this one is by hand.
+// A graph that forks: one stage, then two that follow it and nothing else.
+// The builder draws a line, so this one is by hand.
 function forked(): CanvasGraph {
   return {
-    nodes: [stage('plan'), stage('left'), stage('right'), end()],
+    nodes: [stage('plan'), stage('left'), stage('right')],
     edges: [
       edge(stageNodeId('plan'), stageNodeId('left')),
       edge(stageNodeId('plan'), stageNodeId('right')),
-      edge(stageNodeId('left'), END_ID),
-      edge(stageNodeId('right'), END_ID),
     ],
   };
 }
@@ -78,13 +64,12 @@ const marks = (graph: CanvasGraph) =>
     .map((node) => node.data.name);
 
 describe('withStopMarks', () => {
-  it('marks the last stage of a line and drops the end node', () => {
+  it('marks the last stage of a line', () => {
     const graph = withStopMarks(
       buildGraph(spec('draft', 'review'), 'kiro-cli'),
     );
 
     expect(marks(graph)).toEqual(['review']);
-    expect(graph.nodes.some((node) => node.type === 'end')).toBe(false);
   });
 
   it('marks the one stage of a workflow that has one', () => {
@@ -105,7 +90,7 @@ describe('withStopMarks', () => {
     ).not.toHaveProperty('endsRun');
   });
 
-  it('drops the edges that went to the end node', () => {
+  it('keeps the edges of the graph as they are', () => {
     const graph = withStopMarks(forked());
 
     expect(graph.edges.map((one) => one.id)).toEqual([
@@ -114,14 +99,13 @@ describe('withStopMarks', () => {
     ]);
   });
 
-  it('keeps the places of the nodes that stay', () => {
+  it('keeps the places of the nodes', () => {
     const line = buildGraph(spec('draft', 'review'), 'kiro-cli');
-    const before = line.nodes.filter((node) => node.type !== 'end');
 
     const after = withStopMarks(line).nodes;
 
     expect(after.map((node) => node.position)).toEqual(
-      before.map((node) => node.position),
+      line.nodes.map((node) => node.position),
     );
   });
 
@@ -144,16 +128,6 @@ describe('withStopMarks', () => {
     const graph = withStopMarks(buildGraph(spec('only'), 'kiro-cli'));
 
     expect(stages(graph)[0]?.data).not.toHaveProperty('stopState');
-  });
-
-  it('marks a graph that has no end node already', () => {
-    const { nodes, edges } = forked();
-    const withoutEnd = {
-      nodes: nodes.filter((node) => node.type !== 'end'),
-      edges: edges.filter((one) => one.target !== END_ID),
-    };
-
-    expect(marks(withStopMarks(withoutEnd))).toEqual(['left', 'right']);
   });
 
   it('clears the state of a leaf that is no longer known', () => {
@@ -191,11 +165,9 @@ describe('withStopMarks', () => {
   });
 });
 
-describe('buildGraph with stopMarks', () => {
-  it('draws the stop marks instead of the end node', () => {
-    const graph = buildGraph(spec('draft', 'review'), 'kiro-cli', {
-      stopMarks: true,
-    });
+describe('buildGraph', () => {
+  it('draws the intent and the stages, with a mark on the last one', () => {
+    const graph = buildGraph(spec('draft', 'review'), 'kiro-cli');
 
     expect(graph.nodes.map((node) => node.type)).toEqual([
       'intent',
@@ -206,9 +178,7 @@ describe('buildGraph with stopMarks', () => {
   });
 
   it('joins the stages of a line in run order', () => {
-    const graph = buildGraph(spec('draft', 'review'), 'kiro-cli', {
-      stopMarks: true,
-    });
+    const graph = buildGraph(spec('draft', 'review'), 'kiro-cli');
 
     expect(graph.edges.map((one) => one.id)).toEqual([
       'intent->stage-draft',
@@ -217,27 +187,9 @@ describe('buildGraph with stopMarks', () => {
   });
 
   it('marks the only stage of a workflow that has one', () => {
-    const graph = buildGraph(spec('only'), 'kiro-cli', { stopMarks: true });
+    const graph = buildGraph(spec('only'), 'kiro-cli');
 
     expect(marks(graph)).toEqual(['only']);
     expect(graph.edges.map((one) => one.id)).toEqual(['intent->stage-only']);
-  });
-
-  it('keeps the end node for a caller that does not ask for the marks', () => {
-    const graph = buildGraph(spec('draft', 'review'), 'kiro-cli');
-
-    expect(graph.nodes.at(-1)?.type).toBe('end');
-    expect(marks(graph)).toEqual([]);
-  });
-
-  it('places the stages where it does without the marks', () => {
-    const plain = buildGraph(spec('draft', 'review'), 'kiro-cli');
-    const marked = buildGraph(spec('draft', 'review'), 'kiro-cli', {
-      stopMarks: true,
-    });
-
-    expect(marked.nodes.map((node) => node.position)).toEqual(
-      plain.nodes.filter((node) => node.type !== 'end').map((n) => n.position),
-    );
   });
 });

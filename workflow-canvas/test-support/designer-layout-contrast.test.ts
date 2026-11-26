@@ -97,12 +97,8 @@ describe('designer-layout.css', () => {
     expect(sheet.text).not.toMatch(/scroll-behavior:\s*smooth/);
   });
 
-  it('stacks the columns below 900 pixels, as the Designer does, in the order of the page', () => {
-    const designer = readStyleSheet(
-      new URL('../src/designer/designer.css', import.meta.url),
-    ).text;
-
-    expect(designer).toContain('@media (max-width: 900px)');
+  it('stacks the columns below 900 pixels, in the order of the page', () => {
+    expect(sheet.text).toContain('@media (max-width: 900px)');
     expect(narrowBlock()).toMatch(
       /\.wf-layout,\s*\.wf-layout\[data-folded='true'\] \{\s*grid-template-columns: minmax\(0, 1fr\);/,
     );

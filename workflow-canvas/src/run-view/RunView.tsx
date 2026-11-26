@@ -24,7 +24,7 @@ const NO_GOAL_OF_JOINED_RUN =
 const GOAL_DESCRIPTION =
   'What the run should achieve. Every stage is given it.';
 
-// TrustDialog is shared with the Execution tab, so it receives the same state.
+// TrustDialog reads its refusal from the same execution state shape.
 function trustStateOf(trust: TrustRefused | undefined): ExecutionState {
   if (!trust) return { phase: 'idle' };
   return {
@@ -118,6 +118,7 @@ export function RunView({
   controller,
   workflowName,
   reasonSentence = () => undefined,
+  unsaved = false,
 }: {
   /** Where the run is, and the ways to act on it, as the page holds them. */
   controller: RunController;
@@ -125,10 +126,17 @@ export function RunView({
   workflowName?: string;
   /** The sentence for the reason code of a blocked stage. */
   reasonSentence?: ReasonSentence;
+  /** Whether Design has changes that a run will not use. */
+  unsaved?: boolean;
 }) {
   const { follow, history, notice } = controller;
   return (
     <SpaceBetween size="m">
+      {unsaved && (
+        <Alert type="info" data-testid="unsaved-note">
+          Design has changes that are not saved. A run uses the saved workflow.
+        </Alert>
+      )}
       <GoalPanel
         goal={controller.goal}
         params={controller.params}

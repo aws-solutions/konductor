@@ -10,63 +10,24 @@ import type { SwapRisk } from '../launch/swap-guard';
 import { EventWaits, HeldEvents } from '../test-support/held-events';
 import { acceptingEdits } from '../test-support/fake-edits';
 import { HELLO_DOCUMENT, loaded } from '../test-support/fixtures';
+import { FAKE_EXTRAS, fakeNextPorts } from '../test-support/next-ports';
 import type { NextPorts } from './next-http';
 
 const RUN_ID = '20261024-0412-a7b3c';
 
-const EXTRAS: WorkflowExtras = {
-  stageFields: {
-    agent: [
-      { key: 'name', type: 'name', required: true },
-      { key: 'agent', type: 'name', required: true },
-    ],
-  },
-  goalDefault: 'Add a greeting to the README',
-};
-
-function portsOf(over: Partial<NextPorts> = {}): NextPorts {
-  return {
-    loadExtras: vi.fn(() => Promise.resolve(EXTRAS)),
-    listAgents: vi.fn(() =>
-      Promise.resolve([{ id: 'k-developer', summary: 'Code' }]),
-    ),
-    listRuns: vi.fn(() => Promise.resolve([])),
-    startRun: vi.fn(() => Promise.resolve(RUN_ID)),
-    readChecks: vi.fn(() => Promise.resolve({})),
-    readEvents: vi.fn(
-      () => new Promise<never>(() => undefined),
-    ) as unknown as NextPorts['readEvents'],
-    validate: vi.fn(() =>
-      Promise.resolve({
-        errors: 0,
-        warnings: 0,
-        infos: 0,
-        view: null,
-        diagnostics: [],
-      }),
-    ),
-    ...over,
-  };
-}
-
 async function openPage({
-  nextUi,
-  ports = portsOf(),
+  ports = fakeNextPorts(),
   swapRisk,
   runMemory,
 }: {
-  nextUi: boolean;
   ports?: NextPorts;
   swapRisk?: SwapRisk;
   runMemory?: RunMemory;
-}) {
+} = {}) {
   // The waits of a long poll and of the run clock are held, so a follower
   // reads only what a test answers.
   const scheduler = new EventWaits();
-  const runs: RunPort = {
-    start: vi.fn(() => Promise.resolve(RUN_ID)),
-    get: vi.fn(() => Promise.reject(new Error('The old tab reads no run.'))),
-  };
+  const runs: RunPort = { start: vi.fn(() => Promise.resolve(RUN_ID)) };
   const edits = acceptingEdits();
   const result = loaded(HELLO_DOCUMENT, runs, edits);
   const portsFor = vi.fn(() => ports);
@@ -74,7 +35,6 @@ async function openPage({
     <App
       load={Promise.resolve(result)}
       scheduler={scheduler}
-      nextUi={nextUi}
       nextPortsFor={portsFor}
       {...(swapRisk ? { swapRisk } : {})}
       {...(runMemory ? { runMemory } : {})}
@@ -86,41 +46,9 @@ async function openPage({
 
 const runTab = () => screen.getByRole('tab', { name: 'Run' });
 
-describe('the page with ?ui=classic', () => {
-  it('draws the Designer it replaced', async () => {
-    await openPage({ nextUi: false });
-
-    expect(screen.getByTestId('node-end')).toBeTruthy();
-    expect(screen.queryByTestId('yaml-text')).toBeNull();
-  });
-
-  it('builds no calls of those views', async () => {
-    const { portsFor } = await openPage({ nextUi: false });
-
-    expect(portsFor).not.toHaveBeenCalled();
-  });
-
-  it('reads none of the calls of the newer views', async () => {
-    const { ports } = await openPage({ nextUi: false });
-
-    expect(ports.loadExtras).not.toHaveBeenCalled();
-    expect(ports.listAgents).not.toHaveBeenCalled();
-  });
-
-  it('keeps the Run tab it replaced', async () => {
-    await openPage({ nextUi: false });
-
-    await act(async () => {
-      fireEvent.click(runTab());
-    });
-
-    expect(screen.getByTestId('run-status')).toBeTruthy();
-  });
-});
-
-describe('the page as it opens', () => {
+describe('the page and its two views', () => {
   it('builds the calls of the views for the workflow it shows', async () => {
-    const { portsFor, result } = await openPage({ nextUi: true });
+    const { portsFor, result } = await openPage();
 
     // The token of those calls comes from this workflow, not from whichever
     // load answered last.
@@ -130,10 +58,9 @@ describe('the page as it opens', () => {
     );
   });
 
-  it('draws the Design view, with a stop mark instead of the end node', async () => {
-    await openPage({ nextUi: true });
+  it('draws the Design view, with the mark where the run ends', async () => {
+    await openPage();
 
-    expect(screen.queryByTestId('node-end')).toBeNull();
     expect(
       screen.getByRole('img', { name: 'The run ends after review' }),
     ).toBeTruthy();
@@ -141,14 +68,14 @@ describe('the page as it opens', () => {
   });
 
   it('reads the fields and the agents of the workflow', async () => {
-    const { ports } = await openPage({ nextUi: true });
+    const { ports } = await openPage();
 
     expect(ports.loadExtras).toHaveBeenCalled();
     expect(ports.listAgents).toHaveBeenCalled();
   });
 
   it('draws the Run view, with the default goal of the workflow', async () => {
-    await openPage({ nextUi: true });
+    await openPage();
 
     await act(async () => {
       fireEvent.click(runTab());
@@ -160,7 +87,7 @@ describe('the page as it opens', () => {
   });
 
   it('lists the past runs of the workflow', async () => {
-    const { ports } = await openPage({ nextUi: true });
+    const { ports } = await openPage();
 
     await act(async () => {
       fireEvent.click(runTab());
@@ -171,8 +98,7 @@ describe('the page as it opens', () => {
 
   it('says so when the fields of the workflow cannot be read', async () => {
     await openPage({
-      nextUi: true,
-      ports: portsOf({
+      ports: fakeNextPorts({
         loadExtras: vi.fn(() =>
           Promise.reject(new Error('The server said no.')),
         ),
@@ -185,7 +111,7 @@ describe('the page as it opens', () => {
   });
 });
 
-describe('the run lifecycle as the page opens', () => {
+describe('the run lifecycle of the page', () => {
   const runningDraft = {
     events: [
       { seq: 1, type: 'stage_state', stage: 'draft', status: 'running' },
@@ -212,25 +138,20 @@ describe('the run lifecycle as the page opens', () => {
 
   it('follows a run through the new view only', async () => {
     const events = new HeldEvents();
-    const ports = portsOf({ readEvents: events.readEvents });
-    const { runs } = await openPage({ nextUi: true, ports });
+    const ports = fakeNextPorts({ readEvents: events.readEvents });
+    const { runs } = await openPage({ ports });
 
     await startRun(events);
 
-    // The newer view starts through its own calls, not the session's run
-    // port, which the view it replaced used.
     expect(ports.startRun).toHaveBeenCalledTimes(1);
     expect(runs.start).not.toHaveBeenCalled();
-    // The controller of the Run tab reads `GET /api/runs/{id}`; nothing may.
-    expect(runs.get).not.toHaveBeenCalled();
     expect(events.calls.length).toBeGreaterThan(0);
   });
 
   it('goes on following the run while the Design view is shown', async () => {
     const events = new HeldEvents();
     await openPage({
-      nextUi: true,
-      ports: portsOf({ readEvents: events.readEvents }),
+      ports: fakeNextPorts({ readEvents: events.readEvents }),
     });
     await startRun(events);
     const read = events.calls.length;
@@ -264,8 +185,7 @@ describe('the run lifecycle as the page opens', () => {
     const set = vi.fn();
     const events = new HeldEvents();
     await openPage({
-      nextUi: true,
-      ports: portsOf({ readEvents: events.readEvents }),
+      ports: fakeNextPorts({ readEvents: events.readEvents }),
       swapRisk: { set, get: () => ({ draft: false, run: false }) },
     });
     await startRun(events);
@@ -279,9 +199,8 @@ describe('the run lifecycle as the page opens', () => {
 
   it('follows the kept run once after a reload, and reads it one way', async () => {
     const events = new HeldEvents();
-    const { runs } = await openPage({
-      nextUi: true,
-      ports: portsOf({ readEvents: events.readEvents }),
+    await openPage({
+      ports: fakeNextPorts({ readEvents: events.readEvents }),
       runMemory: {
         recall: () => RUN_ID,
         remember: () => undefined,
@@ -293,7 +212,6 @@ describe('the run lifecycle as the page opens', () => {
       fireEvent.click(runTab());
     });
 
-    expect(runs.get).not.toHaveBeenCalled();
     expect(events.calls).toEqual([{ runId: RUN_ID, after: 0 }]);
   });
 
@@ -301,8 +219,7 @@ describe('the run lifecycle as the page opens', () => {
     const set = vi.fn();
     const events = new HeldEvents();
     await openPage({
-      nextUi: true,
-      ports: portsOf({ readEvents: events.readEvents }),
+      ports: fakeNextPorts({ readEvents: events.readEvents }),
       swapRisk: { set, get: () => ({ draft: false, run: false }) },
     });
 
@@ -314,8 +231,7 @@ describe('the run lifecycle as the page opens', () => {
   it('announces where the run is in the one live region', async () => {
     const events = new HeldEvents();
     await openPage({
-      nextUi: true,
-      ports: portsOf({ readEvents: events.readEvents }),
+      ports: fakeNextPorts({ readEvents: events.readEvents }),
     });
 
     await startRun(events);
@@ -325,16 +241,9 @@ describe('the run lifecycle as the page opens', () => {
       'Running draft.',
     );
   });
-
-  it('keeps the live regions of the views it replaced', async () => {
-    await openPage({ nextUi: false });
-
-    expect(screen.getAllByTestId('run-live-status')).toHaveLength(1);
-    expect(screen.getAllByTestId('run-live-alert')).toHaveLength(1);
-  });
 });
 
-describe('the check of a text as the page opens', () => {
+describe('the check of a text', () => {
   const nameBox = () =>
     within(screen.getByRole('tabpanel', { name: 'Properties' })).getByRole(
       'textbox',
@@ -360,7 +269,7 @@ describe('the check of a text as the page opens', () => {
   // one request: the editor judges the draft by the findings of the very
   // answer the view draws.
   it('sends one check for one edit, and none of the editor own', async () => {
-    const { ports, edits } = await openPage({ nextUi: true });
+    const { ports, edits } = await openPage();
     await openProperties();
     // The view checks the file as it was loaded when it opens; this is about
     // what one edit adds to that.
@@ -377,7 +286,7 @@ describe('the check of a text as the page opens', () => {
   // not cut the call short under it: it would read the abort as a server that
   // did not answer and refuse every changed stage.
   it('starts its own check for a later edit and leaves the one before it to finish', async () => {
-    const { ports } = await openPage({ nextUi: true });
+    const { ports } = await openPage();
     await openProperties();
     const before = checksOf(ports).length;
     await type('drafting');
@@ -459,8 +368,7 @@ describe('the check of a text as the page opens', () => {
   it('answers the editor when the Run view takes the Design view off', async () => {
     const server = heldChecks();
     await openPage({
-      nextUi: true,
-      ports: portsOf({ validate: server.validate }),
+      ports: fakeNextPorts({ validate: server.validate }),
     });
     await openProperties();
     // The page checks the file as it was loaded when it opens; this is about
@@ -500,8 +408,7 @@ describe('the Run view while the fields of the workflow are not known', () => {
   /** Opens the page on the Run view with that answer for the extras read. */
   async function onRunView(loadExtras: NextPorts['loadExtras']) {
     const page = await openPage({
-      nextUi: true,
-      ports: portsOf({ loadExtras }),
+      ports: fakeNextPorts({ loadExtras }),
     });
     await act(async () => {
       fireEvent.click(runTab());
@@ -555,7 +462,7 @@ describe('the Run view while the fields of the workflow are not known', () => {
   });
 
   it('turns Run on once the read answers, and starts with the typed goal', async () => {
-    const { ports } = await onRunView(() => Promise.resolve(EXTRAS));
+    const { ports } = await onRunView(() => Promise.resolve(FAKE_EXTRAS));
 
     await typeGoal(GOAL);
 
@@ -575,8 +482,7 @@ describe('the Run view when the agents cannot be listed', () => {
 
   async function onRunView(listAgents: NextPorts['listAgents']) {
     const page = await openPage({
-      nextUi: true,
-      ports: portsOf({ listAgents }),
+      ports: fakeNextPorts({ listAgents }),
     });
     await act(async () => {
       fireEvent.click(runTab());

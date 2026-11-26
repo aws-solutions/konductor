@@ -16,7 +16,6 @@ import {
 import {
   RunAlreadyActive,
   RunNeedsTrust,
-  RunReadRefused,
   RunStartUnsure,
   type RunPort,
 } from '../execution/core';
@@ -81,14 +80,6 @@ function trustNeededOf(error: unknown): RunNeedsTrust | undefined {
     error.code === 'trust_required' &&
     error.fix !== undefined
     ? new RunNeedsTrust(error.message, error.fix)
-    : undefined;
-}
-
-// Only a missing answer or a server error can be gone on the next try; any
-// 4xx and a reply the page cannot read will not change.
-function readRefusedOf(error: unknown): RunReadRefused | undefined {
-  return error instanceof ApiError && !canRetryStatus(error.status)
-    ? new RunReadRefused(messageOf(error, error.message))
     : undefined;
 }
 
@@ -209,13 +200,6 @@ function runPortFor(
           startUnsureOf(error) ??
           error
         );
-      }
-    },
-    get: async (runId, signal) => {
-      try {
-        return await guard(api.getRun(token, runId, signal));
-      } catch (error) {
-        throw readRefusedOf(error) ?? error;
       }
     },
   };

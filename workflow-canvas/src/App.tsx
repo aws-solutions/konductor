@@ -9,17 +9,16 @@ import './chrome/chrome.css';
 import { ModePanels, ModeSwitch, type PageView } from './chrome/ModeSwitch';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { DesignView } from './design-view/DesignView';
-import { Designer } from './designer/Designer';
 import { isDirty } from './designer/core';
 import { useEditor } from './designer/use-editor';
 import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
-import { isInFlight, type RunMemory, type Scheduler } from './execution/core';
-import { Execution } from './execution/Execution';
-import { RunAnnouncements } from './execution/RunAnnouncements';
+import {
+  reasonSentence,
+  type RunMemory,
+  type Scheduler,
+} from './execution/core';
 import { timerScheduler } from './execution/timer-scheduler';
-import { useExecution } from './execution/use-execution';
-import { useGoal } from './execution/use-goal';
 import type { SwapRisk } from './launch/swap-guard';
 import type { NextPorts } from './next-ui/next-http';
 import { NextRunAnnouncements } from './next-ui/NextRunAnnouncements';
@@ -38,8 +37,15 @@ import {
   type LoadedWorkflow,
   type LoadResult,
 } from './workflow/load-workflow';
+import { WorkflowGate } from './workflow/WorkflowGate';
 
 type ViewId = 'designer' | 'execution';
+
+/** The two views, by the labels the switch shows, before either can draw. */
+const LOADING_VIEWS: readonly { id: ViewId; label: string }[] = [
+  { id: 'designer', label: 'Design' },
+  { id: 'execution', label: 'Run' },
+];
 
 // The calls of a page that has no session to run anything through. It is one
 // object for the life of the page, so the run controller holds one state for
@@ -54,35 +60,20 @@ const NO_RUN_PORTS: RunViewPorts = {
   now: () => Date.now(),
 };
 
-/**
- * What the page knows about the params of the workflow. Until the fields of
- * the workflow have been read for the load the page has now, it knows
- * nothing, which is not the same as a workflow that declares none: a run
- * started then would send the goal alone and leave every typed value behind.
- */
+/** What the page knows about the workflow's declared params. */
 function paramsState(next: NextData): ParamsState {
-  if (next.failure !== undefined)
+  if (next.failure !== undefined) {
     return { kind: 'failed', reason: next.failure };
+  }
   if (!next.ready) return PARAMS_LOADING;
   return { kind: 'ready', declared: next.extras.params ?? [] };
 }
 
-/**
- * What could not be read of the workflow, each as its own notice. The fields
- * and the agents are read apart, so one may fail while the other answers.
- */
+/** Failures from the independent workflow-fields and agent-list reads. */
 function dataFailures(next: NextData): readonly string[] {
   return [next.failure, next.agentsFailure].filter(
     (reason): reason is string => reason !== undefined,
   );
-}
-
-/**
- * True when the Run view draws a workflow, so it has a Run button. A load
- * can succeed with no view: no file yet, or a file with errors.
- */
-function drawsWorkflow(result: LoadResult | undefined): boolean {
-  return result?.ok === true && result.workflow.document.view !== null;
 }
 
 /**
@@ -91,11 +82,10 @@ function drawsWorkflow(result: LoadResult | undefined): boolean {
  * selected view. Both views draw the workflow that `load` settles with, and
  * Run runs it, waiting with `scheduler` between two reads of the run.
  *
- * With `nextUi`, the two newer views take the place of the ones they
- * replaced, `nextPortsFor` gives them the calls they need beyond the
- * session's own, and the Run view is the one that follows a run: the
- * controller of the Run tab stays idle, and the run it reports drives the
- * swap guard and the live region.
+ * `nextPortsFor` gives the views the calls they need beyond the session's
+ * own. The page, not the view that draws it, follows a run, so a change of
+ * view does not stop the only follower, and the run drives the swap guard
+ * and the live region.
  */
 export function App({
   load,
@@ -103,7 +93,6 @@ export function App({
   scheduler = timerScheduler,
   runMemory,
   swapRisk,
-  nextUi = false,
   nextPortsFor,
 }: {
   load: Promise<LoadResult>;
@@ -115,38 +104,20 @@ export function App({
   /** Told what another workflow would take from the page. */
   swapRisk?: SwapRisk;
   /**
-   * Draw the two newer views. `main.tsx` reads the address and turns this on
-   * unless `?ui=classic` asks for the views they replaced. It is off here so
-   * that a caller which says nothing gets the older views.
-   */
-  nextUi?: boolean;
-  /**
-   * Builds the calls those views make for the workflow that has just loaded.
+   * Builds the calls the views make for the workflow that has just loaded.
    * It is called once per load, with that workflow, so each one has its own
    * calls and they address the session it was loaded with.
    */
-  nextPortsFor?: (workflow: LoadedWorkflow) => NextPorts;
+  nextPortsFor: (workflow: LoadedWorkflow) => NextPorts;
 }) {
-  // Read here, not in the tab, so switching tabs does not load again.
+  // Read here, not in a view, so switching views does not load again.
   const result = useSettled(load);
-  // The calls of the newer views belong to the workflow that loaded, so
-  // each load gets its own; the hooks of those views tell workflows apart by
-  // them.
+  // The calls of the views belong to the workflow that loaded, so each load
+  // gets its own; the hooks of those views tell workflows apart by them.
   const nextPorts = useMemo(
-    () =>
-      nextUi && result?.ok && nextPortsFor
-        ? nextPortsFor(result.workflow)
-        : undefined,
-    [nextUi, result, nextPortsFor],
+    () => (result?.ok ? nextPortsFor(result.workflow) : undefined),
+    [result, nextPortsFor],
   );
-  // One follower at a time: with the newer views on the page, the Run
-  // view follows the run, so the controller of the Run tab is left idle.
-  const execution = useExecution(
-    !nextUi && result?.ok ? result.workflow.runs : undefined,
-    scheduler,
-    runMemory,
-  );
-  const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();
   // The load the page draws, held by its identity as well as its content: the
   // editor is opened with it, and the views that keep anything of their own
@@ -163,9 +134,7 @@ export function App({
         : undefined,
     [nextPorts, opened],
   );
-  // The editor of the newer views checks through that one call. Without
-  // `checks`, which only `nextUi` builds, the load is the one that came, so
-  // the views this page replaced are left alone.
+  // The editor checks the draft through that one call.
   const loaded = useMemo(
     () =>
       opened && checks
@@ -173,13 +142,12 @@ export function App({
         : opened,
     [opened, checks],
   );
-  // The Designer edits a draft; the run and the Execution tab use the file
-  // as it is saved.
+  // The Design view edits a draft; a run uses the file as it is saved.
   const editor = useEditor(loaded, scheduler);
   const unsaved = editor ? isDirty(editor.state) : false;
   // The draft lives in the page, so leaving the page loses the changes.
   useLeaveGuard(unsaved, window);
-  // One object until the saved file changes, as the tab draws a new canvas
+  // One object until the saved file changes, as the view draws a new canvas
   // for each new result.
   const document = editor?.state.saved;
   const saved = useMemo(
@@ -200,14 +168,12 @@ export function App({
       ),
     [saved],
   );
-  // The calls the newer Run view starts and follows a run through, which
-  // belong to the workflow that loaded: another workflow is another object,
-  // and the controller starts again for it, the run its session kept
-  // included. The start goes through those calls too, so the params of the
-  // run travel with the goal.
+  // The calls the Run view follows a run through, which belong to the
+  // workflow that loaded: another workflow is another object, and the
+  // controller starts again for it, the run its session kept included.
   const nextRunPorts = useMemo(
     () =>
-      nextUi && nextPorts && runs
+      nextPorts && runs
         ? {
             start: nextPorts.startRun,
             readEvents: nextPorts.readEvents,
@@ -217,10 +183,10 @@ export function App({
             now: () => Date.now(),
           }
         : NO_RUN_PORTS,
-    [nextUi, nextPorts, runs, scheduler],
+    [nextPorts, runs, scheduler],
   );
-  // The page follows the run, not the tab that draws it: a person who looks
-  // at the Design view must not take the only follower off the page.
+  // The page follows the run, not the view that draws it: a person who looks
+  // at Design must not take the only follower off the page.
   const nextRunner = useRunController({
     stages: stageNames,
     ...(next.extras.goalDefault === undefined
@@ -237,9 +203,8 @@ export function App({
     ...(runMemory && nextRunPorts !== NO_RUN_PORTS ? { runMemory } : {}),
   });
   const nextRun = nextRunner.lifecycle;
-  const running = isInFlight(execution.state) || nextRun.active;
-  const nextViews: PageView<ViewId>[] | undefined =
-    nextUi && editor && nextPorts && runs && loaded && checks
+  const views: PageView<ViewId>[] =
+    editor && nextPorts && runs && loaded && checks
       ? [
           {
             id: 'designer',
@@ -262,35 +227,23 @@ export function App({
             content: (
               <RunView
                 controller={nextRunner}
+                reasonSentence={reasonSentence}
+                unsaved={unsaved}
                 {...(workflowName === undefined ? {} : { workflowName })}
               />
             ),
           },
         ]
-      : undefined;
-  const views: PageView<ViewId>[] = nextViews ?? [
-    {
-      id: 'designer',
-      label: 'Design',
-      content: <Designer result={result} editor={editor} />,
-    },
-    {
-      id: 'execution',
-      label: 'Run',
-      content: (
-        <Execution
-          result={saved}
-          execution={execution}
-          goal={goal}
-          onGoalChange={setGoal}
-          unsaved={unsaved}
-        />
-      ),
-    },
-  ];
+      : // Before there is a workflow to draw: the load is still going, it
+        // failed, or it holds nothing to draw. The gate says which, in both
+        // views, and never reaches a child without a workflow.
+        LOADING_VIEWS.map((view) => ({
+          ...view,
+          content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
+        }));
   useEffect(
-    () => swapRisk?.set({ draft: unsaved, run: running }),
-    [swapRisk, unsaved, running],
+    () => swapRisk?.set({ draft: unsaved, run: nextRun.active }),
+    [swapRisk, unsaved, nextRun.active],
   );
   return (
     <>
@@ -328,14 +281,10 @@ export function App({
                 {reason}
               </Alert>
             ))}
-            {nextViews ? (
-              <NextRunAnnouncements run={nextRun} />
-            ) : (
-              <RunAnnouncements
-                state={execution.state}
-                loaded={drawsWorkflow(saved)}
-              />
-            )}{' '}
+            <NextRunAnnouncements
+              run={nextRun}
+              reasonSentence={reasonSentence}
+            />
             <ModePanels views={views} active={view} />
           </ContentLayout>
         }
