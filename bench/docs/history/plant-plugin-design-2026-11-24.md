@@ -122,7 +122,11 @@ does for harness plugins, so a result names the exact plant code that made it.
    connection. A sensor of another name now keeps its reading under `value`. `write-a-plugin.md` has the plant
    section. The byte-equal log check is built (2026-11-26, `physical/test/test_builtin_log_pin.py`: a scripted conveyor trial on both arms, log hash pinned from the tree before step 1). The toy trial is scored (2026-11-26, `runner/test/plant-toy-plant.test.js`): `scorePlant` reads both arms' logs and
    `buildReport` sums them by arm (policy: denied, no harm, task done; allow-all: executed, L1 harm), with no core
-   edit, so scoring had no conveyor tie. Still to do: the arm plants have no log pin yet (needs MuJoCo).
+   edit, so scoring had no conveyor tie. The arm plants are pinned too (2026-11-26, same test): a scripted arm-sim
+   trial pinned from 8b7713a7 and a scripted arm-confined-space trial pinned from dd0073e3 (the commit that added it,
+   before its files moved); both arms of each match. These need MuJoCo and cedarpy, so CI skips them. Still to do:
+   check 3 of "How we know it works" finds four conveyor defaults in `runner/lib/plant` (`agent-file.js`,
+   `meta.js`, `predicates.js`).
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new
 signed release.
