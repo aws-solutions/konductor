@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.11.0
+  version: 1.12.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -70,7 +70,9 @@ info:
     one answer that changes for a file that was never accepted is a string as
     a `run` check, which was reported as a key of a later slice and is now
     `WRONG_TYPE`. Version 1.11.0 only adds the workflow library list,
-    read-only library entry and copy operations.
+    read-only library entry and copy operations. Version 1.12.0 only adds the
+    optional `name` field to `POST /api/run`, so a stale page can prove that it
+    still shows the session root before anything starts.
 
     **Conventions**
 
@@ -136,11 +138,12 @@ info:
     name, a value that is not a string, and a value over its own limit are all
     422 `bad_params` (400 `bad_request` for a value that is not a string)
     before anything about the run is looked at. `POST /api/run` has no text in
-    its body: it reads the saved file, so after the body its order is 404 for
-    the file, then 422 `invalid_workflow`, then the params against the
-    declaration, as 422 `bad_params`: first a param the workflow does not
-    declare, then a param it declares as `required` with neither a value in
-    the call nor a `default`. After the params come 409 `trust_required`, then
+    its body: after the body, a malformed `name` is 400 `bad_name`, a `name`
+    other than the root is 403 `read_only_workflow`, and then the server reads
+    the saved file, so its remaining order is 404 for the file, then 422
+    `invalid_workflow`, then the params against the declaration, as 422
+    `bad_params`: first a param the workflow does not declare, then a param it
+    declares as `required` with neither a value in the call nor a `default`. After the params come 409 `trust_required`, then
     409 `already_running`, then 409 `harness_unavailable`. A workflow that is not trusted is refused
     before anything about the runs is looked at, so a refused call neither
     reveals nor touches the state of a run. These orders are normative, so that
@@ -170,11 +173,17 @@ info:
     is a fallback, not the requirement.
 
     **Which workflow.** A server is started on one workflow, the `root`
-    that `POST /api/session` returns. Only the root can be loaded, saved,
-    checked and run. `GET /api/workflow` with another `name` is 404
-    `not_found`, and `PUT /api/workflow` or `POST /api/validate` with another
-    `name` is 403 `read_only_workflow`. The root may not have a file yet: a
-    file is created by the first save with a `base_hash` of `null`.
+    that `POST /api/session` returns. A successful Library copy moves the root
+    to the new project workflow so the existing load, save, check and run calls
+    address the copy. Only the current root can be loaded, saved, checked and
+    run. `GET /api/workflow` with another `name` is 404 `not_found`; PUT
+    `/api/workflow`, `POST /api/validate` or `POST /api/run` with another
+    `name` is 403 `read_only_workflow`, performs no write or run, and tells the
+    person to reload. A page that still shows the earlier root sends its shown
+    name and receives that refusal after another page copies a Library entry.
+    A missing `name` means the current root for backward compatibility. The
+    root may not have a file yet: a file is created by the first save with a
+    `base_hash` of `null`.
 
     **The file.** The file is `<name>.yml` in the server's workflow folder. It
     is opened by that name only. A path that is a link, a directory or any
@@ -1590,7 +1599,10 @@ paths:
       operationId: startRun
       summary: Start a run
       description: |
-        Starts a run of the root workflow and returns at once with its id.
+        Starts a run of `name`, which must be the current root, and returns at
+        once with its id. `name` is optional for backward compatibility and
+        otherwise defaults to the root. A stale page names the workflow it
+        still shows and gets 403 `read_only_workflow` before anything starts.
         The run works from the file as last saved, so a client saves first, and
         the params are read against that file: the goal, and a value for each
         param it declares. A param left out takes its `default`. A save after
@@ -1605,6 +1617,7 @@ paths:
             schema:
               $ref: '#/components/schemas/RunRequest'
             example:
+              name: hello
               params:
                 goal: Add a greeting to the README
       responses:
@@ -1624,7 +1637,24 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The `name` is not the current root (`read_only_workflow`), or the
+            `Host` or `Origin` is refused. A name mismatch starts nothing and
+            tells the person to reload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                readOnly:
+                  $ref: '#/components/examples/ReadOnlyError'
+                foreignOrigin:
+                  value:
+                    error: The Origin header does not match this server.
+                    code: forbidden_origin
         '404':
           headers:
             X-Konductor-Api:
@@ -2214,9 +2244,9 @@ components:
         error: The request body is not valid.
         code: bad_request
     ReadOnlyError:
-      summary: The workflow is not the root
+      summary: The page is not showing the current root
       value:
-        error: This workflow is read-only.
+        error: The session root changed. Reload the page before saving, checking, or running.
         code: read_only_workflow
     InvalidWorkflowError:
       summary: The text has an error
@@ -2913,6 +2943,9 @@ components:
       additionalProperties: false
       required: [params]
       properties:
+        name:
+          $ref: '#/components/schemas/Name'
+          description: The workflow the page shows. It defaults to the current root.
         params:
           type: object
           required: [goal]

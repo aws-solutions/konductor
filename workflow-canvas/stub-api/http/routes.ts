@@ -171,8 +171,8 @@ export function buildRoutes(
           id: 'startRun',
           secured: true,
           handle: ({ body }) => {
-            const { params } = readRunRequest(body);
-            return { status: 202, body: api.startRun(params) };
+            const { name, params } = readRunRequest(body);
+            return { status: 202, body: api.startRun(name, params) };
           },
         },
       },

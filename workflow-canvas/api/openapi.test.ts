@@ -1177,7 +1177,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.11.0');
+      expect(info.version).toBe('1.12.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1717,6 +1717,33 @@ describe('workflow canvas API contract', () => {
       'CHECK_FAILED',
     ];
 
+    it('takes an optional project workflow name on a run', () => {
+      const request = schema('RunRequest');
+      const params = { goal: 'Ship it' };
+      expect(valueMatchesSchema(request, { params })).toBe(true);
+      expect(valueMatchesSchema(request, { name: 'hello', params })).toBe(true);
+      expect(
+        valueMatchesSchema(request, { name: 'library/hello', params }),
+      ).toBe(false);
+    });
+
+    it('documents root changes and stale-page refusal', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(/A successful Library copy moves the root/);
+      expect(description).toMatch(
+        /`POST \/api\/run` with another `name` is 403 `read_only_workflow`/,
+      );
+      expect(description).toMatch(/tells the person to reload/);
+      expect(description).toMatch(
+        /Version 1\.12\.0 only adds the optional `name` field to `POST \/api\/run`/,
+      );
+      const forbidden = jsonBodyOf(spec, 'POST /api/run', '403');
+      expect(namedExample(forbidden, 'readOnly')).toMatchObject({
+        code: 'read_only_workflow',
+        error: expect.stringMatching(/Reload the page/),
+      });
+    });
+
     it('names the three harnesses, one of them for tests', () => {
       expect(schema('Harness')['enum']).toEqual(['kiro-cli', 'claude', 'fake']);
       expect(String(schema('Harness')['description'])).toMatch(
@@ -1780,7 +1807,7 @@ describe('workflow canvas API contract', () => {
     it('checks the params and trust after the workflow, and before the active run and the harness', () => {
       const description = words(spec.info.description);
       expect(description).toMatch(
-        /after the body its order is 404 for the file, then 422 `invalid_workflow`, then the params against the declaration, as 422 `bad_params`: first a param the workflow does not declare, then a param it declares as `required` with neither a value in the call nor a `default`\. After the params come 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
+        /after the body, a malformed `name` is 400 `bad_name`, a `name` other than the root is 403 `read_only_workflow`, and then the server reads the saved file, so its remaining order is 404 for the file, then 422 `invalid_workflow`, then the params against the declaration, as 422 `bad_params`: first a param the workflow does not declare, then a param it declares as `required` with neither a value in the call nor a `default`\. After the params come 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
       );
       const run = spec.paths['/api/run']?.['post']?.responses?.['409'];
       const text = words(

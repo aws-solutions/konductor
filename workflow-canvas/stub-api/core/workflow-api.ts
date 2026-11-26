@@ -130,17 +130,21 @@ export class WorkflowApi {
    * trust, a run that is active, the harness. The workflow is trusted only
    * while the file still has the bytes it had when the stub started.
    */
-  startRun(params: Record<string, string>): { run_id: string } {
-    const file = this.store.read(this.root);
+  startRun(
+    name: string | undefined,
+    params: Record<string, string>,
+  ): { run_id: string } {
+    const target = this.writableName(name);
+    const file = this.store.read(target);
     if (!file) {
       throw new ApiError('not_found', 'The workflow has not been saved yet.');
     }
-    const check = checkWorkflowText(file.text, this.root);
+    const check = checkWorkflowText(file.text, target);
     if (!check.view) throw invalidWorkflow(check);
     const view = check.view;
     resolveParams(params, view);
     const stageNames = view.stages.map((stage) => stage.name);
-    if (this.trustedHash !== file.hash) throw untrusted(this.root);
+    if (this.trustedHash !== file.hash) throw untrusted(target);
     this.findOtherRun();
     const active = this.runs.activeRunId();
     if (active) {
@@ -162,7 +166,7 @@ export class WorkflowApi {
       );
     }
     const runId = this.runs.start(
-      this.root,
+      target,
       stageNames,
       params.goal ?? '',
       this.planOfRun(view),
@@ -234,7 +238,8 @@ export class WorkflowApi {
         'A workflow with this name already exists.',
       );
     }
-    this.trustedHash = this.store.save(as, source.text, null);
+    this.store.save(as, source.text, null);
+    this.trustedHash = undefined;
     this.root = as;
     return this.loadWorkflow(undefined);
   }
@@ -318,7 +323,10 @@ export class WorkflowApi {
   private writableName(name: string | undefined): string {
     const target = this.nameOrRoot(name);
     if (target !== this.root) {
-      throw new ApiError('read_only_workflow', 'This workflow is read-only.');
+      throw new ApiError(
+        'read_only_workflow',
+        'The session root changed. Reload the page before saving, checking, or running.',
+      );
     }
     return target;
   }
