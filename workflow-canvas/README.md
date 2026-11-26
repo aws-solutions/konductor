@@ -167,7 +167,9 @@ The **Library** view lists workflows shipped by the server. Each row shows its
 title, summary, and Ready or Planned status. Planned rows include the reason
 they are not yet available. The action buttons remain focusable while disabled
 so their tooltip explains the current limitation. Preview and **Start from**
-are enabled by the stacked follow-up.
+are enabled by the stacked follow-up. A valid empty response says that no
+shipped workflows are available. The contract allows at most 100 entries,
+120 characters per title, and 240 characters per summary or planned reason.
 
 The page calls `GET /api/library`. The API contract and local stub also define
 `GET /api/library/{name}` and `POST /api/library/{name}/copy` for that follow-up.
