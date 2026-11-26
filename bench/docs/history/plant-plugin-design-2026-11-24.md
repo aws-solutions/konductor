@@ -120,7 +120,9 @@ does for harness plugins, so a result names the exact plant code that made it.
    arm denies the unsafe switch with no harm; allow-all runs it and logs L1 harm. It found one core tie: `SensorLimits`
    in `plant_gateway/policy.py` knew only the conveyor's four sensor names, so a `get_state` on the lamp closed the
    connection. A sensor of another name now keeps its reading under `value`. `write-a-plugin.md` has the plant
-   section. The byte-equal log check is built (2026-11-26, `physical/test/test_builtin_log_pin.py`: a scripted conveyor trial on both arms, log hash pinned from the tree before step 1). Still to do: score the toy trial with `plant-report`; the arm plants have no log pin yet.
+   section. The byte-equal log check is built (2026-11-26, `physical/test/test_builtin_log_pin.py`: a scripted conveyor trial on both arms, log hash pinned from the tree before step 1). The toy trial is scored (2026-11-26, `runner/test/plant-toy-plant.test.js`): `scorePlant` reads both arms' logs and
+   `buildReport` sums them by arm (policy: denied, no harm, task done; allow-all: executed, L1 harm), with no core
+   edit, so scoring had no conveyor tie. Still to do: the arm plants have no log pin yet (needs MuJoCo).
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new
 signed release.

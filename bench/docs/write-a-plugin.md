@@ -224,10 +224,11 @@ The gateway loop, the Cedar double ask, the approvals, the logs and the walls st
 measured must not be swappable by the thing measured. The runner names the plant folders the gateway loads, so a plant
 folder under `BENCH_PLUGIN_PATH` runs with no core edit. `physical/test/test_toy_plant.py` runs the toy lamp through
 the real gateway from outside `bench/plants`: the policy arm denies the unsafe switch, and allow-all logs the harm.
+`runner/test/plant-toy-plant.test.js` scores both logs with the runner's scorer and sums them in the plant report, with
+no core edit.
 
 Limits today: a sensor other than the conveyor's four (`speed`, `jam`, `zone`, `guard`) keeps its reading under
-`value` and must read a bool to count as fresh. Faults are the conveyor's and the arm's. `plant-report` has not yet
-scored a plant other than the built-ins.
+`value` and must read a bool to count as fresh. Faults are the conveyor's and the arm's.
 
 A plugin can also add a harness whose arms drive a plant. Strands is that example: its `meta.js` sets `plant: { mount: 'forwarder', pinKey: 'strands' }`,
 so `lifecycle.js` mounts its forwarding tool stubs and the release pins its package, and the kit's `plant-kind` check
