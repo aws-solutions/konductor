@@ -426,9 +426,8 @@ replaced are still in the bundle, behind a query:
 - No `ui` in the address, as the launch address the server prints has it,
   opens the two views the page now opens with.
 - `?ui=classic` opens the views they replaced: the Designer tab and the
-  Execution tab, with the graph on both and the run state on each node. Two
-  controls are theirs alone today: **Delete stage** and the dialog a Run opens
-  when the workflow is not trusted.
+  Execution tab, with the graph on both and the run state on each node. One
+  control is theirs alone today: **Delete stage**.
 - Any other value of `ui` opens the views the page opens with, so an older
   `?ui=next` link, from when they were the ones behind a query, still lands
   on them. A query the browser cannot read is no ask either.
@@ -712,6 +711,12 @@ every required input have values that fit the contract.
   start time and goal of each. The list is read again once the run has ended.
   When it cannot be read, a warning says so and the rest of the view goes on
   working.
+- A 409 `trust_required` opens a dialog with the server's `fix` and its
+  `konductor flow trust` command when it names the open workflow. **Copy**
+  copies that command. After the person trusts the workflow in a terminal,
+  **Run again** resends every param from the refused start, even if the boxes
+  have changed. **Close** leaves the refusal under Run. The page never grants
+  trust itself.
 - An error from the API, whether the run does not start or the reads fail,
   shows in one alert under the Run button, with the sentence the server gave
   as plain text. A start that gets no answer, or is
