@@ -231,6 +231,61 @@ describe('createNextPorts, the start of a run', () => {
   });
 });
 
+describe('createNextPorts, the checks of a run', () => {
+  const signal = () => new AbortController().signal;
+
+  it('reads the state of each check of the run', async () => {
+    const { calls, fetchFn } = serverOf({
+      body: {
+        run: {
+          run_id: RUN_ID,
+          checks: { 'readme-exists': 'verified', 'tests-pass': 'deferred' },
+        },
+      },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const states = await ports.readChecks(RUN_ID, signal());
+
+    expect(calls[0]?.path).toBe(`/api/runs/${RUN_ID}`);
+    expect(headerOf(calls[0])).toBe(`Bearer ${TOKEN}`);
+    expect(states).toEqual({
+      'readme-exists': 'verified',
+      'tests-pass': 'deferred',
+    });
+  });
+
+  it('reads an empty map for a workflow that declares no check', async () => {
+    const { fetchFn } = serverOf({ body: { run: { checks: {} } } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    expect(await ports.readChecks(RUN_ID, signal())).toEqual({});
+  });
+
+  it('keeps a state it does not know, for the view to judge', async () => {
+    const { fetchFn } = serverOf({
+      body: { run: { checks: { 'readme-exists': 'reported' } } },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    expect(await ports.readChecks(RUN_ID, signal())).toEqual({
+      'readme-exists': 'reported',
+    });
+  });
+
+  it.each([
+    ['no checks at all', { run: { run_id: RUN_ID } }],
+    ['checks that are not a mapping', { run: { checks: [] } }],
+    ['a state that is not a string', { run: { checks: { a: 1 } } }],
+    ['no run', { checks: {} }],
+  ])('refuses a reply with %s', async (_, body) => {
+    const { fetchFn } = serverOf({ body });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.readChecks(RUN_ID, signal())).rejects.toThrow(ApiError);
+  });
+});
+
 describe('createNextPorts, the events of a run', () => {
   it('asks for the events after the sequence it was given', async () => {
     const { calls, fetchFn } = serverOf({ body: { events: [], next: 0 } });

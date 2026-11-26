@@ -32,6 +32,7 @@ function portsOf(over: Partial<NextPorts> = {}): NextPorts {
     ),
     listRuns: vi.fn(() => Promise.resolve([])),
     startRun: vi.fn(() => Promise.resolve(RUN_ID)),
+    readChecks: vi.fn(() => Promise.resolve({})),
     readEvents: vi.fn(
       () => new Promise<never>(() => undefined),
     ) as unknown as NextPorts['readEvents'],

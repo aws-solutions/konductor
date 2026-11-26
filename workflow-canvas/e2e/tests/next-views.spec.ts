@@ -174,7 +174,7 @@ test('does not take a run that has passed up again after a reload', async ({
   await expect(next.runButton).toBeEnabled();
 });
 
-test('follows one run after a reload, and reads it only through the events', async ({
+test('follows one run after a reload, and takes its stages only from the events', async ({
   next,
 }) => {
   await answerRunWith(next.page, RUN_EVENTS);
@@ -188,15 +188,21 @@ test('follows one run after a reload, and reads it only through the events', asy
   await expect(next.page.getByTestId('run-progress')).toContainText(
     'Run passed.',
   );
+  const whileRunning = reads.filter((path) =>
+    /^\/api\/runs\/[^/]+$/.test(path),
+  ).length;
 
   await next.page.reload();
   await next.title.waitFor();
   await next.selectTab('Run');
 
-  // The run that passed is forgotten, so nothing is followed, and no read of
-  // a single run (the way the Run tab reads one) was ever made.
+  // The run that passed is forgotten, so nothing is followed. The whole run
+  // is read only for the state of its checks, and the reloaded page, which
+  // follows no run, reads it no further.
   await expect(next.page.getByText('No run yet.')).toBeVisible();
-  expect(reads.filter((path) => /^\/api\/runs\/[^/]+$/.test(path))).toEqual([]);
+  expect(
+    reads.filter((path) => /^\/api\/runs\/[^/]+$/.test(path)),
+  ).toHaveLength(whileRunning);
 });
 
 test('follows a run that is still going once after a reload', async ({

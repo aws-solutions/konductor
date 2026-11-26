@@ -59,6 +59,25 @@ export interface WorkflowView {
   stages: StageView[];
 }
 
+/**
+ * A check of `intent.accept`, which says whether the run met its intent. A
+ * check has exactly one of `file` and `run`, so the key that is there names
+ * the kind. The state of each one comes from a run, not from the file.
+ */
+export interface CheckDeclaration {
+  readonly id: string;
+  /** Whether the check reads a file or runs a command. */
+  readonly kind: 'file' | 'run';
+}
+
+/** The checks a workflow declares, and which stage waits for each. */
+export interface WorkflowChecks {
+  /** The checks of `intent.accept`, in the order of the file. */
+  readonly declared: readonly CheckDeclaration[];
+  /** The check ids a stage's `done_when` names, by stage name. */
+  readonly doneWhen: Readonly<Record<string, readonly string[]>>;
+}
+
 /** How serious a finding of the check is. */
 export type Severity = 'error' | 'warning' | 'info';
 

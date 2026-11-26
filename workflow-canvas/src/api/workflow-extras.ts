@@ -7,11 +7,12 @@ import {
   stringOf,
   type Json,
 } from './parse';
+import type { CheckDeclaration, WorkflowChecks } from './types';
 
 /*
  * The fields of `GET /api/workflow` that `parse.ts` leaves out and the views
  * read when the workflow is loaded: the `stage_fields` of the document, the
- * default goal of the workflow and the params it declares. It reads the same
+ * default goal of the workflow, and the params and checks it declares. It reads the same
  * answer with the same readers as `parse.ts`, and rejects a shape the
  * contract does not allow, so a view built on it never shows a field the
  * server did not send.
@@ -86,6 +87,8 @@ export interface WorkflowExtras {
   readonly goalDefault?: string;
   /** The params the workflow declares beside the goal, in the order of the file. */
   readonly params?: readonly ParamDeclaration[];
+  /** The checks the workflow declares, when it declares any. */
+  readonly checks?: WorkflowChecks;
 }
 
 function parseField(value: unknown): StageField {
@@ -159,17 +162,59 @@ function parseParams(view: Json): {
   return declared.length > 0 ? { params: declared } : {};
 }
 
+// One check of `intent.accept`. The contract requires exactly one of `file`
+// and `run`, and a `run` of at least one word, so a check with both keys,
+// with neither, or with an empty `run` is a reply this page does not
+// understand rather than a declaration to draw.
+function parseCheck(value: unknown): CheckDeclaration {
+  const check = objectOf(value);
+  const id = stringOf(check.id);
+  const byFile = Object.hasOwn(check, 'file');
+  const byRun = Object.hasOwn(check, 'run');
+  if (byFile === byRun) fail();
+  if (byFile) {
+    stringOf(check.file);
+    return { id, kind: 'file' };
+  }
+  const argv = arrayOf(check.run).map(stringOf);
+  if (argv.length < 1) fail();
+  return { id, kind: 'run' };
+}
+
+// The checks of `intent.accept`, and the ids each stage's `done_when` names.
+// A workflow that declares no check and no `done_when` has no checks at all,
+// so the Run view shows nothing for them.
+function parseChecks(view: Json): { readonly checks?: WorkflowChecks } {
+  const intent = objectOf(view.intent);
+  const declared = Object.hasOwn(intent, 'accept')
+    ? arrayOf(intent.accept).map(parseCheck)
+    : [];
+  const named = arrayOf(view.stages).flatMap((value) => {
+    const stage = objectOf(value);
+    if (!Object.hasOwn(stage, 'done_when')) return [];
+    const ids = arrayOf(stage.done_when).map(stringOf);
+    return [[stringOf(stage.name), ids] as const];
+  });
+  if (declared.length === 0 && named.length === 0) return {};
+  return { checks: { declared, doneWhen: Object.fromEntries(named) } };
+}
+
 /**
- * Reads the `stage_fields`, the default goal and the declared params out of a
- * `WorkflowDocument` body. A `view` of `null` has neither a default goal nor
- * params; `stage_fields` is there either way. Unknown fields are ignored, and
- * a field the contract shapes differently throws an `ApiError`, as reading
- * the rest of the answer does.
+ * Reads the `stage_fields`, the default goal, the declared params and the
+ * declared checks out of a `WorkflowDocument` body. A `view` of `null` has
+ * none of those; `stage_fields` is there either way. Unknown fields are
+ * ignored, and a field the contract shapes differently throws an `ApiError`,
+ * as reading the rest of the answer does.
  */
 export function parseWorkflowExtras(body: unknown): WorkflowExtras {
   const document = objectOf(body);
   const stageFields = parseStageFields(document.stage_fields);
   if (document.view === null) return { stageFields };
   const view = objectOf(document.view);
-  return { stageFields, ...parseGoalDefault(view), ...parseParams(view) };
+  return {
+    stageFields,
+    ...parseGoalDefault(view),
+    ...parseParams(view),
+    ...parseChecks(view),
+  };
 }

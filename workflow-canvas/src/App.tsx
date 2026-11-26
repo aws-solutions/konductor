@@ -49,6 +49,7 @@ const NO_RUN_PORTS: RunViewPorts = {
     Promise.reject(new Error('The page has no session to start a run with.')),
   readEvents: undefined,
   listRuns: undefined,
+  readChecks: undefined,
   scheduler: timerScheduler,
   now: () => Date.now(),
 };
@@ -211,6 +212,7 @@ export function App({
             start: nextPorts.startRun,
             readEvents: nextPorts.readEvents,
             listRuns: nextPorts.listRuns,
+            readChecks: nextPorts.readChecks,
             scheduler,
             now: () => Date.now(),
           }
@@ -225,6 +227,9 @@ export function App({
       ? {}
       : { goalDefault: next.extras.goalDefault }),
     params: paramsState(next),
+    ...(next.extras.checks === undefined
+      ? {}
+      : { declaredChecks: next.extras.checks }),
     ports: nextRunPorts,
     // Only once there is a session: the page has no run of its own to keep
     // before one, and the controller drops the run of the session it is

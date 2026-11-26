@@ -69,7 +69,8 @@ export function runRow(status: 'running' | 'passed' | 'halted' = 'passed') {
 
 /**
  * Answers the calls of a run with fixed replies: the start is accepted, the
- * events come in one page, and the past runs are the rows given. The stub
+ * events come in one page, the past runs are the rows given and the read of
+ * the run reports the check states given (none by default). The stub
  * runs one run at a time, so this leaves it for the tests that run on it,
  * and a run here never waits the three seconds a stage takes there.
  */
@@ -77,12 +78,21 @@ export async function answerRunWith(
   page: Page,
   events: readonly RunEventBody[],
   runs: readonly ReturnType<typeof runRow>[] = [runRow()],
-  { finished = true }: { readonly finished?: boolean } = {},
+  {
+    finished = true,
+    checks = {},
+  }: {
+    readonly finished?: boolean;
+    readonly checks?: Readonly<Record<string, string>>;
+  } = {},
 ): Promise<void> {
   await page.route('**/api/run', (route) =>
     route.fulfill({ status: 202, json: { run_id: RUN_ID } }),
   );
   await page.route('**/api/runs', (route) => route.fulfill({ json: { runs } }));
+  await page.route('**/api/runs/*', (route) =>
+    route.fulfill({ json: { run: { checks } } }),
+  );
   // Registered last, so it wins over the list route above for this path.
   await page.route('**/api/runs/*/events*', (route) =>
     route.fulfill({
@@ -126,6 +136,49 @@ async function declareParams(page: Page): Promise<void> {
       },
     });
   });
+}
+
+/** The checks a test has the workflow declare, with a stage waiting for one. */
+export const DECLARED_CHECKS = [
+  { id: 'readme-exists', file: 'README.md' },
+  { id: 'tests-pass', run: ['make', 'test'] },
+];
+
+/**
+ * Opens the page on the Run view with those checks declared. The stage
+ * `draft` waits for `readme-exists`. A test gives the states of a run with
+ * `answerRunWith`, so it sees a verified and a deferred check without waiting
+ * for a server to run one.
+ */
+export async function openDeclaringChecks(
+  page: Page,
+): Promise<WorkflowCanvasPage> {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    const reply = await route.fetch();
+    const body = (await reply.json()) as {
+      view: { intent: Record<string, unknown>; stages: unknown[] };
+    };
+    const [first, ...rest] = body.view.stages as Record<string, unknown>[];
+    await route.fulfill({
+      json: {
+        ...body,
+        view: {
+          ...body.view,
+          intent: { ...body.view.intent, accept: DECLARED_CHECKS },
+          stages: [{ ...first, done_when: ['readme-exists'] }, ...rest],
+        },
+      },
+    });
+  });
+  const canvas = new WorkflowCanvasPage(page);
+  await page.goto(`/#${STUB_LAUNCH_CODE}`);
+  await canvas.title.waitFor();
+  await canvas.selectTab('Run');
+  return canvas;
 }
 
 /**

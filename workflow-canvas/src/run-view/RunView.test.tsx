@@ -6,7 +6,9 @@ import {
   RunStartUnsure,
   type RunMemory,
 } from '../execution/core/ports';
+import type { WorkflowChecks } from '../api/types';
 import type { ParamDeclaration } from '../api/workflow-extras';
+import type { CheckStates } from '../execution/core/run-checks';
 import type { ParamsState } from './run-params';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import {
@@ -32,6 +34,7 @@ function Drawn({
   goalDefault,
   declaredParams,
   paramsState,
+  declaredChecks,
   ports,
   runMemory,
   reasonSentence,
@@ -42,6 +45,7 @@ function Drawn({
   declaredParams?: readonly ParamDeclaration[];
   /** The state of the params; by default they are read and are those above. */
   paramsState?: ParamsState;
+  declaredChecks?: WorkflowChecks;
   ports: RunViewPorts;
   runMemory?: RunMemory;
   reasonSentence?: (code: string) => string | undefined;
@@ -51,6 +55,7 @@ function Drawn({
     stages,
     ...(goalDefault === undefined ? {} : { goalDefault }),
     params: paramsState ?? { kind: 'ready', declared: declaredParams ?? [] },
+    ...(declaredChecks === undefined ? {} : { declaredChecks }),
     ports,
     ...(runMemory ? { runMemory } : {}),
   });
@@ -103,6 +108,9 @@ function drawn({
   noGoalDefault = false,
   declaredParams,
   paramsState,
+  declaredChecks,
+  checkStates = {},
+  checksFail,
   clock,
   onRunState,
 }: {
@@ -118,6 +126,12 @@ function drawn({
   declaredParams?: readonly ParamDeclaration[];
   /** The state of the params; by default they are read and are those above. */
   paramsState?: ParamsState;
+  /** The checks the workflow declares. */
+  declaredChecks?: WorkflowChecks;
+  /** The states the run reports for them. */
+  checkStates?: CheckStates;
+  /** Why the read of the states fails, when it should. */
+  checksFail?: string;
   /** A clock the test moves, for the elapsed time. */
   clock?: { now: () => number };
   /** Told where the run is, as the page is. */
@@ -131,10 +145,16 @@ function drawn({
       ? Promise.resolve(runs)
       : Promise.reject(new Error(listFails)),
   );
+  const readChecks = vi.fn(() =>
+    checksFail === undefined
+      ? Promise.resolve(checkStates)
+      : Promise.reject(new Error(checksFail)),
+  );
   const ports: RunViewPorts = {
     start,
     readEvents: events.readEvents,
     listRuns,
+    readChecks,
     scheduler: waits,
     now: clock ? clock.now : () => NOW,
   };
@@ -144,6 +164,7 @@ function drawn({
       {...(noGoalDefault ? {} : { goalDefault })}
       {...(declaredParams === undefined ? {} : { declaredParams })}
       {...(paramsState === undefined ? {} : { paramsState })}
+      {...(declaredChecks === undefined ? {} : { declaredChecks })}
       ports={ports}
       {...(memory ? { runMemory: memory } : {})}
       {...(reasonSentence ? { reasonSentence } : {})}
@@ -167,6 +188,7 @@ function drawn({
     const nextEvents = new HeldEvents();
     const nextStart = vi.fn(() => startResult);
     const nextList = vi.fn(() => Promise.resolve(runs));
+    const nextChecks = vi.fn(() => Promise.resolve(checkStates));
     rerender(
       <Drawn
         stages={STAGES}
@@ -176,6 +198,7 @@ function drawn({
           start: nextStart,
           readEvents: nextEvents.readEvents,
           listRuns: nextList,
+          readChecks: nextChecks,
           scheduler: waits,
           now: clock ? clock.now : () => NOW,
         }}
@@ -202,6 +225,7 @@ function drawn({
           ? {}
           : { declaredParams: nextParams.map((param) => ({ ...param })) })}
         {...(nextState === undefined ? {} : { paramsState: nextState })}
+        {...(declaredChecks === undefined ? {} : { declaredChecks })}
         ports={ports}
         {...(memory ? { runMemory: memory } : {})}
         {...(reasonSentence ? { reasonSentence } : {})}
@@ -212,6 +236,7 @@ function drawn({
     events,
     start,
     listRuns,
+    readChecks,
     waits,
     rerenderWith,
     rerenderRead,
@@ -1181,6 +1206,7 @@ describe('the Run view and the controller the page keeps', () => {
       start: vi.fn(() => Promise.resolve(RUN_ID)),
       readEvents: events.readEvents,
       listRuns: vi.fn(() => Promise.resolve([])),
+      readChecks: vi.fn(() => Promise.resolve({})),
       scheduler: new EventWaits(),
       now: () => NOW,
     };
@@ -1239,5 +1265,100 @@ describe('the Run view and the controller the page keeps', () => {
     // The read of the next events is still out: nothing took it off.
     expect(events.waiting).toBe(true);
     expect(events.calls.length).toBeGreaterThan(1);
+  });
+});
+
+describe('RunView, the checks the workflow declares', () => {
+  const DECLARED: WorkflowChecks = {
+    declared: [
+      { id: 'readme-exists', kind: 'file' },
+      { id: 'tests-pass', kind: 'run' },
+    ],
+    doneWhen: { draft: ['readme-exists'] },
+  };
+
+  const stateOf = (id: string) =>
+    screen.getByTestId(`check-state-${id}`).textContent;
+
+  it('draws no panel for a workflow that declares none', async () => {
+    drawn();
+    await settle();
+
+    expect(screen.queryByText('Checks')).toBeNull();
+  });
+
+  it('lists each declared check and the stage that waits for it', async () => {
+    drawn({ declaredChecks: DECLARED });
+    await settle();
+
+    expect(screen.getByText('readme-exists')).toBeTruthy();
+    expect(screen.getByText('Stage draft')).toBeTruthy();
+    expect(screen.getByText('No stage waits for it.')).toBeTruthy();
+  });
+
+  it('defers every check before a run has reported one', async () => {
+    drawn({ declaredChecks: DECLARED });
+    await settle();
+
+    expect(stateOf('readme-exists')).toBe('Deferred');
+    expect(stateOf('tests-pass')).toBe('Deferred');
+  });
+
+  it('reads the states of the run it started and shows them', async () => {
+    const { readChecks } = drawn({
+      declaredChecks: DECLARED,
+      checkStates: { 'readme-exists': 'verified' },
+    });
+
+    await press();
+
+    expect(readChecks).toHaveBeenCalled();
+    expect(stateOf('readme-exists')).toBe('Verified');
+    expect(stateOf('tests-pass')).toBe('Deferred');
+  });
+
+  it('reads them again as a stage passes', async () => {
+    const { events, readChecks } = drawn({ declaredChecks: DECLARED });
+    await press();
+    const reads = readChecks.mock.calls.length;
+
+    await answer(events, eventsAnswer([passed(1, 'draft')]));
+
+    expect(readChecks.mock.calls.length).toBeGreaterThan(reads);
+  });
+
+  it('shows the state of a check beside the stage that waits for it', async () => {
+    drawn({
+      declaredChecks: DECLARED,
+      checkStates: { 'readme-exists': 'verified' },
+    });
+
+    await press();
+
+    expect(screen.getByTestId('stage-check-readme-exists').textContent).toBe(
+      'readme-exists: Verified',
+    );
+    expect(screen.queryByTestId('stage-check-tests-pass')).toBeNull();
+  });
+
+  it('says why the states could not be read, and keeps the checks listed', async () => {
+    drawn({
+      declaredChecks: DECLARED,
+      checksFail: 'The server said no.',
+    });
+
+    await press();
+
+    expect(screen.getByTestId('run-checks-error').textContent).toContain(
+      'The server said no.',
+    );
+    expect(stateOf('readme-exists')).toBe('Deferred');
+  });
+
+  it('adds no live region of its own', async () => {
+    drawn({ declaredChecks: DECLARED });
+    await settle();
+
+    expect(document.querySelectorAll('[aria-live]')).toHaveLength(0);
   });
 });
