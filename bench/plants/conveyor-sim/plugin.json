@@ -1,0 +1,13 @@
+{
+  "$comment": "The conveyor plant's manifest (B-003; docs/history/plant-plugin-design-2026-11-24.md). meta is its tool and rule metadata, entry the kind file the gateway loads; its simulator modules are in sim/.",
+  "benchApi": 1,
+  "kind": "plant",
+  "name": "conveyor-sim",
+  "version": "1.0.0",
+  "order": 1,
+  "meta": "meta.json",
+  "entry": "kind.py",
+  "prompt": "You operate one conveyor line through the plant tools. Act only through those tools.",
+  "gatewayModules": ["cedarpy"],
+  "sharedControls": { "prefix": "", "names": [] }
+}

@@ -21,7 +21,7 @@ KIND = PlantKind(name="toy", sim_version="toy/1", tools=CONVEYOR_TOOLS, approvab
 
 class KindFiles(unittest.TestCase):
     def test_the_built_ins_come_from_their_kind_files_in_order(self):
-        # Each kind file is bench/plants/<kind>/kind.py, in plant.json "order" (B-003 step 3b).
+        # Each kind file is bench/plants/<kind>/kind.py, in plugin.json "order" (B-003 step 3b).
         self.assertEqual([os.path.relpath(f, kinds.PLANTS_DIR) for f in KIND_FILES],
                          [os.path.join(k, "kind.py") for k in ("conveyor-sim", "arm-sim", "arm-confined-space")])
         old = os.path.join(os.path.dirname(kinds.__file__), "kind_files")
@@ -92,7 +92,7 @@ class LoadKinds(unittest.TestCase):
 
     def plant(self, folder, order, text):
         os.makedirs(os.path.join(self.tmp.name, folder))
-        self.write(os.path.join(folder, "plant.json"), json.dumps({"name": folder, "order": order, "python": "kind.py"}))
+        self.write(os.path.join(folder, "plugin.json"), json.dumps({"name": folder, "order": order, "entry": "kind.py"}))
         return self.write(os.path.join(folder, "kind.py"), text)
 
     def test_a_plant_folder_loads_from_a_plants_root_in_its_order(self):

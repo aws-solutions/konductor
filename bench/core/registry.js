@@ -39,11 +39,15 @@ function folderHash(dir) {
   return h.digest('hex');
 }
 
-/** Why the manifest `m` of folder `dir` cannot load, or null when it can. */
-function manifestProblem(m, dir) {
+// A kind that is no plugin of this registry, but whose folders read the same way (plant folders, B-003 step 3b): the
+// caller passes it in `kinds`. Its meta is a JSON file with no `id`, so only the folder name ties the two.
+const META_WITHOUT_ID = Object.freeze(['plant']);
+
+/** Why the manifest `m` of folder `dir` cannot load as one of `kinds`, or null when it can. */
+function manifestProblem(m, dir, kinds) {
   if (!m || typeof m !== 'object') return 'plugin.json is not a JSON object';
   if (m.benchApi !== PLUGIN_API) return `benchApi ${JSON.stringify(m.benchApi)} is not ${PLUGIN_API}, the plugin API this bench speaks`;
-  if (!KINDS.includes(m.kind)) return `kind ${JSON.stringify(m.kind)} is not one of ${KINDS.join(', ')}`;
+  if (!kinds.includes(m.kind)) return `kind ${JSON.stringify(m.kind)} is not one of ${kinds.join(', ')}`;
   for (const k of ['name', 'version', 'meta', 'entry']) if (typeof m[k] !== 'string' || !m[k]) return `"${k}" must be a non-empty string`;
   if (m.name !== path.basename(dir)) return `name "${m.name}" must equal its folder name "${path.basename(dir)}"`;
   const fileProblem = (p) => {
@@ -59,11 +63,11 @@ function manifestProblem(m, dir) {
   if (main) return main;
   if (m.parts === undefined) return null;
   if (!Array.isArray(m.parts)) return '"parts" must be a list of { kind, meta, entry }';
-  const kinds = [m.kind];
+  const used = [m.kind];
   for (const [i, p] of m.parts.entries()) {
     if (!KINDS.includes(p?.kind)) return `parts[${i}]: kind ${JSON.stringify(p?.kind)} is not one of ${KINDS.join(', ')}`;
-    if (kinds.includes(p.kind)) return `parts[${i}]: kind "${p.kind}" is already a part of this plugin`;
-    kinds.push(p.kind);
+    if (used.includes(p.kind)) return `parts[${i}]: kind "${p.kind}" is already a part of this plugin`;
+    used.push(p.kind);
     const why = fileProblem(p);
     if (why) return `parts[${i}]: ${why}`;
   }
@@ -73,17 +77,18 @@ function manifestProblem(m, dir) {
 /**
  * One plugin folder, read: { plugin: {name, kind, version, benchApi, sha256, dir, meta, entry, parts} } when it loads,
  * else { refused: {dir, why} }. `meta` and `entry` (absolute path) are the main part's; `parts` is every part,
- * main first, each { kind, meta, entry }.
+ * main first, each { kind, meta, entry }. `kinds` are the kinds the main part may have: the plugin kinds, or `['plant']`
+ * for a plant folder (the plant reader in runner/lib/plant/kinds.js).
  */
-function readPlugin(dir) {
+function readPlugin(dir, kinds = KINDS) {
   let m;
   try { m = JSON.parse(fs.readFileSync(path.join(dir, 'plugin.json'), 'utf8')); } catch (e) { return { refused: { dir, why: `plugin.json: ${e.message}` } }; }
-  const why = manifestProblem(m, dir);
+  const why = manifestProblem(m, dir, kinds);
   if (why) return { refused: { dir, why } };
   const parts = [];
   for (const [i, p] of [m, ...(m.parts ?? [])].entries()) {
     const meta = require(path.resolve(dir, p.meta));
-    if (meta?.id !== m.name) return { refused: { dir, why: `${i ? `parts[${i - 1}]: ` : ''}meta id ${JSON.stringify(meta?.id)} must equal the plugin name "${m.name}"` } };
+    if (meta?.id !== m.name && !(i === 0 && META_WITHOUT_ID.includes(m.kind))) return { refused: { dir, why: `${i ? `parts[${i - 1}]: ` : ''}meta id ${JSON.stringify(meta?.id)} must equal the plugin name "${m.name}"` } };
     parts.push(Object.freeze({ kind: p.kind, meta, entry: path.resolve(dir, p.entry) }));
   }
   const [{ meta, entry }] = parts;

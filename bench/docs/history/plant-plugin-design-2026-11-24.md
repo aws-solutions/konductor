@@ -27,7 +27,7 @@ built-in plants move into folders of their own, so no code names `conveyor-sim` 
 
 ```text
 bench/plants/<name>/
-  plant.json        { "benchApi": 1, "kind": "plant", "name": "arm-sim", "version", "meta", "python", "prompt",
+  plugin.json       { "benchApi": 1, "kind": "plant", "name": "arm-sim", "version", "meta", "entry", "prompt",
                       "gatewayModules": ["cedarpy", "mujoco", "numpy"], "controls": "controls.js" }
   meta.json         today's plant-meta-*.json, unchanged
   kind.py           defines KIND = PlantKind(...), today's ARM block in kinds.py
@@ -40,7 +40,7 @@ bench/plants/<name>/
 | --- | --- |
 | `name` | the `environment.kind` a task writes |
 | `meta` | `KIND_META` in `meta.js` |
-| `python` (`kind.py`) | `KINDS` in `kinds.py`: the gateway imports `KIND` from the file with `importlib`, by path |
+| `entry` (`kind.py`) | `KINDS` in `kinds.py`: the gateway imports `KIND` from the file with `importlib`, by path |
 | `prompt` | `PROMPTS` in `agent-file.js` |
 | `gatewayModules` | `GATEWAY_MODULES` in `python-pin.js` |
 | `controls` | `CONTROLS` in `plant-controls.js` |
@@ -75,14 +75,14 @@ does for harness plugins, so a result names the exact plant code that made it.
    two existing kinds in one module. No folder moves yet, no output change.
 2. Python side: `kinds.py` builds `KINDS` from a list of kind files; the two existing blocks move into two files.
 3. Move each built-in into `bench/plants/<name>/` with its manifest, keeping `envVersion` and `sim_version`.
-   3a (built 2026-11-25): each kind's Node record is a `bench/plants/<kind>/plant.json` (`benchApi`, `kind: "plant"`,
+   3a (built 2026-11-25): each kind's Node record is a `bench/plants/<kind>/plant.json` (later `plugin.json`, see "registry read"; `benchApi`, `kind: "plant"`,
    `name`, `order`, `meta`, `prompt`, `gatewayModules`, `sharedControls`), read and checked by
    `runner/lib/plant/kinds.js`, which no longer names a kind. `sharedControls` stands in for `controls.js`.
    3b, first part (built 2026-11-26): each kind's metadata moved, byte for byte, from `physical/schemas/plant-meta-*.json`
-   to `bench/plants/<kind>/meta.json`; `plant.json` names it as `meta.json`, and `sim/meta.py`,
+   to `bench/plants/<kind>/meta.json`; the manifest names it as `meta.json`, and `sim/meta.py`,
    `sim/confined_space.py` and `controls/arm-control.js` read it there. `control-v1.json` is not per plant and stays.
    3b, second part (built 2026-11-26): each kind file moved, byte for byte, from `plant_gateway/kind_files/` to
-   `bench/plants/<kind>/kind.py`; `plant.json` names it in `python`. The gateway's `kinds.py` reads the plant folders
+   `bench/plants/<kind>/kind.py`; the manifest names it in `python` (later `entry`). The gateway's `kinds.py` reads the plant folders
    (their `python` and `order` fields) and refuses a kind file whose `ENV_KIND` is not its folder name. The gateway
    still finds `bench/plants` by its own path, not from a runner argument.
    3b, folder hashes (built 2026-11-26): a plant suite's `run-config.json` records `plant.folders`, each plant folder
@@ -95,7 +95,15 @@ does for harness plugins, so a result names the exact plant code that made it.
    folder to the `sim` package path, so `sim.conveyor` and the modules' relative imports work unchanged, and it
    refuses one module name in two folders. The confined space plant still imports the arm's modules (`sim.arm`,
    `sim.arm_state`), so its folder hash does not cover them; the arm folder's hash does.
-   Left for 3b: read the folders through `core/registry.js`.
+   3b, registry read (built 2026-11-26): the manifest is `plugin.json`, the name every plugin uses (it was `plant.json`,
+   and `python` is now `entry`; `version` is new). `core/registry.js` `readPlugin(dir, ['plant'])` checks it, as it does
+   for a harness: `benchApi`, `kind`, a name equal to the folder, `version`, and `meta` and `entry` as files inside the
+   folder. A plant's meta has no `id`, so only the folder name ties them. The registry's own plugin kinds stay
+   `harness`, `judge-backend` and `check-type`: a plant folder under `BENCH_PLUGIN_PATH` is still refused, because the
+   gateway cannot yet take a plant folder from the runner. `runner/lib/plant/kinds.js` reads `bench/plants` through
+   `readPlugin` and adds the plant fields (`order`, `prompt`, `gatewayModules`, `sharedControls`). The gateway's
+   `kinds.py` reads the same `plugin.json`.
+   Left for 3b: the runner passes the plant folders to the gateway, so a plant folder from `BENCH_PLUGIN_PATH` can load.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new

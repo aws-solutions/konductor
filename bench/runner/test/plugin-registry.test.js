@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
-const { createRegistry, folderHash, PLUGIN_API } = require('../../core/registry.js');
+const { createRegistry, folderHash, readPlugin, PLUGIN_API } = require('../../core/registry.js');
 const { REGISTRY, DESCRIPTORS, PLUGINS_DIR } = require('../lib/harness/descriptors.js');
 const { HARNESSES } = require('../lib/harness/index.js');
 const { checkHarnessPlugin } = require('../../kit/plugin/check.js');
@@ -141,6 +141,25 @@ test('the plugin kit passes Strands and names what a broken plugin lacks', () =>
     for (const want of [/buildCommand must be a function/, /parseResult must be a function/, /meta.costUnit/, /meta.report must be an object/, /same meta object/, /test\/conformance\.js is missing/]) {
       assert.ok(problems.some((p) => want.test(p)), `${want} in ${problems.join(' | ')}`);
     }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a plant folder reads as a plugin of kind "plant" only when the caller allows that kind; its meta has no id (B-003 step 3b)', () => {
+  const root = tmp();
+  try {
+    const dir = path.join(root, 'lamp-sim');
+    write(path.join(dir, 'meta.json'), '{ "version": 1 }\n');
+    write(path.join(dir, 'kind.py'), 'ENV_KIND = "lamp-sim"\n');
+    const manifest = { benchApi: PLUGIN_API, kind: 'plant', name: 'lamp-sim', version: '1.0.0', meta: 'meta.json', entry: 'kind.py' };
+    write(path.join(dir, 'plugin.json'), JSON.stringify(manifest));
+    assert.match(readPlugin(dir).refused.why, /kind "plant" is not one of harness, judge-backend, check-type/, 'a plant is no plugin of the bench registry');
+    const { plugin: p } = readPlugin(dir, ['plant']);
+    assert.deepEqual([p.name, p.kind, p.version, p.entry, p.meta], ['lamp-sim', 'plant', '1.0.0', path.join(dir, 'kind.py'), { version: 1 }]);
+    assert.equal(p.sha256, folderHash(dir));
+    write(path.join(dir, 'plugin.json'), JSON.stringify({ ...manifest, entry: 'missing.py' }));
+    assert.match(readPlugin(dir, ['plant']).refused.why, /"entry" file missing\.py does not exist/);
+    write(path.join(dir, 'plugin.json'), JSON.stringify({ ...manifest, kind: 'harness' }));
+    assert.match(readPlugin(dir, ['plant']).refused.why, /kind "harness" is not one of plant/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

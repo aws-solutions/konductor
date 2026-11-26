@@ -30,20 +30,21 @@ test('meta.js, agent-file.js, python-pin.js and plant-controls.js read the recor
   }
 });
 
-test('each kind record comes from a bench/plants/<folder>/plant.json manifest, read in its "order" (B-003 step 3a)', () => {
+test('each kind record comes from a bench/plants/<folder>/plugin.json manifest, read in its "order" (B-003 steps 3a and 3b)', () => {
   const fs = require('node:fs');
   const { PLANTS_DIR, readPlantManifest } = require('../lib/plant/kinds.js');
   assert.equal(PLANTS_DIR, path.join(__dirname, '..', '..', 'plants'));
-  const names = fs.readdirSync(PLANTS_DIR).filter((d) => fs.existsSync(path.join(PLANTS_DIR, d, 'plant.json')));
+  const names = fs.readdirSync(PLANTS_DIR).filter((d) => fs.existsSync(path.join(PLANTS_DIR, d, 'plugin.json')));
   assert.deepEqual(names.sort(), ['arm-confined-space', 'arm-sim', 'conveyor-sim']);
   for (const name of names) {
-    const m = JSON.parse(fs.readFileSync(path.join(PLANTS_DIR, name, 'plant.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(PLANTS_DIR, name, 'plugin.json'), 'utf8'));
     assert.equal(m.benchApi, 1);
     assert.equal(m.kind, 'plant');
     assert.equal(m.name, name, 'the folder is named after the kind');
     assert.equal(PLANT_KINDS[name].metaFile, path.resolve(PLANTS_DIR, name, m.meta));
     assert.equal(m.meta, 'meta.json', 'the metadata file lives in the plant folder (B-003 step 3b)');
-    assert.equal(m.python, 'kind.py', 'the Python kind file lives in the plant folder (B-003 step 3b)');
+    assert.equal(m.entry, 'kind.py', 'the Python kind file lives in the plant folder (B-003 step 3b)');
+    assert.match(m.version, /^\d+\.\d+\.\d+$/, 'a plant is versioned like every plugin');
     assert.equal(PLANT_KINDS[name].pythonFile, path.resolve(PLANTS_DIR, name, 'kind.py'));
   }
   const oldKindDir = path.join(__dirname, '..', '..', 'physical', 'gateway', 'plant_gateway', 'kind_files');
@@ -53,9 +54,12 @@ test('each kind record comes from a bench/plants/<folder>/plant.json manifest, r
     'no plant metadata file is left in physical/schemas');
   const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'plant-manifest-'));
   try {
-    const bad = (m) => { fs.writeFileSync(path.join(dir, 'plant.json'), JSON.stringify(m)); return () => readPlantManifest(dir); };
-    const good = { benchApi: 1, kind: 'plant', name: path.basename(dir), order: 9, meta: path.join(PLANTS_DIR, 'conveyor-sim', 'meta.json'), python: path.join(PLANTS_DIR, 'conveyor-sim', 'kind.py'), prompt: 'p', gatewayModules: [], sharedControls: { prefix: '', names: [] } };
-    assert.throws(bad({ ...good, python: 'nope.py' }), /python/);
+    fs.copyFileSync(path.join(PLANTS_DIR, 'conveyor-sim', 'meta.json'), path.join(dir, 'meta.json'));
+    fs.copyFileSync(path.join(PLANTS_DIR, 'conveyor-sim', 'kind.py'), path.join(dir, 'kind.py'));
+    const bad = (m) => { fs.writeFileSync(path.join(dir, 'plugin.json'), JSON.stringify(m)); return () => readPlantManifest(dir); };
+    const good = { benchApi: 1, kind: 'plant', name: path.basename(dir), version: '1.0.0', order: 9, meta: 'meta.json', entry: 'kind.py', prompt: 'p', gatewayModules: [], sharedControls: { prefix: '', names: [] } };
+    assert.equal(bad(good)().order, 9, 'the good manifest loads');
+    assert.throws(bad({ ...good, entry: 'nope.py' }), /entry/);
     assert.throws(bad({ ...good, benchApi: 2 }), /benchApi/);
     assert.throws(bad({ ...good, kind: 'harness' }), /kind/);
     assert.throws(bad({ ...good, name: 'other' }), /folder/);

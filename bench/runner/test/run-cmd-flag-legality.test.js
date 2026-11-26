@@ -157,7 +157,7 @@ test('a Strands Bedrock run needs a pinned model, --budget-usd and --aws-profile
   try {
     const st = (model, ...more) => run(s, ['--arms', 'st-plant-policy', '--model', model, '--isolate', 'none', '--allow-unisolated', ...more]).stderr;
     const bedrock = 'bedrock:qwen.qwen3-coder-next';
-    assert.match(st('bedrock:us.anthropic.claude-sonnet-5-5', '--budget-usd', '5', '--aws-profile', 'p'), /pinned id \(qwen\.qwen3-coder-next\); got bedrock:us\.anthropic/);
+    assert.match(st('bedrock:us.anthropic.claude-sonnet-5-5', '--budget-usd', '5', '--aws-profile', 'p'), /with a pinned id \(qwen\.qwen3-coder-next, [^)]*\); got bedrock:us\.anthropic/);
     assert.match(st(bedrock, '--aws-profile', 'p'), /a paid run needs --budget-usd N/);
     assert.match(st(bedrock, '--budget-usd', '5'), /a Strands run on Bedrock needs --aws-profile NAME/);
     assert.match(st('fake:/s.json', '--aws-profile', 'p'), /--aws-profile applies to a Strands run only with a bedrock: model/);

@@ -2,8 +2,8 @@
 """The plant kinds the gateway can run (conveyor, arm): what each one brings to a run. Never decides a call.
 
 Each kind lives in its own kind file, which defines `ENV_KIND` (the `environment.kind` a task writes) and `KIND` (a
-PlantKind). Since B-003 step 3b the kind file is `bench/plants/<kind>/kind.py`, named by the `python` field of that
-folder's plant.json. KINDS is built from those files, loaded by path, so a new kind is a new folder and no edit here
+PlantKind). Since B-003 step 3b the kind file is `bench/plants/<kind>/kind.py`, named by the `entry` field of that
+folder's plugin.json. KINDS is built from those files, loaded by path, so a new kind is a new folder and no edit here
 (docs/history/plant-plugin-design-2026-11-24.md).
 shortcut: the gateway finds bench/plants by its own path; the design's later step passes the folder in from the runner.
 """
@@ -44,10 +44,10 @@ def load_kinds(paths):
 
 
 def _manifests(plants_dir):
-    """(folder name, plant.json dict) for each folder of `plants_dir` with a plant.json, in its "order", then name."""
+    """(folder name, plugin.json dict) for each folder of `plants_dir` with a plugin.json, in its "order", then name."""
     out = []
     for name in os.listdir(plants_dir):
-        path = os.path.join(plants_dir, name, "plant.json")
+        path = os.path.join(plants_dir, name, "plugin.json")
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:
                 out.append((name, json.load(f)))
@@ -55,8 +55,8 @@ def _manifests(plants_dir):
 
 
 def plant_kind_files(plants_dir):
-    """The kind file of each plant folder in `plants_dir` (its plant.json `python` field), in plant.json "order"."""
-    return [os.path.join(plants_dir, name, m["python"]) for name, m in _manifests(plants_dir)]
+    """The kind file of each plant folder in `plants_dir` (its plugin.json `entry` field), in plugin.json "order"."""
+    return [os.path.join(plants_dir, name, m["entry"]) for name, m in _manifests(plants_dir)]
 
 
 def load_plants(plants_dir):
