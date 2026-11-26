@@ -136,18 +136,19 @@ function editPortFor(
   api: WorkflowApi,
   token: string,
   guard: SessionGuard,
+  name: string,
 ): EditPort {
   return {
     save: async (text, baseHash) => {
       try {
-        return await guard(api.saveWorkflow(token, text, baseHash));
+        return await guard(api.saveWorkflow(token, text, baseHash, name));
       } catch (error) {
         throw saveErrorOf(error) ?? error;
       }
     },
     check: async (text) => {
       try {
-        return await guard(api.checkWorkflow(token, text));
+        return await guard(api.checkWorkflow(token, text, name));
       } catch (error) {
         throw checkErrorOf(error) ?? error;
       }
@@ -188,11 +189,12 @@ function runPortFor(
   api: WorkflowApi,
   token: string,
   guard: SessionGuard,
+  name: string,
 ): RunPort {
   return {
     start: async (goal, signal) => {
       try {
-        return await guard(api.startRun(token, goal, signal));
+        return await guard(api.startRun(token, goal, signal, name));
       } catch (error) {
         throw (
           trustNeededOf(error) ??
@@ -221,8 +223,8 @@ async function loadWith(
     workflow: {
       harness: session.harness,
       document,
-      edits: editPortFor(api, session.token, guard),
-      runs: runPortFor(api, session.token, guard),
+      edits: editPortFor(api, session.token, guard, document.name),
+      runs: runPortFor(api, session.token, guard, document.name),
     },
     remember: () => memory.remember(session),
   };

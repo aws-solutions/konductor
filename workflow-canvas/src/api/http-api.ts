@@ -174,29 +174,39 @@ export function createHttpApi(
       });
       return parseWorkflowDocument(body);
     },
-    async saveWorkflow(token, text, baseHash) {
+    async saveWorkflow(token, text, baseHash, name) {
       const body = await call('/api/workflow', {
         method: 'PUT',
         headers: jsonHeaders(token),
-        body: JSON.stringify({ text, base_hash: baseHash }),
+        body: JSON.stringify({
+          ...(name === undefined ? {} : { name }),
+          text,
+          base_hash: baseHash,
+        }),
       });
       return parseSaveResult(body);
     },
-    async checkWorkflow(token, text) {
+    async checkWorkflow(token, text, name) {
       const body = await call('/api/validate', {
         method: 'POST',
         headers: jsonHeaders(token),
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          ...(name === undefined ? {} : { name }),
+          text,
+        }),
       });
       return parseCheckResult(body);
     },
-    async startRun(token, goal, signal) {
+    async startRun(token, goal, signal, name) {
       const body = await call(
         '/api/run',
         {
           method: 'POST',
           headers: { ...bearer(token), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ params: { goal } }),
+          body: JSON.stringify({
+            ...(name === undefined ? {} : { name }),
+            params: { goal },
+          }),
         },
         signal,
       );

@@ -26,7 +26,7 @@ import type { RunSummaryRow } from '../execution/core/run-history';
 import type { ReadEvents } from '../run-client/follow-run-events';
 import { runEventsPath } from '../run-client/follow-run-events';
 import type { CheckStates, ReadChecks } from '../execution/core/run-checks';
-import type { StartRun } from '../run-view/run-params';
+import type { RunParams } from '../run-view/run-params';
 import type { ListRuns } from '../run-view/use-run-history';
 
 /*
@@ -104,7 +104,11 @@ export interface NextPorts {
    * already has a run, and with `RunStartUnsure` when the outcome of the
    * start is not known.
    */
-  readonly startRun: StartRun;
+  readonly startRun: (
+    name: string,
+    params: RunParams,
+    signal: AbortSignal,
+  ) => Promise<string>;
   /**
    * The state of each check of a run, by check id, as
    * `GET /api/runs/{id}` reports it. Only the checks are read from there:
@@ -456,14 +460,14 @@ export function createNextPorts(
     listLibrary: async (signal) =>
       libraryOf(await send('/api/library', {}, signal)),
     listRuns: async (signal) => runsOf(await send('/api/runs', {}, signal)),
-    startRun: async (params, signal) => {
+    startRun: async (name, params, signal) => {
       try {
         const body = await send(
           '/api/run',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ params }),
+            body: JSON.stringify({ name, params }),
           },
           signal,
         );

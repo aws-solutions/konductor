@@ -612,7 +612,7 @@ describe('createHttpApi', () => {
   it('posts the goal as JSON to /api/run with the bearer token', async () => {
     const { api, fetchFn } = apiFor(reply(RUN_STARTED_BODY, 202));
 
-    await api.startRun('t-1', 'Ship it');
+    await api.startRun('t-1', 'Ship it', undefined, 'hello');
 
     const [path, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -625,6 +625,7 @@ describe('createHttpApi', () => {
       'Content-Type': 'application/json',
     });
     expect(JSON.parse(init.body as string)).toEqual({
+      name: 'hello',
       params: { goal: 'Ship it' },
     });
   });
@@ -690,7 +691,7 @@ describe('createHttpApi', () => {
   it('puts the text and base hash as JSON to /api/workflow with the token', async () => {
     const { api, fetchFn } = apiFor(reply(SAVE_BODY));
 
-    await api.saveWorkflow('t-1', TEXT, 'b'.repeat(64));
+    await api.saveWorkflow('t-1', TEXT, 'b'.repeat(64), 'hello');
 
     const [path, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -703,6 +704,7 @@ describe('createHttpApi', () => {
       'Content-Type': 'application/json',
     });
     expect(JSON.parse(init.body as string)).toEqual({
+      name: 'hello',
       text: TEXT,
       base_hash: 'b'.repeat(64),
     });
@@ -821,7 +823,7 @@ describe('createHttpApi', () => {
   it('posts the text as JSON to /api/validate with the token', async () => {
     const { api, fetchFn } = apiFor(reply(CHECK_BODY));
 
-    await api.checkWorkflow('t-1', TEXT);
+    await api.checkWorkflow('t-1', TEXT, 'hello');
 
     const [path, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -833,7 +835,10 @@ describe('createHttpApi', () => {
       Authorization: 'Bearer t-1',
       'Content-Type': 'application/json',
     });
-    expect(JSON.parse(init.body as string)).toEqual({ text: TEXT });
+    expect(JSON.parse(init.body as string)).toEqual({
+      name: 'hello',
+      text: TEXT,
+    });
   });
 
   it('reads the view and findings of a check', async () => {

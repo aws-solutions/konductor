@@ -29,14 +29,24 @@ export interface WorkflowApi {
     token: string,
     text: string,
     baseHash: string | null,
+    name?: string,
   ): Promise<SaveResult>;
   /** Checks workflow text without writing it. */
-  checkWorkflow(token: string, text: string): Promise<CheckResult>;
+  checkWorkflow(
+    token: string,
+    text: string,
+    name?: string,
+  ): Promise<CheckResult>;
   /**
    * Starts a run of the root workflow with the goal; resolves to its id.
    * Aborting the signal ends the call.
    */
-  startRun(token: string, goal: string, signal?: AbortSignal): Promise<string>;
+  startRun(
+    token: string,
+    goal: string,
+    signal?: AbortSignal,
+    name?: string,
+  ): Promise<string>;
   /** Reads the state of a run, live or finished. */
   getRun(token: string, runId: string, signal?: AbortSignal): Promise<RunView>;
 }
