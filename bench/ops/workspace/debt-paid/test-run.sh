@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# test-run.sh: free test of debt-paid/run.sh and its five job wrappers with a stub kiro-cli (no model, no keys, no
+# test-run.sh: free test of debt-paid/run.sh and its job wrappers with a stub kiro-cli (no model, no keys, no
 # spend). Bundles and prompts are built from PIN (default: the checkout this file sits in).
 #   case 1: every job's --plan makes no call and no ledger line and prints its calls, counted floor and cap
 #   case 2: a map job: one call per task, the reply's names filtered to the catalogue, 15 counted per call
@@ -12,6 +12,8 @@
 #   case 8: a call that writes no result is counted and stops the job, no retry
 #   case 9: a job with a Claude model, or a recheck by its writer's own family, is refused at --plan
 #   case 10: each wrapper runs its own job
+#   case 11: the D-275 CardDemo recheck: its bundle holds rules, interface, hidden tests and goldens and no answer key
+#            or authorship; --go needs --cap; the cap stops the job; no Claude model
 set -uo pipefail
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -51,7 +53,7 @@ counted() { awk '{ s += $3 } END { printf "%g", s + 0 }' "$1"; }
 bash -n "$HERE/run.sh" && ok "bash -n clean" || bad syntax
 
 # case 1
-for want in 'D-132 2 30 30' 'D-167 12 180 180' 'D-123 2 30 30' 'D-159 2 30 75' 'D-137 4 60 60'; do
+for want in 'D-132 2 30 30' 'D-167 12 180 180' 'D-123 2 30 30' 'D-159 2 30 75' 'D-137 4 60 60' 'D-275 6 90 105'; do
   read -r job n floor cap <<<"$want"
   : > "$T/calls"; run p1 "$job" --plan; rc=$?
   [ "$rc" = 0 ] && [ "$(calls)" = 0 ] && grep -q "plan: $n calls, at least $floor counted of the $cap cap" "$T/log" && [ ! -s "$T/p1/ledger" ] \
@@ -116,6 +118,24 @@ for w in d132-map:D-132 d167-remap:D-167 d123-limiter:D-123 d159-rewrite:D-159 d
   ROOT="$T/wr" PIN_REPO="$PIN" PIN_CLEAN=0 KIRO="$T/kiro" HOST_CHECK=0 bash "$f" --plan > "$T/log" 2>&1
   grep -q "job ${w#*:}:" "$T/log" && ok "run-debt-${w%%:*}.sh plans ${w#*:}" || { bad "wrapper ${w%%:*}"; tail -2 "$T/log"; }
 done
+
+# case 11
+W=$HERE/../run-debt-d275-cx-recheck.sh
+cx() { ROOT="$T/cx" PIN_REPO="$PIN" PIN_CLEAN=0 KIRO="$T/kiro" HEAVY_LOCK="$T/heavy.lock" HOST_CHECK=0 JOB_LOCK="$T/job.lock" \
+  PAID_PAT=no-such-paid-job-x9 CALLS="$T/calls" bash "$W" "$@" > "$T/log" 2>&1; }
+: > "$T/calls"; cx --go; rc=$?
+[ "$rc" = 64 ] && [ "$(calls)" = 0 ] && ok "D-275 --go without --cap is refused, no call" || { bad "D-275 no cap: rc $rc"; tail -2 "$T/log"; }
+: > "$T/calls"; cx --go --cap 10; rc=$?
+[ "$rc" = 64 ] && [ "$(calls)" = 0 ] && ok "D-275 --cap under 15 is refused" || bad "D-275 cap 10: rc $rc"
+: > "$T/calls"; cx --go --cap 35; rc=$?
+[ "$rc" = 1 ] && [ "$(calls)" = 2 ] && [ "$(counted "$T/cx/ledger")" = 30 ] && grep -q 'REFUSED C3: spent 30 of the 35 cap' "$T/log" \
+  && ok "D-275 --cap 35: two calls, the third refused" || { bad "D-275 cap 35: rc $rc, calls $(calls)"; tail -3 "$T/log"; }
+B=$T/cx/calls/C4/work/tasks/cx-carddemo-batchday
+: > "$T/calls"; cx --go --cap 90; rc=$?
+[ "$(calls)" = 4 ] && [ -f "$B/fixture/docs/REQUIREMENTS.md" ] && [ -f "$B/fixture/docs/INTERFACE.md" ] && [ -d "$B/hidden/golden" ] && ls "$B"/hidden/*.test.js > /dev/null 2>&1 \
+  && ok "D-275 bundle: rules, interface, hidden tests, goldens" || { bad "D-275 bundle: $(ls "$B" "$B/hidden" 2>&1 | head -5)"; tail -2 "$T/log"; }
+[ ! -e "$B/fixture/.bench-answer-key.md" ] && ! grep -q '"authorship"\|"review"' "$B/task.json" && ok "D-275 bundle: no answer key, authorship or review" || bad "D-275 bundle leaks the key or authorship"
+grep -q 'gpt-5.6-luna recheck' "$T/calls" && grep -q 'deepseek-3.2 recheck' "$T/calls" && ! grep -qi claude "$T/calls" && ok "D-275: three non-Claude families" || bad "D-275 models: $(cat "$T/calls")"
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

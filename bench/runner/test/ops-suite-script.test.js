@@ -28,7 +28,7 @@ test('run-overnight.sh: the stub cases pass (step order, stop at a failing step,
   assert.match(r.stdout, /all cases pass/);
 });
 
-test('debt-paid/run.sh and its five job wrappers: every stub case passes (plans, spend guard, cap, busy refusal, families)', { timeout: 300000 }, (t) => {
+test('debt-paid/run.sh and its job wrappers: every stub case passes (plans, spend guard, cap, busy refusal, families)', { timeout: 300000 }, (t) => {
   const fs = require('node:fs');
   const os = require('node:os');
   const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'debt-paid-ws-'));

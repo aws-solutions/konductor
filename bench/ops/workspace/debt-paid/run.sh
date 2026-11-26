@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # The paid debt jobs of reports/debt-paid-runs-2026-11-24.md (D-132, D-167, D-123, D-159, D-137): one kiro-cli call
 # at a time from jobs.txt, each in an empty HOME made by the bench's own sandbox helpers, on a bundle built from a
-# pinned checkout. Owner terminal only. The five run-debt-*.sh scripts next to this folder each run one job.
+# pinned checkout. Owner terminal only. The six run-debt-*.sh scripts next to this folder each run one job.
 #
 #   bash run.sh JOB [--plan]   free: builds every call's prompt and bundle, checks the families, prints the calls,
 #                              the counted floor and the cap; no model call, no ledger line, no pin

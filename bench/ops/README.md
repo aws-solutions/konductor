@@ -47,14 +47,16 @@ is the docs owner's page and points here.
 | `arm-fake-turns.json` | The scripted turns `run-physical-ai-wave0.sh` feeds the fake arm agent on its free path. |
 | `arm-pose-two-host.sh` | The two-host pose repeat check of DEBT D-30, one command per step. Free. |
 | `arm-signed-release-test-v2.sh` | The arm policy test and the five arm controls on a signed release, in one command. |
-| `debt-paid/jobs.txt` | The five paid debt jobs (D-132, D-167, D-123, D-159, D-137): each job's cap and its calls (name, kind, model, the writer a recheck reads, tasks). |
+| `debt-paid/bundle-complex.js` | Builds the recheck work dir of a complex task (`cx-` id): `task.json` without review or authorship, the fixture without its answer key, the hidden tests and goldens. Free. |
+| `debt-paid/jobs.txt` | The six paid debt jobs (D-132, D-167, D-123, D-159, D-137, D-275): each job's cap and its calls (name, kind, model, the writer a recheck reads, tasks). |
 | `debt-paid/prep.js` | Helpers of `debt-paid/run.sh`: each call's prompt and bundle (the map step's template, the recheck bundle, a new task's batch author prompt), its result and its real credits. Free. |
+| `debt-paid/prompts/cx-recheck.md` | The D-275 recheck prompt: hidden tests and goldens of a CardDemo task against its rules, interface and COBOL; a list of mismatches in `recheck.json`. |
 | `debt-paid/prompts/D-123-W1.md` | The D-123 writer brief: an env-free shared limiter in `t5-qa-flaky-fix`. |
 | `debt-paid/prompts/D-137-W1.md` | What the dropped `t1-refactor-permission-boundary` drafts got wrong, added to its T1 author prompt. |
 | `debt-paid/prompts/D-137-W2.md` | What the dropped `t1-refactor-logging-migration` draft got wrong, added to its T1 author prompt. |
 | `debt-paid/prompts/D-159-W1.md` | The D-159 writer brief: `t3-db-order-history` without the composite hint, and a key inside the fixture limits. |
-| `debt-paid/run.sh` | The engine of the five paid debt jobs: one kiro-cli call at a time in an empty HOME on a pinned checkout; `--plan` (the default) is free; `--go` is paid, counts each call at the larger of 15 and its real credits against the job's hard cap, refuses while another paid job runs, resumes on a rerun. |
-| `debt-paid/test-run.sh` | Test of `debt-paid/run.sh` and the five `run-debt-*.sh` wrappers with a stub kiro-cli (plans, map and write results, resume, counted credits, the cap, busy and lock refusals, no result, families). Free. |
+| `debt-paid/run.sh` | The engine of the six paid debt jobs: one kiro-cli call at a time in an empty HOME on a pinned checkout; `--plan` (the default) is free; `--go` is paid, counts each call at the larger of 15 and its real credits against the job's hard cap, refuses while another paid job runs, resumes on a rerun. |
+| `debt-paid/test-run.sh` | Test of `debt-paid/run.sh` and the six `run-debt-*.sh` wrappers with a stub kiro-cli (plans, map and write results, resume, counted credits, the cap, busy and lock refusals, no result, families). Free. |
 | `junk-audit-2026-11-24.md` | Read-only audit of workspace worktrees, recheck scratch in `/var/tmp` and duplicate reports, grouped SAFE, CHECK and KEEP for the owner's review. Nothing removed. |
 | `kp-pilot-lib.sh` | Shared steps of the keep-or-prune pilot wrappers. Sourced, not run. |
 | `lite-fill.js` | Free helper for `run-lite-konductor-v2.sh`: reads results and moves `.done` markers. |
@@ -73,6 +75,7 @@ is the docs owner's page and points here.
 | `run-debt-d123-limiter.sh` | D-123: gpt-5.6-luna makes `t5-qa-flaky-fix`'s shared limiter a real order bug, then a deepseek-3.2 recheck. Paid (cap 30 counted); `--plan` is free. |
 | `run-debt-d132-map.sh` | D-132: glm-5 maps the two CV-E held-out T8 tasks. Paid (cap 30 counted); `--plan` is free. |
 | `run-debt-d137-refactor.sh` | D-137: deepseek-3.2 writes the two T1 refactor tasks again from their briefs, each with a glm-5 recheck. Paid (cap 60 counted); `--plan` is free. |
+| `run-debt-d275-cx-recheck.sh` | D-275 and D-276: gpt-5.6-luna, deepseek-3.2 and glm-5 each recheck `cx-carddemo-port` and `cx-carddemo-batchday` (6 calls). Paid (plan default cap 105 counted); `--plan` is free; `--go` needs `--cap N`. |
 | `run-debt-d159-rewrite.sh` | D-159: qwen3-coder-next rewrites `t3-db-order-history` and its key, then a gpt-5.6-luna recheck. Paid (cap 75 counted); `--plan` is free. |
 | `run-debt-d167-remap.sh` | D-167: glm-5 re-maps the 12 coverage-gap stage 1 tasks from the filled catalogue. Paid (cap 180 counted); `--plan` is free. |
 | `run-overnight.sh` | The overnight chain of 2026-11-24: the credential refresher, a wait (up to 8 h) for `run-cc-compare.sh` to end, `run-clean-fill.sh --go`, then the Claude Code judge (its free `--plan` first). Stops at the first failing step. Paid, through the approved caps of each step. |

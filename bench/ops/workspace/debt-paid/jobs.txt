@@ -1,4 +1,4 @@
-# The five paid debt jobs of reports/debt-paid-runs-2026-11-24.md (rows 2 to 6). Read by run.sh.
+# The paid debt jobs: the first five are rows 2 to 6 of reports/debt-paid-runs-2026-11-24.md, D-275 is the CardDemo recheck. Read by run.sh.
 #   cap JOB COUNTED            the job's hard cap in counted credits (the table's figure)
 #   JOB NAME KIND MODEL FROM ID...
 # KIND: map (one map call; the reply is the result), write (the writer changes the bundled tasks and writes
@@ -43,3 +43,14 @@ D-137 W1 write deepseek-3.2 - new:t1-refactor-permission-boundary
 D-137 R1 recheck glm-5 W1 t1-refactor-permission-boundary
 D-137 W2 write deepseek-3.2 - new:t1-refactor-logging-migration
 D-137 R2 recheck glm-5 W2 t1-refactor-logging-migration
+
+# D-275 and D-276: three non-Claude families (the bench judge panel) each read both CardDemo tasks' rules, interface,
+# hidden tests and goldens, and report test-vs-rule mismatches (prompts/cx-recheck.md). 6 calls; no writer, so FROM is -.
+# The cap here is the plan's default; run-debt-d275-cx-recheck.sh --go needs the owner's own --cap N.
+cap D-275 105
+D-275 C1 recheck gpt-5.6-luna - cx-carddemo-port
+D-275 C2 recheck deepseek-3.2 - cx-carddemo-port
+D-275 C3 recheck glm-5 - cx-carddemo-port
+D-275 C4 recheck gpt-5.6-luna - cx-carddemo-batchday
+D-275 C5 recheck deepseek-3.2 - cx-carddemo-batchday
+D-275 C6 recheck glm-5 - cx-carddemo-batchday

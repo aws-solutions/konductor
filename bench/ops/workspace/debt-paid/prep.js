@@ -61,9 +61,15 @@ function writePrompt(job, name, dir, ids) {
   return brief + REWRITE(old);
 }
 
-/** Fills DIR for a recheck call from the pinned tree, or from the writer's result FROM, and returns its prompt. */
+/** Fills DIR for a recheck call from the pinned tree, or from the writer's result FROM, and returns its prompt.
+ * Complex tasks (`cx-` ids) are always read from the pinned tree. */
 function recheckPrompt(dir, ids) {
   const from = process.env.FROM;
+  if (ids.every((i) => i.startsWith('cx-'))) {
+    // A complex task: its own bundle and its own questions (tests against rules), not the scenario ones.
+    node([path.join(HERE, 'bundle-complex.js'), dir, ...ids], { BENCH_REPO: REPO });
+    return fs.readFileSync(path.join(HERE, 'prompts', 'cx-recheck.md'), 'utf8');
+  }
   if (!from) node([path.join(RECHECK, 'bundle.js'), dir, ...ids], { BENCH_REPO: REPO });
   else if (fs.existsSync(path.join(from, 'task-draft.json'))) {
     // A new task: the writer's own layout (stage.js assemble's input) becomes the bundle's tasks/<id>/.

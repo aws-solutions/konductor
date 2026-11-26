@@ -1,0 +1,12 @@
+You are re-checking a benchmark task written by a model of another family. The folder `tasks/<id>/` holds `task.json` (the request in `prompt`, and its `checks`), `fixture/` (the repository the agent starts in: `docs/REQUIREMENTS.md` has the rules, `docs/INTERFACE.md` the command lines, file names and exit codes, `cobol/` the original programs, `data/` the sample inputs) and `hidden/` (the hidden tests `*.test.js`, their helpers under `lib/`, and the expected outputs under `golden/`). The hidden tests run the agent's Python port and compare its output with these files. Work only inside the current directory, change none of these files, and use no network. Be brief: read what you need to decide, not every file.
+
+The agent is told that where `REQUIREMENTS.md` and `INTERFACE.md` differ from the COBOL, the documents win, and that for everything they leave open, the COBOL decides. Your job is to find places where a hidden test or a golden file disagrees with that contract. For each task, check:
+1. test-vs-rule: for each rule id in `REQUIREMENTS.md` (P, I, M and R ids), find the hidden tests that cite it. Does each test expect what the rule says? Name any test that expects something else, or expects more than the rule and the documents say.
+2. test-vs-interface: do the file names, exit codes, summary fields, record layouts and error cases the tests check match `INTERFACE.md` and the copybooks?
+3. open-points: a test that decides something the documents leave open must match what the COBOL does. Name any that does not.
+4. golden-spot-check: pick at least three golden files, including at least one per job, and work a few lines by hand from the rules and the sample data. Do they match?
+5. rule-gaps: a rule that no test covers, or two rules that conflict.
+
+Report only real mismatches, each with the file and test name (or rule id) and one or two sentences of evidence. Use `severity` "fail" for a test that would reject a correct port or accept a wrong one, and "note" for a smaller point. A task with no mismatch gets an empty list.
+
+Write `recheck.json`: {"tasks": {"<id>": {"mismatches": [{"kind": "test-vs-rule" | "test-vs-interface" | "open-points" | "golden-spot-check" | "rule-gaps", "where": "file and test name or rule id", "severity": "fail" | "note", "note": "evidence"}], "checked": "one sentence: what you read and how many goldens you worked by hand"}}}, one entry per task folder. Write it to exactly `recheck.json` in the current directory, at the top level (the same folder that holds `tasks/`). Then stop.
