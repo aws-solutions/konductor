@@ -14,7 +14,9 @@ set -eu
 HERE0=$(cd "$(dirname "$0")" && pwd)
 # The copied script cannot find its checkout from its own path, so name it: this test's checkout.
 CHECK_BENCH=$(cd "$HERE0/../../.." && pwd)
-export CHECK_BENCH
+# It also builds the arms (NB), so the test needs no nudge-nk worktree (DEBT D-274).
+NB=$CHECK_BENCH
+export CHECK_BENCH NB
 T=$(mktemp -d "${KIROCREW_SCRATCH:-/var/tmp}/nudge-stub.XXXXXX")
 STUBJS=$T/stub.js
 cat > "$STUBJS" <<'JS'
@@ -168,4 +170,5 @@ FORCED_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock STUB="node $
 [ "$(wc -l < "$T/l/runs-nudge/calls.log")" = 9 ] && tail -n 1 "$T/l/runs-nudge/calls.log" | grep -q -- '--tasks t2-dr-notify-fanout' || fail "case 12: calls"
 grep -q 't1-nfr-report-queries: done, skipped' "$T/u.log" || fail "case 12: t1 not skipped"
 echo "case 12 ok: a done task is skipped"
-echo "all stub cases passed (scratch $T)"
+rm -r "$T"   # its own mktemp dir; a failed case keeps it for a look
+echo "all stub cases passed"

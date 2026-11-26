@@ -125,10 +125,10 @@ is the docs owner's page and points here.
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
-| `test-run-pilot-option-b.sh` | Stub run of the 15-task path and option B. Free. |
+| `test-run-pilot-option-b.sh` | Stub run of the 15-task path and option B, at this checkout's head. Free. The suite runs it where `KONDUCTOR_WS` is set (`ops-suite-script.test.js`). |
 | `test-run-pilot-v2-rerun.sh` | Paid-path test of `run-pilot-v2-rerun.sh` with the fake kiro-cli. Free. |
 | `test-run-pilot-v2-rewrite.sh` | Paid-path test of `run-pilot-v2-rewrite.sh` with the fake kiro-cli. Free. |
-| `test-run-pilot-wrappers.sh` | Stub run of the pilot wrappers on their paid paths. Free. |
+| `test-run-pilot-wrappers.sh` | Stub run of the pilot wrappers on their paid paths, at this checkout's head. Free. The suite runs it where `KONDUCTOR_WS` is set. |
 | `test-run-wave0-fix.sh` | Test of `run-wave0-fix.sh`. Free. |
 | `test-sign-arm-r2.sh` | Test of `sign-arm-r2.sh` with a throwaway key. Free. |
 | `test-strands-counted-trial.sh` | Paid-path test of `strands-counted-trial.sh` with stubs. Free. |
@@ -171,7 +171,7 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
 | `test-run-model-swap-stub.sh` | Test of `run-model-swap.sh` (plan, paid path, resume, hook miss, counted-credit guard, the `--fill` plan, run, outside-set stop and cap) and of `model-swap-summary.js` with a stub bench. Free. |
 | `test-run-model-swap-judge-stub.sh` | Test of `run-model-swap-judge.sh` and `model-swap-judge.js` (plan, paid path, arm rename, resume, USD gate, cap refusal, `--fill` gate, copy of the fill cells only, fill cap) with a stub bench. Free. |
-| `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench, and of its `--fill` stage (plan, the 3 cells only, 60 cap, cells outside the stage, done tasks). Free. |
+| `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench, and of its `--fill` stage (plan, the 3 cells only, 60 cap, cells outside the stage, done tasks). Free. The suite runs it where `KONDUCTOR_WS`, the frozen runner, the pinned kiro-cli and the built arms exist. |
 | `test-run-nudge-judge-fill.sh` | Test of `run-nudge-judge.sh --fill`'s guards (no .done, cap over USD 0.5). Free. |
 
 ## Refactor regression net (`bench/ops/refactor-regression/`)

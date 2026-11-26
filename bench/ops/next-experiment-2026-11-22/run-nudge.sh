@@ -31,11 +31,12 @@
 # copy of this folder; FORCED_PAT=<pattern> is the process pattern of the run to wait for; LOAD_MAX=<n> is the load
 # a task waits under (default 4); HEAVY_LOCK=<file> is the heavy lock a task waits for (default /var/tmp/konductor-heavy.lock);
 # CHECK_BENCH=<dir> is the checkout whose cap nudge-check runs (default: the one holding this script).
+# NB=<dir> is the bench checkout that builds the arms (default: the nudge-nk worktree); it must contain NB_MIN.
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 WS=$KONDUCTOR_WS
 REPO=$WS/worktrees/konductor-plant
-NB=$REPO/.worktrees/nudge-nk                             # bench with cap variant --hook and cap nudge-check
+NB=${NB:-$REPO/.worktrees/nudge-nk}                      # bench with cap variant --hook and cap nudge-check
 NB_MIN=6e67dcf3                                          # NB must contain this commit (cap variant --hook list)
 # cap nudge-check comes from the checkout holding this script (it knows a cell that never started); NB only builds arms.
 CHECK_BENCH=${CHECK_BENCH:-$(cd "$(dirname "$0")/../../.." && pwd)}

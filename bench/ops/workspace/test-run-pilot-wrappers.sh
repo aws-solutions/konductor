@@ -9,13 +9,13 @@
 # refuses before the controls part; the controls part reuses the ladder cache, prints each check and stops; the unit
 # step runs after both controls passed.
 #
-#   bash scripts/test-run-pilot-wrappers.sh [COMMIT]     # COMMIT: what to check out (default the arm-free-prep head)
+#   bash scripts/test-run-pilot-wrappers.sh [COMMIT]     # COMMIT: what to check out (default the head of this test's own checkout)
 set -uo pipefail
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 SELF=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 W=$KONDUCTOR_WS
 CLONE=$W/worktrees/konductor-plant
-REF=${1:-$(git -C "$CLONE/.worktrees/arm-free-prep" rev-parse HEAD)}
+REF=${1:-$(git -C "$SELF" rev-parse HEAD)}
 T=$(mktemp -d /tmp/kp-wrap-test.XXXXXX)
 WT_NAME=kp-pilot-stub
 cleanup() { git -C "$CLONE" worktree remove --force "$CLONE/.worktrees/$WT_NAME" 2>/dev/null; chmod -R u+rwX "$T"; rm -rf "$T"; }
