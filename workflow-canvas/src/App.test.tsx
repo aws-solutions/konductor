@@ -381,6 +381,9 @@ describe('App', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
     await screen.findByRole('heading', { level: 1, name: 'review-copy' });
+    expect(screen.getByTestId('run-live-status').textContent).toBe(
+      'k-adversarial-pull-request-review-copy created and opened.',
+    );
     fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
     expect(await screen.findByText('No run yet.')).toBeTruthy();

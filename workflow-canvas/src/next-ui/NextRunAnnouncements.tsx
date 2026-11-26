@@ -31,7 +31,7 @@ export function NextRunAnnouncements({
   if (announcement !== seen.current.announcement) {
     latest = announcement === '' ? 'run' : 'page';
   }
-  if (runStatus !== seen.current.runStatus) latest = 'run';
+  if (runStatus !== seen.current.runStatus && runStatus !== '') latest = 'run';
   seen.current = { announcement, runStatus, latest };
   const status = latest === 'page' ? announcement : runStatus;
   return (
