@@ -16,6 +16,8 @@ const { toolSessions, toolBlock } = require('./toolcalls.js');
 // .kiro/specs/** are kept. Names match at any depth, paths from the workspace root.
 const SKIP_NAMES = new Set(['.git', 'node_modules']);
 const SKIP_PATHS = ['.kiro/agents', '.kiro/steering', '.kiro/skills', '.kiro/settings', '.kiro/sessions', '.konductor', '.claude', '.opencode'];
+// What the read judge view shows in place of a file the judge reads from its copy.
+const READ_POINTER = '(in your working folder: read this file in full with the read tool)';
 const skipped = (rel) => SKIP_NAMES.has(path.basename(rel)) || SKIP_PATHS.some((p) => rel === p || rel.startsWith(`${p}/`));
 
 // `excluded` counts skipped tool-state directories; `ephemeral` counts the test and lint caches skipped (see ephemeral.js),
@@ -81,8 +83,9 @@ function conversationBlock(result) {
 // the text and the file texts last, so nothing the run output scrubber missed reaches a model. `literals` defaults to the
 // credential values of this process's environment, the same set the run scrubber uses, so a caller cannot leave it out by
 // accident. Callers that build the same bundle twice (judging, quote matching, rescoring) get the same text. meta.credsScrubbed
-// counts the replacements.
-function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals = secretLiterals(process.env) }) {
+// counts the replacements. `readable(rel)` (the read judge view only) names the text files the judge reads from its copy:
+// each is shown by its heading and a pointer, uses none of the limits, and never counts as cut or left out.
+function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals = secretLiterals(process.env), readable = null }) {
   const { maxFileChars, maxBundleChars } = limits;
   const meta = { truncatedFiles: [], omittedFiles: [], excluded: 0, ephemeral: 0 };
   const ws = walk(path.join(runDir, 'workspace'));
@@ -107,6 +110,10 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   let used = 0;
   for (const f of changed) {
     const head = `### ${f.rel} (${f.created ? 'created' : 'modified'})`;
+    if (readable && !f.binary && readable(f.rel)) {
+      fileParts.push(`${head}\n${READ_POINTER}`);
+      continue;
+    }
     if (used >= maxBundleChars) {
       meta.omittedFiles.push(f.rel);
       continue;
@@ -157,4 +164,4 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   return { text, expertText, fired, meta, changed: changed.map((f) => f.rel), deleted, files };
 }
 
-module.exports = { buildBundle, finalTextOf, walk };
+module.exports = { buildBundle, finalTextOf, walk, READ_POINTER };
