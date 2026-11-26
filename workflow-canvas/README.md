@@ -175,7 +175,10 @@ The page calls `GET /api/library`. The API contract and local stub also define
 `GET /api/library/{name}` and `POST /api/library/{name}/copy` for that follow-up.
 The stub serves `library/k-adversarial-pull-request-review` as ready, plus
 planned examples. A ready source omits the top-level YAML `name` key; its lookup
-id supplies the source name without rewriting the YAML.
+id supplies the source name without rewriting the YAML. A successful copy
+moves the session root to the new project workflow, which starts untrusted. Save,
+check, and run requests name the workflow the page shows; a stale page gets 403
+`read_only_workflow`, changes nothing, and must reload.
 
 ## Stub API
 
