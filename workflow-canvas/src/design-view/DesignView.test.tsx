@@ -1224,6 +1224,38 @@ describe('DesignView, what went wrong with a save', () => {
     await settle();
   };
 
+  const saveOnlyFinding = {
+    message: 'The saved name is not allowed.',
+    path: 'stages[0].name',
+    line: 7,
+    severity: 'error',
+  } as const;
+
+  const expectSaveState = (status: string, disabled: boolean) => {
+    expect(screen.getByTestId('save-status').textContent).toContain(status);
+    expect(isOff(button('Save'))).toBe(disabled);
+  };
+
+  const expectFindings = (...messages: string[]) => {
+    const list = screen.getByTestId('yaml-problems');
+    for (const message of messages) expect(list.textContent).toContain(message);
+  };
+
+  const expectNoFindings = () => {
+    expect(screen.queryByTestId('yaml-problems')).toBeNull();
+  };
+
+  const startFromRefusedSave = async (edits: FakeEdits) => {
+    edits.save.mockRejectedValueOnce(
+      new SaveRefused('The workflow has errors.', [saveOnlyFinding]),
+    );
+
+    await changeThenSave();
+
+    expectFindings(saveOnlyFinding.message);
+    expectSaveState('Unsaved changes', true);
+  };
+
   it('says why an ordinary save failed', async () => {
     const { edits } = drawn();
     edits.save.mockRejectedValue(new Error('The server said no.'));
@@ -1289,6 +1321,90 @@ describe('DesignView, what went wrong with a save', () => {
     expect(
       within(screen.getByTestId('yaml-problems')).getAllByRole('listitem'),
     ).toHaveLength(1);
+  });
+
+  it('replaces a refused-save finding when a later check reports a different one', async () => {
+    const { edits, scheduler } = drawn();
+    await startFromRefusedSave(edits);
+    edits.check.mockResolvedValue({
+      view: HELLO_DOCUMENT.view,
+      diagnostics: [
+        {
+          message: 'The live check found another problem.',
+          path: 'stages[0].agent',
+          line: 8,
+          severity: 'error',
+        },
+      ],
+    });
+
+    await checkNow(scheduler);
+
+    expectFindings('The live check found another problem.');
+    expect(screen.getByTestId('yaml-problems').textContent).not.toContain(
+      saveOnlyFinding.message,
+    );
+    expectSaveState('Unsaved changes', true);
+  });
+
+  it('clears a refused-save finding when a later check finds none', async () => {
+    const { edits, scheduler } = drawn();
+    await startFromRefusedSave(edits);
+
+    await checkNow(scheduler);
+
+    expectNoFindings();
+    expectSaveState('Unsaved changes', false);
+  });
+
+  it('clears a refused-save finding when the same workflow is loaded again', async () => {
+    const { edits, editorOf } = drawn();
+    await startFromRefusedSave(edits);
+
+    await act(async () => {
+      editorOf().reload();
+    });
+    await settle();
+
+    expectNoFindings();
+    expectSaveState('Loaded again from the server', true);
+  });
+
+  it('clears a refused-save finding when another workflow is opened', async () => {
+    const { edits, open } = drawn();
+    await startFromRefusedSave(edits);
+
+    await open(OTHER_WORKFLOW);
+    await settle();
+
+    expectNoFindings();
+    expectSaveState('No changes', true);
+  });
+
+  it('clears a refused-save finding when a reload makes the workflow read-only', async () => {
+    const { edits, editorOf } = drawn();
+    await startFromRefusedSave(edits);
+    edits.reload.mockResolvedValue({ ...HELLO_DOCUMENT, readOnly: true });
+
+    await act(async () => {
+      editorOf().reload();
+    });
+    await settle();
+
+    expectNoFindings();
+    expectSaveState('Loaded again from the server', true);
+  });
+
+  it('keeps a refused-save finding cleared while a later save is in flight', async () => {
+    const { edits, scheduler } = drawn();
+    await startFromRefusedSave(edits);
+    await checkNow(scheduler);
+    edits.save.mockImplementation(() => new Promise(() => undefined));
+
+    await press('Save');
+
+    expectNoFindings();
+    expectSaveState('Saving', true);
   });
 
   it('says a save whose answer was lost may not have finished', async () => {

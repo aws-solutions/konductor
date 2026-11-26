@@ -238,7 +238,13 @@ function refused(
 ): EditState {
   const next: EditState = { ...state, save: { phase: 'idle' } };
   return revision === state.revision
-    ? { ...next, check: checkOf(revision, diagnostics, state.draft) }
+    ? {
+        ...next,
+        check: {
+          ...checkOf(revision, diagnostics, state.draft),
+          needsRecheck: true,
+        },
+      }
     : next;
 }
 

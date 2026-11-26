@@ -62,7 +62,9 @@ export function useEditor(
   const edits = workflow?.edits;
   const revision = state?.revision;
   const text = useMemo(() => (state ? textOf(state) : undefined), [state]);
-  const unchecked = state !== undefined && state.check.revision !== revision;
+  const unchecked =
+    state !== undefined &&
+    (state.check.revision !== revision || state.check.needsRecheck === true);
 
   useEffect(() => {
     if (!edits || revision === undefined || text === undefined || !unchecked) {

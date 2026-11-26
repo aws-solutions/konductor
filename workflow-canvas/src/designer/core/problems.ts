@@ -69,6 +69,8 @@ export function problemsOf(
 export interface Check {
   revision: number;
   diagnostics: readonly DiagnosticView[];
+  /** A live check should replace findings returned only by a refused save. */
+  needsRecheck?: true;
   /** The findings placed on the stages of the draft that was checked. */
   problems: readonly Problem[];
 }
