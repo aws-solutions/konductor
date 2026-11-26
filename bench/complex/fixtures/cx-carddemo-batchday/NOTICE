@@ -1,0 +1,11 @@
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+The files under cobol/ are copied unchanged from
+https://github.com/aws-samples/aws-mainframe-modernization-carddemo (Apache-2.0)
+at commit 59cc6c2fd7ebd7ef7925cad552a01a4b8b6e4d5e: app/cbl/CBTRN02C.cbl, CBACT04C.cbl, CBTRN03C.cbl,
+CBSTM03A.CBL, CBSTM03B.CBL and thirteen copybooks from app/cpy/.
+
+The files under data/ are made from app/data/ASCII/ of the same commit (accounts, card cross reference, customers,
+category balances, discount groups, transaction types and categories). They are changed for this task: line ends are
+LF, some account groups, expiry dates, limits, customer names and category balances are edited, and the daily
+transactions are new. Names, addresses and numbers in the sample are made up.

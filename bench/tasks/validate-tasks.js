@@ -147,6 +147,7 @@ const FIXTURE_BASELINE = {
   'cx-shipping': { cmd: 'node --test', exit: 0 },
   // No tests in the fixture: the work is a port from COBOL.
   'cx-carddemo': null,
+  'cx-carddemo-batchday': null,
   'cx-notes': { cmd: 'node --test', exit: 0 },
   'cx-ledger': { cmd: 'node --test', exit: 0 },
   // Requirements-suite fixtures: a copy of the inventory service and one request document; the tests pass before and after.
