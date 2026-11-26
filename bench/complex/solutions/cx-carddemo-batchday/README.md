@@ -37,8 +37,8 @@ where it is silent or odd. Where the port and the COBOL differ, or might be thou
 | R1 range | `NEXT SENTENCE` ends the loop at the first record outside the range | skips it and goes on (signed) |
 | R2 end totals | no last account total; adds the last amount twice | writes the last account total; adds each amount once (signed) |
 | R3 empty report | writes nothing at all (the first record outside the range ends the loop) | headings, zero page and grand totals (signed) |
-| R4 missing lookup | abends | exit 2, nothing written (signed) |
-| R5 edited amounts | the three Z pictures print blanks for zero and `.05` for 0.05 | units digit always printed (signed); `9(9).99-` keeps its leading zeros, as in the COBOL |
+| R4 missing lookup | abends | exit 2, nothing written (signed); only transactions in the range are looked up (signed, as in the COBOL) |
+| R5 edited amounts | the three Z pictures print blanks for zero and `.05` for 0.05 | units digit always printed (signed); `9(9).99-` keeps its leading zeros and its last nine integer digits (signed, as in the COBOL) |
 | R6 statement order | card order and id order, but tables of 51 cards by 10 lines | the same order, no limit (signed) |
 | R7 HTML | each continued literal ends at column 72, so the parts join with nothing between | the same (signed; matches the COBOL) |
 | R8 missing customer or account | abends | the card is skipped and counted (signed) |

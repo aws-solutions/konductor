@@ -89,11 +89,15 @@ Output: one report. `--start` and `--end` choose the dates. Everything these rul
 - R3. SIGNED (owner, 2026-11-26). If no transaction is in the range, the report is one set of headings, a page total of
   zero and a grand total of zero, and no account total. (The COBOL writes no headings.)
 - R4. SIGNED (owner, 2026-11-26). A card missing from the cross reference, or a type or category missing from its file,
-  is a failed run: exit 2, nothing written, the error names the file. (The COBOL abends.)
+  is a failed run: exit 2, nothing written, the error names the file. (The COBOL abends.) SIGNED (owner, 2026-11-26).
+  Only transactions in the range are looked up.
 - R5. SIGNED (owner, 2026-11-26). Edited amount fields keep the width and the sign position of their COBOL picture
   (`-ZZZ,ZZZ,ZZZ.ZZ` for a line, `+ZZZ,ZZZ,ZZZ.ZZ` for a total, `Z(9).99-` and `9(9).99-` on a statement). The integer part
   is blank-filled on the left, with commas only between printed digits, but its last digit always prints: zero is `0.00`,
-  and `0.05` is `0.05`. A number too wide for its field is bad input. (Applies to jobs 3 and 4.)
+  and `0.05` is `0.05`. A number too wide for one of the three Z pictures is bad input. (Applies to jobs 3 and 4.)
+  SIGNED (owner, 2026-11-26). `9(9).99-` prints its leading zeros, as the COBOL does; the blank fill applies to the three
+  Z pictures. SIGNED (owner, 2026-11-26). A balance too wide for `9(9).99-` keeps its last nine integer digits, as the
+  COBOL does.
 
 ## Job 4: customer statements (CBSTM03A and CBSTM03B)
 

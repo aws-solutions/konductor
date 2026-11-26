@@ -23,7 +23,7 @@
     {
       "type": "tests",
       "cmd": "node --test hidden/*.test.js",
-      "min": 129
+      "min": 130
     },
     {
       "type": "cmd",

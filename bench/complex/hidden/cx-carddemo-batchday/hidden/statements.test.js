@@ -81,6 +81,14 @@ test('R5: the balance is nine digits with leading zeros and a minus after a cred
   }
 });
 
+test('R5: a balance too wide for 9(9).99- keeps its last nine integer digits', () => {
+  for (const [balance, want] of [['1234567890.12', '234567890.12 '], ['-9876543210.50', '876543210.50-']]) {
+    const got = go(d.statementInputs({ accounts: [account({ balance })] }));
+    assert.equal(got.text[9], pad(`Current Balance    :${want}`, 80), balance);
+    assert.ok(got.html.includes(`<p>Current Balance    : ${want}</p>`.padEnd(100)), balance);
+  }
+});
+
 test('R5: a transaction amount is Z(9).99- with the units digit always printed', () => {
   const amounts = ['0.05', '-0.99', '12.30', '0.00', '1234567.89', '-100.00'];
   const got = go(d.statementInputs({ trans: amounts.map((a, i) => t(i + 1, a)) }));

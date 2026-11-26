@@ -32,6 +32,6 @@ def statement_amount(value):
 
 
 def balance_amount(value):
-    """PIC 9(9).99- (13 characters). Digits past the ninth are cut, as a COBOL MOVE does."""
-    whole, frac = divmod(int(abs(value) * 100), 100)
-    return str(whole % 10 ** 9).zfill(9) + "." + "%02d" % frac + ("-" if value < 0 else " ")
+    """PIC 9(9).99- (13 characters). A balance too wide for it is refused (the reading before the 2026-11-26 R5 change)."""
+    whole, frac = _parts(value, 9)
+    return str(whole).zfill(9) + "." + frac + ("-" if value < 0 else " ")
