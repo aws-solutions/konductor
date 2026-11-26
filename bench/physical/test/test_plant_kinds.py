@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """kinds.py builds KINDS from a list of kind files (plant plugin design, step 2)."""
+import json
 import os
 import tempfile
 import unittest
@@ -20,7 +21,11 @@ KIND = PlantKind(name="toy", sim_version="toy/1", tools=CONVEYOR_TOOLS, approvab
 
 class KindFiles(unittest.TestCase):
     def test_the_built_ins_come_from_their_kind_files_in_order(self):
-        self.assertEqual([os.path.basename(f) for f in KIND_FILES], ["conveyor.py", "arm.py", "arm_confined_space.py"])
+        # Each kind file is bench/plants/<kind>/kind.py, in plant.json "order" (B-003 step 3b).
+        self.assertEqual([os.path.relpath(f, kinds.PLANTS_DIR) for f in KIND_FILES],
+                         [os.path.join(k, "kind.py") for k in ("conveyor-sim", "arm-sim", "arm-confined-space")])
+        old = os.path.join(os.path.dirname(kinds.__file__), "kind_files")
+        self.assertEqual([f for f in (os.listdir(old) if os.path.isdir(old) else []) if f.endswith(".py")], [])
         self.assertEqual(list(KINDS), ["conveyor-sim", "arm-sim", "arm-confined-space"])
         self.assertIs(KINDS["conveyor-sim"], CONVEYOR)
         self.assertIs(KINDS["arm-sim"], ARM)
@@ -84,6 +89,23 @@ class LoadKinds(unittest.TestCase):
     def test_two_files_with_one_env_kind_are_refused(self):
         with self.assertRaisesRegex(ValueError, "two kind files name 'toy-sim'"):
             load_kinds([self.write("a.py", TOY), self.write("b.py", TOY)])
+
+    def plant(self, folder, order, text):
+        os.makedirs(os.path.join(self.tmp.name, folder))
+        self.write(os.path.join(folder, "plant.json"), json.dumps({"name": folder, "order": order, "python": "kind.py"}))
+        return self.write(os.path.join(folder, "kind.py"), text)
+
+    def test_a_plant_folder_loads_from_a_plants_root_in_its_order(self):
+        second = self.plant("toy-sim", 2, TOY)
+        first = self.plant("lamp-sim", 1, TOY.replace("toy-sim", "lamp-sim"))
+        os.makedirs(os.path.join(self.tmp.name, "not-a-plant"))
+        self.assertEqual(kinds.plant_kind_files(self.tmp.name), [first, second])
+        self.assertEqual(list(kinds.load_plants(self.tmp.name)), ["lamp-sim", "toy-sim"])
+
+    def test_a_kind_file_must_name_its_plant_folder(self):
+        self.plant("lamp-sim", 1, TOY)
+        with self.assertRaisesRegex(ValueError, "ENV_KIND 'toy-sim' must equal its plant folder name 'lamp-sim'"):
+            kinds.load_plants(self.tmp.name)
 
     def test_a_file_without_env_kind_or_kind_is_refused(self):
         with self.assertRaisesRegex(ValueError, "must define ENV_KIND"):

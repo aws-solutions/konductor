@@ -1,6 +1,6 @@
 # Design: plants as plugins
 
-Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b first part built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
+Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b metadata and kind files built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
 
 ## The problem
 
@@ -81,8 +81,12 @@ does for harness plugins, so a result names the exact plant code that made it.
    3b, first part (built 2026-11-26): each kind's metadata moved, byte for byte, from `physical/schemas/plant-meta-*.json`
    to `bench/plants/<kind>/meta.json`; `plant.json` names it as `meta.json`, and `sim/meta.py`,
    `sim/confined_space.py` and `controls/arm-control.js` read it there. `control-v1.json` is not per plant and stays.
-   Left for 3b: move `kind.py` and the simulator into the folders, read the folders through `core/registry.js`, and
-   record each folder hash.
+   3b, second part (built 2026-11-26): each kind file moved, byte for byte, from `plant_gateway/kind_files/` to
+   `bench/plants/<kind>/kind.py`; `plant.json` names it in `python`. The gateway's `kinds.py` reads the plant folders
+   (their `python` and `order` fields) and refuses a kind file whose `ENV_KIND` is not its folder name. The gateway
+   still finds `bench/plants` by its own path, not from a runner argument.
+   Left for 3b: move the simulator into the folders, read the folders through `core/registry.js`, and record each
+   folder hash.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new
