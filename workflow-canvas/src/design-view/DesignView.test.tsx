@@ -581,7 +581,7 @@ describe('DesignView, the Properties tab', () => {
 
   // The keys of the file as it was loaded, and which of them can be edited:
   // the same form answers both.
-  it('shows the keys the file has before anything is edited, the ones it cannot write read-only', async () => {
+  it('shows the keys the file has before anything is edited and leaves writable keys editable', async () => {
     drawn({ document: WITH_PROMPT });
     await settle();
 
@@ -589,10 +589,7 @@ describe('DesignView, the Properties tab', () => {
 
     expect(promptInput().value).toBe('Write the greeting to README.md.');
     expect(nameInput().value).toBe('draft');
-    expect(promptInput().readOnly).toBe(true);
-    expect(panelOf('Properties').textContent).toContain(
-      'edited in a later step',
-    );
+    expect(promptInput().readOnly).toBe(false);
   });
 
   it('shows a prompt file the same way', async () => {
