@@ -65,6 +65,16 @@ test('each kind record comes from a bench/plants/<folder>/plant.json manifest, r
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('plantRecord names each plant folder with its hash, in order, for run-config.json (B-003 step 3b)', () => {
+  const { plantRecord, PLANTS_DIR } = require('../lib/plant/kinds.js');
+  const { folderHash } = require('../../core/registry.js');
+  const rec = plantRecord();
+  assert.deepEqual(rec.map((r) => r.name), Object.keys(PLANT_KINDS));
+  for (const r of rec) assert.equal(r.sha256, folderHash(path.join(PLANTS_DIR, r.name)));
+  const src = require('node:fs').readFileSync(path.join(__dirname, '..', 'lib', 'run-cmd.js'), 'utf8');
+  assert.match(src, /plant: \{ release: [^\n]*folders: plantRecord\(\)/, 'the run-config plant block records the folders');
+});
+
 test('the values are the ones the tables held before the move', () => {
   assert.deepEqual(GATEWAY_MODULES, { 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'], 'arm-confined-space': ['cedarpy', 'mujoco', 'numpy'] });
   assert.equal(plantPrompt('arm-sim'), 'You operate one robot arm cell through the plant tools. Act only through those tools.');

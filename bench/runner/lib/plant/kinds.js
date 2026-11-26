@@ -4,11 +4,12 @@
 // One record per plant kind: the Node side's per-kind facts in one place (docs/history/plant-plugin-design-2026-11-24.md).
 // meta.js, agent-file.js, python-pin.js and report/plant-controls.js build their tables from it. Since B-003 step 3a
 // each record is read from `bench/plants/<kind>/plant.json`, so no file here names a kind.
-// shortcut: the folder is fixed to bench/plants and not read through core/registry.js; the design's later steps add
-// the registry kind `plant` and the folder hash in run-config.json.
+// shortcut: the folder is fixed to bench/plants and not read through core/registry.js; the design's later step adds
+// the registry kind `plant`.
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { folderHash } = require('../../../core/registry.js');
 
 const PLANTS_DIR = path.join(__dirname, '..', '..', '..', 'plants');
 const PLANT_API = 1;
@@ -64,4 +65,13 @@ const PLANT_KINDS = Object.freeze(Object.fromEntries(
 /** `fn(record)` for every kind, as an object keyed by kind in PLANT_KINDS order. */
 const byKind = (fn) => Object.fromEntries(Object.entries(PLANT_KINDS).map(([kind, rec]) => [kind, fn(rec)]));
 
-module.exports = { PLANT_KINDS, PLANTS_DIR, byKind, readPlantManifest };
+/**
+ * [{ name, sha256 }] of each plant folder, in PLANT_KINDS order, for the plant block of run-config.json, so a result
+ * names the plant code that made it (same hash as harness plugins, core/registry.js `folderHash`).
+ * shortcut: the shared simulator in physical/sim is not in a plant folder, so only the bench commit pins it.
+ */
+function plantRecord() {
+  return Object.keys(PLANT_KINDS).map((name) => ({ name, sha256: folderHash(path.join(PLANTS_DIR, name)) }));
+}
+
+module.exports = { PLANT_KINDS, PLANTS_DIR, byKind, plantRecord, readPlantManifest };

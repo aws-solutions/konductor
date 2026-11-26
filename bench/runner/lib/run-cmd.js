@@ -38,6 +38,7 @@ const { studyInfraCheck } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
 const { preparePlantSuite, checkSuiteShape } = require('./plant/intake.js');
+const { plantRecord } = require('./plant/kinds.js');
 const { preflightWalls, trialGatewayRows, checklistWithTrials } = require('./plant/walls.js');
 const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
@@ -462,7 +463,7 @@ function buildRunConfig({ flags, built, paths }) {
     originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
     modelNormalized: arms.some((a) => !a.vanilla),
     ...harnessRunConfig({ runtime: runtimes[0], ctx, config, plantSuite, stModel, stCreds, budgetCredits, awsProfile, ccRegion, runBudgetUsd, arms, envKeep, kiro }),
-    ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
+    ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null, folders: plantRecord() } } : {}),
     ...rc.benchGit(REPO),
     contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
     taskInputHashes: ctx.taskInputs.hashes(),
