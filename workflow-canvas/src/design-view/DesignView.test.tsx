@@ -581,7 +581,7 @@ describe('DesignView, the Properties tab', () => {
 
   // The keys of the file as it was loaded, and which of them can be edited:
   // the same form answers both.
-  it('shows the keys the file has before anything is edited, the ones it cannot write read-only', async () => {
+  it('shows the keys the file has before anything is edited and leaves writable keys editable', async () => {
     drawn({ document: WITH_PROMPT });
     await settle();
 
@@ -589,10 +589,7 @@ describe('DesignView, the Properties tab', () => {
 
     expect(promptInput().value).toBe('Write the greeting to README.md.');
     expect(nameInput().value).toBe('draft');
-    expect(promptInput().readOnly).toBe(true);
-    expect(panelOf('Properties').textContent).toContain(
-      'edited in a later step',
-    );
+    expect(promptInput().readOnly).toBe(false);
   });
 
   it('shows a prompt file the same way', async () => {
@@ -625,7 +622,32 @@ describe('DesignView, the Properties tab', () => {
     const said = screen.getByTestId('reading-keys-failed').textContent ?? '';
 
     expect(said).toContain('The server said no.');
-    expect(said).toContain('Only the name and the agent of a stage are shown');
+    expect(said).toContain(
+      'The name, the agent and any prompt the editor can read are still there to change',
+    );
+  });
+
+  // The warning names the prompt because the editor finds it in the file
+  // itself, so a failed check does not take it off the page.
+  it('still takes a prompt after the first check failed', async () => {
+    const { edits } = drawn({
+      document: WITH_PROMPT,
+      openedFails: 'The server said no.',
+    });
+    await settle();
+    await openProperties();
+
+    expect(promptInput().readOnly).toBe(false);
+    await typeInto(promptInput(), 'Write it twice.');
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(
+      expect.stringContaining('prompt: Write it twice.'),
+      WITH_PROMPT.hash,
+    );
   });
 
   // The writer reads the file's own bytes, not the check, so a check that
@@ -1568,6 +1590,92 @@ describe('DesignView, typing over the whole text', () => {
 
     expect(yamlBox().value).toBe(`${HELLO_TEXT}# another\n`);
     expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+  });
+});
+
+describe('DesignView, the prompt of a stage', () => {
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  it('types a prompt, which the text shows at once', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(promptInput(), 'Write it twice.');
+
+    expect(promptInput().value).toBe('Write it twice.');
+    expect(
+      (screen.getByTestId('yaml-text') as HTMLTextAreaElement).value,
+    ).toContain('Write it twice.');
+    expect(screen.getByTestId('save-status').textContent).toContain(
+      'Unsaved changes',
+    );
+  });
+
+  it('saves the typed prompt through the writer of the file', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(promptInput(), 'Write it twice.');
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(
+      expect.stringContaining('prompt: Write it twice.'),
+      WITH_PROMPT.hash,
+    );
+    expect(screen.getByTestId('save-status').textContent).toContain('Saved');
+  });
+
+  it('keeps the other keys of the stage as they were', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(promptInput(), 'Write it twice.');
+    await press('Save');
+    await settle();
+
+    const [written] = edits.save.mock.calls[0] ?? [];
+    expect(written).toContain('name: draft');
+    expect(written).toContain('agent: k-developer');
+    expect(written).toContain('name: review');
+  });
+
+  it('keeps a prompt read-only when the stage reads a file', async () => {
+    drawn({ document: WITH_PROMPT_FILE });
+    await settle();
+    await openProperties();
+
+    expect(promptInput().readOnly).toBe(true);
+    expect(
+      (
+        within(panelOf('Properties')).getByRole('textbox', {
+          name: 'prompt_file',
+        }) as HTMLInputElement
+      ).readOnly,
+    ).toBe(true);
+  });
+
+  it('steps back over a typed prompt with Undo', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+    const before = (screen.getByTestId('yaml-text') as HTMLTextAreaElement)
+      .value;
+
+    await typeInto(promptInput(), 'Write it twice.');
+    await press('Undo');
+    await settle();
+
+    expect((screen.getByTestId('yaml-text') as HTMLTextAreaElement).value).toBe(
+      before,
+    );
   });
 });
 

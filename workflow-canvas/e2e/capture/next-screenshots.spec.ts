@@ -39,6 +39,20 @@ test('capture the Design view with the keys of a stage', async ({ next }) => {
   await saveFullPageScreenshot(next.page, 'next-design-properties');
 });
 
+test('capture the Design view with a prompt being typed', async ({ next }) => {
+  const properties = next.page.getByRole('tabpanel', { name: 'Properties' });
+  await next.page.getByRole('tab', { name: 'Properties' }).click();
+  const prompt = properties.getByLabel('prompt', { exact: true });
+  await expect(prompt).toBeEditable();
+
+  await prompt.fill('Write a warmer greeting to README.md.');
+  await expect(next.page.getByTestId('save-status')).toContainText(
+    'Unsaved changes',
+  );
+
+  await saveFullPageScreenshot(next.page, 'next-design-prompt');
+});
+
 test('capture the Run view before a run', async ({ next }) => {
   await next.selectTab('Run');
   await expect(next.runButton).toBeVisible();

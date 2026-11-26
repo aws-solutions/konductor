@@ -9,7 +9,7 @@ import type { FieldValues } from '../designer-view/field-rules';
  * type in them. Every other key of the stage is shown read-only: a save keeps
  * each of its bytes, but nothing on the page can change it yet.
  */
-export const SAVABLE_KEYS: readonly string[] = ['name', 'agent'];
+export const SAVABLE_KEYS: readonly string[] = ['name', 'agent', 'prompt'];
 
 /** The keys that the server works out, which are not keys of the file. */
 const DERIVED_KEYS: ReadonlySet<string> = new Set(['kind', 'range']);
@@ -136,21 +136,31 @@ export function markedStageOf(
 
 /**
  * The keys of the stage to show in the form: the text keys of the stage in
- * the view, with the name and the agent of the draft over them, because
- * those two are what the editor holds while a person types. A key whose
- * value is not text, such as a mapping or a list, is left out: the form
- * writes text, and the text keeps such a key as it is.
+ * the view, with the name, the agent and the prompt of the draft over them,
+ * because those three are what the editor holds while a person types. A
+ * missing key is one the values do not have, so a stage with no prompt, and
+ * one whose prompt was cleared, carry no `prompt` at all: an empty one would
+ * be a value of no characters, which the rules refuse. A prompt the editor
+ * could not read is left to the view, so the file's own value is shown and
+ * stays read-only. A key whose value is not text, such as a mapping or a
+ * list, is left out: the form writes text, and the text keeps such a key as
+ * it is.
  */
 export function fieldValuesOf(
   stage: CheckViewStage | undefined,
   draft: DraftStage,
+  { promptRead = true }: { readonly promptRead?: boolean } = {},
 ): FieldValues {
   const fromView = Object.entries(stage ?? {}).filter(
-    ([key, value]) => typeof value === 'string' && !DERIVED_KEYS.has(key),
+    ([key, value]) =>
+      typeof value === 'string' &&
+      !DERIVED_KEYS.has(key) &&
+      !(promptRead && key === 'prompt'),
   ) as [string, string][];
   return {
     ...Object.fromEntries(fromView),
     name: draft.name,
     agent: draft.agent,
+    ...(promptRead && draft.prompt !== '' ? { prompt: draft.prompt } : {}),
   };
 }

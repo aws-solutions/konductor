@@ -378,3 +378,18 @@ test('draws both views in the dark mode', async ({ next }) => {
 
   await expect(next.runButton).toBeVisible();
 });
+
+// Saving the prompt is covered by e2e/editing, where the specs that write to
+// the stub run one at a time; this one only types.
+test('types a prompt into the keys of a stage', async ({ next }) => {
+  const properties = next.page.getByRole('tabpanel', { name: 'Properties' });
+  await next.page.getByRole('tab', { name: 'Properties' }).click();
+  const prompt = properties.getByLabel('prompt', { exact: true });
+
+  await expect(prompt).toBeEditable();
+  await prompt.fill('Write a warmer greeting to README.md.');
+
+  await expect(next.page.getByTestId('save-status')).toContainText(
+    'Unsaved changes',
+  );
+});

@@ -38,6 +38,7 @@ import {
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
+  promptFieldOf,
   rawTextOf,
   textBlocker,
   textOf,
@@ -335,15 +336,23 @@ export function DesignView({
   const viewStage = picked
     ? sourceStageOf(fileView, sources.of(picked.id))
     : undefined;
-  const values = picked ? fieldValuesOf(viewStage, picked) : {};
+  // Whether the prompt is one the editor can read and write. A stage that
+  // reads a file, has both keys, or sits in a file whose prompts cannot be
+  // found keeps its prompt read-only, with the value the file holds.
+  const prompt = picked ? promptFieldOf(state, picked) : undefined;
+  const promptRead = prompt?.kind === 'text';
+  const values = picked ? fieldValuesOf(viewStage, picked, { promptRead }) : {};
   const kindOf = typeof viewStage?.kind === 'string' ? viewStage.kind : 'agent';
   const rules = stageFields[kindOf] ?? [];
-  // Only the name and the agent go through the editor, so every other key is
-  // shown read-only: a save keeps each of its bytes, but nothing on the page
-  // can change it yet.
+  // The name, the agent and a prompt the editor can read go through the
+  // editor; every other key is shown read-only, and a prompt it cannot read
+  // is one of them. A save keeps each of their bytes, but nothing on the
+  // page can change them yet.
   const readOnlyKeys = rules
     .map((rule) => rule.key)
-    .filter((key) => !SAVABLE_KEYS.includes(key));
+    .filter(
+      (key) => !SAVABLE_KEYS.includes(key) || (key === 'prompt' && !promptRead),
+    );
   const stage: LayoutStage | undefined = picked && {
     name: picked.name,
     rules,
@@ -455,9 +464,9 @@ export function DesignView({
             data-testid="reading-keys-failed"
             action={<Button onClick={opened.checkAgain}>Check again</Button>}
           >
-            {opened.failure} Only the name and the agent of a stage are shown,
-            so the other keys of the file are not on the page. A save still
-            keeps them.
+            {opened.failure} The name, the agent and any prompt the editor can
+            read are still there to change; the other keys of the file are not
+            on the page. A save still keeps them.
           </Alert>
         )}
         <CheckLine status={draft.status} failure={draft.failure} />
@@ -489,6 +498,10 @@ export function DesignView({
             const agent = next.agent ?? '';
             if (name !== picked.name) editor.rename(picked.id, name);
             if (agent !== picked.agent) editor.setAgent(picked.id, agent);
+            const typed = next.prompt ?? '';
+            if (promptRead && typed !== picked.prompt) {
+              editor.setPrompt(picked.id, typed);
+            }
           }}
         >
           <SpaceBetween size="s">
