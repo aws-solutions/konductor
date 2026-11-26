@@ -88,16 +88,16 @@ canvas calls. It covers these operations:
 | `GET /api/runs/{id}/events` | `getRunEvents`  | Follow the events of a run              |
 
 A workflow in this version has a `format`, a `version`, an `intent` with an
-`outcome` and optional `accept` checks, optional `params` (the goal only) and
-`stages`. A stage has a `name`, an `agent` and optionally a `prompt` or a
-`prompt_file`. Keys that later releases add, such as `outputs` and `done_when`,
-are refused by name with the slice that adds them. Each stage of a parsed view
-also has a `kind` (`agent`, the one kind in this version) and a `range`, the
-lines of the text it takes up, so a client can draw a stage and mark its lines
-without reading YAML. `GET /api/workflow` also returns `stage_fields`: for
-each kind of stage, the keys a person may edit, with their type, whether they
-are required and their limits, so a form can be built from data. The file also
-holds what a
+`outcome` and optional `accept` checks, optional `params`, and `stages`.
+`params.goal` declares the goal and the other params declare named run inputs.
+A stage has a `name`, an `agent`, optional `prompt` or `prompt_file`, optional
+`outputs`, and optional `done_when` check ids. A prompt can refer to a run param
+or to an output of an earlier stage. Each stage of a parsed view also has a
+`kind` (`agent`, the one kind in this version) and a `range`, the lines of the
+text it takes up, so a client can draw a stage and mark its lines without
+reading YAML. `GET /api/workflow` also returns `stage_fields`: for each kind of
+stage, the keys a person may edit, with their type, whether they are required
+and their limits, so a form can be built from data. The file also holds what a
 backend needs to implement the calls: the accepted workflow text, the checks
 that make a text invalid, the list of diagnostic codes, how a file that is not
 a plain file is handled, and what a run does stage by stage. A client follows a
@@ -117,11 +117,11 @@ lengths). The page does not read these yet. The format itself is described in
 
 A run uses the `kiro-cli` or `claude` harness, or `fake` in tests. A stage
 passes on evidence, not on the exit status of its session, and a blocked stage
-carries a `reason`. Only one run is active per workspace, whichever process
-started it. `POST /api/run` answers `trust_required` for a workflow that is not
-trusted, with the command that the user runs in a terminal. The contract has no
-call that grants trust, and a save that changes the workflow's bytes ends its
-trust.
+carries a `reason`. Each run reports the state of every declared check by id.
+Only one run is active per workspace, whichever process started it.
+`POST /api/run` answers `trust_required` for a workflow that is not trusted,
+with the command that the user runs in a terminal. The contract has no call
+that grants trust, and a save that changes the workflow's bytes ends its trust.
 
 The contract is the one source of truth for the API. Every server of the API
 follows it, so a change to the API starts as a change to this file. Responses
@@ -419,6 +419,12 @@ that the view edits. A stage may also have a `prompt_file`, which the page
 shows as a read-only path and a save keeps. The stages run in the order they are
 listed, and there is no way to link or reorder them yet.
 
+The **YAML** pane edits the whole file. Typing over it freezes Add and every
+stage field until that raw edit is saved or typed back. **Save** writes the
+text exactly as shown. Typing and history steps that would replace the raw text
+pause while a save is running. Undo and Redo adopt the text they show,
+including when the editor already holds a different raw text.
+
 - **Add stage** adds a stage at the end, named `agent-1` (the first free
   `agent-N`) with the agent `k-developer`, selects it and moves focus to its
   name. It is off at 40 stages, the most the API allows.
@@ -456,8 +462,8 @@ Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
-The writer (`stage-text.ts`) changes only the bytes of the values it edits, in
-two passes. The first writes `name`, `agent` and whole stages by line. A
+For form edits, the writer (`stage-text.ts`) changes only the bytes of the
+values it edits, in two passes. The first writes `name`, `agent` and whole stages by line. A
 stage whose `name` or `agent` changed keeps every other byte of its item: its
 other keys, such as `prompt` and `prompt_file`, its comments and its layout. A
 deleted stage takes its item and the comments in front of it, and a new stage
@@ -497,9 +503,9 @@ scalar ends, and a prompt is usually one (`>-` in `hello-plan.yml`), so
   back as typed is written in the next form (a literal block, then
   double quotes), and if none reads back it is refused and never written.
 
-The page never rewrites a file whole. It refuses a change it cannot write in
-place, says why, and keeps Save off with the reason in its tooltip, as plain
-text:
+A raw YAML edit saves the whole text. For form edits, the page refuses a
+change it cannot write in place, says why, and keeps Save off with the reason
+in its tooltip, as plain text:
 
 - When the stages are not a list of items under a top-level `stages:` key, as
   in `stages: [...]`, or the page cannot tell where each stage starts, no
@@ -616,24 +622,26 @@ The code follows the split of the Run view:
 
 ## The Run view
 
-The view has a **Goal** box with a **Run** button under it, then the run as it
-is followed: how far it has got, its stages with the detail and console of the
-one picked, and the past runs of the workflow. It draws no graph; the drawing
-is the Design view's. The goal starts as the `default` of the file's
-`params.goal`. A file without a default leaves the box empty and Run off until
-a goal is typed, because the API needs one (1 to 2048 characters) to start a
-run.
+The view has a **Goal** box, one box for every other param the workflow
+declares, and a **Run** button. It then shows the declared checks and the run as
+it is followed: how far it has got, its stages with the detail and console of
+the one picked, and the past runs of the workflow. It draws no graph; the
+drawing is the Design view's. The goal and other inputs start with their
+declared defaults. Run stays off until the goal and every required input have
+values that fit the contract.
 
-- **Run** calls `POST /api/run` with the goal, then follows the run through
-  `GET /api/runs/{id}/events`, a long poll the server may hold open for
-  `LONG_POLL_WAIT_S` seconds. Run is off from the click until the run ends.
-  The Goal box stays editable, so the goal of the next run can be typed while
-  one goes on. Enter in the box starts a run, like the button.
+- **Run** calls `POST /api/run` with the goal and the other input values, then
+  follows the run through `GET /api/runs/{id}/events`, a long poll the server
+  may hold open for `LONG_POLL_WAIT_S` seconds. Run is off from the click until
+  the run ends. The input boxes stay editable, so the inputs of the next run
+  can be typed while one goes on. Enter in the Goal box starts a run, like the
+  button; Enter in another input adds a line.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the page follows the run named in that answer instead
-  of starting one, and the goal typed is not used for it. The API does not
-  give that run's goal, so while it goes the Goal box is read-only, empty and
-  says "Not known"; it comes back with the default once the run has ended.
+  of starting one, and the inputs typed are not used for it. The API does not
+  give that run's inputs, so while it goes the input boxes are read-only and
+  say "Not known"; they come back with the typed values or defaults once the
+  run has ended.
 - Resume works after a reload, though the launch code works once: the page
   resumes from the session it kept (see above). The page keeps the id of the
   latest run in the storage of the browser tab (`sessionStorage`; the id is no
@@ -659,6 +667,12 @@ run.
   is open too; the line itself is not a live region, or the change would be
   heard twice. For a halted run it ends with the sentence of the blocked
   stage's reason, or the code when the page does not know it.
+- **Checks** lists every check from `intent.accept`. Before a run reports a
+  state, a check is **Deferred**. The page reads `GET /api/runs/{id}` when a
+  run starts and as its stages pass, then shows **Verified**, **Failed** or
+  **Deferred** beside each check. A stage also lists the checks named by its
+  `done_when`. A failed check-state read leaves the declarations visible and
+  shows a warning; it does not poll the whole run.
 - While Design has changes that are not saved, a note at the top of the Run
   view says that a run uses the saved workflow, so the draft is not what runs.
 - Each stage of the run is a button in the Tab order. Picking one shows its
@@ -679,8 +693,8 @@ run.
 - A Run that the server answers with 409 `trust_required` opens a dialog. It
   shows the `fix` of the answer and its command, such as
   `konductor flow trust hello`, with **Copy**, which copies the command, and
-  **Run again**, which asks for the same run with the goal of the refused
-  start. The command and **Copy** show only when the command is
+  **Run again**, which asks for the same run with the goal and other inputs of
+  the refused start. The command and **Copy** show only when the command is
   `konductor flow trust` and the name of the workflow on the page, since the
   text comes from the server and is meant for a terminal; for any other `fix`
   the dialog shows the sentence alone, as plain text. The page never grants
@@ -718,15 +732,13 @@ The code follows the ports-and-adapters split of the graph:
   (`test-support/execution-purity.test.ts` and `run-client-purity.test.ts`)
   fail if they import anything but their own modules, the graph core and the
   wire types, or read a clock, randomness, the environment or the network.
-- The adapters are `createHttpApi` (`startRun`), which `loadWorkflow` ties to
-  the session token, `createNextPorts` (`readEvents`, `listRuns`),
-  `timerScheduler`, and `sessionRunMemory`, which keeps the id of the latest
-  run for the resume after a reload. The token is held only by those calls.
-  `createHttpApi` ends a call after a timeout of 15 seconds, and the launch
-  code call after 120 seconds because it works once, and `loadWorkflow` turns
-  the 409 `already_running`, which carries the `run_id`, into
-  `RunAlreadyActive` so the page can follow that run, and the 409
-  `trust_required` into `RunNeedsTrust`.
+- The adapters are `createNextPorts` (`startRun`, `readEvents`, `readChecks`
+  and `listRuns`), `timerScheduler`, and `sessionRunMemory`, which keeps the id
+  of the latest run for the resume after a reload. The token is held only by
+  those calls. `createNextPorts` ends ordinary calls after 15 seconds, leaves
+  the long poll to the follower's timeout, turns a 409 `already_running` with
+  a `run_id` into `RunAlreadyActive`, and turns a 409 `trust_required` into
+  `RunNeedsTrust`.
 - `useRunController` keeps the run in `App`, so a change of view cannot stop
   the only follower of a run, and `RunView` draws what it holds. The Design
   and Run views share `WorkflowGate` (loading, error and empty states).
