@@ -69,6 +69,7 @@ describe('App', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
     const designer = screen.getByRole('tab', { name: 'Design' });
     const execution = screen.getByRole('tab', { name: 'Run' });
+    const library = screen.getByRole('tab', { name: 'Library' });
     designer.focus();
 
     fireEvent.keyDown(designer, { key: 'ArrowRight' });
@@ -77,17 +78,21 @@ describe('App', () => {
     expect(screen.getByRole('tabpanel', { name: 'Run' })).toBeTruthy();
 
     fireEvent.keyDown(execution, { key: 'ArrowRight' });
+    expect(library.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(library);
+
+    fireEvent.keyDown(library, { key: 'ArrowRight' });
     expect(designer.getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(designer);
 
     fireEvent.keyDown(designer, { key: 'End' });
-    expect(execution.getAttribute('aria-selected')).toBe('true');
+    expect(library.getAttribute('aria-selected')).toBe('true');
 
-    fireEvent.keyDown(execution, { key: 'Home' });
+    fireEvent.keyDown(library, { key: 'Home' });
     expect(designer.getAttribute('aria-selected')).toBe('true');
 
     fireEvent.keyDown(designer, { key: 'ArrowLeft' });
-    expect(execution.getAttribute('aria-selected')).toBe('true');
+    expect(library.getAttribute('aria-selected')).toBe('true');
   });
 
   it('announces nothing while the workflow is loading', () => {
@@ -156,6 +161,9 @@ describe('App', () => {
     expect(
       screen.getByRole('tab', { name: 'Run' }).getAttribute('tabindex'),
     ).toBe('-1');
+    expect(
+      screen.getByRole('tab', { name: 'Library' }).getAttribute('tabindex'),
+    ).toBe('-1');
   });
 
   it('renders the Design and Run views with Design selected', () => {
@@ -166,6 +174,11 @@ describe('App', () => {
     ).toBe('true');
     expect(
       screen.getByRole('tab', { name: 'Run' }).getAttribute('aria-selected'),
+    ).toBe('false');
+    expect(
+      screen
+        .getByRole('tab', { name: 'Library' })
+        .getAttribute('aria-selected'),
     ).toBe('false');
   });
 
@@ -213,6 +226,28 @@ describe('App', () => {
       await within(panel).findByRole('button', { name: 'Run' }),
     ).toBeTruthy();
     expect(within(panel).getByLabelText('Goal')).toBeTruthy();
+  });
+
+  it('opens the shipped workflow list from the page header', async () => {
+    const next = fakeNextPorts({
+      listLibrary: async () => [
+        {
+          name: 'library/k-adversarial-pull-request-review',
+          title: 'Adversarial pull request review',
+          summary: 'Review a pull request.',
+          status: 'ready',
+        },
+      ],
+    });
+    render(
+      <App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={() => next} />,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+
+    expect(
+      await screen.findByText('Adversarial pull request review'),
+    ).toBeTruthy();
   });
 
   it('says a run uses the saved workflow when Design has unsaved changes', async () => {

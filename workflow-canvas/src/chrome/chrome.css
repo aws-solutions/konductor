@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 /*
- * The Design and Run switch in the page header, which is dark in both
- * modes. The selected segment is filled with the band's link colour.
+ * The view switch is dark in both modes. Its selected segment uses the band's link colour.
  */
 .wf-mode-switch {
   display: inline-flex;

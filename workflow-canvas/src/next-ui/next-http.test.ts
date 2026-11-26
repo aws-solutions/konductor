@@ -116,6 +116,45 @@ describe('createNextPorts, the agents', () => {
   });
 });
 
+describe('createNextPorts, the library', () => {
+  const ready = {
+    name: 'library/k-adversarial-pull-request-review',
+    title: 'Adversarial pull request review',
+    summary: 'Review a pull request.',
+    status: 'ready',
+  };
+  const planned = {
+    name: 'library/k-design-doc-creation',
+    title: 'Design document creation',
+    summary: 'Create a design document.',
+    status: 'planned',
+    waits: 'The workflow needs human gates.',
+  };
+
+  it('lists ready and planned entries', async () => {
+    const { calls, fetchFn } = serverOf({
+      body: { entries: [ready, planned] },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).resolves.toEqual([ready, planned]);
+    expect(calls[0]?.path).toBe('/api/library');
+  });
+
+  it.each([
+    ['a ready entry with waits', { ...ready, waits: 'No reason.' }],
+    ['a planned entry without waits', { ...planned, waits: undefined }],
+    ['a multiline reason', { ...planned, waits: 'One\nTwo' }],
+    ['an unknown status', { ...ready, status: 'retired' }],
+    ['an empty summary', { ...ready, summary: '' }],
+  ])('refuses %s', async (_, entry) => {
+    const { fetchFn } = serverOf({ body: { entries: [entry] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+});
+
 describe('createNextPorts, the past runs', () => {
   it('lists the runs the server gives', async () => {
     const { calls, fetchFn } = serverOf({ body: { runs: [RUN_ROW] } });

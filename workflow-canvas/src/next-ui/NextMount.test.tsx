@@ -46,7 +46,7 @@ async function openPage({
 
 const runTab = () => screen.getByRole('tab', { name: 'Run' });
 
-describe('the page and its two views', () => {
+describe('the page views', () => {
   it('builds the calls of the views for the workflow it shows', async () => {
     const { portsFor, result } = await openPage();
 
