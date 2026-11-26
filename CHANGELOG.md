@@ -12,16 +12,6 @@ reference.
 
 ## [Unreleased]
 
-### Added
-
-- The orchestration-mode session-start hook now applies `orchestration.mode` to any installed
-  agent that loads the `k-direct-work.md` context, not only to `konductor`, so forks and custom
-  distributions that rename the orchestrator still get `coordinator` mode. On Kiro CLI v2 the
-  renamed agent's own file gets the hook, and `doctor` checks it in each one. Agents that load
-  the routing rules instead, like the mux and cmux orchestrators, are unchanged. An agent file
-  over 1 MiB that the hook cannot check gets `Orchestration: auto (fallback: ...)` under
-  `coordinator` instead of no output.
-
 ## [2.0.0] - 2026-11-25
 
 ### Upgrade notes
@@ -79,6 +69,12 @@ Read these before upgrading from 1.2.0.
   the hook is wired, and whether the config value is valid. The docs describe setting the mode
   by hand and reading the mode line in the first reply. Kiro CLI v2 is not supported, and the
   Claude Code plugin does not wire the hook.
+  - The mode applies to any installed agent that loads the `k-direct-work.md` context, not only
+    to `konductor`, so a fork or distribution that renames the orchestrator still gets
+    `coordinator` mode. On Kiro CLI v2 the renamed agent's own file gets the hook, and `doctor`
+    checks it in each one. Agents that load the routing rules instead, like the mux and cmux
+    orchestrators, are unchanged. An agent file over 1 MiB that the hook cannot check gets
+    `Orchestration: auto (fallback: ...)` under `coordinator` instead of no output.
 - `konductor synth` warns when an agent's Claude Code skill preload is over 32 KiB or 32 names
   and names the skills Claude Code would drop (`-v` and `--json` report it per agent). Each
   Claude Code agent file ends with a "Skills you can load" block listing its other declared

@@ -198,25 +198,32 @@ jobs:
           # leg skips the musl-toolchain install step entirely (see "Install
           # musl toolchain"'s `if:` guard below).
           #
-          # `macos-latest` (arm64), not a pinned version. This leg was
-          # pinned to `macos-14`; GitHub retired every macOS 14 image on
-          # 2026-11-02, so the leg stopped starting ("The configuration
-          # 'macos-14-arm64-us-default' is not supported") and `publish`,
-          # which needs `build.result == 'success'`, stopped publishing
-          # releases. A pinned image buys little here: Rust's
-          # `aarch64-apple-darwin` deployment target does not follow the
-          # builder's SDK, so a `-latest` migration does not change which
-          # macOS versions the binary runs on.
+          # `macos-latest` (arm64), not a pin: a pinned image breaks this
+          # leg, and with it every release, the day that image retires --
+          # `publish` needs `build.result == 'success'`. `-latest` buys
+          # that back for nothing, since the macOS floor below is set
+          # explicitly rather than inherited from the runner's SDK.
           - arch: aarch64-macos
             runner: macos-latest
             target: aarch64-apple-darwin
             primary: false
+            # Rust's own default for this target today. Pinned so the
+            # floor is a decision in this file, not whatever the
+            # unpinned `stable` toolchain happens to default to.
+            macos_deployment_target: "11.0"
     runs-on: ${{ matrix.runner }}
     env:
       RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
+      - name: Pin the macOS deployment target
+        # Set here, not as a job-level `env:`, so the Linux legs never see
+        # the variable at all -- an empty value is not the same as unset to
+        # every build script that reads it.
+        if: runner.os == 'macOS'
+        run: echo "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_deployment_target }}" >> "$GITHUB_ENV"
 
       - name: Set up Rust toolchain
         # No repo convention to match -- cli/konductor-rs pins no MSRV, so
