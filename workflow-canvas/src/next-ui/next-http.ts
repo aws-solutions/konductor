@@ -10,6 +10,7 @@ import {
   isObject,
   parseRunStarted,
 } from '../api/parse';
+import type { LibraryEntry } from '../api/types';
 import {
   parseWorkflowExtras,
   type WorkflowExtras,
@@ -85,7 +86,7 @@ function startUnsureOf(error: unknown): RunStartUnsure | undefined {
 /** How long one of these calls may take before the page gives up on it. */
 export const NEXT_REQUEST_TIMEOUT_MS = 15_000;
 
-/** The calls that the Design and Run views make, beyond the session's own. */
+/** The calls that the Design, Run and Library views make beyond the session's own. */
 export interface NextPorts {
   /** Reads the `kind`, `range`, `stage_fields` and default goal of the workflow. */
   readonly loadExtras: (signal?: AbortSignal) => Promise<WorkflowExtras>;
@@ -93,6 +94,8 @@ export interface NextPorts {
   readonly listAgents: (
     signal?: AbortSignal,
   ) => Promise<readonly AgentOption[]>;
+  /** Lists the shipped workflows. */
+  readonly listLibrary: (signal?: AbortSignal) => Promise<LibraryEntry[]>;
   readonly listRuns: ListRuns;
   readonly readEvents: ReadEvents;
   /**
@@ -129,6 +132,37 @@ function agentsOf(body: unknown): readonly AgentOption[] {
   const agents = isObject(body) ? body.agents : undefined;
   if (!Array.isArray(agents)) throw new ApiError(BAD_REPLY, 200);
   return agents.map(agentOf);
+}
+
+const LIBRARY_NAME = /^library\/[a-z0-9][a-z0-9-]{0,63}$/;
+
+function libraryEntryOf(value: unknown): LibraryEntry {
+  if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
+  const name = textOrFail(value.name);
+  const title = textOrFail(value.title);
+  const summary = textOrFail(value.summary);
+  const { status, waits } = value;
+  if (
+    !LIBRARY_NAME.test(name) ||
+    title === '' ||
+    summary === '' ||
+    /[\r\n]/.test(summary) ||
+    (status !== 'ready' && status !== 'planned') ||
+    (status === 'ready' && waits !== undefined) ||
+    (status === 'planned' &&
+      (typeof waits !== 'string' || waits === '' || /[\r\n]/.test(waits)))
+  ) {
+    throw new ApiError(BAD_REPLY, 200);
+  }
+  return status === 'ready'
+    ? { name, title, summary, status }
+    : { name, title, summary, status, waits: waits as string };
+}
+
+function libraryOf(body: unknown): LibraryEntry[] {
+  const entries = isObject(body) ? body.entries : undefined;
+  if (!Array.isArray(entries)) throw new ApiError(BAD_REPLY, 200);
+  return entries.map(libraryEntryOf);
 }
 
 const RUN_STATUSES: ReadonlySet<unknown> = new Set([
@@ -404,6 +438,8 @@ export function createNextPorts(
       parseWorkflowExtras(await send('/api/workflow', {}, signal)),
     listAgents: async (signal) =>
       agentsOf(await send('/api/agents', {}, signal)),
+    listLibrary: async (signal) =>
+      libraryOf(await send('/api/library', {}, signal)),
     listRuns: async (signal) => runsOf(await send('/api/runs', {}, signal)),
     startRun: async (params, signal) => {
       try {

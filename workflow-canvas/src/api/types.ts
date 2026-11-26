@@ -116,6 +116,15 @@ export interface StageFields {
   agent: StageField[];
 }
 
+/** One row in the shipped workflow library. */
+export interface LibraryEntry {
+  name: string;
+  title: string;
+  summary: string;
+  status: 'ready' | 'planned';
+  waits?: string;
+}
+
 /** What `GET /api/workflow` returns. */
 export interface WorkflowDocument {
   name: string;

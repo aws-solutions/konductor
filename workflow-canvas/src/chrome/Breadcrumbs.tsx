@@ -4,7 +4,7 @@ import Icon from '@cloudscape-design/components/icon';
 
 /**
  * The trail above the title: Workflows, then the workflow that is open. The
- * page has no list of workflows yet, so no crumb is a link; the last one is
+ * page has no separate workflow index, so no crumb is a link; the last one is
  * the current page.
  */
 export function Breadcrumbs({ workflowName }: { workflowName?: string }) {
