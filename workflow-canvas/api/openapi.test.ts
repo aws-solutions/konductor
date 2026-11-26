@@ -957,6 +957,30 @@ describe('workflow canvas API contract', () => {
         'Lookup ids are unique',
       );
     });
+    it('bounds the list and each display string', () => {
+      const libraryList = spec.components.schemas['LibraryList']!;
+      const entries = Array.from({ length: 100 }, (_, index) => ({
+        name: `library/workflow-${index}`,
+        title: 't'.repeat(120),
+        summary: 's'.repeat(240),
+        status: 'planned',
+        waits: 'w'.repeat(240),
+      }));
+      expect(valueMatchesSchema(libraryList, { entries })).toBe(true);
+      expect(
+        valueMatchesSchema(libraryList, {
+          entries: [...entries, { ...entries[0]!, name: 'library/overflow' }],
+        }),
+      ).toBe(false);
+      for (const key of ['title', 'summary', 'waits'] as const) {
+        const tooLong = key === 'title' ? 'x'.repeat(121) : 'x'.repeat(241);
+        expect(
+          valueMatchesSchema(libraryList, {
+            entries: [{ ...entries[0]!, [key]: tooLong }],
+          }),
+        ).toBe(false);
+      }
+    });
   });
 
   describe('what two servers must do alike', () => {

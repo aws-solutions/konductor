@@ -2,6 +2,7 @@
 /** Calls the workflow library routes over HTTP and checks every answer. */
 import { describe, expect, it } from 'vitest';
 import { isName } from '../core/contract.ts';
+import { SHIPPED_LIBRARY, type ShippedWorkflow } from '../core/library.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { useStub } from '../test-support/harness.ts';
 
@@ -10,6 +11,16 @@ const READY = 'library/k-adversarial-pull-request-review';
 const PLANNED = 'library/k-design-doc-creation';
 const entryPath = (name: string) => `/api/library/${encodeURIComponent(name)}`;
 const copyPath = (name: string) => `${entryPath(name)}/copy`;
+const validPlanned = {
+  name: PLANNED,
+  title: 'Planned workflow',
+  summary: 'A planned workflow.',
+  status: 'planned' as const,
+  waits: 'A prerequisite.',
+};
+const validReady = SHIPPED_LIBRARY.find((entry) => entry.status === 'ready')!;
+const libraryOf = (row: unknown) =>
+  [row] as unknown as readonly ShippedWorkflow[];
 
 describe('GET /api/library', () => {
   const stub = useStub();
@@ -29,6 +40,68 @@ describe('GET /api/library', () => {
         }),
       ]),
     });
+  });
+});
+
+describe('GET /api/library at its response limits', () => {
+  const entries = Array.from({ length: 100 }, (_, index) => ({
+    ...validPlanned,
+    name: `library/workflow-${index}`,
+    title: 't'.repeat(120),
+    summary: 's'.repeat(240),
+    waits: 'w'.repeat(240),
+  }));
+  const stub = useStub({ library: entries });
+
+  it('returns the maximum list and display lengths', async () => {
+    const reply = await stub().client.get(LIST_PATH);
+    expect(reply.status).toBe(200);
+    expect((reply.body as { entries: unknown[] }).entries).toHaveLength(100);
+  });
+});
+
+describe('GET /api/library over its entry limit', () => {
+  const library = Array.from({ length: 101 }, (_, index) => ({
+    ...validPlanned,
+    name: `library/workflow-${index}`,
+  }));
+  const stub = useStub({ library });
+
+  it('refuses the list', async () => {
+    expectError(await stub().client.get(LIST_PATH), 500, 'io_error');
+  });
+});
+
+describe.each([
+  ['title', { ...validPlanned, title: 't'.repeat(121) }],
+  ['summary', { ...validPlanned, summary: 's'.repeat(241) }],
+  ['waits', { ...validPlanned, waits: 'w'.repeat(241) }],
+])('GET /api/library with %s over its limit', (_field, row) => {
+  const stub = useStub({ library: libraryOf(row) });
+
+  it('refuses the row', async () => {
+    expectError(await stub().client.get(LIST_PATH), 500, 'io_error');
+  });
+});
+
+describe.each([
+  ['a malformed id', { ...validPlanned, name: 'not-library' }],
+  ['an empty title', { ...validPlanned, title: '' }],
+  ['a multiline title', { ...validPlanned, title: 'One\nTwo' }],
+  ['an empty summary', { ...validPlanned, summary: '' }],
+  ['a multiline summary', { ...validPlanned, summary: 'One\nTwo' }],
+  ['planned without waits', { ...validPlanned, waits: undefined }],
+  ['planned with empty waits', { ...validPlanned, waits: '' }],
+  ['planned with multiline waits', { ...validPlanned, waits: 'One\nTwo' }],
+  ['planned with source text', { ...validPlanned, text: validReady.text }],
+  ['ready without source text', { ...validReady, text: undefined }],
+  ['ready with waits', { ...validReady, waits: 'Not allowed.' }],
+  ['an unknown status', { ...validPlanned, status: 'later' }],
+])('GET /api/library with %s', (_kind, row) => {
+  const stub = useStub({ library: libraryOf(row) });
+
+  it('refuses the row', async () => {
+    expectError(await stub().client.get(LIST_PATH), 500, 'io_error');
   });
 });
 

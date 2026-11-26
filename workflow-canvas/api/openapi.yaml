@@ -2254,9 +2254,12 @@ components:
         title:
           type: string
           minLength: 1
+          maxLength: 120
+          pattern: '^[^\r\n]*$'
         summary:
           type: string
           minLength: 1
+          maxLength: 240
           pattern: '^[^\r\n]*$'
           description: One line saying what the workflow does.
         status:
@@ -2264,6 +2267,7 @@ components:
         waits:
           type: string
           minLength: 1
+          maxLength: 240
           pattern: '^[^\r\n]*$'
           description: Why a planned entry is not ready. Present only when status is `planned`.
       if:
@@ -2284,6 +2288,7 @@ components:
       properties:
         entries:
           type: array
+          maxItems: 100
           description: Lookup ids are unique within the list.
           items:
             $ref: '#/components/schemas/LibraryEntry'

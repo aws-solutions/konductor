@@ -135,6 +135,10 @@ function agentsOf(body: unknown): readonly AgentOption[] {
 }
 
 const LIBRARY_NAME = /^library\/[a-z0-9][a-z0-9-]{0,63}$/;
+const MAX_LIBRARY_ENTRIES = 100;
+const MAX_LIBRARY_TITLE = 120;
+const MAX_LIBRARY_DETAIL = 240;
+const characters = (text: string) => [...text].length;
 
 function libraryEntryOf(value: unknown): LibraryEntry {
   if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
@@ -145,12 +149,18 @@ function libraryEntryOf(value: unknown): LibraryEntry {
   if (
     !LIBRARY_NAME.test(name) ||
     title === '' ||
+    characters(title) > MAX_LIBRARY_TITLE ||
+    /[\r\n]/.test(title) ||
     summary === '' ||
+    characters(summary) > MAX_LIBRARY_DETAIL ||
     /[\r\n]/.test(summary) ||
     (status !== 'ready' && status !== 'planned') ||
     (status === 'ready' && waits !== undefined) ||
     (status === 'planned' &&
-      (typeof waits !== 'string' || waits === '' || /[\r\n]/.test(waits)))
+      (typeof waits !== 'string' ||
+        waits === '' ||
+        characters(waits) > MAX_LIBRARY_DETAIL ||
+        /[\r\n]/.test(waits)))
   ) {
     throw new ApiError(BAD_REPLY, 200);
   }
@@ -161,7 +171,9 @@ function libraryEntryOf(value: unknown): LibraryEntry {
 
 function libraryOf(body: unknown): LibraryEntry[] {
   const entries = isObject(body) ? body.entries : undefined;
-  if (!Array.isArray(entries)) throw new ApiError(BAD_REPLY, 200);
+  if (!Array.isArray(entries) || entries.length > MAX_LIBRARY_ENTRIES) {
+    throw new ApiError(BAD_REPLY, 200);
+  }
   const parsed = entries.map(libraryEntryOf);
   const names = new Set(parsed.map((entry) => entry.name));
   if (names.size !== parsed.length) throw new ApiError(BAD_REPLY, 200);
