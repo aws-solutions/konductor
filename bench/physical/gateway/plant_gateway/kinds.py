@@ -4,16 +4,16 @@
 Each kind lives in its own kind file, which defines `ENV_KIND` (the `environment.kind` a task writes) and `KIND` (a
 PlantKind). Since B-003 step 3b the kind file is `bench/plants/<kind>/kind.py`, named by the `entry` field of that
 folder's plugin.json. KINDS is built from those files, loaded by path, so a new kind is a new folder and no edit here
-(docs/history/plant-plugin-design-2026-11-24.md).
-shortcut: the gateway finds bench/plants by its own path; the design's later step passes the folder in from the runner.
+(docs/history/plant-plugin-design-2026-11-24.md). The plant folders are the ones the runner names in BENCH_PLANT_DIRS,
+else every folder of bench/plants (sim.PLANT_FOLDERS).
 """
 import importlib.util
 import json
 import os
 
-from .plant_kind import PlantKind
+from sim import PLANT_FOLDERS, PLANTS_DIR
 
-PLANTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "plants")
+from .plant_kind import PlantKind
 
 
 def _load_file(path):
@@ -43,35 +43,37 @@ def load_kinds(paths):
     return out
 
 
-def _manifests(plants_dir):
-    """(folder name, plugin.json dict) for each folder of `plants_dir` with a plugin.json, in its "order", then name."""
+def _manifests(folders):
+    """(folder, plugin.json dict) for each of `folders` with a plugin.json, in its "order", then folder name."""
     out = []
-    for name in os.listdir(plants_dir):
-        path = os.path.join(plants_dir, name, "plugin.json")
+    for folder in folders:
+        path = os.path.join(folder, "plugin.json")
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:
-                out.append((name, json.load(f)))
-    return sorted(out, key=lambda nm: (nm[1]["order"], nm[0]))
+                out.append((folder, json.load(f)))
+    return sorted(out, key=lambda fm: (fm[1]["order"], os.path.basename(fm[0])))
 
 
-def plant_kind_files(plants_dir):
-    """The kind file of each plant folder in `plants_dir` (its plugin.json `entry` field), in plugin.json "order"."""
-    return [os.path.join(plants_dir, name, m["entry"]) for name, m in _manifests(plants_dir)]
+def plant_kind_files(folders):
+    """The kind file of each plant folder in `folders` (its plugin.json `entry` field), in plugin.json "order"."""
+    return [os.path.join(folder, m["entry"]) for folder, m in _manifests(folders)]
 
 
-def load_plants(plants_dir):
-    """{ENV_KIND: KIND} over the plant folders of `plants_dir`. Raises ValueError when a kind file's ENV_KIND is not
-    its folder name (the name the Node side keys the kind by)."""
-    out = load_kinds(plant_kind_files(plants_dir))
-    for (folder, _), env_kind in zip(_manifests(plants_dir), out):
+def load_plants(folders):
+    """{ENV_KIND: KIND} over the plant folders `folders`. Raises ValueError when a kind file's ENV_KIND is not its
+    folder name (the name the Node side keys the kind by)."""
+    out = load_kinds(plant_kind_files(folders))
+    for (path, _), env_kind in zip(_manifests(folders), out):
+        folder = os.path.basename(path)
         if env_kind != folder:
             raise ValueError(f"ENV_KIND {env_kind!r} must equal its plant folder name {folder!r}")
     return out
 
 
-KIND_FILES = tuple(plant_kind_files(PLANTS_DIR))
-KINDS = load_plants(PLANTS_DIR)
-CONVEYOR = KINDS["conveyor-sim"]
-ARM = KINDS["arm-sim"]
+KIND_FILES = tuple(plant_kind_files(PLANT_FOLDERS))
+KINDS = load_plants(PLANT_FOLDERS)
+# None when the runner named no folder for that kind.
+CONVEYOR = KINDS.get("conveyor-sim")
+ARM = KINDS.get("arm-sim")
 
-__all__ = ["PlantKind", "KINDS", "KIND_FILES", "PLANTS_DIR", "CONVEYOR", "ARM", "load_kinds", "load_plants", "plant_kind_files"]
+__all__ = ["PlantKind", "KINDS", "KIND_FILES", "PLANT_FOLDERS", "PLANTS_DIR", "CONVEYOR", "ARM", "load_kinds", "load_plants", "plant_kind_files"]

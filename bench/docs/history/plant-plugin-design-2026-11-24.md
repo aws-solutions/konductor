@@ -1,6 +1,6 @@
 # Design: plants as plugins
 
-Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b metadata, kind files, folder hashes and the simulator split built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
+Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b metadata, kind files, folder hashes, the simulator split, the registry read and the plant folders from the runner built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
 
 ## The problem
 
@@ -84,7 +84,7 @@ does for harness plugins, so a result names the exact plant code that made it.
    3b, second part (built 2026-11-26): each kind file moved, byte for byte, from `plant_gateway/kind_files/` to
    `bench/plants/<kind>/kind.py`; the manifest names it in `python` (later `entry`). The gateway's `kinds.py` reads the plant folders
    (their `python` and `order` fields) and refuses a kind file whose `ENV_KIND` is not its folder name. The gateway
-   still finds `bench/plants` by its own path, not from a runner argument.
+   then still found `bench/plants` by its own path (see "plant folders from the runner" below).
    3b, folder hashes (built 2026-11-26): a plant suite's `run-config.json` records `plant.folders`, each plant folder
    with its sha256 (`plantRecord()` in `runner/lib/plant/kinds.js`, `folderHash` from `core/registry.js`). The
    shared simulator in `physical/sim` is not in a folder, so the bench commit still pins it.
@@ -103,7 +103,12 @@ does for harness plugins, so a result names the exact plant code that made it.
    gateway cannot yet take a plant folder from the runner. `runner/lib/plant/kinds.js` reads `bench/plants` through
    `readPlugin` and adds the plant fields (`order`, `prompt`, `gatewayModules`, `sharedControls`). The gateway's
    `kinds.py` reads the same `plugin.json`.
-   Left for 3b: the runner passes the plant folders to the gateway, so a plant folder from `BENCH_PLUGIN_PATH` can load.
+   3b, plant folders from the runner (built 2026-11-26): the runner names the plant folders in the gateway's env as
+   `BENCH_PLANT_DIRS` (`plantFolders()` in `runner/lib/plant/kinds.js`, set by `gatewayCommand` in `gateway-proc.js`).
+   `plant_folders` in `physical/sim/__init__.py` reads it (each entry absolute, with a `plugin.json`); unset, it is
+   every folder of `bench/plants`. Both the `sim` package path and the gateway's `kinds.py` use that one list, so the
+   gateway loads only the folders the runner named. No log line names a folder, so logs do not change.
+   Left for 3b: the registry accepts kind `plant`, so a plant folder from `BENCH_PLUGIN_PATH` joins `PLANT_KINDS`.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new

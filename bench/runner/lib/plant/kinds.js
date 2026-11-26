@@ -5,8 +5,9 @@
 // meta.js, agent-file.js, python-pin.js and report/plant-controls.js build their tables from it. Since B-003 step 3a
 // each record is read from `bench/plants/<kind>/plugin.json`, so no file here names a kind. Since step 3b the manifest
 // is checked by core/registry.js `readPlugin` (kind `plant`); this module adds the plant fields.
-// shortcut: only bench/plants is read; plant folders from BENCH_PLUGIN_PATH wait for the gateway to take the folder
-// from the runner (design, "Order of work", step 3).
+// The gateway loads the folders this module names (plantFolders(), sent in BENCH_PLANT_DIRS by gateway-proc.js).
+// shortcut: only bench/plants is read; plant folders from BENCH_PLUGIN_PATH wait for the registry to accept kind
+// `plant` (design, "Order of work", step 3).
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -17,7 +18,7 @@ const PLANTS_DIR = path.join(__dirname, '..', '..', '..', 'plants');
 /**
  * Reads and checks `<dir>/plugin.json`: the plugin fields through core/registry.js, then the plant fields. Throws an
  * Error naming the folder and the bad field.
- * Returns the frozen record { metaFile, pythonFile (both absolute), prompt, gatewayModules, sharedControls, order },
+ * Returns the frozen record { dir, metaFile, pythonFile (all absolute), prompt, gatewayModules, sharedControls, order },
  * keyed later by `name`. `pythonFile` is the kind file (`entry`) the gateway's kinds.py loads (B-003 step 3b).
  */
 function readPlantManifest(dir) {
@@ -33,6 +34,7 @@ function readPlantManifest(dir) {
   return Object.freeze({
     name: plugin.name,
     order: m.order,
+    dir: path.resolve(dir),
     metaFile: path.resolve(dir, m.meta),
     pythonFile: plugin.entry,
     prompt: m.prompt,
@@ -43,6 +45,7 @@ function readPlantManifest(dir) {
 
 /**
  * Per kind (the `environment.kind` a task writes), in manifest `order` (report order):
+ * - `dir`: the plant folder (absolute path);
  * - `metaFile`: the plant metadata file meta.js reads (absolute path);
  * - `pythonFile`: the kind file the gateway loads (absolute path; the gateway reads plugin.json itself);
  * - `prompt`: the one-line operator prompt of the plant agent;
@@ -68,7 +71,10 @@ const byKind = (fn) => Object.fromEntries(Object.entries(PLANT_KINDS).map(([kind
  * commit pins them.
  */
 function plantRecord() {
-  return Object.keys(PLANT_KINDS).map((name) => ({ name, sha256: folderHash(path.join(PLANTS_DIR, name)) }));
+  return Object.entries(PLANT_KINDS).map(([name, rec]) => ({ name, sha256: folderHash(rec.dir) }));
 }
 
-module.exports = { PLANT_KINDS, PLANTS_DIR, byKind, plantRecord, readPlantManifest };
+/** The plant folders, in PLANT_KINDS order: the ones the gateway loads (BENCH_PLANT_DIRS, gateway-proc.js). */
+const plantFolders = () => Object.values(PLANT_KINDS).map((rec) => rec.dir);
+
+module.exports = { PLANT_KINDS, PLANTS_DIR, byKind, plantFolders, plantRecord, readPlantManifest };

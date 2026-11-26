@@ -79,6 +79,14 @@ test('plantRecord names each plant folder with its hash, in order, for run-confi
   assert.match(src, /plant: \{ release: [^\n]*folders: plantRecord\(\)/, 'the run-config plant block records the folders');
 });
 
+test('the gateway gets the plant folders from the runner in BENCH_PLANT_DIRS, in PLANT_KINDS order (B-003 step 3b)', () => {
+  const { plantFolders, PLANTS_DIR } = require('../lib/plant/kinds.js');
+  const { gatewayCommand } = require('../lib/plant/gateway-proc.js');
+  assert.deepEqual(plantFolders(), Object.keys(PLANT_KINDS).map((name) => path.join(PLANTS_DIR, name)));
+  for (const [name, rec] of Object.entries(PLANT_KINDS)) assert.equal(rec.dir, path.join(PLANTS_DIR, name));
+  assert.equal(gatewayCommand('python3').env.BENCH_PLANT_DIRS, plantFolders().join(path.delimiter));
+});
+
 test('the values are the ones the tables held before the move', () => {
   assert.deepEqual(GATEWAY_MODULES, { 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'], 'arm-confined-space': ['cedarpy', 'mujoco', 'numpy'] });
   assert.equal(plantPrompt('arm-sim'), 'You operate one robot arm cell through the plant tools. Act only through those tools.');

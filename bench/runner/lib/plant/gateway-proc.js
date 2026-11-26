@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const procs = require('../procs.js');
+const { plantFolders } = require('./kinds.js');
 
 const CONTROL_VERSION = 'plant-control/1';
 const GATEWAY_START = path.join(__dirname, '..', '..', '..', 'physical', 'gateway', 'start.py');
@@ -69,8 +70,9 @@ class FrameReader {
 /** The `{file, args, env}` that start a gateway under `python`, with core dumps off before Python runs and a minimal env. */
 function gatewayCommand(python) {
   // Minimal env, plus the dynamic-linker search path when it is set, so a Python built against a non-default shared
-  // library (the arm gateway's mujoco needing libffi on this host) can load its C extensions. No agent/task data.
-  const env = { PATH: process.env.PATH ?? '/usr/bin:/bin' };
+  // library (the arm gateway's mujoco needing libffi on this host) can load its C extensions. BENCH_PLANT_DIRS names
+  // the plant folders the gateway loads (physical/sim/__init__.py). No agent/task data.
+  const env = { PATH: process.env.PATH ?? '/usr/bin:/bin', BENCH_PLANT_DIRS: plantFolders().join(path.delimiter) };
   if (process.env.LD_LIBRARY_PATH) env.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH;
   return {
     file: '/bin/sh',

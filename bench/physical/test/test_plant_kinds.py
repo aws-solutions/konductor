@@ -96,16 +96,19 @@ class LoadKinds(unittest.TestCase):
         return self.write(os.path.join(folder, "kind.py"), text)
 
     def test_a_plant_folder_loads_from_a_plants_root_in_its_order(self):
+        import sim
         second = self.plant("toy-sim", 2, TOY)
         first = self.plant("lamp-sim", 1, TOY.replace("toy-sim", "lamp-sim"))
         os.makedirs(os.path.join(self.tmp.name, "not-a-plant"))
-        self.assertEqual(kinds.plant_kind_files(self.tmp.name), [first, second])
-        self.assertEqual(list(kinds.load_plants(self.tmp.name)), ["lamp-sim", "toy-sim"])
+        folders = sim.plant_folders({}, self.tmp.name)
+        self.assertEqual(folders, [os.path.join(self.tmp.name, d) for d in ("lamp-sim", "not-a-plant", "toy-sim")])
+        self.assertEqual(kinds.plant_kind_files(folders), [first, second])
+        self.assertEqual(list(kinds.load_plants(folders)), ["lamp-sim", "toy-sim"])
 
     def test_a_kind_file_must_name_its_plant_folder(self):
         self.plant("lamp-sim", 1, TOY)
         with self.assertRaisesRegex(ValueError, "ENV_KIND 'toy-sim' must equal its plant folder name 'lamp-sim'"):
-            kinds.load_plants(self.tmp.name)
+            kinds.load_plants([os.path.join(self.tmp.name, "lamp-sim")])
 
     def test_a_file_without_env_kind_or_kind_is_refused(self):
         with self.assertRaisesRegex(ValueError, "must define ENV_KIND"):
@@ -153,7 +156,8 @@ class PlantSimFolders(unittest.TestCase):
         second = self.sim_dir("toy-sim", "toy")
         first = self.sim_dir("lamp-sim", "lamp")
         os.makedirs(os.path.join(self.tmp.name, "plants", "no-sim"))
-        self.assertEqual(sim.plant_sim_dirs(os.path.join(self.tmp.name, "plants"), self.sim_dir("shared", "faults")), [first, second])
+        plants = sim.plant_folders({}, os.path.join(self.tmp.name, "plants"))
+        self.assertEqual(sim.plant_sim_dirs(plants, self.sim_dir("shared", "faults")), [first, second])
 
     def test_one_module_name_in_two_folders_is_refused(self):
         import sim
@@ -161,11 +165,53 @@ class PlantSimFolders(unittest.TestCase):
         self.sim_dir("lamp-sim", "lamp")
         self.sim_dir("toy-sim", "lamp")
         with self.assertRaisesRegex(ValueError, "sim module 'lamp' is in two folders"):
-            sim.plant_sim_dirs(os.path.join(self.tmp.name, "plants"), shared)
+            sim.plant_sim_dirs(sim.plant_folders({}, os.path.join(self.tmp.name, "plants")), shared)
         os.remove(os.path.join(self.tmp.name, "plants", "toy-sim", "sim", "lamp.py"))
         self.sim_dir("bad-sim", "faults")
         with self.assertRaisesRegex(ValueError, "sim module 'faults' is in two folders"):
-            sim.plant_sim_dirs(os.path.join(self.tmp.name, "plants"), shared)
+            sim.plant_sim_dirs(sim.plant_folders({}, os.path.join(self.tmp.name, "plants")), shared)
+
+
+class PlantFoldersFromTheRunner(unittest.TestCase):
+    """The runner names the plant folders in BENCH_PLANT_DIRS; with none named, the gateway reads bench/plants."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def folder(self, name, manifest=True):
+        d = os.path.join(self.tmp.name, name)
+        os.makedirs(d)
+        if manifest:
+            open(os.path.join(d, "plugin.json"), "w", encoding="utf-8").close()
+        return d
+
+    def test_the_named_folders_are_used_in_their_order(self):
+        import sim
+        b, a = self.folder("toy-sim"), self.folder("lamp-sim")
+        self.assertEqual(sim.plant_folders({"BENCH_PLANT_DIRS": os.pathsep.join([b, a])}, "/nowhere"), [b, a])
+
+    def test_with_none_named_every_folder_of_bench_plants_is_used(self):
+        import sim
+        self.assertEqual(sim.PLANT_FOLDERS, [os.path.join(sim.PLANTS_DIR, d) for d in sorted(os.listdir(sim.PLANTS_DIR))])
+        self.assertEqual(sim.plant_folders({"BENCH_PLANT_DIRS": ""}, sim.PLANTS_DIR), sim.PLANT_FOLDERS)
+
+    def test_a_named_folder_must_be_absolute_and_hold_a_plugin_json(self):
+        import sim
+        for bad, why in (("rel/toy-sim", "not an absolute path"), (self.folder("bare", manifest=False), "has no plugin.json"),
+                         (os.path.join(self.tmp.name, "gone"), "has no plugin.json")):
+            with self.assertRaisesRegex(ValueError, why):
+                sim.plant_folders({"BENCH_PLANT_DIRS": bad}, "/nowhere")
+
+    def test_the_gateway_loads_only_the_named_folders(self):
+        import subprocess
+        import sys
+
+        conveyor = os.path.join(kinds.PLANTS_DIR, "conveyor-sim")
+        code = "import _paths; from plant_gateway import kinds; print(list(kinds.KINDS))"
+        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "BENCH_PLANT_DIRS": conveyor}
+        out = subprocess.run([sys.executable, "-c", code], cwd=os.path.dirname(__file__), env=env, capture_output=True, text=True)
+        self.assertEqual(out.stdout.strip(), "['conveyor-sim']", out.stderr)
 
 
 if __name__ == "__main__":
