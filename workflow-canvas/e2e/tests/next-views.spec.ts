@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { HELLO_VIEW } from '../../src/test-support/fixtures';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import {
@@ -41,12 +42,57 @@ test('draws the stages of the workflow, the last one with a stop mark', async ({
   await expect(next.graph.getByTestId('node-end')).toHaveCount(0);
 });
 
-test('says that the text of the workflow cannot be typed into yet', async ({
+test('offers the text of the workflow to type over', async ({ next }) => {
+  const box = next.page.getByTestId('yaml-text');
+
+  await expect(box).toBeEditable();
+  await expect(box).toHaveValue(/name: hello/);
+});
+
+test('saves the text shown after Undo and Redo over a raw edit', async ({
   next,
 }) => {
-  await expect(next.page.getByTestId('raw-edit-note')).toContainText(
-    'cannot be typed into here yet',
-  );
+  const savedView = {
+    ...HELLO_VIEW,
+    stages: HELLO_VIEW.stages.map((stage, index) =>
+      index === 0 ? { ...stage, name: 'drafting' } : stage,
+    ),
+  };
+  const saved: string[] = [];
+  await next.page.route('**/api/workflow', async (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    const body = route.request().postDataJSON() as { text?: unknown };
+    if (typeof body.text !== 'string') throw new Error('Save has no text.');
+    saved.push(body.text);
+    await route.fulfill({
+      json: {
+        hash: String.fromCharCode(97 + saved.length).repeat(64),
+        view: savedView,
+        diagnostics: [],
+      },
+    });
+  });
+  await next.page.getByRole('tab', { name: 'Properties' }).click();
+  await next.page.getByLabel('name', { exact: true }).fill('drafting');
+  await next.page.getByRole('tab', { name: 'YAML' }).click();
+  const yaml = next.page.getByTestId('yaml-text');
+  const beforeRaw = await yaml.inputValue();
+  const typed = `${beforeRaw}# typed over\n`;
+  await yaml.fill(typed);
+
+  await next.page.keyboard.press('ControlOrMeta+z');
+
+  await expect(yaml).toHaveValue(beforeRaw);
+  await next.page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(next.page.getByTestId('save-status')).toHaveText('Saved');
+  expect(saved).toEqual([beforeRaw]);
+
+  await next.page.keyboard.press('ControlOrMeta+Shift+z');
+
+  await expect(yaml).toHaveValue(typed);
+  await next.page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(next.page.getByTestId('save-status')).toHaveText('Saved');
+  expect(saved).toEqual([beforeRaw, typed]);
 });
 
 test('shows the text of the workflow under YAML', async ({ next }) => {
@@ -312,7 +358,7 @@ test('draws the views it replaced through ?ui=classic', async ({ page }) => {
   await canvas.open(STUB_LAUNCH_CODE);
 
   await expect(canvas.node('node-end')).toBeVisible();
-  await expect(page.getByTestId('raw-edit-note')).toHaveCount(0);
+  await expect(page.getByTestId('yaml-text')).toHaveCount(0);
 });
 
 test('has no accessibility violations on either view', async ({ next }) => {

@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The surface the Design view sits on, in the light and the dark mode. It is
+ * here so the text of the view has a background of its own: without one
+ * every ancestor up to the body is transparent, and a checker of contrast
+ * then measures against whatever Cloudscape has painted behind the page.
+ * design-view-contrast.test.ts checks both modes reach WCAG AA.
+ */
+.wf-design-view {
+  --wf-design-bg: #ffffff;
+  --wf-design-text: #16131f;
+  --wf-design-text-muted: #56516a;
+
+  background: var(--wf-design-bg);
+  color: var(--wf-design-text);
+}
+
+:root[data-theme='dark'] .wf-design-view {
+  --wf-design-bg: #171331;
+  --wf-design-text: #f5f3ee;
+  --wf-design-text-muted: #9c93b8;
+}

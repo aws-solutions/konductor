@@ -33,6 +33,19 @@ export type SaveState =
       sessionLost?: true;
     };
 
+/**
+ * What a save was asked to write, recorded when it starts. The answer is
+ * applied to this, not to the state as it is when the answer arrives, so an
+ * edit made while the save ran is not taken for the one that was sent.
+ */
+export interface Submission {
+  /** Whether the text came from the form draft or from a raw edit. */
+  kind: 'form' | 'raw';
+  text: string;
+  /** The revision the text was written from. */
+  revision: number;
+}
+
 /** What the Designer edits: the saved workflow, and the draft beside it. */
 export interface EditState {
   /** The workflow as the server has it. */
@@ -61,6 +74,15 @@ export interface EditState {
   check: Check;
   save: SaveState;
   /**
+   * The text of a raw edit: the whole file as it was typed over. The stages
+   * of `draft` still describe `saved.text`, so they are stale while this is
+   * set and no form edit is taken; a save writes this text as it stands, and
+   * the state opens again from what the server parsed.
+   */
+  raw?: string;
+  /** What the save that is going on was asked to write. */
+  submitted?: Submission;
+  /**
    * The text of the draft that the last reload replaced, if it had changes. It
    * stays, so the person can take it away, until the file is loaded again or
    * a save succeeds.
@@ -87,6 +109,8 @@ export type EditEvent =
   | { type: 'rename'; id: string; name: string }
   | { type: 'set-agent'; id: string; agent: string }
   | { type: 'set-prompt'; id: string; prompt: string }
+  /** The whole text was typed over, so the stages of the draft are stale. */
+  | { type: 'set-text'; text: string }
   | { type: 'remove'; id: string }
   | { type: 'checked'; revision: number; diagnostics: DiagnosticView[] }
   | { type: 'save' }

@@ -2,6 +2,7 @@
 import Button, { type ButtonProps } from '@cloudscape-design/components/button';
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CodeLines, type LineRange } from '../code-pane/CodeLines';
+import { CodeText } from '../code-pane/CodeText';
 import {
   lineWindow,
   newlyShown,
@@ -44,29 +45,45 @@ interface Moved {
 }
 
 /**
- * The text of a workflow file, read-only, with line numbers. The lines of
- * `stage`, if given, are marked, and a note above the text says which they
- * are. A long file shows a window of its lines around the stage, or from the
- * top, with a button before and after it that shows the next lines that way.
- * After a move forward the box shows the first newly shown line at its top,
- * and after a move back the last one at its bottom, with no smooth scroll.
- * The focus stays on that button, or goes to the first newly shown line when
- * the button is gone, without scrolling the box again.
+ * The text of a workflow file with line numbers. Without `onChange` it is
+ * read-only: the lines of `stage`, if given, are marked, a note above the
+ * text says which they are, and a long file shows a window of its lines
+ * around the stage, or from the top, with a button before and after it that
+ * shows the next lines that way. After a move forward the box shows the
+ * first newly shown line at its top, and after a move back the last one at
+ * its bottom, with no smooth scroll. The focus stays on that button, or goes
+ * to the first newly shown line when the button is gone, without scrolling
+ * the box again.
+ *
+ * With `onChange` the whole text can be typed over instead, in one box with
+ * no numbers and no window: a text being typed has no stable lines to
+ * number, and the caret and the scrolling belong to the browser. `blocked`
+ * says why it cannot be typed into just now, and shows it as it stands.
  */
 export function YamlPane({
   file,
   text,
   stage,
+  onChange,
+  blocked,
 }: {
   /** The name of the file, such as `hello.yml`. */
   file: string;
   text: string;
   stage?: MarkedStage;
+  /** Takes the whole text when it is typed over. Without it, read-only. */
+  onChange?: (text: string) => void;
+  /** Why the text cannot be typed into now, while `onChange` is given. */
+  blocked?: string;
 }) {
   const noteId = useId();
+  const editing = onChange !== undefined;
   // A file may hold up to 262,144 lines, so split it once per text, not on
-  // each move of the window.
-  const lines = useMemo(() => textLines(text), [text]);
+  // each move of the window. A text being typed over needs no lines.
+  const lines = useMemo(
+    () => (editing ? [] : textLines(text)),
+    [editing, text],
+  );
   const total = lines.length;
   const start = lineWindow(total, stage?.range);
   const from = JSON.stringify([
@@ -136,6 +153,12 @@ export function YamlPane({
       {showText(shown)}
     </Button>
   );
+  const typing = blocked ?? 'Type to change the whole file, then press Save.';
+  const mark = stage ? ` ${markText(stage)}` : '';
+  // The lines of the picked stage are named even while the text is typed
+  // over: a box being typed into cannot mark them, but the note can say
+  // which they are.
+  const noteText = editing ? `${typing}${mark}` : `Read-only.${mark}`;
   return (
     <section
       ref={section}
@@ -145,22 +168,34 @@ export function YamlPane({
       <div className="wf-code-pane-head">
         <h3 className="wf-code-pane-title">{file}</h3>
         <p className="wf-code-note" id={noteId}>
-          Read-only.{stage ? ` ${markText(stage)}` : ''}
+          {noteText}
         </p>
       </div>
-      {before && <p className="wf-code-note">{showButton(-1, before)}</p>}
-      <CodeLines
-        key={from}
-        lines={lines.slice(first - 1, last)}
-        label={`Lines of ${file}`}
-        describedBy={noteId}
-        marked={stage?.range}
-      />
-      {after && (
-        <p className="wf-code-note">
-          {continues ? `Stage ${stage.name} continues. ` : ''}
-          {showButton(1, after)}
-        </p>
+      {editing ? (
+        <CodeText
+          text={text}
+          label={`Text of ${file}`}
+          describedBy={noteId}
+          readOnly={blocked !== undefined}
+          onChange={onChange}
+        />
+      ) : (
+        <>
+          {before && <p className="wf-code-note">{showButton(-1, before)}</p>}
+          <CodeLines
+            key={from}
+            lines={lines.slice(first - 1, last)}
+            label={`Lines of ${file}`}
+            describedBy={noteId}
+            marked={stage?.range}
+          />
+          {after && (
+            <p className="wf-code-note">
+              {continues ? `Stage ${stage.name} continues. ` : ''}
+              {showButton(1, after)}
+            </p>
+          )}
+        </>
       )}
     </section>
   );

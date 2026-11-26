@@ -28,6 +28,8 @@ export interface Editor {
   rename(id: string, name: string): void;
   setAgent(id: string, agent: string): void;
   setPrompt(id: string, prompt: string): void;
+  /** Types the whole text over, so the stages of the draft go stale. */
+  setText(text: string): void;
   remove(id: string): void;
   /** Writes the draft; does nothing when it cannot be saved. */
   save(): void;
@@ -112,6 +114,7 @@ export function useEditor(
         rename: (id, name) => dispatch({ type: 'rename', id, name }),
         setAgent: (id, agent) => dispatch({ type: 'set-agent', id, agent }),
         setPrompt: (id, prompt) => dispatch({ type: 'set-prompt', id, prompt }),
+        setText: (text) => dispatch({ type: 'set-text', text }),
         remove: (id) => dispatch({ type: 'remove', id }),
         save,
         reload,

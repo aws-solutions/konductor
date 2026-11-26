@@ -7,7 +7,7 @@ import type { StageView, WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
-import { textOf } from '../designer/core';
+import { MAX_STAGES, textOf } from '../designer/core';
 import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
@@ -16,7 +16,7 @@ import {
   SAVED_HASH,
   type FakeEdits,
 } from '../test-support/fake-edits';
-import { HELLO_DOCUMENT, NO_RUNS } from '../test-support/fixtures';
+import { HELLO_DOCUMENT, HELLO_TEXT, NO_RUNS } from '../test-support/fixtures';
 import { DesignView, type StageFieldsByKind } from './DesignView';
 import { FINDINGS_PER_PAGE, FINDINGS_SHOWN_MOST } from './findings';
 
@@ -456,14 +456,17 @@ describe('DesignView, the drawing', () => {
 });
 
 describe('DesignView, the YAML tab', () => {
-  it('shows the text of the workflow, which cannot be typed into yet', async () => {
+  it('shows the text of the workflow in a box that can be typed into', async () => {
     drawn();
     await settle();
 
-    expect(panelOf('YAML').textContent).toContain('name: draft');
-    expect(screen.getByTestId('raw-edit-note').textContent).toContain(
-      'cannot be typed into here yet',
+    const box = screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+    expect(box.value).toBe(HELLO_TEXT);
+    expect(box.disabled).toBe(false);
+    expect(panelOf('YAML').textContent).toContain(
+      'Type to change the whole file',
     );
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
   });
 
   // One answer says both where the check got to and which lines it names.
@@ -708,7 +711,9 @@ describe('DesignView, undo and redo', () => {
     await openYaml();
 
     expect(panelOf('YAML').textContent).toContain('name: draft');
-    expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
+    expect(screen.getByTestId('earlier-text-note').textContent).toContain(
+      'current stage edits, which Save writes',
+    );
 
     await act(async () => {
       fireEvent.click(button('Redo'));
@@ -1320,5 +1325,633 @@ describe('DesignView, a stage renamed to the name of another one', () => {
 
     // The contract's range covers every line of the item, the prompt included.
     expect(panelOf('YAML').textContent).toContain('Lines 7 to 9 are stage');
+  });
+});
+
+describe('DesignView, typing over the whole text', () => {
+  const TYPED = `${HELLO_TEXT}# typed over\n`;
+
+  const yamlBox = () => screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  /** Types `text` into the YAML box and lets the view settle. */
+  const typeText = async (text: string) => {
+    await settle();
+    await typeInto(yamlBox(), text);
+    await settle();
+  };
+
+  it('shows what was typed and says the keys of a stage are frozen', async () => {
+    drawn();
+
+    await typeText(TYPED);
+
+    expect(yamlBox().value).toBe(TYPED);
+    expect(screen.getByTestId('stage-keys-frozen').textContent).toContain(
+      'typed over',
+    );
+    expect(screen.getByTestId('save-status').textContent).toContain(
+      'Unsaved changes',
+    );
+  });
+
+  it('keeps the keys of a stage read-only while it is pending', async () => {
+    drawn();
+
+    await typeText(TYPED);
+    await openProperties();
+
+    expect(nameInput().readOnly).toBe(true);
+    const add = screen.getByRole('button', {
+      name: /^Add /,
+    }) as HTMLButtonElement;
+    expect(isOff(add)).toBe(true);
+  });
+
+  it('saves that text as it stands, on the hash of the file', async () => {
+    const { edits } = drawn();
+
+    await typeText(TYPED);
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(TYPED, HELLO_DOCUMENT.hash);
+    expect(screen.getByTestId('save-status').textContent).toContain('Saved');
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+  });
+
+  it('offers to load the file again when it changed under a raw edit', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(
+      new SaveConflict('The file changed.', 'c'.repeat(64)),
+    );
+
+    await typeText(TYPED);
+    await press('Save');
+    await settle();
+
+    expect(screen.getByTestId('conflict')).toBeTruthy();
+    expect(button('Load the file again')).toBeTruthy();
+    expect(yamlBox().value).toBe(TYPED);
+  });
+
+  it('takes a key of a stage again once the raw text is saved', async () => {
+    const { edits } = drawn();
+
+    await typeText(TYPED);
+    await press('Save');
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenLastCalledWith(
+      expect.stringContaining('name: drafting'),
+      SAVED_HASH,
+    );
+  });
+
+  it('steps back to the text before the raw edit with Undo, and forward with Redo', async () => {
+    drawn();
+
+    await typeText(TYPED);
+    await press('Undo');
+    await settle();
+
+    expect(yamlBox().value).toBe(HELLO_TEXT);
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+
+    await press('Redo');
+    await settle();
+
+    expect(yamlBox().value).toBe(TYPED);
+  });
+
+  it('saves the text shown after Undo and Redo over a raw edit', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    const beforeRaw = yamlBox().value;
+    const typed = `${beforeRaw}# typed over\n`;
+
+    await typeText(typed);
+    await act(async () => {
+      fireEvent.keyDown(yamlBox(), { key: 'z', ctrlKey: true });
+    });
+    await settle();
+
+    expect(yamlBox().value).toBe(beforeRaw);
+    await press('Save');
+    await settle();
+    expect(edits.save).toHaveBeenLastCalledWith(
+      yamlBox().value,
+      HELLO_DOCUMENT.hash,
+    );
+
+    await act(async () => {
+      fireEvent.keyDown(yamlBox(), {
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: true,
+      });
+    });
+    await settle();
+    const redone = yamlBox().value;
+    expect(redone).toBe(typed);
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenLastCalledWith(redone, SAVED_HASH);
+  });
+
+  it('saves the text shown after two Undos that start from a raw edit over an earlier text', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    await typeInto(nameInput(), 'drafted');
+    await settle();
+    await press('Undo');
+    await settle();
+    const earlier = yamlBox().value;
+
+    await typeText(`${earlier}# typed over\n`);
+    await settle();
+    for (let step = 0; step < 2; step += 1) {
+      await act(async () => {
+        fireEvent.keyDown(yamlBox(), { key: 'z', ctrlKey: true });
+      });
+      await settle();
+    }
+
+    expect(yamlBox().value).toBe(HELLO_TEXT);
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+    await press('Save');
+    await settle();
+    expect(edits.save).toHaveBeenLastCalledWith(
+      HELLO_TEXT,
+      HELLO_DOCUMENT.hash,
+    );
+  });
+
+  it('saves the text shown after Redo back over the same chain', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    await typeInto(nameInput(), 'drafted');
+    await settle();
+    await press('Undo');
+    await settle();
+    const earlier = yamlBox().value;
+    const typed = `${earlier}# typed over\n`;
+    await typeText(typed);
+    await settle();
+    await press('Undo');
+    await settle();
+    await press('Undo');
+    await settle();
+
+    await press('Redo');
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+
+    await press('Redo');
+    await settle();
+    expect(yamlBox().value).toBe(typed);
+    await press('Save');
+    await settle();
+    expect(edits.save).toHaveBeenLastCalledWith(typed, HELLO_DOCUMENT.hash);
+  });
+
+  it('steps back over a key of a stage and then over a raw edit', async () => {
+    drawn();
+
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    const afterForm = yamlBox().value;
+    expect(afterForm).toContain('name: drafting');
+
+    await typeText(`${afterForm}# typed over\n`);
+    await press('Undo');
+    await settle();
+
+    expect(yamlBox().value).toBe(afterForm);
+
+    await press('Undo');
+    await settle();
+
+    expect(yamlBox().value).toBe(HELLO_TEXT);
+  });
+
+  it('adopts the text that Undo shows when it is typed into again', async () => {
+    drawn();
+
+    await typeText(TYPED);
+    await press('Undo');
+    await settle();
+    await typeText(`${HELLO_TEXT}# another\n`);
+
+    expect(yamlBox().value).toBe(`${HELLO_TEXT}# another\n`);
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+  });
+});
+
+describe('DesignView, saving while the text is typed over', () => {
+  const TYPED = `${HELLO_TEXT}# typed over\n`;
+
+  const yamlBox = () => screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  const addButton = () =>
+    wrapper()
+      .findAllButtons()
+      .find((one) => /^Add /.test(one.getElement().textContent ?? ''))!;
+
+  it('says why Add is off while the text is typed over', async () => {
+    drawn();
+    await settle();
+
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+
+    await act(async () => {
+      addButton().focus();
+    });
+    expect(
+      addButton().findDisabledReason()?.getElement().textContent,
+    ).toContain('typed over');
+  });
+
+  it('says the stage limit when that is why Add is off', async () => {
+    const { editorOf } = drawn();
+    await settle();
+    await act(async () => {
+      for (let n = 0; n < MAX_STAGES; n += 1) editorOf().add();
+    });
+    await settle();
+
+    await act(async () => {
+      addButton().focus();
+    });
+    expect(
+      addButton().findDisabledReason()?.getElement().textContent,
+    ).toContain('at most');
+  });
+
+  // One save held open, walked through: the box refuses typing while it runs,
+  // and shows what the file holds once the answer has come.
+  const heldSave = (edits: FakeEdits) => {
+    let finish: (text: string) => void = () => {};
+    edits.save.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = (written: string) =>
+            resolve({
+              hash: SAVED_HASH,
+              view: viewOfText(written),
+              diagnostics: [],
+            });
+        }),
+    );
+    return () => finish;
+  };
+
+  it('refuses typing while a form save is in flight, and says why', async () => {
+    const { edits } = drawn();
+    const held = heldSave(edits);
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    const sent = yamlBox().value;
+    await press('Save');
+
+    expect(yamlBox().readOnly).toBe(true);
+    expect(panelOf('YAML').textContent).toContain('typing is paused');
+    await typeInto(yamlBox(), TYPED);
+
+    expect(yamlBox().value).toBe(sent);
+
+    await act(async () => {
+      held()(sent);
+    });
+    await settle();
+
+    expect(yamlBox().readOnly).toBe(false);
+    expect(yamlBox().value).toBe(sent);
+    expect(screen.getByTestId('save-status').textContent).toContain('Saved');
+  });
+
+  it('refuses typing while a raw save is in flight, and says why', async () => {
+    const { edits } = drawn();
+    const held = heldSave(edits);
+    await settle();
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    await press('Save');
+
+    expect(yamlBox().readOnly).toBe(true);
+    expect(isOff(button('Undo'))).toBe(true);
+    await typeInto(yamlBox(), `${TYPED}# newer\n`);
+    await typeInto(yamlBox(), HELLO_TEXT);
+
+    expect(yamlBox().value).toBe(TYPED);
+
+    await act(async () => {
+      held()(TYPED);
+    });
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(TYPED, HELLO_DOCUMENT.hash);
+    expect(yamlBox().value).toBe(TYPED);
+    expect(screen.getByTestId('save-status').textContent).toContain('Saved');
+  });
+
+  it('keeps Undo off while a raw save runs on a text that Undo adopted', async () => {
+    const { edits } = drawn();
+    const held = heldSave(edits);
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    await typeInto(nameInput(), 'drafted');
+    await settle();
+    await press('Undo');
+    await settle();
+    const earlier = yamlBox().value;
+    await typeInto(yamlBox(), `${earlier}# typed over\n`);
+    await settle();
+    await press('Undo');
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
+
+    await press('Save');
+
+    expect(isOff(button('Undo'))).toBe(true);
+    await act(async () => {
+      fireEvent.keyDown(yamlBox(), { key: 'z', ctrlKey: true });
+    });
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
+    expect(edits.save).toHaveBeenLastCalledWith(earlier, HELLO_DOCUMENT.hash);
+
+    await act(async () => {
+      held()(earlier);
+    });
+    await settle();
+    expect(yamlBox().value).toBe(earlier);
+  });
+
+  it('keeps the blocked box reachable, so its text can be read and copied', async () => {
+    const { edits } = drawn();
+    heldSave(edits);
+    await settle();
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    await press('Save');
+
+    const box = yamlBox();
+    expect(box.readOnly).toBe(true);
+    expect(box.hasAttribute('disabled')).toBe(false);
+    await act(async () => {
+      box.focus();
+    });
+    expect(document.activeElement).toBe(box);
+    box.setSelectionRange(0, box.value.length);
+    expect(box.value.slice(box.selectionStart, box.selectionEnd)).toBe(TYPED);
+  });
+
+  it('keeps the raw text to save again when the save fails', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(new Error('The server said no.'));
+    await settle();
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    await press('Save');
+    await settle();
+
+    expect(yamlBox().readOnly).toBe(false);
+    expect(yamlBox().value).toBe(TYPED);
+    expect(screen.getByTestId('save-status').textContent).toContain(
+      'Unsaved changes',
+    );
+  });
+
+  it('keeps the raw text to copy when the file changed under the save', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(
+      new SaveConflict('The file changed.', 'c'.repeat(64)),
+    );
+    await settle();
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    await press('Save');
+    await settle();
+
+    expect(screen.getByTestId('conflict')).toBeTruthy();
+    expect(yamlBox().readOnly).toBe(false);
+    expect(yamlBox().value).toBe(TYPED);
+  });
+
+  it('writes the loaded text typed over a renamed stage, leaving the file as it was', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    expect(yamlBox().value).toContain('name: drafting');
+
+    await typeInto(yamlBox(), HELLO_TEXT);
+    await settle();
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(HELLO_TEXT, HELLO_DOCUMENT.hash);
+    await openProperties();
+    expect(nameInput().value).toBe('draft');
+  });
+});
+
+describe('DesignView, a raw edit taken back', () => {
+  const TYPED = `${HELLO_TEXT}# typed over\n`;
+
+  const yamlBox = () => screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  it('opens the keys of a stage again, and saves the next form edit', async () => {
+    const { edits } = drawn();
+    await settle();
+
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    expect(screen.getByTestId('stage-keys-frozen')).toBeTruthy();
+
+    await typeInto(yamlBox(), HELLO_TEXT);
+    await settle();
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+
+    await openProperties();
+    expect(nameInput().readOnly).toBe(false);
+    await typeInto(nameInput(), 'drafting');
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(
+      expect.stringContaining('name: drafting'),
+      HELLO_DOCUMENT.hash,
+    );
+    const [written] = edits.save.mock.calls[0] ?? [];
+    expect(written).not.toBe(TYPED);
+  });
+
+  it('keeps the keys of a stage shut while a raw save runs, even typed back', async () => {
+    const { edits } = drawn();
+    let finish = (): void => {};
+    edits.save.mockImplementation(
+      (text: string) =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({
+              hash: SAVED_HASH,
+              view: viewOfText(text),
+              diagnostics: [],
+            });
+        }),
+    );
+    await settle();
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    await press('Save');
+
+    await typeInto(yamlBox(), HELLO_TEXT);
+    await settle();
+    expect(screen.getByTestId('stage-keys-frozen').textContent).toContain(
+      'is being saved',
+    );
+    await openProperties();
+    expect(nameInput().readOnly).toBe(true);
+
+    await act(async () => {
+      finish();
+    });
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(TYPED, HELLO_DOCUMENT.hash);
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+    expect(nameInput().readOnly).toBe(false);
+  });
+
+  it('comes back to the text of a form edit without a save in between', async () => {
+    drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    const formText = yamlBox().value;
+
+    await typeInto(yamlBox(), TYPED);
+    await settle();
+    expect(screen.getByTestId('stage-keys-frozen')).toBeTruthy();
+
+    await typeInto(yamlBox(), formText);
+    await settle();
+
+    expect(screen.queryByTestId('stage-keys-frozen')).toBeNull();
+    await openProperties();
+    expect(nameInput().value).toBe('drafting');
+    expect(nameInput().readOnly).toBe(false);
+  });
+});
+
+// Everything of the sample above its stages, so a replacement text keeps the
+// same header and differs only in the stages.
+const HEAD_TEXT = HELLO_TEXT.slice(0, HELLO_TEXT.indexOf('stages:\n'));
+
+describe('DesignView, the lines named while the text is typed over', () => {
+  const yamlBox = () => screen.getByTestId('yaml-text') as HTMLTextAreaElement;
+
+  const noteOf = () => panelOf('YAML').textContent ?? '';
+
+  // Each of these keeps the stage count, so marking by place would pair the
+  // picked stage with another one's lines.
+  const SWAPPED = `${HEAD_TEXT}stages:
+  - name: review
+    agent: k-quality-assurance
+  - name: draft
+    agent: k-developer
+`;
+  const RENAMED = `${HEAD_TEXT}stages:
+  - name: drafting
+    agent: k-developer
+  - name: review
+    agent: k-quality-assurance
+`;
+  const REPLACED = `${HEAD_TEXT}stages:
+  - name: package
+    agent: k-developer
+  - name: ship
+    agent: k-quality-assurance
+`;
+
+  it('names the lines of the picked stage while nothing is typed over', async () => {
+    const { scheduler } = drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    expect(noteOf()).toContain('are stage drafting');
+  });
+
+  it.each([
+    ['the stages are swapped', SWAPPED],
+    ['the picked stage is renamed', RENAMED],
+    ['every stage is replaced', REPLACED],
+  ])('names no lines once %s in the text', async (_, text) => {
+    const { scheduler } = drawn();
+    await settle();
+
+    await typeInto(yamlBox(), text);
+    await checkNow(scheduler);
+
+    expect(noteOf()).not.toContain('are stage');
+    expect(noteOf()).not.toContain('is stage');
+  });
+
+  it('names them again once the text is typed back', async () => {
+    const { scheduler } = drawn();
+    await settle();
+    await typeInto(yamlBox(), SWAPPED);
+    await checkNow(scheduler);
+    expect(noteOf()).not.toContain('are stage');
+
+    await typeInto(yamlBox(), HELLO_TEXT);
+    await checkNow(scheduler);
+
+    expect(noteOf()).toContain('stage draft');
   });
 });

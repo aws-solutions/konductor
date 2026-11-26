@@ -14,6 +14,10 @@ export interface LayoutYaml {
   readonly text: string;
   /** The stage whose lines are marked, if one is picked. */
   readonly stage?: MarkedStage;
+  /** Takes the whole text when it is typed over. Without it, read-only. */
+  readonly onChange?: (text: string) => void;
+  /** Why the text cannot be typed into now, while `onChange` is given. */
+  readonly blocked?: string;
 }
 
 /** The stage that the Properties tab edits. */
@@ -151,6 +155,10 @@ export function DesignerLayout({
                     file={yaml.file}
                     text={yaml.text}
                     stage={yaml.stage}
+                    {...(yaml.onChange ? { onChange: yaml.onChange } : {})}
+                    {...(yaml.blocked === undefined
+                      ? {}
+                      : { blocked: yaml.blocked })}
                   />
                 ),
               },

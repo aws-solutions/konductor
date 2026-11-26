@@ -6,6 +6,7 @@ import StatusIndicator, {
   type StatusIndicatorProps,
 } from '@cloudscape-design/components/status-indicator';
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -32,10 +33,13 @@ import type {
 } from '../designer-view/yaml-draft';
 import {
   canAddStage,
+  changeBlocker,
   fileBlocker,
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
+  rawTextOf,
+  textBlocker,
   textOf,
   writeBlocker,
 } from '../designer/core';
@@ -46,6 +50,7 @@ import type { LoadedWorkflow } from '../workflow/load-workflow';
 import type { Scheduler } from '../execution/core/ports';
 import { buildGraph, stageNodeId } from '../graph';
 import '../execution/announcements.css';
+import './design-view.css';
 import { FINDINGS_PER_PAGE, findingsPage, nextShown } from './findings';
 import {
   SAVABLE_KEYS,
@@ -61,11 +66,8 @@ export type StageFieldsByKind = Readonly<
   Record<string, readonly StageFieldRule[]>
 >;
 
-const RAW_EDIT_NOTE =
-  'The text under YAML is checked as the stages change, and it cannot be typed into here yet. Change a stage under Properties and press Save.';
-
 const EARLIER_TEXT_NOTE =
-  'YAML shows an earlier text. The drawing and Properties show the workflow as it is now, and a save writes that; press Redo to come back.';
+  'YAML shows an earlier version of the stage edits. The drawing and Properties show the current stage edits, which Save writes; press Redo to come back.';
 
 const STATUS_WORDS: Readonly<Record<DraftStatus, string>> = {
   unchecked: 'Not checked yet',
@@ -164,12 +166,16 @@ function shortcutKeyOf(event: KeyboardEvent): ShortcutKey {
  * that is picked. Each leaf stage of the drawing ends in a stop mark.
  *
  * The stages are edited through the editor that the page already holds, and
- * a save writes its text. The text itself cannot be typed into yet, because
- * the editor has no way to take a whole text, so the YAML tab checks the
- * text and shows what is wrong with it. Undo and redo step through the texts
- * of this session and show them; the workflow changes only through the keys
- * of a stage. Those texts belong to the load in `loaded`: another load is
- * another workflow, and the history starts over for it.
+ * a save writes its text. The text under YAML can also be typed over, which
+ * goes to the editor as one raw edit: a save then writes that text as it
+ * stands, on the same base hash and with the same conflict rules, and the
+ * keys of a stage are read-only until it is saved or the file is loaded
+ * again, because the stages on the page describe the file and not the text
+ * typed over it. Undo and redo through a raw edit adopt the text they show,
+ * so the editor and Save use that text too. Undo and redo through stage edits
+ * can show an earlier text while the current stages stay in the editor. Those
+ * texts belong to the load in `loaded`: another load is another workflow, and
+ * the history starts over for it.
  */
 export function DesignView({
   editor,
@@ -206,6 +212,7 @@ export function DesignView({
   // as it stands rather than a text no save could produce.
   const written = useMemo(() => textOf(state), [state]);
   const text = written ?? savedText;
+  const rawText = rawTextOf(state);
   // The text the save in flight sent, kept so a later edit does not change
   // what the places of the stages are read for.
   const [sent, setSent] = useState<string>();
@@ -217,7 +224,16 @@ export function DesignView({
     validate,
     scheduler,
   });
-  const { record, reset } = history;
+  const {
+    record,
+    reset,
+    undo,
+    redo,
+    undoText,
+    redoText,
+    undoAdoptsText,
+    redoAdoptsText,
+  } = history;
   const { edit } = draft;
   // The history holds the texts of one draft, so it is of the load that
   // opened that draft. The load the page hands over says which: a save gives
@@ -252,12 +268,15 @@ export function DesignView({
       : {}),
   });
   // A change of the stages makes a text; the text shown is the one the
-  // history points at, and that is the text the check reads. A draft with no
+  // history points at, and that is the text the check reads. Whole-text edits
+  // are marked so undo and redo can adopt the text they cross. A draft with no
   // text a save could write records nothing: the history holds texts a save
   // can write, so undo always lands on one.
   useEffect(() => {
-    if (written !== undefined) record(written);
-  }, [record, written]);
+    if (written !== undefined) {
+      record(written, rawText === undefined ? 'stages' : 'text');
+    }
+  }, [rawText, record, written]);
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
@@ -309,6 +328,9 @@ export function DesignView({
   // loaded: that is what the file holds. The stage is taken from the place it
   // was loaded from, which a rename or another stage being added or deleted
   // does not move.
+  // The keys of a stage describe the file. While the text has been typed
+  // over they cannot be changed, and this says why.
+  const frozen = changeBlocker(state);
   const fileView = opened.answer?.view ?? null;
   const viewStage = picked
     ? sourceStageOf(fileView, sources.of(picked.id))
@@ -330,28 +352,69 @@ export function DesignView({
     // agents does not have it; `values` holds the one chosen since.
     originalAgent:
       typeof viewStage?.agent === 'string' ? viewStage.agent : picked.agent,
-    readOnlyKeys,
+    // While the text has been typed over, no key of a stage can be changed:
+    // the stage shown is the one the file had, not the one the text holds.
+    readOnlyKeys:
+      frozen === undefined ? readOnlyKeys : rules.map((rule) => rule.key),
   };
   // A file the writer cannot edit in place at all is refused before any
   // change is made; a draft it cannot write is refused as it stands. Both
   // reasons come from the writer itself, through the editor's own state, so
   // the view never carries a second model of what a save would keep.
-  const refusal = fileBlocker(state) ?? writeBlocker(state);
+  // A raw edit writes the whole file, so the writer and its refusals are not
+  // used for it.
+  const refusal =
+    rawText === undefined
+      ? (fileBlocker(state) ?? writeBlocker(state))
+      : undefined;
 
-  const onKeyDown = (event: KeyboardEvent) => {
-    const asked = undoShortcut(shortcutKeyOf(event));
-    if (asked === undefined) return;
-    event.preventDefault();
-    if (asked === 'undo') history.undo();
-    else history.redo();
-  };
+  // Why the text cannot be typed into now, if it cannot: read-only, a load,
+  // or a save on its way to the server.
+  const blocked = textBlocker(state);
+  // A step adopts its text when it crosses a raw edit, and also whenever the
+  // editor holds a raw text other than the one it lands on: otherwise the box
+  // would move while Save still wrote the raw text.
+  const holdsOther = (next: string | undefined) =>
+    rawText !== undefined && next !== undefined && next !== rawText;
+  const undoAdopts = undoAdoptsText || holdsOther(undoText);
+  const redoAdopts = redoAdoptsText || holdsOther(redoText);
+  const stepHistory = useCallback(
+    (asked: 'undo' | 'redo') => {
+      const undoing = asked === 'undo';
+      const next = undoing ? undoText : redoText;
+      const adopts = undoing ? undoAdopts : redoAdopts;
+      if (next === undefined || (adopts && blocked !== undefined)) return;
+      if (adopts) editor.setText(next);
+      if (undoing) undo();
+      else redo();
+    },
+    [blocked, editor, redo, redoAdopts, redoText, undo, undoAdopts, undoText],
+  );
 
-  const marked = pickedPlace
-    ? markedStageOf(checked?.view, pickedPlace, {
-        stale: ofNow === undefined,
-        sources: state.draft.stages.map((one) => sources.of(one.id)),
-      })
-    : undefined;
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const asked = undoShortcut(shortcutKeyOf(event));
+      if (asked === undefined) return;
+      event.preventDefault();
+      stepHistory(asked);
+    },
+    [stepHistory],
+  );
+  const onUndo = useCallback(() => stepHistory('undo'), [stepHistory]);
+  const onRedo = useCallback(() => stepHistory('redo'), [stepHistory]);
+
+  // The lines of a stage are named only while the drawing and the text agree
+  // on them. A raw edit leaves the draft on the loaded stages while the check
+  // parses whatever was typed, so the stage at a given place in that parse
+  // need not be the one that is picked: a rename, a reorder, a deletion or a
+  // replacement that keeps the count would mark another stage's lines.
+  const marked =
+    pickedPlace && rawText === undefined
+      ? markedStageOf(checked?.view, pickedPlace, {
+          stale: ofNow === undefined,
+          sources: state.draft.stages.map((one) => sources.of(one.id)),
+        })
+      : undefined;
   const showingEarlier = history.text !== text;
 
   return (
@@ -364,9 +427,11 @@ export function DesignView({
         Design
       </h2>
       <SpaceBetween size="m">
-        <Alert type="info" data-testid="raw-edit-note">
-          {RAW_EDIT_NOTE}
-        </Alert>
+        {frozen !== undefined && (
+          <Alert type="info" data-testid="stage-keys-frozen">
+            {frozen}
+          </Alert>
+        )}
         {showingEarlier && (
           <Alert type="warning" data-testid="earlier-text-note">
             {EARLIER_TEXT_NOTE}
@@ -404,6 +469,16 @@ export function DesignView({
             file: state.saved.name,
             text: history.text,
             ...(marked ? { stage: marked } : {}),
+            // Typing writes the text into the editor and into the history in
+            // one event, so a single render carries both and the caret stays
+            // where it was. While the box is blocked nothing is taken, so the
+            // history cannot hold a text the editor refused.
+            onChange: (next: string) => {
+              if (blocked !== undefined) return;
+              editor.setText(next);
+              record(next, 'text');
+            },
+            ...(blocked === undefined ? {} : { blocked }),
           }}
           stage={stage}
           agents={agents}
@@ -427,8 +502,10 @@ export function DesignView({
             />
             <Button
               iconName="add-plus"
-              disabled={!canAddStage(state.draft)}
-              disabledReason={`A workflow has at most ${MAX_STAGES} stages.`}
+              disabled={frozen !== undefined || !canAddStage(state.draft)}
+              disabledReason={
+                frozen ?? `A workflow has at most ${MAX_STAGES} stages.`
+              }
               onClick={() => editor.add()}
             >
               Add {nextStageName(state.draft)}
@@ -436,15 +513,19 @@ export function DesignView({
             <SpaceBetween direction="horizontal" size="xs">
               <Button
                 iconName="undo"
-                disabled={!history.canUndo}
-                onClick={history.undo}
+                disabled={
+                  !history.canUndo || (undoAdopts && blocked !== undefined)
+                }
+                onClick={onUndo}
               >
                 Undo
               </Button>
               <Button
                 iconName="redo"
-                disabled={!history.canRedo}
-                onClick={history.redo}
+                disabled={
+                  !history.canRedo || (redoAdopts && blocked !== undefined)
+                }
+                onClick={onRedo}
               >
                 Redo
               </Button>

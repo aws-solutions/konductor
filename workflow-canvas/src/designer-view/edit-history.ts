@@ -6,6 +6,15 @@
  */
 export const EDIT_HISTORY_LIMIT = 50;
 
+/** How an edit changed the workflow text. */
+export type EditKind = 'stages' | 'text';
+
+/** One text in the edit history and the path that produced it. */
+export interface EditPoint {
+  readonly text: string;
+  readonly kind: EditKind;
+}
+
 /**
  * The text of a workflow now, with the texts to undo to and to redo. No
  * function here changes a history: one that changes it returns a new one,
@@ -13,15 +22,15 @@ export const EDIT_HISTORY_LIMIT = 50;
  */
 export interface EditHistory {
   /** The earlier texts, oldest first. */
-  readonly past: readonly string[];
-  readonly current: string;
+  readonly past: readonly EditPoint[];
+  readonly current: EditPoint;
   /** The texts that undo left, the next one to redo first. */
-  readonly future: readonly string[];
+  readonly future: readonly EditPoint[];
 }
 
 /** A history with `text` and nothing to undo or redo. */
 export function startHistory(text: string): EditHistory {
-  return { past: [], current: text, future: [] };
+  return { past: [], current: { text, kind: 'stages' }, future: [] };
 }
 
 /**
@@ -29,11 +38,15 @@ export function startHistory(text: string): EditHistory {
  * and past `EDIT_HISTORY_LIMIT` earlier texts the oldest goes. A text equal
  * to the current one is no edit, and the same history comes back.
  */
-export function recordEdit(history: EditHistory, text: string): EditHistory {
-  if (text === history.current) return history;
+export function recordEdit(
+  history: EditHistory,
+  text: string,
+  kind: EditKind = 'stages',
+): EditHistory {
+  if (text === history.current.text) return history;
   return {
     past: [...history.past, history.current].slice(-EDIT_HISTORY_LIMIT),
-    current: text,
+    current: { text, kind },
     future: [],
   };
 }

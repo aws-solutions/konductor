@@ -91,7 +91,7 @@ describe('the page with ?ui=classic', () => {
     await openPage({ nextUi: false });
 
     expect(screen.getByTestId('node-end')).toBeTruthy();
-    expect(screen.queryByTestId('raw-edit-note')).toBeNull();
+    expect(screen.queryByTestId('yaml-text')).toBeNull();
   });
 
   it('builds no calls of those views', async () => {
@@ -137,7 +137,7 @@ describe('the page as it opens', () => {
     expect(
       screen.getByRole('img', { name: 'The run ends after review' }),
     ).toBeTruthy();
-    expect(screen.getByTestId('raw-edit-note')).toBeTruthy();
+    expect(screen.getByTestId('yaml-text')).toBeTruthy();
   });
 
   it('reads the fields and the agents of the workflow', async () => {

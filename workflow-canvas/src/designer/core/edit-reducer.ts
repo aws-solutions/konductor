@@ -22,8 +22,17 @@ import {
   type EditSlot,
   type EditState,
   type SaveState,
+  type Submission,
 } from './edit-state';
-import { canSave, changeBlocker, isDirty, textOf } from './edit-view';
+import {
+  canSave,
+  changeBlocker,
+  formTextOf,
+  isDirty,
+  rawTextOf,
+  textBlocker,
+  textOf,
+} from './edit-view';
 import { checkOf } from './problems';
 
 const NOT_EDITABLE =
@@ -83,6 +92,61 @@ function selected(state: EditState, id: string): EditState {
     : state;
 }
 
+/**
+ * The whole text typed over. It keeps the text, bumps the revision so the
+ * check runs for it, and leaves the draft as it is: its stages describe the
+ * file, so they are stale until a save or a reload gives the editor the
+ * server's parse of the new text. `changeBlocker` refuses a form edit while
+ * one is pending, which is why nothing here has to re-read the YAML; the
+ * core has no parser of its own and the check is the one that answers.
+ *
+ * The text is compared with the one a save would write now, not with the
+ * file: with a form edit pending, typing the file back is a change, and it
+ * is how the author drops that edit. Typing the text the form draft would
+ * write takes the raw edit back instead, and it is dropped from the state
+ * rather than hidden, so it cannot come back when the form changes again.
+ */
+function textSet(state: EditState, text: string): EditState {
+  if (textBlocker(state) !== undefined) return state;
+  if (text === (textOf(state) ?? state.saved.text)) return state;
+  const settled = settledSave(state);
+  if (text === formTextOf(state)) {
+    return {
+      ...withoutRaw(state),
+      revision: state.revision + 1,
+      ...(settled ? { save: { phase: 'idle' } as SaveState } : {}),
+    };
+  }
+  return {
+    ...state,
+    raw: text,
+    revision: state.revision + 1,
+    ...(settled ? { save: { phase: 'idle' } as SaveState } : {}),
+  };
+}
+
+// A finished save is old news once the draft changes again.
+function settledSave(state: EditState): boolean {
+  const { phase } = state.save;
+  return phase === 'saved' || phase === 'reloaded' || phase === 'failed';
+}
+
+// Drops the raw text, so nothing is left to become the payload again.
+function withoutRaw(state: EditState): EditState {
+  const next = { ...state };
+  delete next.raw;
+  return next;
+}
+
+// A raw text that no longer differs from what the form draft would write has
+// nothing left to say, so it goes rather than waiting to reappear.
+function withoutStaleRaw(state: EditState): EditState {
+  const raw = state.raw;
+  return raw !== undefined && raw === formTextOf(state)
+    ? withoutRaw(state)
+    : state;
+}
+
 function checked(
   state: EditState,
   revision: number,
@@ -93,11 +157,53 @@ function checked(
     : state;
 }
 
+// A raw edit sent the whole file, so the ids of the draft describe the text
+// before it. What the server parsed of what was written is the new truth, so
+// the state opens again from it rather than keeping stages that no longer
+// point anywhere. A save of a form edit never reaches this.
+// A raw edit sent the whole file, so the ids of the draft describe the text
+// before it. What the server parsed of what was written is the new truth, so
+// the state opens again from it rather than keeping stages that no longer
+// point anywhere. A save of a form edit never reaches this. Nothing can have
+// been typed since: editing pauses for the whole save.
+function openedAfterRaw(
+  state: EditState,
+  text: string,
+  result: SaveResult,
+): EditState {
+  const next = openDocument(
+    {
+      ...state.saved,
+      text,
+      hash: result.hash,
+      view: result.view,
+      diagnostics: result.diagnostics,
+    },
+    state.revision,
+  );
+  return next
+    ? { ...next, revision: state.revision, save: { phase: 'saved' } }
+    : { ...state, save: { phase: 'conflict', problem: NOT_EDITABLE } };
+}
+
+// What a save is being asked to write, kept so its answer is applied to that
+// text and not to whatever the editor holds when the answer arrives.
+function submissionOf(state: EditState): Submission {
+  return {
+    kind: rawTextOf(state) === undefined ? 'form' : 'raw',
+    text: textOf(state) ?? state.saved.text,
+    revision: state.revision,
+  };
+}
+
 function savedAs(
   state: EditState,
   text: string,
   result: SaveResult,
 ): EditState {
+  if (state.submitted?.kind === 'raw') {
+    return openedAfterRaw(state, text, result);
+  }
   // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
@@ -202,16 +308,25 @@ function step(
       return agentSet(state, event.id, event.agent);
     case 'set-prompt':
       return promptSet(state, event.id, event.prompt);
+    case 'set-text':
+      return textSet(state, event.text);
     case 'remove':
       return removed(state, event.id);
     case 'checked':
       return checked(state, event.revision, event.diagnostics);
     case 'save':
       return canSave(state)
-        ? { ...state, save: { phase: 'saving' }, sent: idsOf(state.draft) }
+        ? {
+            ...state,
+            save: { phase: 'saving' },
+            sent: idsOf(state.draft),
+            submitted: submissionOf(state),
+          }
         : state;
     case 'saved':
-      return whileSaving(state, () => savedAs(state, event.text, event.result));
+      return whileSaving(state, () =>
+        withoutStaleRaw(savedAs(state, event.text, event.result)),
+      );
     case 'conflict':
       return whileSaving(state, () => ({
         ...state,

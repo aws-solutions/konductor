@@ -12,14 +12,17 @@ import {
 } from './edit-history';
 
 function edited(...texts: string[]): EditHistory {
-  return texts.reduce(recordEdit, startHistory('v0'));
+  return texts.reduce(
+    (history, text) => recordEdit(history, text),
+    startHistory('v0'),
+  );
 }
 
 describe('edit history', () => {
   it('starts with nothing to undo or redo', () => {
     const history = startHistory('v0');
 
-    expect(history.current).toBe('v0');
+    expect(history.current.text).toBe('v0');
     expect(canUndo(history)).toBe(false);
     expect(canRedo(history)).toBe(false);
   });
@@ -28,9 +31,9 @@ describe('edit history', () => {
     const history = edited('v1', 'v2');
     const back = undo(undo(history));
 
-    expect(back.current).toBe('v0');
+    expect(back.current.text).toBe('v0');
     expect(canUndo(back)).toBe(false);
-    expect(redo(back).current).toBe('v1');
+    expect(redo(back).current.text).toBe('v1');
     expect(redo(redo(back))).toEqual(history);
   });
 
@@ -49,9 +52,9 @@ describe('edit history', () => {
   it('clears the redo list on a new edit', () => {
     const history = recordEdit(undo(edited('v1', 'v2')), 'v1b');
 
-    expect(history.current).toBe('v1b');
+    expect(history.current.text).toBe('v1b');
     expect(canRedo(history)).toBe(false);
-    expect(history.past).toEqual(['v0', 'v1']);
+    expect(history.past.map(({ text }) => text)).toEqual(['v0', 'v1']);
   });
 
   it('skips a text equal to the current one, and keeps the redo list', () => {
@@ -69,12 +72,12 @@ describe('edit history', () => {
     const history = edited(...texts);
 
     expect(history.past).toHaveLength(EDIT_HISTORY_LIMIT);
-    expect(history.past[0]).toBe('v5');
-    expect(history.past.at(-1)).toBe(`v${EDIT_HISTORY_LIMIT + 4}`);
+    expect(history.past[0]?.text).toBe('v5');
+    expect(history.past.at(-1)?.text).toBe(`v${EDIT_HISTORY_LIMIT + 4}`);
 
     let back = history;
     for (let i = 0; i < EDIT_HISTORY_LIMIT + 3; i += 1) back = undo(back);
-    expect(back.current).toBe('v5');
+    expect(back.current.text).toBe('v5');
     expect(back.future).toHaveLength(EDIT_HISTORY_LIMIT);
   });
 
