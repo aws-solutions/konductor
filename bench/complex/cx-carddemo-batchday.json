@@ -51,7 +51,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "[ \"$(cat carddemo_port/*.py | wc -l)\" -gt 300 ] && ! grep -rEn 'float\\(|: float|-> float' carddemo_port",
+      "cmd": "[ \"$(find carddemo_port -name '*.py' -exec cat {} + | wc -l)\" -gt 300 ] && ! grep -rEn 'float\\(|: float|-> float' carddemo_port",
       "expectExit": 0
     },
     {
@@ -84,7 +84,7 @@
   "rubric": [
     {
       "id": "rules-as-written",
-      "criterion": "The signed rules (P5 payments net against charges, P7 duplicate ids, I4 no interest on a zero or credit balance) and the signed rules R1 to R8 are built as REQUIREMENTS.md writes them, not as the COBOL does. I2 and I3 match the COBOL and stay so. The README table of differences from the COBOL lists each one honestly, and each point the documents leave open is named as an assumption in the final message instead of being decided silently.",
+      "criterion": "The signed rules (P5 payments net against charges, P7 duplicate ids, I4 no interest on a zero or credit balance) and the signed rules R1 to R8 are built as REQUIREMENTS.md writes them, not as the COBOL does, where the two differ. I2 and I3 match the COBOL and stay so. R7 matches the COBOL (each continued HTML literal ends at column 72), R6 differs only in dropping the 51-card and 10-line caps, and R5 differs for all three Z pictures, not only `Z(9).99-`; a README that says so is right. The README table of differences from the COBOL lists each one honestly, and each point the documents leave open is named as an assumption in the final message instead of being decided silently.",
       "weight": 3
     },
     {

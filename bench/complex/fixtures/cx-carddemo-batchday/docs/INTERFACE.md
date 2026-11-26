@@ -13,12 +13,13 @@ python3 -m carddemo_port report   --in DIR --out DIR --start YYYY-MM-DD --end YY
 python3 -m carddemo_port statements --in DIR --out DIR
 ```
 
-The four jobs run in a chain: `post` makes `transact.txt` and `acctdata.txt`; `report` and `statements` read a
-`transact.txt` (the one `post` wrote, or any other) and an `acctdata.txt`. The caller copies files between
-directories; no job reads another job's output directory.
+The four jobs run in a chain: `post` makes `transact.txt` and `acctdata.txt`; `report` reads a `transact.txt` (the one
+`post` wrote, or any other), and `statements` reads a `transact.txt` and an `acctdata.txt`. The caller copies files
+between directories; no job reads another job's output directory.
 
-`--start` and `--end` are dates in the same form and are required; a value that is not a real date, or a
-`--start` after `--end`, is a usage error.
+`--start` and `--end` are dates in the same form and are required for `report`; a value that is not a real date, or a
+`--start` after `--end`, is a usage error. The other three commands take no `--start` or `--end`; giving one is a usage
+error.
 
 `--run-date` is the date used in the interest transaction ids. If it is left out, it is today's date
 (local time). A value that is not a real date in that form is a usage error.
@@ -31,12 +32,12 @@ directories; no job reads another job's output directory.
 
 Standard output has one line `name: value` for each count in the summary (below).
 Standard error has one line starting `error:` for a failed run. A failed run for a bad record names
-the file and the line as `<file> line <n>`. Neither stream ever shows a card number or an amount.
+the file and the line as `<file> line <n>`. Neither stream ever shows a card number, an amount or a customer name.
 
 ## Input files
 
 All files are in `--in DIR` with these fixed names. Other files in DIR are ignored.
-A missing file is bad input.
+A missing file is bad input, and the error names the missing file.
 
 | Job | Files |
 |---|---|

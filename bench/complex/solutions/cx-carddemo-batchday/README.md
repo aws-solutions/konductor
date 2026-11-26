@@ -15,7 +15,7 @@ python3 -m carddemo_port report --in DIR --out /path/to/new-dir --start 2026-11-
 python3 -m carddemo_port statements --in DIR --out /path/to/new-dir
 ```
 
-`report` and `statements` read the `transact.txt` and `acctdata.txt` that `post` wrote.
+`report` reads the `transact.txt` that `post` wrote; `statements` reads that `transact.txt` and the `acctdata.txt` `post` wrote.
 
 `post` exits 4 if it rejected any transaction. Bad input exits 2 and writes nothing.
 
@@ -24,7 +24,7 @@ python3 -m carddemo_port statements --in DIR --out /path/to/new-dir
 `cobol/` and `data/` come from
 [aws-samples/aws-mainframe-modernization-carddemo](https://github.com/aws-samples/aws-mainframe-modernization-carddemo)
 (Apache-2.0); see `NOTICE`. The rules in `docs/REQUIREMENTS.md` are ours. The COBOL was read for the file layouts and to find
-where it is silent or odd. Those places are the rules marked REVIEW:
+where it is silent or odd. Where the port and the COBOL differ, or might be thought to:
 
 | Rule | COBOL | This port |
 |---|---|---|
@@ -36,14 +36,16 @@ where it is silent or odd. Those places are the rules marked REVIEW:
 | Fees | empty stub | none |
 | R1 range | `NEXT SENTENCE` ends the loop at the first record outside the range | skips it and goes on (signed) |
 | R2 end totals | no last account total; adds the last amount twice | writes the last account total; adds each amount once (signed) |
-| R3 empty report | no headings | headings, zero page and grand totals (signed) |
+| R3 empty report | writes nothing at all (the first record outside the range ends the loop) | headings, zero page and grand totals (signed) |
 | R4 missing lookup | abends | exit 2, nothing written (signed) |
-| R5 edited amounts | zero-suppressed pictures | units digit always printed (signed) |
-| R6 statement order | table of 51 cards by 10 lines | card order, id order, no limit (signed) |
-| R7 HTML | continued literals may pad to column 72 | joined as written (signed) |
+| R5 edited amounts | the three Z pictures print blanks for zero and `.05` for 0.05 | units digit always printed (signed); `9(9).99-` keeps its leading zeros, as in the COBOL |
+| R6 statement order | card order and id order, but tables of 51 cards by 10 lines | the same order, no limit (signed) |
+| R7 HTML | each continued literal ends at column 72, so the parts join with nothing between | the same (signed; matches the COBOL) |
 | R8 missing customer or account | abends | the card is skipped and counted (signed) |
+| Statement input | reads `COSTM01` (card first, then id) | reads `transact.txt` in the `CVTRA05Y` layout (INTERFACE.md) |
+| Empty `transact.txt` in statements | abends (first read returns `10`) | a statement with no lines for every card |
 
-All REVIEW rules are approved as written by the owner (I3 switched to truncation). Results are tagged with the rule version (see INTEREST_RULE).
+All these rules are approved as written by the owner (I3 switched to truncation). Results are tagged with the rule version (see INTEREST_RULE).
 
 ## Open risks
 
