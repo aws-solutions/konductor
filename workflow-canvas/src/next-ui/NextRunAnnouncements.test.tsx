@@ -34,4 +34,53 @@ describe('NextRunAnnouncements', () => {
 
     expect(screen.getByTestId('run-live-status').textContent).toBe(expected);
   });
+
+  it('uses the page announcement in the existing status channel', () => {
+    render(
+      <NextRunAnnouncements
+        run={{ active: false, status: 'Run passed.' }}
+        reasonSentence={sentenceOf}
+        announcement="Library workflow opened read-only."
+      />,
+    );
+
+    expect(screen.getByTestId('run-live-status').textContent).toBe(
+      'Library workflow opened read-only.',
+    );
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+  });
+
+  it.each([
+    ['passed', { active: false, status: 'Run passed.' }, 'Run passed.'],
+    [
+      'halted',
+      {
+        active: false,
+        status: 'Run halted at draft. 0 of 2 stages passed.',
+        reason: 'RESULT_MISSING',
+      },
+      'Run halted at draft. 0 of 2 stages passed. The final message of the session has no result line.',
+    ],
+  ])(
+    'lets a later %s run event replace a Library message',
+    (_, run, expected) => {
+      const { rerender } = render(
+        <NextRunAnnouncements
+          run={{ active: true, status: 'Running draft.' }}
+          reasonSentence={sentenceOf}
+          announcement="Library workflow opened read-only."
+        />,
+      );
+
+      rerender(
+        <NextRunAnnouncements
+          run={run}
+          reasonSentence={sentenceOf}
+          announcement="Library workflow opened read-only."
+        />,
+      );
+
+      expect(screen.getByTestId('run-live-status').textContent).toBe(expected);
+    },
+  );
 });
