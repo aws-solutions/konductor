@@ -1,7 +1,21 @@
 {
   "region": "us-east-1",
-  "pricesSource": "https://aws.amazon.com/bedrock/pricing/ (Qwen, On-Demand, Standard tier, US East (N. Virginia)), read 2026-11-17",
+  "pricesSource": "qwen.qwen3-coder-next: https://aws.amazon.com/bedrock/pricing/ (Qwen, On-Demand, Standard tier, US East (N. Virginia)), read 2026-11-17. anthropic.claude-sonnet-5-5: https://platform.claude.com/docs/en/models/sonnet-5-5/overview (Anthropic's published Sonnet 5.5 price and max output, $2 input and $10 output per MTok, 128K max output, Bedrock model ID anthropic.claude-sonnet-5-5), read 2026-11-25. The owner confirmed the Bedrock list price matches Anthropic's (2026-11-25). The AWS pricing page and AWS Price List data do not list Sonnet 5.5 themselves. global.anthropic.claude-sonnet-5-5 (inference profile, global routing, no premium): $2 input and $10 output per MTok, per Anthropic's Bedrock page (global endpoint has no pricing premium), read 2026-11-25.",
   "models": {
-    "qwen.qwen3-coder-next": { "inputUsdPerMTok": 0.5, "outputUsdPerMTok": 1.2, "maxTokens": 4096 }
+    "qwen.qwen3-coder-next": {
+      "inputUsdPerMTok": 0.5,
+      "outputUsdPerMTok": 1.2,
+      "maxTokens": 4096
+    },
+    "anthropic.claude-sonnet-5-5": {
+      "inputUsdPerMTok": 2.0,
+      "outputUsdPerMTok": 10.0,
+      "maxTokens": 128000
+    },
+    "global.anthropic.claude-sonnet-5-5": {
+      "inputUsdPerMTok": 2.0,
+      "outputUsdPerMTok": 10.0,
+      "maxTokens": 128000
+    }
   }
 }

@@ -101,8 +101,9 @@ class ModelSwitchTest(unittest.TestCase):
     def test_the_pin_file_names_one_model_with_prices_in_us_east_1(self):
         pins = load_pins()
         self.assertEqual(pins["region"], "us-east-1")
-        self.assertEqual(list(pins["models"]), ["qwen.qwen3-coder-next"])
+        self.assertEqual(list(pins["models"]), ["qwen.qwen3-coder-next", "anthropic.claude-sonnet-5-5", "global.anthropic.claude-sonnet-5-5"])
         self.assertEqual(pins["models"]["qwen.qwen3-coder-next"], {"inputUsdPerMTok": 0.5, "outputUsdPerMTok": 1.2, "maxTokens": 4096})
+        self.assertEqual(pins["models"]["global.anthropic.claude-sonnet-5-5"], {"inputUsdPerMTok": 2.0, "outputUsdPerMTok": 10.0, "maxTokens": 128000})
 
     # Building the Bedrock client reads the boto profile; a host that names a profile it lacks must not fail the test (no call is made).
     @mock.patch.dict(os.environ, {"AWS_CONFIG_FILE": os.devnull, "AWS_SHARED_CREDENTIALS_FILE": os.devnull})
