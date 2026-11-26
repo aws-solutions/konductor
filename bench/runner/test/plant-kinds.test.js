@@ -42,11 +42,14 @@ test('each kind record comes from a bench/plants/<folder>/plant.json manifest, r
     assert.equal(m.kind, 'plant');
     assert.equal(m.name, name, 'the folder is named after the kind');
     assert.equal(PLANT_KINDS[name].metaFile, path.resolve(PLANTS_DIR, name, m.meta));
+    assert.equal(m.meta, 'meta.json', 'the metadata file lives in the plant folder (B-003 step 3b)');
   }
+  assert.deepEqual(fs.readdirSync(path.join(__dirname, '..', '..', 'physical', 'schemas')).filter((f) => f.startsWith('plant-meta')), [],
+    'no plant metadata file is left in physical/schemas');
   const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'plant-manifest-'));
   try {
     const bad = (m) => { fs.writeFileSync(path.join(dir, 'plant.json'), JSON.stringify(m)); return () => readPlantManifest(dir); };
-    const good = { benchApi: 1, kind: 'plant', name: path.basename(dir), order: 9, meta: path.join(__dirname, '..', '..', 'physical', 'schemas', 'plant-meta-v1.json'), prompt: 'p', gatewayModules: [], sharedControls: { prefix: '', names: [] } };
+    const good = { benchApi: 1, kind: 'plant', name: path.basename(dir), order: 9, meta: path.join(PLANTS_DIR, 'conveyor-sim', 'meta.json'), prompt: 'p', gatewayModules: [], sharedControls: { prefix: '', names: [] } };
     assert.throws(bad({ ...good, benchApi: 2 }), /benchApi/);
     assert.throws(bad({ ...good, kind: 'harness' }), /kind/);
     assert.throws(bad({ ...good, name: 'other' }), /folder/);

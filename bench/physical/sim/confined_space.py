@@ -18,10 +18,10 @@ from typing import Iterator, Optional
 
 from . import confined_gas as gas
 from .arm_state import ArmState
-from .meta import SCHEMAS, SETTLE_MS, SETTLE_TICK_MS, load_meta
+from .meta import PLANTS, SETTLE_MS, SETTLE_TICK_MS, load_meta
 
 SIM_VERSION = "1"
-CONFINED_META_PATH = os.path.join(SCHEMAS, "plant-meta-confined-v1.json")
+CONFINED_META_PATH = os.path.join(PLANTS, "arm-confined-space", "meta.json")
 CONFINED_META = load_meta(CONFINED_META_PATH)
 READ_GAS, VENTILATE, CLOSE_PERMIT, OPEN_DOOR = "read_gas", "ventilate", "close_permit", "open_door"
 CELL_TOOLS = frozenset({READ_GAS, VENTILATE, CLOSE_PERMIT})

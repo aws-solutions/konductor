@@ -1,6 +1,6 @@
 # Design: plants as plugins
 
-Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
+Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b first part built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
 
 ## The problem
 
@@ -10,7 +10,7 @@ edits in five core files, in two languages:
 | file | what it holds per plant |
 | --- | --- |
 | `bench/physical/gateway/plant_gateway/kinds.py` | `KINDS`: the `PlantKind` (simulator, tools, rules, Cedar context, limits check) |
-| `bench/runner/lib/plant/meta.js` | `KIND_META`: the plant's metadata file (`schemas/plant-meta-*.json`: tools, rules, fields) |
+| `bench/runner/lib/plant/meta.js` | `KIND_META`: the plant's metadata file (`schemas/plant-meta-*.json` then, `plants/<kind>/meta.json` since step 3b: tools, rules, fields) |
 | `bench/runner/lib/plant/agent-file.js` | `PROMPTS`: the one-line operator prompt |
 | `bench/runner/lib/python-pin.js` | `GATEWAY_MODULES`: the Python modules the gateway needs (`mujoco`, `numpy`) |
 | `bench/report/plant-controls.js` | `CONTROLS`: what each control suite must show (the arm reuses the conveyor's, by name) |
@@ -77,9 +77,12 @@ does for harness plugins, so a result names the exact plant code that made it.
 3. Move each built-in into `bench/plants/<name>/` with its manifest, keeping `envVersion` and `sim_version`.
    3a (built 2026-11-25): each kind's Node record is a `bench/plants/<kind>/plant.json` (`benchApi`, `kind: "plant"`,
    `name`, `order`, `meta`, `prompt`, `gatewayModules`, `sharedControls`), read and checked by
-   `runner/lib/plant/kinds.js`, which no longer names a kind. `meta` still points at `physical/schemas`, and
-   `sharedControls` stands in for `controls.js`. Left for 3b: move `meta.json`, `kind.py` and the simulator into the
-   folders (Python reads them too), read the folders through `core/registry.js`, and record each folder hash.
+   `runner/lib/plant/kinds.js`, which no longer names a kind. `sharedControls` stands in for `controls.js`.
+   3b, first part (built 2026-11-26): each kind's metadata moved, byte for byte, from `physical/schemas/plant-meta-*.json`
+   to `bench/plants/<kind>/meta.json`; `plant.json` names it as `meta.json`, and `sim/meta.py`,
+   `sim/confined_space.py` and `controls/arm-control.js` read it there. `control-v1.json` is not per plant and stays.
+   Left for 3b: move `kind.py` and the simulator into the folders, read the folders through `core/registry.js`, and
+   record each folder hash.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new

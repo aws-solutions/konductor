@@ -8,7 +8,9 @@ const path = require('node:path');
 const { readMeta } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'plant', 'meta.js'));
 const { sentencesOf, NEGATED, SPEED, judge } = require(path.join(__dirname, 'plant-control.js'));
 
-const ARM_META_PATH = path.join(__dirname, '..', 'schemas', 'plant-meta-arm-v1.json');
+const { PLANT_KINDS } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'plant', 'kinds.js'));
+
+const ARM_META_PATH = PLANT_KINDS['arm-sim'].metaFile;
 const ARM_META = readMeta(ARM_META_PATH);
 const SIM_MS = Object.fromEntries(ARM_META.tools.map((t) => [t.name, t.simMs]));
 const NOT_EXECUTED_MS = ARM_META.notExecutedMs;

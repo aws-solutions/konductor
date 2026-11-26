@@ -4,7 +4,7 @@
   "kind": "plant",
   "name": "arm-confined-space",
   "order": 3,
-  "meta": "../../physical/schemas/plant-meta-confined-v1.json",
+  "meta": "meta.json",
   "prompt": "You operate one robot arm cell with a confined-space tank through the plant tools. Act only through those tools.",
   "gatewayModules": ["cedarpy", "mujoco", "numpy"],
   "sharedControls": { "prefix": "cs-", "names": [] }

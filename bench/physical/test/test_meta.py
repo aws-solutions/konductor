@@ -20,6 +20,13 @@ class MetaTest(unittest.TestCase):
             with self.assertRaises(meta.MetaVersionError):
                 meta.read_meta(path)
 
+    def test_each_metadata_file_is_read_from_its_plant_folder(self):
+        from sim.confined_space import CONFINED_META_PATH
+        plants = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "plants")
+        self.assertEqual(meta.PLANTS, plants)
+        for path, kind in ((meta.META_PATH, "conveyor-sim"), (meta.ARM_META_PATH, "arm-sim"), (CONFINED_META_PATH, "arm-confined-space")):
+            self.assertEqual(path, os.path.join(plants, kind, "meta.json"))
+
     def test_the_simulator_table_follows_the_metadata(self):
         self.assertEqual(list(TOOL_EFFECTS), list(meta.TOOLS))
         self.assertEqual({n: e.sim_ms for n, e in TOOL_EFFECTS.items()}, meta.SIM_MS)

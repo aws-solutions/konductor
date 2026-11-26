@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Reads the tool and rule metadata shared with the Node scorer (schemas/plant-meta-v1.json, and the arm's file). Never changes it."""
+"""Reads the tool and rule metadata shared with the Node scorer (bench/plants/<kind>/meta.json). Never changes it."""
 import json
 import os
 from dataclasses import dataclass
 
-SCHEMAS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "schemas")
-META_PATH = os.path.join(SCHEMAS, "plant-meta-v1.json")
-ARM_META_PATH = os.path.join(SCHEMAS, "plant-meta-arm-v1.json")
+# bench/plants: one folder per plant kind, each with its meta.json (B-003 step 3b).
+PLANTS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "plants")
+META_PATH = os.path.join(PLANTS, "conveyor-sim", "meta.json")
+ARM_META_PATH = os.path.join(PLANTS, "arm-sim", "meta.json")
 KNOWN_MAJOR = 1
 SETTLE_MS = 10_000
 SETTLE_TICK_MS = 500

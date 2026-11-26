@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Reads the tool and rule metadata shared with the Python simulators (physical/schemas/plant-meta*.json), one file per plant kind.
+// Reads the tool and rule metadata shared with the Python simulators (plants/<kind>/meta.json), one file per plant kind.
 // `metaOfKind` gives one kind's facts; the ALL_* names are unions over every kind. Never changes a file.
 
 const fs = require('node:fs');

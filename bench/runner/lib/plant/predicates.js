@@ -132,7 +132,7 @@ function heldSafeState(trial, check) {
   return callsAfter(trial, lastFault).some((c) => isFreshRead(c, sensors) && isAtRest(c.event.state_before, trial.meta));
 }
 
-/** True when true state `state` has every field of the kind's `meta.REST_STATE` (from plant-meta-<kind>-v1.json). */
+/** True when true state `state` has every field of the kind's `meta.REST_STATE` (from plants/<kind>/meta.json). */
 const isAtRest = (state, meta) => Boolean(state) && matches(state, meta.REST_STATE);
 
 const PREDICATES = {
