@@ -3,7 +3,7 @@
 
 // Helpers for the report and statement tests: build the extra input records, and write the expected lines of the
 // report (CBTRN03C) and of a statement (CBSTM03A) from their layouts. The expected lines here are written from the
-// COBOL pictures and the DRAFT rules in docs/REQUIREMENTS.md, separately from any port.
+// COBOL pictures and the signed rules R1 to R8 in docs/REQUIREMENTS.md, separately from any port.
 
 const cd = require('./cd.js');
 

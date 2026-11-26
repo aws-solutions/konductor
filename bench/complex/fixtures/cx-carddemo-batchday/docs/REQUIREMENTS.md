@@ -2,9 +2,8 @@
 
 Version 2, 2026-11-26. These rules are ours. Where the CardDemo COBOL is
 silent or odd, this file decides. Each rule has an id the tests cite.
-A person must review rules marked REVIEW or DRAFT before any result is graded on them.
-The rules of jobs 1 and 2 are signed off. The rules of jobs 3 and 4 marked DRAFT are not: they fill a gap in
-the COBOL or depart from it, and they stay in force for the work, not for the grading, until a person signs them.
+The rules of jobs 1 and 2 are signed off. The rules R1 to R8 of jobs 3 and 4 were signed off by the owner on
+2026-11-26: they fill a gap in the COBOL or depart from it.
 For jobs 3 and 4 the COBOL decides everything these rules do not mention.
 
 Scope: stub-only. Local files in, local files out. No AWS, no network, no model.
@@ -80,18 +79,18 @@ Output: interest transactions, updated accounts.
 Input: transactions, card-to-account cross reference, transaction types, transaction categories.
 Output: one report. `--start` and `--end` choose the dates. Everything these rules do not say is as `CBTRN03C` does.
 
-- R1. DRAFT - NEEDS OWNER SIGN-OFF. Both dates are included. A transaction whose processed date is outside the range is
+- R1. SIGNED (owner, 2026-11-26). Both dates are included. A transaction whose processed date is outside the range is
   skipped and the run goes on with the next one. (The COBOL's `NEXT SENTENCE` jumps past the end of the loop at the first
   such record, so it stops the report there without totals.)
-- R2. DRAFT - NEEDS OWNER SIGN-OFF. After the last transaction, the account total of the last account is written first,
+- R2. SIGNED (owner, 2026-11-26). After the last transaction, the account total of the last account is written first,
   then the page total, then the grand total. The grand total is the sum of every amount reported. The last amount is not
   added a second time. (The COBOL writes no total for the last account and adds the last amount to the page and account
   totals again.)
-- R3. DRAFT - NEEDS OWNER SIGN-OFF. If no transaction is in the range, the report is one set of headings, a page total of
+- R3. SIGNED (owner, 2026-11-26). If no transaction is in the range, the report is one set of headings, a page total of
   zero and a grand total of zero, and no account total. (The COBOL writes no headings.)
-- R4. DRAFT - NEEDS OWNER SIGN-OFF. A card missing from the cross reference, or a type or category missing from its file,
+- R4. SIGNED (owner, 2026-11-26). A card missing from the cross reference, or a type or category missing from its file,
   is a failed run: exit 2, nothing written, the error names the file. (The COBOL abends.)
-- R5. DRAFT - NEEDS OWNER SIGN-OFF. Edited amount fields keep the width and the sign position of their COBOL picture
+- R5. SIGNED (owner, 2026-11-26). Edited amount fields keep the width and the sign position of their COBOL picture
   (`-ZZZ,ZZZ,ZZZ.ZZ` for a line, `+ZZZ,ZZZ,ZZZ.ZZ` for a total, `Z(9).99-` and `9(9).99-` on a statement). The integer part
   is blank-filled on the left, with commas only between printed digits, but its last digit always prints: zero is `0.00`,
   and `0.05` is `0.05`. A number too wide for its field is bad input. (Applies to jobs 3 and 4.)
@@ -100,15 +99,15 @@ Output: one report. `--start` and `--end` choose the dates. Everything these rul
 
 Input: transactions, cross reference, customers, accounts. Output: a text file and an HTML file, one statement per card.
 
-- R6. DRAFT - NEEDS OWNER SIGN-OFF. Cards are taken in card number order and the transactions of a card in transaction id
+- R6. SIGNED (owner, 2026-11-26). Cards are taken in card number order and the transactions of a card in transaction id
   order, as a keyed file would give them, whatever the order in the input files. There is no limit of 51 cards or 10
   transactions per card. A card and transaction id that appear twice in `transact.txt` are bad input. A card with no
   transaction still gets a statement, with no lines and a total of `0.00`. (The COBOL tables hold 51 cards and 10 lines and
   overrun without a message.)
-- R7. DRAFT - NEEDS OWNER SIGN-OFF. A fixed HTML line that the COBOL source continues on a second line is the two parts
+- R7. SIGNED (owner, 2026-11-26). A fixed HTML line that the COBOL source continues on a second line is the two parts
   joined with nothing between. Every text record is 80 characters and every HTML record 100, padded on the right with
   blanks. (A literal continued in fixed format may be read as padded to column 72.)
-- R8. DRAFT - NEEDS OWNER SIGN-OFF. A card whose customer or account record is missing gets no statement, and the run goes
+- R8. SIGNED (owner, 2026-11-26). A card whose customer or account record is missing gets no statement, and the run goes
   on; `skipped` in the summary counts these cards. (The COBOL abends.)
 
 ## Non-goals

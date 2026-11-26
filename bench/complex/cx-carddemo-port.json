@@ -17,7 +17,7 @@
     },
     "date": "2026-11-25",
     "singleFamily": true,
-    "note": "The hidden tests, the reference port and docs/INTERFACE.md were written by Claude-family workers, and the subject model is Claude, so author and subject share a family. NEEDS a recheck by a non-Claude family before any score is used (not yet run; it is a paid call). The rules in docs/REQUIREMENTS.md were signed off by the owner (P5, P7, I2, I3, I4, no fees). The expected outputs in hidden/golden were written by the reference port itself. Relaxed 2026-11-26 by owner ruling where the signed rules are silent: a +0.00 interest row, a refused CRLF sample input line, and CRLF output line ends are accepted; no test was removed (see the answer key)."
+    "note": "The hidden tests, the reference port and docs/INTERFACE.md were written by Claude-family workers, and the subject model is Claude, so author and subject share a family. NEEDS a recheck by a non-Claude family before any score is used (not yet run; it is a paid call). The rules in docs/REQUIREMENTS.md were signed off by the owner (P5, P7, I2, I3, I4, no fees). The owner confirmed P5 (a payment is rejected 102 when the account is already over its limit) as signed, on 2026-11-26. The expected outputs in hidden/golden were written by the reference port itself. Relaxed 2026-11-26 by owner ruling where the signed rules are silent: a +0.00 interest row, a refused CRLF sample input line, and CRLF output line ends are accepted; no test was removed (see the answer key)."
   },
   "checks": [
     {
