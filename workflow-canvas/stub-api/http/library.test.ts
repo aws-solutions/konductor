@@ -273,6 +273,14 @@ describe('POST /api/library/{name}/copy', () => {
       status: 200,
       body: { name: 'review-copy', read_only: false },
     });
+    const run = await stub().client.post('/api/run', {
+      name: 'review-copy',
+      params: { goal: 'Review this change' },
+    });
+    expectError(run, 409, 'trust_required');
+    expect(run.body).toMatchObject({
+      fix: expect.stringContaining('konductor flow trust review-copy'),
+    });
   });
 
   it('never overwrites an existing workflow', async () => {

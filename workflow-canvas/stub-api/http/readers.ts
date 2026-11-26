@@ -114,7 +114,11 @@ export const readCheckRequest = object<{
   text: string,
 });
 
-export const readRunRequest = object<{ params: Record<string, string> }>({
+export const readRunRequest = object<{
+  name: string | undefined;
+  params: Record<string, string>;
+}>({
+  name: optional(string),
   params: runParams,
 });
 
