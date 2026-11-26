@@ -114,6 +114,18 @@ export function App({
 }) {
   // Read here, not in a view, so switching views does not load again.
   const result = useSettled(load);
+  const source = result?.ok ? result.workflow : undefined;
+  const [copied, setCopied] = useState<{
+    source: LoadedWorkflow;
+    document: LoadedWorkflow['document'];
+  }>();
+  const displayed = useMemo(
+    () =>
+      source && copied?.source === source
+        ? withDocument(result, copied.document)
+        : result,
+    [copied, result, source],
+  );
   // The calls of the views belong to the workflow that loaded, so each load
   // gets its own; the hooks of those views tell workflows apart by them.
   const nextPorts = useMemo(
@@ -124,7 +136,7 @@ export function App({
   // The load the page draws, held by its identity as well as its content: the
   // editor is opened with it, and the views that keep anything of their own
   // tell one workflow from another by it.
-  const opened = result?.ok ? result.workflow : undefined;
+  const opened = displayed?.ok ? displayed.workflow : undefined;
   // One check of a text for the two readers of it: the editor, which judges
   // the draft by its findings, and the Design view, which draws the keys and
   // the lines of each stage. Both ask after the same pause, so without this
@@ -153,16 +165,18 @@ export function App({
   // for each new result.
   const document = editor?.state.saved;
   const saved = useMemo(
-    () => (document ? withDocument(result, document) : result),
-    [result, document],
+    () => (document ? withDocument(displayed, document) : displayed),
+    [displayed, document],
   );
   const [view, setView] = useState<ViewId>('designer');
+  const [copyBlocked, setCopyBlocked] = useState<string>();
+  const [libraryAnnouncement, setLibraryAnnouncement] = useState('');
   const workflowName = openWorkflowName(saved);
   const next = useNextData({
     ports: nextPorts,
     reload: document?.hash,
   });
-  const runs = result?.ok ? result.workflow.runs : undefined;
+  const runs = opened?.runs;
   const stageNames = useMemo(
     () =>
       (saved?.ok ? (saved.workflow.document.view?.stages ?? []) : []).map(
@@ -177,15 +191,15 @@ export function App({
     () =>
       nextPorts && runs
         ? {
-            start: nextPorts.startRun,
+            start: (params, signal) => nextPorts.startRun(params, signal),
             readEvents: nextPorts.readEvents,
-            listRuns: nextPorts.listRuns,
+            listRuns: (signal) => nextPorts.listRuns(signal),
             readChecks: nextPorts.readChecks,
             scheduler,
             now: () => Date.now(),
           }
         : NO_RUN_PORTS,
-    [nextPorts, runs, scheduler],
+    [nextPorts, opened, runs, scheduler],
   );
   // The page follows the run, not the view that draws it: a person who looks
   // at Design must not take the only follower off the page.
@@ -206,7 +220,7 @@ export function App({
   });
   const nextRun = nextRunner.lifecycle;
   const workflowViews: PageView<ViewId>[] =
-    editor && nextPorts && runs && loaded && checks
+    editor && nextPorts && runs && loaded && checks && source
       ? [
           {
             id: 'designer',
@@ -242,18 +256,50 @@ export function App({
             content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
           }),
         );
-  const views: PageView<ViewId>[] = [
-    ...workflowViews,
-    {
-      id: 'library',
-      label: 'Library',
-      content: nextPorts ? (
-        <LibraryView ports={nextPorts} />
+  const libraryView: PageView<ViewId> = {
+    id: 'library',
+    label: 'Library',
+    content:
+      nextPorts && loaded && source ? (
+        <LibraryView
+          ports={nextPorts}
+          workflow={loaded}
+          agents={next.agents}
+          scheduler={scheduler}
+          beforeCopy={() =>
+            (!unsaved && !nextRun.active) ||
+            window.confirm(
+              unsaved && nextRun.active
+                ? 'Opening the copy drops unsaved changes and stops following the run in progress. Continue?'
+                : unsaved
+                  ? 'Opening the copy drops unsaved changes. Continue?'
+                  : 'Opening the copy stops following the run in progress. Continue?',
+            )
+          }
+          onAnnounce={setLibraryAnnouncement}
+          onCopyUncertain={(message) => {
+            setCopyBlocked(message);
+            setView('designer');
+          }}
+          onCopy={(copiedDocument) => {
+            setCopied({ source, document: copiedDocument });
+            setView('designer');
+          }}
+        />
       ) : (
         <WorkflowGate result={result}>{() => null}</WorkflowGate>
       ),
-    },
-  ];
+  };
+  const views: PageView<ViewId>[] = copyBlocked
+    ? LOADING_VIEWS.map((blockedView) => ({
+        ...blockedView,
+        content: (
+          <Alert type="error" header="Reload the page">
+            {copyBlocked}
+          </Alert>
+        ),
+      }))
+    : [...workflowViews, libraryView];
   useEffect(
     () => swapRisk?.set({ draft: unsaved, run: nextRun.active }),
     [swapRisk, unsaved, nextRun.active],
@@ -280,7 +326,11 @@ export function App({
                     ariaLabel="Workflow canvas views"
                     views={views}
                     active={view}
-                    onChange={setView}
+                    focusRequest={copyBlocked ? 2 : copied ? 1 : 0}
+                    onChange={(nextView) => {
+                      setLibraryAnnouncement('');
+                      setView(nextView);
+                    }}
                   />
                 }
               >
@@ -297,6 +347,7 @@ export function App({
             <NextRunAnnouncements
               run={nextRun}
               reasonSentence={reasonSentence}
+              announcement={libraryAnnouncement}
             />
             <ModePanels views={views} active={view} />
           </ContentLayout>
