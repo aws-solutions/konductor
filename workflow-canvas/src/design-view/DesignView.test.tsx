@@ -8,7 +8,12 @@ import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
 import { MAX_STAGES, READ_ONLY_REASON, textOf } from '../designer/core';
-import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
+import {
+  SaveConflict,
+  SaveLost,
+  SaveRefused,
+  SessionLost,
+} from '../designer/core/ports';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
   acceptingEdits,
@@ -1228,6 +1233,62 @@ describe('DesignView, what went wrong with a save', () => {
     const alerts = screen.getByTestId('edit-alerts');
     expect(alerts.textContent).toContain('The workflow was not saved');
     expect(alerts.textContent).toContain('The server said no.');
+  });
+
+  it('shows the findings of a refused save until the draft changes', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(
+      new SaveRefused('The workflow has errors.', [
+        {
+          message: 'The saved name is not allowed.',
+          path: 'stages[0].name',
+          line: 7,
+          severity: 'error',
+        },
+        {
+          message: 'The workflow has an unsupported combination.',
+          path: '',
+          line: undefined,
+          severity: 'error',
+        },
+      ]),
+    );
+
+    await changeThenSave();
+
+    const problems = screen.getByTestId('yaml-problems');
+    expect(problems.textContent).toContain(
+      'Line 7: The saved name is not allowed.',
+    );
+    expect(problems.textContent).toContain(
+      'The workflow has an unsupported combination.',
+    );
+    expect(problems.textContent).not.toContain('Line undefined');
+
+    await typeInto(nameInput(), 'drafting-again');
+
+    expect(screen.queryByTestId('yaml-problems')).toBeNull();
+  });
+
+  it('lists a finding once when the check and refused save report it', async () => {
+    const { edits, scheduler } = drawn({ answers: [badAnswer] });
+    const finding = {
+      message: badAnswer.diagnostics[0]!.message,
+      path: badAnswer.diagnostics[0]!.path,
+      line: badAnswer.diagnostics[0]!.line,
+      severity: badAnswer.diagnostics[0]!.severity,
+    } as const;
+    edits.save.mockRejectedValue(
+      new SaveRefused('The workflow has errors.', [finding]),
+    );
+    edits.check.mockImplementation(() => new Promise(() => undefined));
+
+    await changeThenSave();
+    await checkNow(scheduler);
+
+    expect(
+      within(screen.getByTestId('yaml-problems')).getAllByRole('listitem'),
+    ).toHaveLength(1);
   });
 
   it('says a save whose answer was lost may not have finished', async () => {

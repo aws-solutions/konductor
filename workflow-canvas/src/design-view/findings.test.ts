@@ -5,6 +5,7 @@ import {
   FINDINGS_PER_PAGE,
   FINDINGS_SHOWN_MOST,
   findingsPage,
+  mergeFindings,
   nextShown,
 } from './findings';
 
@@ -115,6 +116,18 @@ describe('findingsPage', () => {
 
   it('shows nothing for a page of none', () => {
     expect(findingsPage(many(10), 0).page).toEqual([]);
+  });
+});
+
+describe('mergeFindings', () => {
+  it('keeps each finding once across answers', () => {
+    const shared = finding(3);
+    const saveOnly = finding(7);
+
+    expect(mergeFindings([shared], [shared, saveOnly])).toEqual([
+      shared,
+      saveOnly,
+    ]);
   });
 });
 
