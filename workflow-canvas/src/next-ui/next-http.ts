@@ -506,19 +506,24 @@ export function createNextPorts(
         true,
       ),
     copyLibrary: async (name, as, signal) => {
-      const body = await send(
-        `/api/library/${encodeURIComponent(name)}/copy`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ as }),
-        },
-        signal,
-      );
       try {
+        const body = await send(
+          `/api/library/${encodeURIComponent(name)}/copy`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ as }),
+          },
+          signal,
+        );
         return libraryDocumentOf(body, as, false);
       } catch (error) {
-        if (!(error instanceof ApiError) || error.status !== 200) throw error;
+        if (
+          !(error instanceof ApiError) ||
+          (error.status !== 200 && error.status !== 0)
+        ) {
+          throw error;
+        }
         try {
           return libraryDocumentOf(
             await send('/api/workflow', {}, signal),

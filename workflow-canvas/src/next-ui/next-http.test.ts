@@ -269,6 +269,33 @@ describe('createNextPorts, the library', () => {
     ]);
   });
 
+  it('recovers when a committed copy response body fails to read', async () => {
+    let root = 'hello';
+    const calls: string[] = [];
+    const fetchFn = vi.fn(async (path: unknown, init: RequestInit = {}) => {
+      calls.push(String(path));
+      if (init.method === 'POST') {
+        root = 'review-copy';
+        return {
+          ok: true,
+          status: 200,
+          json: () => Promise.reject(new TypeError('body stream failed')),
+        } as Response;
+      }
+      return new Response(JSON.stringify(copyDocument(root)), { status: 200 });
+    }) as unknown as typeof fetch;
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.copyLibrary(ready.name, 'review-copy'),
+    ).resolves.toMatchObject({ name: 'review-copy', readOnly: false });
+    expect(root).toBe('review-copy');
+    expect(calls).toEqual([
+      `/api/library/${encodeURIComponent(ready.name)}/copy`,
+      '/api/workflow',
+    ]);
+  });
+
   it.each([
     ['the recovery read fails', { status: 500, body: { error: 'Failed.' } }],
     ['another workflow is open', { body: DOCUMENT }],
