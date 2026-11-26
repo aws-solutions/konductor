@@ -1,6 +1,6 @@
 # Design: plants as plugins
 
-Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b metadata, kind files, folder hashes, the simulator split, the registry read and the plant folders from the runner built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
+Date: 2026-11-24. Status: built. Steps 1 to 4 and all three checks of "How we know it works" done by 2026-11-26 (see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
 
 ## The problem
 
@@ -127,9 +127,11 @@ does for harness plugins, so a result names the exact plant code that made it.
    before its files moved); both arms of each match. These need MuJoCo and cedarpy, so CI skips them. Check 3 of "How we know it works"
    passes (2026-11-26): the four conveyor defaults in `runner/lib/plant` are gone. `plantPrompt` and `plantAgent`
    throw on an unknown or missing kind, `readMeta` needs a file and `trialFrom` needs the kind's meta; `walls.js`
-   passes the first plant by order and `physical/demo/first-demo.js` passes `conveyor-sim`. Still to do: the rest
-   of check 2, the same `plant-report` on the shipped fixtures and the policy test on `plant-r2` and the arm stub
-   release, re-run after the moves.
+   passes the first plant by order and `physical/demo/first-demo.js` passes `conveyor-sim`. Check 2 passes too
+   (2026-11-26): `plant-policy-test` passes every cell on `plant-r2` (42) and the arm stub release (32), and
+   `plant-report` on the recorded pilot runs of releases r1, r2 and r5 gives byte-equal output from the tree before
+   step 1 (8b7713a7) and after. The shipped `physical/fixtures` are stream and wire captures, not scored runs, so the
+   recorded runs (kept outside the repo) stood in for them. All three checks pass, so the plan is built.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new
 signed release.
