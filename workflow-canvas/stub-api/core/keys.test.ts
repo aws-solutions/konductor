@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILD_SLICE,
   builtInKeys,
+  CHECK_KEYS,
   isBuiltIn,
   isStageKind,
   KEY_TABLES,
@@ -42,7 +43,7 @@ describe('the key table', () => {
 });
 
 describe('what a build reads', () => {
-  it('reads the keys of slices 1 and 2 and no others', () => {
+  it('reads the keys of slices 1, 2 and 3a and no others', () => {
     expect(builtInKeys(TOP_KEYS)).toEqual([
       'format',
       'name',
@@ -57,13 +58,16 @@ describe('what a build reads', () => {
       'prompt',
       'prompt_file',
       'outputs',
+      'done_when',
     ]);
+    expect(builtInKeys(CHECK_KEYS)).toEqual(['id', 'file', 'run']);
   });
 
   it('puts a slice after another by the order of SLICES', () => {
     expect(isBuiltIn('1')).toBe(true);
     expect(isBuiltIn('2')).toBe(true);
-    for (const slice of SLICES.slice(2)) {
+    expect(isBuiltIn('3a')).toBe(true);
+    for (const slice of SLICES.slice(3)) {
       expect(isBuiltIn(slice), slice).toBe(false);
     }
   });

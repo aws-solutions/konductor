@@ -502,14 +502,6 @@ describe('keys of a later slice', () => {
       6,
       3,
     ],
-    [
-      'intent.accept[].run',
-      '3a',
-      `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n    - id: a\n      run: [make, test]\n${STAGES}`,
-      8,
-      7,
-    ],
-    ['stages[].done_when', '3a', stageWith('done_when: [a]'), 9, 5],
     ['stages[].on_fail', '4', stageWith('on_fail: x'), 9, 5],
     ['stages[].max_iterations', '4', stageWith('max_iterations: 2'), 9, 5],
     ['stages[].on_exhausted', '4', stageWith('on_exhausted: x'), 9, 5],
@@ -617,14 +609,14 @@ describe('planned forms of released keys', () => {
     expect(codesOf(text)).toEqual([['UNKNOWN_KEY', 'params.goal.type', 8, 5]]);
   });
 
-  it('reports outputs and a run string as the later keys they are', () => {
+  it('reports a mapping output and a run string with the codes they are', () => {
     const outputs = stageWith('outputs:', '  design: {path: D.md}');
     expect(codesOf(outputs)).toEqual([
       ['WRONG_TYPE', 'stages.write.outputs.design', 10, 15],
     ]);
     const run = `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n    - id: a\n      run: make test\n${STAGES}`;
     expect(codesOf(run)).toEqual([
-      ['NOT_SUPPORTED_BY_THIS_BUILD', 'intent.accept[0].run', 8, 7],
+      ['WRONG_TYPE', 'intent.accept[0].run', 8, 12],
     ]);
   });
 });
@@ -779,11 +771,10 @@ describe('values', () => {
     ]);
   });
 
-  it('is INVALID_VALUE, and names run, for a check with both file and run', () => {
+  it('is INVALID_VALUE for a check with both file and run', () => {
     const text = `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n    - id: a\n      file: A.md\n      run: [make]\n${STAGES}`;
     expect(codesOf(text)).toEqual([
       ['INVALID_VALUE', 'intent.accept[0]', 7, 7],
-      ['NOT_SUPPORTED_BY_THIS_BUILD', 'intent.accept[0].run', 9, 7],
     ]);
   });
 
@@ -1204,6 +1195,133 @@ describe('text in the shape of a reference that names no input', () => {
     const text = `${HEAD}stages:\n  - name: plan\n    agent: k-architect\n    prompt: Read {build.out}.\n  - name: build\n    agent: k-developer\n    outputs:\n      out: O.md\n`;
     expect(codesOf(text)).toEqual([
       ['INVALID_VALUE', 'stages.plan.prompt', 9, 18],
+    ]);
+  });
+});
+
+describe('a run check', () => {
+  // A file whose intent declares one check with the lines given, so the check
+  // starts on line 7.
+  const withCheck = (...lines: string[]) =>
+    `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n${lines
+      .map((line) => `    ${line}\n`)
+      .join('')}${STAGES}`;
+
+  it('is read as the command and its arguments', () => {
+    const text = withCheck('- id: tests-pass', '  run: [make, test]');
+    const { view, diagnostics } = checkWorkflowText(text, 'hello');
+
+    expect(diagnostics).toEqual([]);
+    expect(view?.intent.accept).toEqual([
+      { id: 'tests-pass', run: ['make', 'test'] },
+    ]);
+  });
+
+  it('is WRONG_TYPE when it is not a list', () => {
+    const text = withCheck('- id: tests-pass', '  run: make test');
+
+    expect(codesOf(text)).toEqual([
+      ['WRONG_TYPE', 'intent.accept[0].run', 8, 12],
+    ]);
+  });
+
+  it('is WRONG_TYPE when an entry is not a string', () => {
+    const text = withCheck('- id: tests-pass', '  run: [make, 2]');
+
+    expect(codesOf(text)).toEqual([
+      ['WRONG_TYPE', 'intent.accept[0].run[1]', 8, 19],
+    ]);
+  });
+
+  it('is INVALID_VALUE when the list is empty', () => {
+    const text = withCheck('- id: tests-pass', '  run: []');
+
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'intent.accept[0].run', 8, 12],
+    ]);
+  });
+
+  it('is INVALID_VALUE at the check when neither file nor run is there', () => {
+    expect(codesOf(withCheck('- id: tests-pass'))).toEqual([
+      ['INVALID_VALUE', 'intent.accept[0]', 7, 7],
+    ]);
+  });
+
+  it('keeps a file check beside a run check', () => {
+    const text = withCheck(
+      '- id: readme-exists',
+      '  file: README.md',
+      '- id: tests-pass',
+      '  run: [make, test]',
+    );
+
+    expect(checkWorkflowText(text, 'hello').view?.intent.accept).toEqual([
+      { id: 'readme-exists', file: 'README.md' },
+      { id: 'tests-pass', run: ['make', 'test'] },
+    ]);
+  });
+});
+
+describe('done_when', () => {
+  // A stage whose `done_when` is the text given, with one check declared.
+  const withDoneWhen = (doneWhen: string) =>
+    `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n    - id: readme-exists\n      file: README.md\nstages:\n  - name: write\n    agent: k-developer\n    done_when: ${doneWhen}\n`;
+
+  it('is read as the ids of the stage, in the order of the file', () => {
+    const text = `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n    - id: readme-exists\n      file: README.md\n    - id: tests-pass\n      run: [make, test]\nstages:\n  - name: write\n    agent: k-developer\n    done_when: [tests-pass, readme-exists]\n`;
+    const { view, diagnostics } = checkWorkflowText(text, 'hello');
+
+    expect(diagnostics).toEqual([]);
+    expect(view?.stages[0]?.done_when).toEqual(['tests-pass', 'readme-exists']);
+  });
+
+  it('is left out of the view when the stage has none', () => {
+    const view = checkWorkflowText(VALID, 'hello').view;
+
+    expect(view?.stages[0]).not.toHaveProperty('done_when');
+  });
+
+  it('takes an empty list', () => {
+    expect(codesOf(withDoneWhen('[]'))).toEqual([]);
+  });
+
+  it('is INVALID_VALUE at the entry for an id that is no check', () => {
+    expect(codesOf(withDoneWhen('[readme-exists, tests-pass]'))).toEqual([
+      ['INVALID_VALUE', 'stages.write.done_when[1]', 12, 32],
+    ]);
+  });
+
+  it('names no id that may be a secret', () => {
+    const secret = 'ghp-0123456789abcdef0123456789abcdef';
+    const message = checkWorkflowText(withDoneWhen(`[${secret}]`), 'hello')
+      .diagnostics[0]?.message;
+
+    expect(message).not.toContain(secret);
+  });
+
+  it('is WRONG_TYPE when it is not a list', () => {
+    expect(codesOf(withDoneWhen('readme-exists'))).toEqual([
+      ['WRONG_TYPE', 'stages.write.done_when', 12, 16],
+    ]);
+  });
+
+  it('is WRONG_TYPE when an entry is not a string', () => {
+    expect(codesOf(withDoneWhen('[2]'))).toEqual([
+      ['WRONG_TYPE', 'stages.write.done_when[0]', 12, 17],
+    ]);
+  });
+
+  it('is INVALID_NAME for an id that is not a name', () => {
+    expect(codesOf(withDoneWhen('[Readme]'))).toEqual([
+      ['INVALID_NAME', 'stages.write.done_when[0]', 12, 17],
+    ]);
+  });
+
+  it('reports a check whose path is wrong once, not again at done_when', () => {
+    const text = `${FORMAT}${NAME}${VERSION}intent:\n  outcome: x\n  accept:\n    - id: readme-exists\n      file: ../README.md\nstages:\n  - name: write\n    agent: k-developer\n    done_when: [readme-exists]\n`;
+
+    expect(codesOf(text)).toEqual([
+      ['INVALID_VALUE', 'intent.accept[0].file', 8, 13],
     ]);
   });
 });

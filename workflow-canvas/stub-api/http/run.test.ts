@@ -170,6 +170,7 @@ describe('GET /api/runs/{id}', () => {
         exit_code: null,
         order: ['draft', 'review'],
         stages: { draft: { status: 'running' }, review: { status: 'pending' } },
+        checks: { 'readme-exists': 'deferred' },
       },
     });
   });
@@ -313,6 +314,7 @@ describe('a run that ends with a blocked stage', () => {
           review: { status: 'blocked', reason: 'RESULT_MISSING' },
           'wrap-up': { status: 'pending' },
         },
+        checks: { 'readme-exists': 'deferred' },
       },
     });
   });
@@ -647,5 +649,67 @@ describe('POST /api/run when the unwritten output is only on the prototype', () 
     const runId = await start(stub());
     stub().clock.advance(DEFAULT_STAGE_MS * 3);
     expect(await stagesOf(stub(), runId)).toEqual(['passed', 'passed']);
+  });
+});
+
+describe('the checks of a run over HTTP', () => {
+  const CHECKED = `format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+  accept:
+    - id: tests-pass
+      run: [make, test]
+    - id: readme-exists
+      file: README.md
+stages:
+  - name: draft
+    agent: k-developer
+    done_when: [readme-exists]
+  - name: review
+    agent: k-quality-assurance
+`;
+  const stub = useStub({ files: { hello: CHECKED } });
+
+  const checksOf = async (runId: string) => {
+    const reply = await stub().client.get(`/api/runs/${runId}`);
+    expectContract(reply, 'GET', RUNS);
+    return (reply.body as { run: { checks: Record<string, string> } }).run
+      .checks;
+  };
+
+  it('defers every declared check while the first stage runs', async () => {
+    const runId = await start(stub());
+
+    expect(await checksOf(runId)).toEqual({
+      'readme-exists': 'deferred',
+      'tests-pass': 'deferred',
+    });
+  });
+
+  it('verifies the check of a stage that has passed, and defers the rest', async () => {
+    const runId = await start(stub());
+
+    stub().clock.advance(DEFAULT_STAGE_MS);
+
+    expect(await checksOf(runId)).toEqual({
+      'readme-exists': 'verified',
+      'tests-pass': 'deferred',
+    });
+  });
+});
+
+describe('a run of a workflow that declares no check', () => {
+  const stub = useStub({
+    files: { hello: oneStageWorkflow('draft', 'k-dev') },
+  });
+
+  it('reports an empty map of checks', async () => {
+    const runId = await start(stub());
+    const reply = await stub().client.get(`/api/runs/${runId}`);
+
+    expectContract(reply, 'GET', RUNS);
+    expect((reply.body as { run: { checks: unknown } }).run.checks).toEqual({});
   });
 });

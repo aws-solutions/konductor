@@ -16,6 +16,7 @@ import {
   MAX_GOAL_CHARS,
   MAX_INTENT_CHARS,
   MAX_PARAM_CHARS,
+  MIN_RUN_ARGV,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_TEXT_BYTES,
@@ -33,7 +34,7 @@ import {
 import { ERROR_CODES, type ErrorCode } from './errors.ts';
 import { STAGE_FIELDS } from './fields.ts';
 import { KEY_TABLES } from './keys.ts';
-import { DIAGNOSTIC_CODES, STAGE_REASONS } from './model.ts';
+import { CHECK_STATES, DIAGNOSTIC_CODES, STAGE_REASONS } from './model.ts';
 
 type Json = Record<string, unknown>;
 
@@ -163,6 +164,43 @@ describe('the stub and api/openapi.yaml', () => {
     expect([...STAGE_REASONS].sort()).toEqual(
       [...(schemaOf('StageReason').enum as string[])].sort(),
     );
+  });
+
+  it('give a check exactly one of file and run, with the rules the stub reads', () => {
+    const check = schemaOf('Check');
+    expect(property(check, 'id').pattern).toBe(NAME_PATTERN.source);
+    expect(check.required).toEqual(['id']);
+    const branches = check.oneOf as Json[];
+    expect(branches).toHaveLength(2);
+    const [byFile, byRun] = branches as [Json, Json];
+    expect(byFile.required).toEqual(['file']);
+    expect(property(byFile, 'file').pattern).toBe(PATH_PATTERN_SOURCE);
+    expect(byRun.required).toEqual(['run']);
+    const run = property(byRun, 'run');
+    expect(run.type).toBe('array');
+    expect(run.minItems).toBe(MIN_RUN_ARGV);
+    expect((run.items as Json).type).toBe('string');
+  });
+
+  it('name every done_when entry by a check id', () => {
+    const doneWhen = property(schemaOf('Stage'), 'done_when');
+    expect(doneWhen.type).toBe('array');
+    expect((doneWhen.items as Json).pattern).toBe(NAME_PATTERN.source);
+  });
+
+  it('have the same check states', () => {
+    expect([...CHECK_STATES].sort()).toEqual(
+      [...(schemaOf('CheckState').enum as string[])].sort(),
+    );
+  });
+
+  it('name the checks of a run by a check id and give each a state', () => {
+    const checks = property(schemaOf('Run'), 'checks');
+    expect((checks.propertyNames as Json).pattern).toBe(NAME_PATTERN.source);
+    expect((checks.additionalProperties as Json).enum).toEqual([
+      ...CHECK_STATES,
+    ]);
+    expect(schemaOf('Run').required).toContain('checks');
   });
 
   it('report a harness that the contract names', () => {

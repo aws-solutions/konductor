@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.9.0
+  version: 1.10.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -12,11 +12,13 @@ info:
     and follow its state and events, and list the past runs. The local stub
     server and the real backend will both implement this document.
 
-    This version covers the first release of the workflow format and the data
-    that passes between stages. A file has a `format`, a `version`, an
-    `intent`, optional `params` and a list of `stages`, each stage is done by
-    one agent, and a stage may declare the files it leaves behind so a later
-    stage's prompt can name them. A run uses one harness:
+    This version covers the first release of the workflow format, the data
+    that passes between stages, and the checks that say whether the work is
+    done. A file has a `format`, a `version`, an `intent`, optional `params`
+    and a list of `stages`, each stage is done by one agent, a stage may
+    declare the files it leaves behind so a later stage's prompt can name
+    them, and a stage may name the checks that must pass before it does. A run
+    uses one harness:
     `kiro-cli` or `claude`, and `fake` in tests. Anything not described here is
     not part of the contract yet.
 
@@ -59,7 +61,15 @@ info:
     declared param. A file that was accepted before is accepted still, and a
     file that was refused with `NOT_SUPPORTED_BY_THIS_BUILD` for one of those
     keys is now read, so the only answers that change are ones that were
-    errors.
+    errors. Version 1.10.0 only adds, in the same sense: it reads the keys of
+    the checks, `intent.accept[].run` and `stages[].done_when`, and a run
+    gains `checks`, the state of each check of `intent.accept` by id. No
+    field, operation or code is removed. A file that was accepted before is
+    accepted still, and a file that was refused with
+    `NOT_SUPPORTED_BY_THIS_BUILD` for one of those two keys is now read. The
+    one answer that changes for a file that was never accepted is a string as
+    a `run` check, which was reported as a key of a later slice and is now
+    `WRONG_TYPE`.
 
     **Conventions**
 
@@ -307,7 +317,7 @@ info:
     appears twice in one mapping is an error, not a case of the last one
     winning. The text is a mapping with the keys below and no others. A key
     belongs to a slice, a unit of delivery of the workflow format. This version
-    reads the keys of slices 1 and 2.
+    reads the keys of slices 1, 2 and 3a.
 
     | Key                       | Required                | Value                                                                                         | Slice |
     | ------------------------- | ----------------------- | --------------------------------------------------------------------------------------------- | ----- |
@@ -319,7 +329,7 @@ info:
     | `intent.accept`           | no                      | A list of checks. It defaults to an empty list.                                               | 1     |
     | `intent.accept[].id`      | yes                     | A name, used once in the file. A check id and a stage name are separate.                      | 1     |
     | `intent.accept[].file`    | one of `file` and `run` | A path. The check passes when the file exists.                                                | 1     |
-    | `intent.accept[].run`     | one of `file` and `run` | A command as a list of strings.                                                               | 3a    |
+    | `intent.accept[].run`     | one of `file` and `run` | A command as a list of strings, with at least one entry. The check passes when it exits 0.    | 3a    |
     | `params`                  | no                      | A mapping of names to params.                                                                 | 1     |
     | `params.goal`             | no                      | A mapping. The goal of a run is always a param, declared or not.                              | 1     |
     | `params.goal.description` | no                      | A string.                                                                                     | 1     |
@@ -336,7 +346,7 @@ info:
     | `stages[].prompt_file`    | no                      | A path, relative to the folder of the workflow file, of a file that holds the prompt.         | 1     |
     | `stages[].outputs`        | no                      | A mapping of output names to paths.                                                           | 2     |
     | `stages[].outputs.<name>` | no                      | A path the stage must leave behind, under an output name.                                     | 2     |
-    | `stages[].done_when`      | no                      | A list of check ids.                                                                          | 3a    |
+    | `stages[].done_when`      | no                      | A list of check ids from `intent.accept`. It defaults to an empty list.                        | 3a    |
 
     A later slice reserves more keys. A key in the table above with a later
     slice, or in the table below, is not an unknown key but a known one that
@@ -401,8 +411,20 @@ info:
     keeps its meaning. In this version, `params` written as a list is
     `WRONG_TYPE`, a key such as `description` on the workflow itself is
     `UNKNOWN_KEY`, and a mapping as a value of `outputs` is `WRONG_TYPE`. A
-    string as a `run` check is a key this version does not read, so it reports
-    the key as a later one.
+    string as a `run` check is `WRONG_TYPE`, because `run` is a list of
+    strings.
+
+    A check of `intent.accept` has an `id` and exactly one of `file` and
+    `run`, and neither or both is `INVALID_VALUE` at the check. A `file`
+    check passes when that file exists. A `run` check is a command and its
+    arguments as a list of strings, with at least one entry, run directly
+    with no shell in the project root, and it passes when the command exits
+    0. A `run` that is not a list of strings is `WRONG_TYPE`, and an empty
+    one is `INVALID_VALUE`. A `stages[].done_when` lists check ids from
+    `intent.accept`: the stage passes only when those checks pass. An id that
+    is no check of `intent.accept` is `INVALID_VALUE` at the entry, and a
+    `done_when` that is not a list of names is `WRONG_TYPE`. This version
+    checks the declaration only; running a check is the server's work.
 
     A workflow name, a stage name, a check id and an agent id match
     `^[a-z0-9][a-z0-9-]{0,63}$`. A stage name is also not `start`, `end`,
@@ -460,12 +482,12 @@ info:
     | `UNKNOWN_KEY`                 | the key                      | A mapping has a key that no slice plans. `suggestion` is the key of the tables above, among those this version reads, with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table if two tie, and only when that distance is at most 2. Otherwise it is left out. |
     | `DUPLICATE_KEY`               | the later key                | A key appears again in a mapping. Two keys are one key when their text is the same: the characters of the key after quotes and escapes are resolved, and before they are read as a number, boolean or null. So `1` and `'1'` are one key, but `true` and `True`, `1`, `1.0` and `0x1`, and `null` and `~` are each different keys. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
     | `MISSING_KEY`                 | the mapping                  | `format`, `version`, `intent`, `stages`, `outcome`, a check's `id`, or a stage's `name` is absent. For `format` the `suggestion` is `format: konductor/1`. |
-    | `WRONG_TYPE`                  | the value                    | A value is the wrong kind, such as `stages` that is not a list, `intent` that is neither a mapping nor a string, `params` or `outputs` that is not a mapping, a check that is not a mapping, a `required` that is not a boolean, or a `name`, `agent`, `format`, `version`, `prompt`, path, param or `params.goal` text that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
+    | `WRONG_TYPE`                  | the value                    | A value is the wrong kind, such as `stages` that is not a list, `intent` that is neither a mapping nor a string, `params` or `outputs` that is not a mapping, a check that is not a mapping, `run` or `done_when` that is not a list, a `required` that is not a boolean, or a `name`, `agent`, `format`, `version`, `prompt`, path, param, `params.goal`, `run` entry or `done_when` entry text that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
     | `INVALID_NAME`                | the value, or the key        | A name, check id or agent id that is a string does not match the pattern above. A param name or an output name does not match its own pattern, reported at the key where it is written. |
     | `RESERVED_NAME`               | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`. |
     | `DUPLICATE_STAGE`             | the later stage's `name`     | A stage name is already used by an earlier stage. |
     | `NAME_MISMATCH`               | `name`                       | `name` is not the name of the file. |
-    | `INVALID_VALUE`               | the value                    | `version` is a string that is not a semantic version, such as `'1.1'` (`suggestion` is `0.1.0`). `intent.outcome` is empty, has a line break or is over 300 characters. `stages` has no entry or more than 40. A `prompt` is empty or over 32768 characters. A path breaks the path rules. A check id is used twice. A check has neither or both of `file` and `run`. A `prompt` and a `prompt_file` are both set. A reference in a `prompt` names a param the file does not declare, an output the named stage does not declare, or a stage that runs later. A param's `default` is over 65536 characters. |
+    | `INVALID_VALUE`               | the value                    | `version` is a string that is not a semantic version, such as `'1.1'` (`suggestion` is `0.1.0`). `intent.outcome` is empty, has a line break or is over 300 characters. `stages` has no entry or more than 40. A `prompt` is empty or over 32768 characters. A path breaks the path rules. A check id is used twice. A check has neither or both of `file` and `run`. A `run` check is an empty list. A `done_when` names an id that is no check of `intent.accept`. A `prompt` and a `prompt_file` are both set. A reference in a `prompt` names a param the file does not declare, an output the named stage does not declare, or a stage that runs later. A param's `default` is over 65536 characters. |
     | `UNSUPPORTED_FORMAT`          | the value                    | `format` is a string other than `konductor/1`. |
     | `STAGE_KIND_MISSING`          | the stage                    | A stage has no key that names its kind. |
     | `STAGE_KIND_AMBIGUOUS`        | the stage                    | A stage has more than one key that names its kind. |
@@ -961,7 +983,7 @@ paths:
                 summary: Keys that a later slice adds
                 value:
                   name: hello
-                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n    done_when: [plan-exists]\n    parallel: true\n"
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n    on_fail: write\n    parallel: true\n"
               badVersion:
                 summary: A version that is not a semantic version
                 value:
@@ -1136,12 +1158,12 @@ paths:
                       - code: NOT_SUPPORTED_BY_THIS_BUILD
                         severity: error
                         file: hello.yml
-                        path: stages.write.done_when
+                        path: stages.write.on_fail
                         line: 9
                         column: 5
                         end_line: 9
-                        end_column: 14
-                        message: The key `done_when` is not supported by this build. Slice 3a adds it.
+                        end_column: 12
+                        message: The key `on_fail` is not supported by this build. Slice 4 adds it.
                       - code: NOT_SUPPORTED_BY_THIS_BUILD
                         severity: error
                         file: hello.yml
@@ -1475,6 +1497,9 @@ paths:
                           status: passed
                         review:
                           status: running
+                      checks:
+                        plan-exists: verified
+                        tests-pass: deferred
                 passed:
                   summary: Every stage passed
                   value:
@@ -1492,6 +1517,9 @@ paths:
                           status: passed
                         review:
                           status: passed
+                      checks:
+                        plan-exists: verified
+                        tests-pass: verified
                 halted:
                   summary: A stage failed, so the run stopped
                   value:
@@ -1510,6 +1538,9 @@ paths:
                           reason: RESULT_MISSING
                         review:
                           status: pending
+                      checks:
+                        plan-exists: deferred
+                        tests-pass: deferred
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1950,7 +1981,8 @@ components:
       required: [id]
       description: |
         A test of the outcome. It has an `id` and exactly one of `file` and
-        `run`. This version reads `file` checks.
+        `run`. This version reads both kinds. A `file` check passes when that
+        file exists; a `run` check passes when its command exits 0.
       properties:
         id:
           $ref: '#/components/schemas/Name'
@@ -1966,7 +1998,9 @@ components:
               minItems: 1
               items:
                 type: string
-              description: A command and its arguments, run with no shell.
+              description: |
+                A command and its arguments, run directly with no shell in
+                the project root. An empty list is `INVALID_VALUE`.
     Param:
       type: object
       description: One input of a run.
@@ -2021,7 +2055,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Name'
-          description: The ids of the checks that must pass before the stage does.
+          description: |
+            The ids of the checks that must pass before the stage does, in the
+            order of the file. Each one is a check of `intent.accept`; an id
+            that is not is `INVALID_VALUE` at the entry.
         range:
           $ref: '#/components/schemas/LineRange'
       examples:
@@ -2735,6 +2772,13 @@ components:
       type: string
       enum: [running, passed, halted]
       description: '`halted` means a stage failed and the run stopped.'
+    CheckState:
+      type: string
+      enum: [verified, deferred]
+      description: |
+        `verified`: the server ran the check. `deferred`: it has not been
+        checked yet. These are the check states of the run state that the
+        runner keeps, so a client reads the same two words from either.
     Run:
       type: object
       required:
@@ -2748,11 +2792,14 @@ components:
           exit_code,
           order,
           stages,
+          checks,
         ]
       description: |
         The state of a run. These hold in every response:
 
         - `order` holds the keys of `stages`, each once.
+        - `checks` holds one entry per check of `intent.accept`, by id, and is
+          an empty object for a workflow that declares none.
         - The stages run in `order`. A stage is `passed` before the one that is
           `running` or `blocked`, and `pending` after it. At most one stage is
           `running`.
@@ -2795,6 +2842,18 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/RunStage'
           description: The state of each stage, by stage name.
+        checks:
+          type: object
+          propertyNames:
+            $ref: '#/components/schemas/Name'
+          additionalProperties:
+            $ref: '#/components/schemas/CheckState'
+          description: |
+            The state of each check of `intent.accept`, by check id. This is
+            the `checks` map of the run state that the runner keeps, with the
+            same two states, so the run a client reads here and the run on
+            disk say the same thing. A check the server has run is `verified`
+            and every other one is `deferred`.
       allOf:
         - if:
             properties:

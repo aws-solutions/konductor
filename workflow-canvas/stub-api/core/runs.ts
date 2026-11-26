@@ -2,6 +2,7 @@
 import type { Clock } from './clock.ts';
 import { HARNESS, MAX_GOAL_CHARS } from './contract.ts';
 import type {
+  CheckState,
   Run,
   RunEvent,
   RunStage,
@@ -18,7 +19,18 @@ export const CONSOLE_GRACE_MS = 60_000;
 /** The most console lines of a run that are kept, the latest ones. */
 export const MAX_CONSOLE_LINES = 1000;
 
-/** How a simulated run ends. A run with no plan passes every stage. */
+/**
+ * The checks of `intent.accept` as a run reports them: every id the workflow
+ * declares, and the ids each stage's `done_when` names.
+ */
+export interface RunChecks {
+  /** Every check id of `intent.accept`, so the run reports each one. */
+  readonly ids: readonly string[];
+  /** The check ids a stage's `done_when` names, by stage name. */
+  readonly doneWhen: Readonly<Record<string, readonly string[]>>;
+}
+
+/** What a simulated run reports and how it ends. A run with no plan passes every stage. */
 export interface RunPlan {
   /** The stage that is blocked, by its place in the list, and why. */
   block?: { at: number; reason: StageReason };
@@ -30,6 +42,8 @@ export interface RunPlan {
    * blocks: the first stage with an unwritten output is `OUTPUT_MISSING`.
    */
   unwritten?: { stage: string; output: string };
+  /** The checks of the workflow. A run without them reports none. */
+  checks?: RunChecks;
 }
 
 interface StartedRun {
@@ -178,6 +192,7 @@ export class RunSimulator {
       exit_code: !done ? null : halted ? 1 : 0,
       order: [...run.order],
       stages,
+      checks: checkStates(run.plan.checks, stages),
     };
   }
 
@@ -216,6 +231,32 @@ export class RunSimulator {
 }
 
 // The list carries at most the session's goal limit, cut between code points.
+/*
+ * The state of each check the workflow declares, with the ids sorted, as the
+ * run state the runner keeps has them. A check is `verified` once the server
+ * has run it, and the runner runs a stage's `done_when` checks when that
+ * stage passes, so a check named by a stage that has passed is verified here.
+ * Every other one waits for a verify pass, so it is `deferred`.
+ */
+function checkStates(
+  checks: RunChecks | undefined,
+  stages: Run['stages'],
+): Run['checks'] {
+  if (!checks) return {};
+  const ran = new Set(
+    Object.entries(checks.doneWhen)
+      .filter(([stage]) => stages[stage]?.status === 'passed')
+      .flatMap(([, named]) => named),
+  );
+  const sorted = [...checks.ids].sort();
+  return Object.fromEntries(
+    sorted.map((id): [string, CheckState] => [
+      id,
+      ran.has(id) ? 'verified' : 'deferred',
+    ]),
+  );
+}
+
 function cappedGoal(goal: string): Pick<RunSummary, 'goal' | 'goal_truncated'> {
   const chars = [...goal];
   const goal_truncated = chars.length > MAX_GOAL_CHARS;

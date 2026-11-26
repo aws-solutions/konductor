@@ -35,11 +35,26 @@ export interface Diagnostic {
   suggestion?: string;
 }
 
-/** A check of the intent. This build reads `file` checks only. */
-export interface Check {
-  id: string;
-  file: string;
-}
+/**
+ * A check of the intent: an `id` and exactly one of `file` and `run`, as the
+ * contract requires. A `file` check passes when that file exists, a `run`
+ * check when its command exits 0. Running one is the runner's work, not the
+ * stub's. The other key is typed `never`, so a check with both kinds, or
+ * with neither, does not compile.
+ */
+export type Check =
+  | { id: string; file: string; run?: never }
+  | {
+      id: string;
+      /** A command and its arguments, run with no shell. */
+      run: string[];
+      file?: never;
+    };
+
+/** Whether the server has run a check yet. */
+export const CHECK_STATES = ['verified', 'deferred'] as const;
+
+export type CheckState = (typeof CHECK_STATES)[number];
 
 /** One input of a run. Every value is a string in this release. */
 export interface Param {
@@ -71,6 +86,8 @@ export interface Stage {
   prompt_file?: string;
   /** The files the stage must leave behind, by output name, in file order. */
   outputs?: Record<string, string>;
+  /** The ids of the checks that must pass before the stage does, in file order. */
+  done_when?: string[];
   range: LineRange;
 }
 
@@ -165,6 +182,8 @@ export interface Run {
   exit_code: number | null;
   order: string[];
   stages: Record<string, RunStage>;
+  /** The state of each check of `intent.accept`, by id, with the ids sorted. */
+  checks: Record<string, CheckState>;
 }
 
 interface EventBase {

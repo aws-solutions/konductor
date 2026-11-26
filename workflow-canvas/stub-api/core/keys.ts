@@ -23,7 +23,7 @@ export const SLICES = [
 export type Slice = (typeof SLICES)[number];
 
 /** The newest slice this build reads. A key of a later one is named, not read. */
-export const BUILD_SLICE: Slice = '2';
+export const BUILD_SLICE: Slice = '3a';
 
 /** The slice that adds the string form of `intent`. */
 export const INTENT_STRING_SLICE: Slice = '13';
