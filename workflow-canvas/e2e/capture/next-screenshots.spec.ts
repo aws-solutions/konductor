@@ -36,6 +36,29 @@ test('capture the Library list in the dark mode', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-library-dark');
 });
 
+test('capture a read-only Library workflow', async ({ canvas }) => {
+  await canvas.selectTab('Library');
+  await canvas.page
+    .getByRole('button', { name: 'Open Adversarial pull request review' })
+    .click();
+  await expect(canvas.page.getByTestId('read-only-note')).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-library-entry');
+});
+
+test('capture a read-only Library workflow in the dark mode', async ({
+  canvas,
+}) => {
+  await canvas.switchTheme();
+  await canvas.selectTab('Library');
+  await canvas.page
+    .getByRole('button', { name: 'Open Adversarial pull request review' })
+    .click();
+  await expect(canvas.page.getByTestId('read-only-note')).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-library-entry-dark');
+});
+
 test('capture the Design view', async ({ canvas }) => {
   await expect(canvas.node('node-stage-draft')).toBeVisible();
 
