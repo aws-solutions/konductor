@@ -21,6 +21,11 @@ const { sandbox, procs } = sdk;
 const { writeCredentials, makeExportedCredentials, awsExport, isProfileName } = sdk.awsCreds;
 const { JUDGE_SYSTEM_PROMPT, systemPromptSha256 } = sdk.judgePrompt;
 
+// The read judge view (bench/judge/view/read.js): the only tools, the step cap, and what a read call adds to the env.
+const READ_TOOLS = Object.freeze(['read', 'glob', 'grep']);
+const READ_STEPS = 40;
+const READ_ENV = Object.freeze({ OPENCODE_DISABLE_EXTERNAL_SKILLS: '1' });
+
 // Panel ids stay the logical names used everywhere else (family checks run on them). `temperature: null` means the
 // model rejects the field on Bedrock, so the no-temperature agent is used and nothing is sent.
 // `limit` is opencode's context and output cap for the model; the output cap is far above the longest reply seen. The
@@ -67,8 +72,15 @@ const clip = (text, n = 300) => String(text).trim().replace(/\s+/g, ' ').slice(-
 
 // One model, one agent. The built-in agents are switched off so the judge agent is the only one that can run.
 // Compaction and pruning are off: a judge must grade what it was sent, never opencode's own summary of it.
-function configJson(m, { region, profile }) {
+// With `read`, the agent may use read, glob and grep and nothing else: opencode applies the last matching permission
+// rule (findLast in permission/index.ts), so "*" deny comes first; external_directory deny keeps every path inside --dir.
+function configJson(m, { region, profile }, { read = false } = {}) {
   const agent = { mode: 'primary', description: 'bare evaluator', prompt: JUDGE_SYSTEM_PROMPT, tools: { '*': false }, permission: { '*': 'deny' } };
+  if (read) {
+    agent.tools = { '*': false, ...Object.fromEntries(READ_TOOLS.map((t) => [t, true])) };
+    agent.permission = { '*': 'deny', ...Object.fromEntries(READ_TOOLS.map((t) => [t, 'allow'])), external_directory: 'deny' };
+    agent.steps = READ_STEPS;
+  }
   if (m.temperature !== null) agent.temperature = m.temperature;
   return {
     $schema: 'https://opencode.ai/config.json', share: 'disabled', snapshot: false, autoupdate: false, enabled_providers: [oc.PROVIDER], compaction: { auto: false, prune: false },
@@ -99,10 +111,17 @@ function cacheSaltOf(model) {
 // from `credentials`, a provider made by makeExportedCredentials (runner/lib/aws-creds.js) that refreshes them itself. After
 // `maxAuthFailures` calls in a row whose credentials Bedrock rejected, the caller stops: `stopReason()` says why, and every
 // later call returns that error without starting opencode, so the pass ends instead of spending its remaining calls on errors.
+//
+// `isolation` ({ mode, hide, reason }) is the OS isolation a read-view call runs under; `isolate` builds it (the bench's
+// makeIsolation). A read call is refused unless the mode is unshare or sandbox-exec; the credentials file and `hide` are
+// hidden on top of the home's credential paths. Calls without a read copy never use it.
 function makeOpencodeCaller({
   bin, credsFile = null, credentials = null, awsProfile = 'bench', region = 'us-east-1', timeoutMs, version = null, sha256 = null, scratchRoot = os.tmpdir(), rawDir = null,
   maxAttempts = 6, backoffMs = 2000, maxBackoffMs = 60000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), maxAuthFailures = 3,
+  isolation = { mode: 'none' }, isolate = sdk.isolate.makeIsolation,
 }) {
+  const isolated = isolation.mode === 'unshare' || isolation.mode === 'sandbox-exec';
+  const noIsolation = () => isolation.reason ?? `isolation mode ${isolation.mode}`;
   if (Boolean(credsFile) === Boolean(credentials)) throw new Error('the opencode judge caller takes a credentials file or a credentials provider, not both or neither');
   const firstSecrets = credsFile ? readProfile(credsFile, awsProfile).secrets : [];
   // A file rewritten during the pass holds new values, so both the first and the current ones are scrubbed.
@@ -123,8 +142,10 @@ function makeOpencodeCaller({
     } catch { /* auditing must not fail the judge call */ }
   }
 
-  // One try, in its own scratch HOME. Returns {text, ...usage} or {error, throttled?}.
-  async function attempt(m, model, prompt) {
+  // One try, in its own scratch HOME. Returns {text, ...usage} or {error, throttled?}. With `readCopy` ({ files, sha }),
+  // the files are written to the working folder and the call runs as a read-view call (READ_TOOLS, under isolation).
+  async function attempt(m, model, prompt, readCopy = null) {
+    if (readCopy && !isolated) return { text: '', credits: 0, latencyMs: 0, error: `the read judge view needs OS isolation with the credentials file hidden (--isolate unshare or sandbox-exec); this caller has none: ${noIsolation()}` };
     const root = fs.mkdtempSync(path.join(scratchRoot, 'jdg-oc-'));
     procs.trackScratch(root);
     const home = path.join(root, 'home');
@@ -135,7 +156,12 @@ function makeOpencodeCaller({
     const outPath = path.join(root, 'stdout.jsonl');
     const errPath = path.join(root, 'stderr.txt');
     try {
-      fs.writeFileSync(path.join(home, oc.CONFIG_REL, 'opencode.json'), `${JSON.stringify(configJson(m, { region, profile: awsProfile }), null, 2)}\n`);
+      if (readCopy) {
+        const above = sdk.judgeReadCopy.instructionFilesAbove(cwd);
+        if (above.length) return { text: '', credits: 0, latencyMs: 0, error: `the read judge view refused: an instruction file above the copy would be attached to every read (${above.join(', ')}); use a scratch root with none above it` };
+        sdk.judgeReadCopy.writeCopy(cwd, readCopy.files);
+      }
+      fs.writeFileSync(path.join(home, oc.CONFIG_REL, 'opencode.json'), `${JSON.stringify(configJson(m, { region, profile: awsProfile }, { read: Boolean(readCopy) }), null, 2)}\n`);
       if (credentials) {
         let creds;
         try { creds = await credentials.current(); } catch (e) { return { text: '', credits: 0, latencyMs: 0, error: `no usable AWS credentials: ${scrub(e.message)}`, auth: true }; }
@@ -145,17 +171,26 @@ function makeOpencodeCaller({
       const { env } = oc.envSetup({ arm: { vanilla: true }, config: {}, ctx: { awsProfile }, home, tmpdir });
       env.AWS_REGION = region;
       env.AWS_DEFAULT_REGION = region;
-      Object.assign(env, NO_COMPACTION_ENV);
+      Object.assign(env, NO_COMPACTION_ENV, readCopy ? READ_ENV : {});
       const args = ['run', '--dir', cwd, '--agent', m.agent, '-m', `${oc.PROVIDER}/${m.bedrockId}`, '--format', 'json', '--title', oc.TITLE];
-      const exec = await spawnWithTimeout(bin, args, { cwd, env, timeoutMs, stdoutPath: outPath, stderrPath: errPath, stdinPath: promptPath });
+      let w = { file: bin, args };
+      if (readCopy) {
+        if (env.OPENCODE_DISABLE_PROJECT_CONFIG !== '1') return { text: '', credits: 0, latencyMs: 0, error: 'the read judge view needs OPENCODE_DISABLE_PROJECT_CONFIG=1 in the judge env' };
+        const hide = [...(isolation.hide || []), ...(credsFile ? [credsFile] : [])];
+        w = isolate({ mode: isolation.mode, scratchRoot: root, hide, keep: [bin] }).wrap(bin, args);
+      }
+      const exec = await spawnWithTimeout(w.file, w.args, { cwd, env, timeoutMs, stdoutPath: outPath, stderrPath: errPath, stdinPath: promptPath });
       keepRaw(model, prompt, outPath, errPath);
       const base = { text: '', credits: 0, latencyMs: exec.wallClockMs, bedrockModelId: m.bedrockId };
       if (exec.timedOut) return { ...base, error: `timed out after ${timeoutMs} ms` };
       if (exec.error && exec.exitCode === null) return { ...base, error: `opencode failed: ${scrub(exec.error)}` };
-      const a = aggregateEvents(parseStream(fs.readFileSync(outPath, 'utf8')).events);
+      const { events } = parseStream(fs.readFileSync(outPath, 'utf8'));
+      const a = aggregateEvents(events);
       const stderr = scrub(fs.readFileSync(errPath, 'utf8'));
       const failure = scrub([...a.errors, stderr].join('\n'));
-      if (a.toolCalls) return { ...base, error: `the judge agent used a tool (${Object.keys(a.toolNames).join(', ')}); tools must stay off` };
+      const others = Object.keys(a.toolNames).filter((t) => !readCopy || !READ_TOOLS.includes(t));
+      if (readCopy && others.length) return { ...base, error: `the judge agent used a tool other than ${READ_TOOLS.join(', ').replace(/, (?=[^,]*$)/, ' and ')} (${others.join(', ')})` };
+      if (!readCopy && a.toolCalls) return { ...base, error: `the judge agent used a tool (${Object.keys(a.toolNames).join(', ')}); tools must stay off` };
       if (a.errors.length || exec.exitCode !== 0 || a.runFinishedStatus !== 'success' || !a.finalText) {
         if (AUTH.test(failure)) return { ...base, error: `Bedrock credentials were rejected: ${clip(failure)}` };
         if (THROTTLE.test(failure)) return { ...base, throttled: true, error: clip(failure) };
@@ -164,7 +199,7 @@ function makeOpencodeCaller({
       }
       // Compaction is off, so a summary means the guard failed: the reply would grade a summary. The db check is the proof;
       // a db that cannot be read proves nothing, so the call is not scored. More than one step with tools off is the stream signal.
-      if (a.steps > 1) return { ...base, error: `compacted: ${a.steps} model steps in a tools-off call` };
+      if (!readCopy && a.steps > 1) return { ...base, error: `compacted: ${a.steps} model steps in a tools-off call` };
       let compacted;
       try { [compacted] = await runDb(bin, env, SQL.compaction); } catch (e) { return { ...base, error: `could not check the call's database for compaction: ${clip(scrub(e.message))}` }; }
       if (!compacted || compacted.messages > 0 || compacted.parts > 0) return { ...base, error: `compacted: the call's database holds ${compacted?.messages ?? '?'} summary message(s) and ${compacted?.parts ?? '?'} compaction part(s)` };
@@ -176,7 +211,7 @@ function makeOpencodeCaller({
           usage = { tokens: rolled.tokens, usd: rolled.costUsd, usageSource: 'db' };
         }
       } catch { /* the stream totals stay */ }
-      return { ...base, text: a.finalText, ...usage };
+      return { ...base, text: a.finalText, ...usage, ...(readCopy ? { readTrace: readTraceOf(events, cwd, a.steps) } : {}) };
     } finally {
       removeCredentials(home);
       fs.rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
@@ -184,7 +219,7 @@ function makeOpencodeCaller({
     }
   }
 
-  const caller = async ({ model, prompt }) => {
+  const caller = async ({ model, prompt, readCopy = null }) => {
     if (stopped) return { text: '', credits: 0, latencyMs: 0, error: stopped };
     let m;
     try { m = opencodeModel(model); } catch (e) { return { text: '', credits: 0, latencyMs: 0, error: e.message }; }
@@ -193,7 +228,7 @@ function makeOpencodeCaller({
     let latencyMs = 0;
     let last = null;
     for (let i = 0; i < maxAttempts; i++) {
-      last = await attempt(m, model, prompt);
+      last = await attempt(m, model, prompt, readCopy);
       latencyMs += last.latencyMs ?? 0;
       if (!last.throttled) break;
       throttled++;
@@ -210,6 +245,9 @@ function makeOpencodeCaller({
     return { ...result, latencyMs, retries, throttled };
   };
   caller.stopReason = () => stopped;
+  // What a judge view may need from this caller at run time (bench/judge/view/index.js checkViewCaller).
+  caller.offers = () => (isolated ? ['isolation'] : []);
+  caller.why = () => (isolated ? null : noIsolation());
 
   caller.info = {
     backend: OPENCODE_BACKEND, opencodeVersion, binarySha256: sha256, region, awsProfile, systemPrompt: JUDGE_SYSTEM_PROMPT, systemPromptSha256: systemPromptSha256(),
@@ -220,6 +258,15 @@ function makeOpencodeCaller({
   };
   caller.cacheSalt = cacheSaltOf;
   return caller;
+}
+
+// The tool calls of a read-view call, for the view's audit: each tool's name, input (filePath, offset, limit, path,
+// pattern) and status, with the working folder as given and as its real path (a judge may use either).
+function readTraceOf(events, cwd, steps) {
+  const tools = events.filter((e) => e.type === 'tool_use').map((e) => ({ tool: e.part?.tool ?? 'unknown', input: e.part?.state?.input ?? {}, status: e.part?.state?.status ?? null }));
+  let real = cwd;
+  try { real = fs.realpathSync(cwd); } catch { /* the given path stays */ }
+  return { dirs: [...new Set([cwd, real])], steps, tools };
 }
 
 const flagValue = (flags, name) => (flags[name] !== undefined && flags[name] !== true ? String(flags[name]) : null);

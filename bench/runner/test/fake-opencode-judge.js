@@ -4,7 +4,8 @@
 // Builds a stand-in `opencode` for the judge backend (a node script). It answers `--version`, `run` (the prompt arrives on
 // stdin, the reply is a JSON event stream) and `db` (one session row per run, kept in the run's own XDG data dir).
 // Every `run` is recorded in <dir>/call-N.json. Behavior per call comes from fake-opencode-judge.config.json next to the script:
-// `mode` for all calls, or `modes[i]` for call i + 1. Modes: good, prose, crash, throttle, auth, sleep, tool, empty, wrongmodel, leak, nodb, twosteps.
+// `mode` for all calls, or `modes[i]` for call i + 1. Modes: good, prose, crash, throttle, auth, sleep, tool, empty, wrongmodel, leak, nodb, twosteps,
+// and the read modes below (readall, readhalf, readout, readbash, readglobout), which end with the good reply.
 // `compaction: {messages, parts}` is what the compaction query of `db` returns; `dbFails` makes every `db` call fail.
 
 const fs = require('node:fs');
@@ -27,6 +28,17 @@ if (args[0] === 'db') {
 }
 if (args[0] !== 'run') { console.error('unexpected command ' + args[0]); process.exit(2); }
 const prompt = fs.readFileSync(0, 'utf8');
+// Every entry under the working folder, with its type, so a test can see what the read view's copy holds.
+function listTree(root, rel = '') {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const r = rel ? rel + '/' + e.name : e.name;
+    const st = fs.lstatSync(path.join(root, r));
+    out.push({ rel: r, type: st.isSymbolicLink() ? 'link' : st.isDirectory() ? 'dir' : 'file' });
+    if (st.isDirectory()) out.push(...listTree(root, r));
+  }
+  return out;
+}
 fs.mkdirSync(cfg.dir, { recursive: true });
 let n = 1;
 for (;; n++) { try { fs.closeSync(fs.openSync(path.join(cfg.dir, 'call-' + n + '.json'), 'wx')); break; } catch { /* taken */ } }
@@ -39,6 +51,7 @@ fs.writeFileSync(path.join(cfg.dir, 'call-' + n + '.json'), JSON.stringify({
   n, mode, args, cwd: process.cwd(), home: process.env.HOME, env: process.env, prompt, config: cfgText,
   credFile, credHeaders: fs.existsSync(credFile) ? fs.readFileSync(credFile, 'utf8').split('\\n').filter((l) => l.startsWith('[')) : null,
   homeEntries: fs.readdirSync(process.env.HOME).sort(),
+  cwdFiles: listTree(process.cwd()),
 }));
 const sessionID = 'ses_fake_' + n;
 const out = (o) => console.log(JSON.stringify({ timestamp: Date.now(), sessionID, ...o }));
@@ -70,6 +83,28 @@ if (mode === 'prose') { finish('I think it is fine.', modelId); process.exit(0);
 if (mode === 'tool') { out({ type: 'tool_use', part: { type: 'tool', tool: 'bash', state: { status: 'completed' } } }); finish(goodReply(), modelId); process.exit(0); }
 if (mode === 'leak') { console.error(fs.readFileSync(credFile, 'utf8')); finish(goodReply(), modelId); process.exit(0); }
 if (mode === 'wrongmodel') { finish(goodReply(), 'some.other-model'); process.exit(0); }
+// Read modes: tool_use events as opencode 1.19.5 emits them (part.state.input: filePath, offset, limit), one step each.
+// readall reads every file of the working folder in 2000-line pages; readhalf reads one line of each; readout reads a
+// path outside the folder; readbash uses bash; readglobout globs above the folder. cfg.absPaths gives absolute paths.
+const tool = (name, input, status = 'completed') => {
+  out({ type: 'step_start', part: { type: 'step-start' } });
+  out({ type: 'tool_use', part: { type: 'tool', tool: name, state: { status, input } } });
+  out({ type: 'step_finish', part: { type: 'step-finish', reason: 'tool-calls', cost: 0, tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } } } });
+};
+const files = () => listTree(process.cwd()).filter((e) => e.type === 'file').map((e) => e.rel);
+const where = (rel) => (cfg.absPaths ? path.join(args[args.indexOf('--dir') + 1], rel) : rel);
+if (/^read/.test(mode)) {
+  tool('glob', { pattern: '**/*' });
+  for (const rel of files()) {
+    const lines = fs.readFileSync(rel, 'utf8').split('\\n').length;
+    if (mode === 'readhalf') { tool('read', { filePath: where(rel), offset: 1, limit: 1 }); continue; }
+    for (let off = 1; off <= Math.max(1, lines); off += 2000) tool('read', { filePath: where(rel), offset: off, limit: 2000 });
+  }
+  if (mode === 'readout') tool('read', { filePath: '../home/.aws/credentials' });
+  if (mode === 'readglobout') tool('glob', { pattern: '*', path: '/' });
+  if (mode === 'readbash') tool('bash', { command: 'cat ~/.aws/credentials' });
+}
+
 finish(goodReply(), modelId);
 `;
 
