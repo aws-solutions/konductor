@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Page } from '@playwright/test';
-import { NEXT_UI_QUERY, test as base, expect } from '../support/next-fixtures';
+import { test as base, expect } from '../support/next-fixtures';
 import { EDITING_PROJECT, STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { sharedSession } from '../support/session';
 import { restoreSample } from '../support/stub-workflow';
@@ -22,7 +22,7 @@ const test = base.extend<{ next: WorkflowCanvasPage }>({
       route.fulfill({ json: sharedSession() }),
     );
     const canvas = new WorkflowCanvasPage(page);
-    await page.goto(`/?${NEXT_UI_QUERY}#${STUB_LAUNCH_CODE}`);
+    await page.goto(`/#${STUB_LAUNCH_CODE}`);
     await canvas.title.waitFor();
     await use(canvas);
     await restoreSample(request);
