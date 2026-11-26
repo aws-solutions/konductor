@@ -14,6 +14,7 @@ import {
   SaveRefused,
   SessionLost,
 } from '../designer/core/ports';
+import { oneCheck } from '../next-ui/one-check';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
   acceptingEdits,
@@ -274,6 +275,7 @@ function Harness({
   validate,
   stageFields = FIELDS,
   agents,
+  useOneCheck = false,
   onEditor,
 }: {
   document?: WorkflowDocument;
@@ -285,12 +287,26 @@ function Harness({
   ) => Promise<CheckAnswer>;
   stageFields?: StageFieldsByKind;
   agents?: readonly { readonly id: string; readonly summary: string }[];
+  useOneCheck?: boolean;
   /** Hands the editor to the test, which other views of the page also hold. */
   onEditor?: (editor: Editor) => void;
 }) {
+  const checks = useMemo(
+    () => oneCheck(validate, workflow.name),
+    [validate, workflow.name],
+  );
+  const editorEdits = useMemo(
+    () => (useOneCheck ? { ...edits, check: checks.check } : edits),
+    [checks.check, edits, useOneCheck],
+  );
   const workflowRef = useMemo(
-    () => ({ harness: 'kiro-cli', document: workflow, edits, runs: NO_RUNS }),
-    [workflow, edits],
+    () => ({
+      harness: 'kiro-cli',
+      document: workflow,
+      edits: editorEdits,
+      runs: NO_RUNS,
+    }),
+    [workflow, editorEdits],
   );
   const editor = useEditor(workflowRef, scheduler);
   if (editor) onEditor?.(editor);
@@ -300,7 +316,7 @@ function Harness({
       editor={editor}
       loaded={workflowRef}
       harness="kiro-cli"
-      validate={validate}
+      validate={useOneCheck ? checks.validate : validate}
       scheduler={scheduler}
       stageFields={stageFields}
       {...(agents ? { agents } : {})}
@@ -315,6 +331,7 @@ function drawn({
   openedRecovers = false,
   openedHeld = false,
   agents,
+  useOneCheck = false,
 }: {
   document?: WorkflowDocument;
   /** The answers of the checks that follow an edit, in order. */
@@ -327,6 +344,7 @@ function drawn({
   openedHeld?: boolean;
   /** The agents on offer for the `agent` key. */
   agents?: readonly { readonly id: string; readonly summary: string }[];
+  useOneCheck?: boolean;
 } = {}) {
   const scheduler = new FakeScheduler();
   const edits = acceptingEdits();
@@ -356,6 +374,7 @@ function drawn({
       edits={edits}
       scheduler={scheduler}
       validate={validate}
+      useOneCheck={useOneCheck}
       onEditor={(one) => {
         held.editor = one;
       }}
@@ -1338,6 +1357,7 @@ describe('DesignView, what went wrong with a save', () => {
       ],
     });
 
+    await typeInto(nameInput(), 'drafting-again');
     await checkNow(scheduler);
 
     expectFindings('The live check found another problem.');
@@ -1351,10 +1371,34 @@ describe('DesignView, what went wrong with a save', () => {
     const { edits, scheduler } = drawn();
     await startFromRefusedSave(edits);
 
+    await typeInto(nameInput(), 'drafting-again');
     await checkNow(scheduler);
 
     expectNoFindings();
     expectSaveState('Unsaved changes', false);
+  });
+
+  it('keeps a refused-save finding when unchanged text has a cached clean answer', async () => {
+    const { edits, scheduler, validate } = drawn({ useOneCheck: true });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+    edits.save.mockRejectedValueOnce(
+      new SaveRefused('The workflow has errors.', [saveOnlyFinding]),
+    );
+
+    await press('Save');
+    await settle();
+    await checkNow(scheduler);
+
+    expectFindings(saveOnlyFinding.message);
+    expectSaveState('Unsaved changes', true);
+    expect(
+      validate.mock.calls.filter(([request]) =>
+        request.text.includes('name: drafting'),
+      ),
+    ).toHaveLength(1);
   });
 
   it('clears a refused-save finding when the same workflow is loaded again', async () => {
@@ -1398,6 +1442,7 @@ describe('DesignView, what went wrong with a save', () => {
   it('keeps a refused-save finding cleared while a later save is in flight', async () => {
     const { edits, scheduler } = drawn();
     await startFromRefusedSave(edits);
+    await typeInto(nameInput(), 'drafting-again');
     await checkNow(scheduler);
     edits.save.mockImplementation(() => new Promise(() => undefined));
 
