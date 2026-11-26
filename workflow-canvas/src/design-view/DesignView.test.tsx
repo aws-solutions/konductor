@@ -1342,6 +1342,23 @@ describe('DesignView, what went wrong with a save', () => {
     ).toHaveLength(1);
   });
 
+  it('lists a refused-save finding only while YAML shows the text that was refused', async () => {
+    const { edits } = drawn();
+    await startFromRefusedSave(edits);
+
+    await press('Undo');
+    await settle();
+
+    expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
+    expectNoFindings();
+
+    await press('Redo');
+    await settle();
+
+    expectFindings(saveOnlyFinding.message);
+    expectSaveState('Unsaved changes', true);
+  });
+
   it('replaces a refused-save finding when a later check reports a different one', async () => {
     const { edits, scheduler } = drawn();
     await startFromRefusedSave(edits);

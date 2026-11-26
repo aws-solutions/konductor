@@ -288,13 +288,19 @@ export function DesignView({
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
+  const showingEarlier = history.text !== text;
+  // The list is about the text on screen. The editor's check, which holds a
+  // refused save's findings, is about the draft, so it joins only while the
+  // box shows the draft's text and its line numbers point into it.
   const findings = useMemo(
     () =>
       mergeFindings(
         answer?.diagnostics ?? [],
-        state.check.revision === state.revision ? state.check.diagnostics : [],
+        !showingEarlier && state.check.revision === state.revision
+          ? state.check.diagnostics
+          : [],
       ),
-    [answer, state.check, state.revision],
+    [answer, showingEarlier, state.check, state.revision],
   );
   // The view of the text as it is now, when a check of it has answered with
   // one. Anything else is a view of an earlier text, which names the stages
@@ -449,7 +455,6 @@ export function DesignView({
           sources: state.draft.stages.map((one) => sources.of(one.id)),
         })
       : undefined;
-  const showingEarlier = history.text !== text;
 
   return (
     <section
