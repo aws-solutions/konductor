@@ -404,6 +404,7 @@ describe('save', () => {
     expect(state.check).toEqual({
       revision: 1,
       diagnostics: [finding('stages[0].agent')],
+      needsRecheck: true,
       problems: [
         { message: 'Wrong.', severity: 'error', stageId: 's1', field: 'agent' },
       ],
