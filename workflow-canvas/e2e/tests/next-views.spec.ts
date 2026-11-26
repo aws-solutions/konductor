@@ -472,7 +472,7 @@ test('carries a run reloaded part-way through to its end', async ({
 // them for `?ui=classic`. The query is gone; a link that still carries one
 // opens the page all the same.
 for (const query of ['ui=next', 'ui=classic']) {
-  test(`opens the two views for an address with ?${query}`, async ({
+  test(`opens the workflow views for an address with ?${query}`, async ({
     page,
   }) => {
     await page.route('**/api/session', (route) =>

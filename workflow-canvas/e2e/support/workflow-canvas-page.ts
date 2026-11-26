@@ -2,7 +2,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Tab labels in display order; also used to look up each tab and its panel. */
-export const TAB_NAMES = ['Design', 'Run'] as const;
+export const TAB_NAMES = ['Design', 'Run', 'Library'] as const;
 /** The label of one tab. */
 export type TabName = (typeof TAB_NAMES)[number];
 
@@ -151,14 +151,13 @@ export class WorkflowCanvasPage {
     await expect(this.tabPanel(name)).toBeVisible();
   }
 
-  /**
-   * Asserts a view has finished showing its content: the graph on Design, and
-   * the Run button on Run, which draws no graph.
-   */
+  /** Asserts a view has finished showing its content. */
   async expectTabLoaded(name: TabName): Promise<void> {
     await this.expectTabShown(name);
     if (name === 'Run') await expect(this.runButton).toBeVisible();
-    else await this.expectWorkflowDrawn();
+    else if (name === 'Library') {
+      await expect(this.page.getByText('Workflow Library')).toBeVisible();
+    } else await this.expectWorkflowDrawn();
   }
 
   /**
