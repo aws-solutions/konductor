@@ -5,19 +5,27 @@ import { ApiError } from './errors.ts';
 import { entriesOf, parseDocuments } from './yaml-subset.ts';
 import { checkWorkflowText } from './validator.ts';
 
-/** One workflow advertised by the shipped library. */
-export interface LibraryEntry {
+const LIBRARY_NAME = /^library\/[a-z0-9][a-z0-9-]{0,63}$/;
+const MAX_ENTRIES = 100;
+const MAX_TITLE = 120;
+const MAX_DETAIL = 240;
+
+interface LibraryRow {
   name: string;
   title: string;
   summary: string;
-  status: 'ready' | 'planned';
-  waits?: string;
 }
 
+/** One workflow advertised by the shipped library. */
+export type LibraryEntry = LibraryRow &
+  ({ status: 'ready' } | { status: 'planned'; waits: string });
+
 /** A shipped library row and its embedded source when ready. */
-export interface ShippedWorkflow extends LibraryEntry {
-  text?: string;
-}
+export type ShippedWorkflow = LibraryRow &
+  (
+    | { status: 'ready'; text: string; waits?: never }
+    | { status: 'planned'; waits: string; text?: never }
+  );
 
 const REVIEW_TEXT = `format: konductor/1
 version: 0.1.0
@@ -63,31 +71,89 @@ function declaresName(text: string): boolean {
   );
 }
 
+function displayText(value: unknown, max: number): value is string {
+  return (
+    typeof value === 'string' &&
+    value !== '' &&
+    [...value].length <= max &&
+    !/[\r\n]/.test(value)
+  );
+}
+
+function rowOf(value: unknown): ShippedWorkflow | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const row = value as Record<string, unknown>;
+  const { name, title, summary, status } = row;
+  if (
+    typeof name !== 'string' ||
+    !LIBRARY_NAME.test(name) ||
+    !displayText(title, MAX_TITLE) ||
+    !displayText(summary, MAX_DETAIL)
+  ) {
+    return undefined;
+  }
+  if (
+    status === 'ready' &&
+    typeof row['text'] === 'string' &&
+    !Object.hasOwn(row, 'waits')
+  ) {
+    return { name, title, summary, status, text: row['text'] };
+  }
+  if (
+    status === 'planned' &&
+    displayText(row['waits'], MAX_DETAIL) &&
+    !Object.hasOwn(row, 'text')
+  ) {
+    return { name, title, summary, status, waits: row['waits'] };
+  }
+  return undefined;
+}
+
 function invalidReady(entry: ShippedWorkflow): boolean {
   if (entry.status !== 'ready') return false;
-  if (entry.text === undefined || declaresName(entry.text)) return true;
+  if (declaresName(entry.text)) return true;
   const name = entry.name.slice('library/'.length);
   return checkWorkflowText(entry.text, name).view === null;
 }
 
 /** The library rows in their display order, without workflow text. */
 export function listLibrary(
-  entries: readonly ShippedWorkflow[] = SHIPPED_LIBRARY,
+  entries: readonly unknown[] = SHIPPED_LIBRARY,
 ): LibraryEntry[] {
-  const names = new Set(entries.map((entry) => entry.name));
-  if (names.size !== entries.length || entries.some(invalidReady)) {
+  const rows = entries.flatMap((entry) => {
+    const row = rowOf(entry);
+    return row ? [row] : [];
+  });
+  const names = new Set(rows.map((entry) => entry.name));
+  if (
+    entries.length > MAX_ENTRIES ||
+    rows.length !== entries.length ||
+    names.size !== rows.length ||
+    rows.some(invalidReady)
+  ) {
     throw new ApiError(
       'io_error',
       'The server could not read or write its files.',
     );
   }
-  return entries.map(({ name, title, summary, status, waits }) => ({
-    name,
-    title,
-    summary,
-    status,
-    ...(waits === undefined ? {} : { waits }),
-  }));
+  return rows.map((entry): LibraryEntry =>
+    entry.status === 'ready'
+      ? {
+          name: entry.name,
+          title: entry.title,
+          summary: entry.summary,
+          status: entry.status,
+        }
+      : {
+          name: entry.name,
+          title: entry.title,
+          summary: entry.summary,
+          status: entry.status,
+          waits: entry.waits,
+        },
+  );
 }
 
 /** Finds one shipped workflow, including its text when it is ready. */

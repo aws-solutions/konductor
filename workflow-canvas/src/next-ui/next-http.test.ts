@@ -141,6 +141,42 @@ describe('createNextPorts, the library', () => {
     expect(calls[0]?.path).toBe('/api/library');
   });
 
+  it('accepts the list and display limits at their maximum', async () => {
+    const entries = Array.from({ length: 100 }, (_, index) => ({
+      ...planned,
+      name: `library/workflow-${index}`,
+      title: 't'.repeat(120),
+      summary: 's'.repeat(240),
+      waits: 'w'.repeat(240),
+    }));
+    const { fetchFn } = serverOf({ body: { entries } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).resolves.toHaveLength(100);
+  });
+
+  it('refuses one entry over the list limit', async () => {
+    const entries = Array.from({ length: 101 }, (_, index) => ({
+      ...ready,
+      name: `library/workflow-${index}`,
+    }));
+    const { fetchFn } = serverOf({ body: { entries } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+
+  it.each([
+    ['title', { ...ready, title: 't'.repeat(121) }],
+    ['summary', { ...ready, summary: 's'.repeat(241) }],
+    ['waits', { ...planned, waits: 'w'.repeat(241) }],
+  ])('refuses a %s one character over its limit', async (_, entry) => {
+    const { fetchFn } = serverOf({ body: { entries: [entry] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+
   it('refuses duplicate lookup ids', async () => {
     const { fetchFn } = serverOf({
       body: { entries: [ready, { ...ready, title: 'Another row' }] },
@@ -153,6 +189,7 @@ describe('createNextPorts, the library', () => {
   it.each([
     ['a ready entry with waits', { ...ready, waits: 'No reason.' }],
     ['a planned entry without waits', { ...planned, waits: undefined }],
+    ['a multiline title', { ...ready, title: 'One\nTwo' }],
     ['a multiline reason', { ...planned, waits: 'One\nTwo' }],
     ['an unknown status', { ...ready, status: 'retired' }],
     ['an empty summary', { ...ready, summary: '' }],
