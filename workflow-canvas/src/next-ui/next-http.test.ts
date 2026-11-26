@@ -251,7 +251,7 @@ describe('createNextPorts, the start of a run', () => {
 
     await expect(
       ports.startRun({ goal: 'Add a greeting' }, signal()),
-    ).rejects.toThrow(/no longer knows/);
+    ).rejects.toThrow(/Start `flow view` again/);
     expect(lost).toHaveBeenCalledTimes(1);
   });
 });
