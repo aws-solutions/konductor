@@ -139,8 +139,8 @@ pub(crate) enum KiroEngine {
 // Both id forms are read off the shipped engines, not inferred:
 // - kiro-cli 3.5.0's `tool_search` schema says "Exact tool identifier to
 //   load (from available-deferred-tools list, format:
-//   server_name::tool_name)", and its own example is
-//   `builder-mcp::InternalSearch`.
+//   server_name::tool_name)", and its own example has that shape, as in
+//   `example-server::example_tool`.
 // - @kiro/agent 0.66.119 builds a deferred id as `tool::<server>::<tool>`
 //   for an MCP tool, and its unknown-id hint names the un-prefixed form
 //   for `tool_load` and `tool_call`.
