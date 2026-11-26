@@ -175,9 +175,10 @@ export function App({
   // controller starts again for it, the run its session kept included.
   const nextRunPorts = useMemo(
     () =>
-      nextPorts && runs
+      nextPorts && runs && workflowName
         ? {
-            start: nextPorts.startRun,
+            start: (params, signal) =>
+              nextPorts.startRun(workflowName, params, signal),
             readEvents: nextPorts.readEvents,
             listRuns: nextPorts.listRuns,
             readChecks: nextPorts.readChecks,
@@ -185,7 +186,7 @@ export function App({
             now: () => Date.now(),
           }
         : NO_RUN_PORTS,
-    [nextPorts, runs, scheduler],
+    [nextPorts, runs, scheduler, workflowName],
   );
   // The page follows the run, not the view that draws it: a person who looks
   // at Design must not take the only follower off the page.

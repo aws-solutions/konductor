@@ -471,6 +471,7 @@ describe('the Run view while the fields of the workflow are not known', () => {
       fireEvent.click(runButton());
     });
     expect(ports.startRun).toHaveBeenCalledWith(
+      'hello',
       { goal: GOAL },
       expect.anything(),
     );
@@ -518,6 +519,7 @@ describe('the Run view when the agents cannot be listed', () => {
       fireEvent.click(runButton());
     });
     expect(ports.startRun).toHaveBeenCalledWith(
+      'hello',
       { goal: GOAL },
       expect.anything(),
     );
@@ -535,6 +537,7 @@ describe('the Run view when the agents cannot be listed', () => {
       fireEvent.click(runButton());
     });
     expect(ports.startRun).toHaveBeenCalledWith(
+      'hello',
       { goal: GOAL },
       expect.anything(),
     );

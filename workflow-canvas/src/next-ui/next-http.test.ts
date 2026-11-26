@@ -238,6 +238,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     const runId = await ports.startRun(
+      'hello',
       { goal: 'Add a greeting', diff_input: 'the.diff' },
       signal(),
     );
@@ -247,6 +248,7 @@ describe('createNextPorts, the start of a run', () => {
     expect(calls[0]?.init.method).toBe('POST');
     expect(headerOf(calls[0])).toBe(`Bearer ${TOKEN}`);
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      name: 'hello',
       params: { goal: 'Add a greeting', diff_input: 'the.diff' },
     });
   });
@@ -263,7 +265,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     const failed = await ports
-      .startRun({ goal: 'Add a greeting' }, signal())
+      .startRun('hello', { goal: 'Add a greeting' }, signal())
       .catch((error: unknown) => error);
 
     expect(failed).toBeInstanceOf(RunAlreadyActive);
@@ -284,7 +286,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     const failed = await ports
-      .startRun({ goal: 'Add a greeting' }, signal())
+      .startRun('hello', { goal: 'Add a greeting' }, signal())
       .catch((error: unknown) => error);
 
     expect(failed).toBeInstanceOf(RunNeedsTrust);
@@ -302,7 +304,11 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting', branch: 'main' }, signal()),
+      ports.startRun(
+        'hello',
+        { goal: 'Add a greeting', branch: 'main' },
+        signal(),
+      ),
     ).rejects.toThrow('does not declare the param "branch"');
   });
 
@@ -313,7 +319,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting' }, signal()),
+      ports.startRun('hello', { goal: 'Add a greeting' }, signal()),
     ).rejects.toThrow(RunStartUnsure);
   });
 
@@ -322,7 +328,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting' }, signal()),
+      ports.startRun('hello', { goal: 'Add a greeting' }, signal()),
     ).rejects.toThrow(/may have started/);
   });
 
@@ -335,7 +341,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn, onSessionLost: lost });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting' }, signal()),
+      ports.startRun('hello', { goal: 'Add a greeting' }, signal()),
     ).rejects.toThrow(/Start `flow view` again/);
     expect(lost).toHaveBeenCalledTimes(1);
   });
