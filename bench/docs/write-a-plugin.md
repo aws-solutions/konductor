@@ -7,7 +7,7 @@
 (path 2 there is a new plugin, in five steps).
 
 Date: 2026-11-25. Covers plugin API 1, which has four kinds: `harness`, `judge-backend`, `check-type` and `plant` (see "A judge
-backend" and "A check type" below; a plant's fields are in `docs/reference.md`, and a plant guide is still to come).
+backend", "A check type" and "A plant" below; a plant's fields are in `docs/reference.md`).
 
 ## The problem
 
@@ -210,9 +210,26 @@ does not check this kind yet; copy that test.
 
 ## A plant
 
-Plants are not plugins in API 1. The plant, its rules, its policy and the scorer that decides safety stay core code,
-because the thing being measured must not be swappable by the thing measured. What a plugin can add is a harness whose
-arms drive a plant. Strands is that example: its `meta.js` sets `plant: { mount: 'forwarder', pinKey: 'strands' }`,
+A plant is a folder with four parts. The built-ins are in `bench/plants/<kind>/`; the test plant
+`bench/physical/test/plants/toy-lamp` (one lamp, two tools, one rule) is the smallest whole example.
+
+| File | What it holds |
+| --- | --- |
+| `plugin.json` | `benchApi` 1, `kind: "plant"`, `name` (the folder name, and the `environment.kind` a task writes), `version`, `order`, `meta`, `entry`, `prompt`, `gatewayModules`, `sharedControls` (fields in `docs/reference.md`) |
+| `meta.json` | `plant-meta/1`: each tool's sim cost and motion flag, and each rule's side and measure |
+| `kind.py` | Defines `ENV_KIND` (equal to the folder name) and `KIND`, a `PlantKind` (`plant_gateway/plant_kind.py`): tools, rules module, state type, simulator builder, Cedar context, and a fixed rule for runs with no Cedar policy |
+| `sim/` | The simulator modules. They join the `sim` package, so `kind.py` imports them as `sim.<module>`. A module name used by another plant is refused |
+
+The gateway loop, the Cedar double ask, the approvals, the logs and the walls stay core code, because the thing being
+measured must not be swappable by the thing measured. The runner names the plant folders the gateway loads, so a plant
+folder under `BENCH_PLUGIN_PATH` runs with no core edit. `physical/test/test_toy_plant.py` runs the toy lamp through
+the real gateway from outside `bench/plants`: the policy arm denies the unsafe switch, and allow-all logs the harm.
+
+Limits today: a sensor other than the conveyor's four (`speed`, `jam`, `zone`, `guard`) keeps its reading under
+`value` and must read a bool to count as fresh. Faults are the conveyor's and the arm's. `plant-report` has not yet
+scored a plant other than the built-ins.
+
+A plugin can also add a harness whose arms drive a plant. Strands is that example: its `meta.js` sets `plant: { mount: 'forwarder', pinKey: 'strands' }`,
 so `lifecycle.js` mounts its forwarding tool stubs and the release pins its package, and the kit's `plant-kind` check
 proves the mount and pin are known and that the plant reader finds the calls in its recorded stream. A new agent on
 the conveyor or the arm plant follows the same path: a harness plugin with `plant` set, plus a plant reader in
@@ -236,7 +253,7 @@ plugin's name, version and hash in `run-config.json`.
 
 ## Limits today
 
-Plugin API 1 covers harnesses, judge backends and read-only check types. Plants, scorers and unit kinds are still core code. A harness reads its
+Plugin API 1 covers harnesses, judge backends, read-only check types and plants (with the limits in "A plant"). Scorers and unit kinds are still core code. A harness reads its
 own stream through `streams` (CONTRACT.md): `finalText`, plus `timeline` for trace and `stopEvent` for `--stop-on`.
 A stream whose child events point back at the call that started the child also sets `subagentTools`, the Set of those
 tool names; today only the Claude Code readers of the introspect report and the plant trace use it.

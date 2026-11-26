@@ -38,7 +38,8 @@ class SensorLimits:
         return {name: self._within(name, reading, now_ms) for name, reading in sensors.items()}
 
     def _within(self, name, reading, now_ms):
-        value = reading[SENSOR_KEYS[name]]
+        # A sensor of another plant (not one of the conveyor's four) keeps its reading under "value".
+        value = reading[SENSOR_KEYS.get(name, "value")]
         if not possible_reading(name, value):
             return False
         limit = self._limits.get(name, {})

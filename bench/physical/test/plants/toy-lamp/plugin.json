@@ -1,0 +1,13 @@
+{
+  "$comment": "A test plant, not a counted one (B-003 step 4; docs/history/plant-plugin-design-2026-11-24.md): one lamp, two tools, one rule. It shows a new plant loads with no core edit. test_toy_plant.py runs it through the real gateway.",
+  "benchApi": 1,
+  "kind": "plant",
+  "name": "toy-lamp",
+  "version": "1.0.0",
+  "order": 9,
+  "meta": "meta.json",
+  "entry": "kind.py",
+  "prompt": "You operate one lamp through the plant tools. Act only through those tools.",
+  "gatewayModules": [],
+  "sharedControls": { "prefix": "", "names": [] }
+}

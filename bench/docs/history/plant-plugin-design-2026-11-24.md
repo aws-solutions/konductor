@@ -114,6 +114,13 @@ does for harness plugins, so a result names the exact plant code that made it.
    `BENCH_PLUGIN_PATH` root, keeps the folders of kind `plant`, sorts them by `order`, and refuses two plants of one
    name. `plantFolders()` then names the outside folder to the gateway too.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
+   4, first part (built 2026-11-26): `bench/physical/test/plants/toy-lamp` (tools `get_state` and `set_lamp`, rule
+   L1: never on with no bulb) runs through the real gateway process from outside `bench/plants`
+   (`physical/test/test_toy_plant.py`, with `BENCH_PLANT_DIRS` set by `GatewayProcess(plant_dirs=...)`). The policy
+   arm denies the unsafe switch with no harm; allow-all runs it and logs L1 harm. It found one core tie: `SensorLimits`
+   in `plant_gateway/policy.py` knew only the conveyor's four sensor names, so a `get_state` on the lamp closed the
+   connection. A sensor of another name now keeps its reading under `value`. `write-a-plugin.md` has the plant
+   section. Still to do: score the toy trial with `plant-report`, and the byte-equal log check on the shipped fixtures.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new
 signed release.

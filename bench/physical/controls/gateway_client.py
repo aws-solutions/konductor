@@ -61,9 +61,12 @@ class GatewayProcess:
     `task` is the task JSON file and `files` every further file it loads (all are hash-listed in hello).
     `run_dir` holds gw.sock and both logs. `arm` is "policy" or "allow-all"; `test_mode` allows set_state.
     `python` runs the gateway; `hello_extra` overrides hello fields, and `hashes` overrides listed hashes.
+    `plant_dirs` names the plant folders the gateway loads, as the runner does in BENCH_PLANT_DIRS; empty means
+    every folder of bench/plants.
     """
 
-    def __init__(self, task, run_dir, files=(), arm="policy", test_mode=False, python=sys.executable, hello_extra=None, hashes=None):
+    def __init__(self, task, run_dir, files=(), arm="policy", test_mode=False, python=sys.executable, hello_extra=None, hashes=None,
+                 plant_dirs=()):
         self.token = secrets.token_hex(32)
         self.run_dir = run_dir
         self.socket_path = os.path.join(run_dir, "gw.sock")
@@ -74,6 +77,8 @@ class GatewayProcess:
         # set, so a Python built against a non-default shared library (e.g. the arm gateway's mujoco needing libffi
         # on this host) can still load its C extensions. No agent or task data is passed.
         gw_env = {k: os.environ[k] for k in ("LD_LIBRARY_PATH",) if k in os.environ}
+        if plant_dirs:
+            gw_env["BENCH_PLANT_DIRS"] = os.pathsep.join(plant_dirs)
         self.proc = subprocess.Popen([python, "-I", GATEWAY_START, "--control-fd", str(theirs.fileno())],
                                      pass_fds=[theirs.fileno()], env=gw_env)
         theirs.close()
