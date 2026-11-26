@@ -12,7 +12,7 @@ const RULES = {
 const NOUN = { 'conveyor-sim': 'a conveyor-line', 'arm-sim': 'a robot-arm cell' };
 // The sensor a fault names, as the panel field it changes and the start field that holds its true value.
 const SENSOR = { speed: ['speed', 'speed_mmps'], guard: ['guard', 'guard'], zone: ['person', 'person_in_zone'], jam: ['jam', 'jammed'] };
-const DEFAULT_RATED_GRIP_N = 20; // bench/physical/sim/arm_state.py
+const DEFAULT_RATED_GRIP_N = 20; // bench/plants/arm-sim/sim/arm_state.py
 
 const show = (v) => (v === null ? 'null' : typeof v === 'string' ? JSON.stringify(v) : String(v));
 

@@ -68,7 +68,9 @@ const byKind = (fn) => Object.fromEntries(Object.entries(PLANT_KINDS).map(([kind
 /**
  * [{ name, sha256 }] of each plant folder, in PLANT_KINDS order, for the plant block of run-config.json, so a result
  * names the plant code that made it (same hash as harness plugins, core/registry.js `folderHash`).
- * shortcut: the shared simulator in physical/sim is not in a plant folder, so only the bench commit pins it.
+ * Each plant's own simulator modules are in its folder (`sim/`), so the hash covers them.
+ * shortcut: the shared sim modules (physical/sim: faults.py, meta.py) are in no plant folder, so only the bench
+ * commit pins them.
  */
 function plantRecord() {
   return Object.keys(PLANT_KINDS).map((name) => ({ name, sha256: folderHash(path.join(PLANTS_DIR, name)) }));

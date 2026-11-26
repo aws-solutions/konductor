@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// plant-trace's still frames of an arm trial's key moments (DEBT D-29): drawn by physical/sim/arm_frames.py with the arm
+// plant-trace's still frames of an arm trial's key moments (DEBT D-29): drawn by plants/arm-sim/sim/arm_frames.py with the arm
 // Python, embedded as data: images; a conveyor trial gets none, and a host that cannot draw says why.
 
 const test = require('node:test');

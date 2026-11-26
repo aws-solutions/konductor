@@ -1,6 +1,6 @@
 # Design: plants as plugins
 
-Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b metadata, kind files and folder hashes built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
+Date: 2026-11-24. Status: steps 1 and 2 built, step 3a built (2026-11-25), step 3b metadata, kind files, folder hashes and the simulator split built (2026-11-26; see BACKLOG B-003). Row: BACKLOG B-003 (DEBT D-111 and D-207 are closed).
 
 ## The problem
 
@@ -88,7 +88,14 @@ does for harness plugins, so a result names the exact plant code that made it.
    3b, folder hashes (built 2026-11-26): a plant suite's `run-config.json` records `plant.folders`, each plant folder
    with its sha256 (`plantRecord()` in `runner/lib/plant/kinds.js`, `folderHash` from `core/registry.js`). The
    shared simulator in `physical/sim` is not in a folder, so the bench commit still pins it.
-   Left for 3b: move the per-plant simulator files into the folders, and read the folders through `core/registry.js`.
+   3b, simulator split (built 2026-11-26): each plant's own simulator modules moved, byte for byte, to
+   `bench/plants/<kind>/sim/` (conveyor: `conveyor.py`, `rules.py`; arm: `arm.py`, `arm_*.py`; confined space:
+   `confined_*.py`). Only `faults.py` and `meta.py`, which every plant uses, stay in `physical/sim`. A plant folder
+   name has a hyphen, so it cannot be a Python package; instead `physical/sim/__init__.py` adds each plant's `sim`
+   folder to the `sim` package path, so `sim.conveyor` and the modules' relative imports work unchanged, and it
+   refuses one module name in two folders. The confined space plant still imports the arm's modules (`sim.arm`,
+   `sim.arm_state`), so its folder hash does not cover them; the arm folder's hash does.
+   Left for 3b: read the folders through `core/registry.js`.
 4. The toy-lamp test plant and `docs/write-a-plugin.md` gain a "plant" section.
 
 Steps 1 to 3 change no log and no score; the byte-equal log check in "How we know it works" proves it. None needs a new

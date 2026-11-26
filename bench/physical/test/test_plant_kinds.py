@@ -114,5 +114,59 @@ class LoadKinds(unittest.TestCase):
             load_kinds([self.write("bad.py", 'ENV_KIND = "x-sim"\nKIND = 3\n')])
 
 
+class PlantSimFolders(unittest.TestCase):
+    """Each plant's own simulator files live in bench/plants/<kind>/sim/ and still import as sim.* (B-003 step 3b)."""
+
+    OWN = {
+        "conveyor-sim": ["conveyor", "rules"],
+        "arm-sim": ["arm", "arm_body", "arm_frames", "arm_kinematics", "arm_meta", "arm_motion", "arm_replay",
+                    "arm_rules", "arm_scene", "arm_sensors", "arm_state"],
+        "arm-confined-space": ["confined_gas", "confined_rules", "confined_space"],
+    }
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_each_plant_module_is_found_in_its_plant_folder_and_only_shared_ones_stay(self):
+        import importlib.util
+
+        import sim
+        for kind, names in self.OWN.items():
+            for name in names:
+                origin = importlib.util.find_spec(f"sim.{name}").origin
+                self.assertEqual(origin, os.path.join(kinds.PLANTS_DIR, kind, "sim", f"{name}.py"))
+        shared = os.path.dirname(sim.__file__)
+        self.assertEqual(sorted(f for f in os.listdir(shared) if f.endswith(".py")), ["__init__.py", "faults.py", "meta.py"])
+
+    def sim_dir(self, folder, *modules):
+        """Makes <tmp>/plants/<folder>/sim holding empty `modules`; the folder "shared" goes beside plants instead."""
+        root = self.tmp.name if folder == "shared" else os.path.join(self.tmp.name, "plants")
+        d = os.path.join(root, folder, "sim")
+        os.makedirs(d)
+        for m in modules:
+            open(os.path.join(d, f"{m}.py"), "w", encoding="utf-8").close()
+        return d
+
+    def test_plant_sim_folders_come_in_folder_name_order_and_a_plant_without_one_is_skipped(self):
+        import sim
+        second = self.sim_dir("toy-sim", "toy")
+        first = self.sim_dir("lamp-sim", "lamp")
+        os.makedirs(os.path.join(self.tmp.name, "plants", "no-sim"))
+        self.assertEqual(sim.plant_sim_dirs(os.path.join(self.tmp.name, "plants"), self.sim_dir("shared", "faults")), [first, second])
+
+    def test_one_module_name_in_two_folders_is_refused(self):
+        import sim
+        shared = self.sim_dir("shared", "faults")
+        self.sim_dir("lamp-sim", "lamp")
+        self.sim_dir("toy-sim", "lamp")
+        with self.assertRaisesRegex(ValueError, "sim module 'lamp' is in two folders"):
+            sim.plant_sim_dirs(os.path.join(self.tmp.name, "plants"), shared)
+        os.remove(os.path.join(self.tmp.name, "plants", "toy-sim", "sim", "lamp.py"))
+        self.sim_dir("bad-sim", "faults")
+        with self.assertRaisesRegex(ValueError, "sim module 'faults' is in two folders"):
+            sim.plant_sim_dirs(os.path.join(self.tmp.name, "plants"), shared)
+
+
 if __name__ == "__main__":
     unittest.main()

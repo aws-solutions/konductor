@@ -1,5 +1,5 @@
 {
-  "$comment": "The arm cell with a tank, a gas meter and an entry permit (physical/sim/confined_space.py), record (B-003 step 3a; python, the gateway's kind file, since step 3b). No controls yet.",
+  "$comment": "The arm cell with a tank, a gas meter and an entry permit (sim/confined_space.py), record (B-003 step 3a; python, the gateway's kind file, since step 3b). No controls yet.",
   "benchApi": 1,
   "kind": "plant",
   "name": "arm-confined-space",

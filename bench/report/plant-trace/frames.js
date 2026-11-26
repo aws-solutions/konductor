@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Still frames of an arm trial's key moments for the trace page (DEBT D-29). The drawing is physical/sim/arm_frames.py,
+// Still frames of an arm trial's key moments for the trace page (DEBT D-29). The drawing is plants/arm-sim/sim/arm_frames.py,
 // run with the arm Python (MuJoCo); it redraws logged poses and never reruns the physics. A conveyor trial has no poses
 // and gets no frames. Calls no model and no network.
 

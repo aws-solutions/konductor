@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The contract an arm body keeps for `Arm` (sim/arm.py), the gateway and the scorer.
+"""The contract an arm body keeps for `Arm` (plants/arm-sim/sim/arm.py), the gateway and the scorer.
 
 `Arm` reaches its physics only through these `ArmBody` methods: `sandbox`, `set_intruder`, `place_hand`, `tick`,
 `tip_mm`, `block_mm`, `block_is_moving`, `block_in_tray`, `arm_pushes_on_scene` and `pose`. Another body (for example
