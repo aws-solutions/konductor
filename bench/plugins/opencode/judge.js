@@ -269,6 +269,21 @@ function readTraceOf(events, cwd, steps) {
   return { dirs: [...new Set([cwd, real])], steps, tools };
 }
 
+/**
+ * The OS isolation read-view calls run under, from the judge command's --isolate (default auto) and --hide plus
+ * BENCH_HIDE_EXTRA. It never throws: when isolation cannot start here, the mode is none and `reason` says why, so the
+ * bundle view still judges and the read view is refused with that reason.
+ */
+function judgeIsolation(flags) {
+  const requested = flagValue(flags, 'isolate') ?? 'auto';
+  const hide = [...String(flagValue(flags, 'hide') ?? '').split(','), ...String(process.env.BENCH_HIDE_EXTRA || '').split(',')].filter(Boolean);
+  if (requested === 'none') return { mode: 'none', hide, reason: 'isolation is off (--isolate none)' };
+  try {
+    const r = sdk.isolate.resolveIsolation(requested);
+    return { mode: r.mode, hide, reason: r.reason };
+  } catch (e) { return { mode: 'none', hide, reason: e.message }; }
+}
+
 const flagValue = (flags, name) => (flags[name] !== undefined && flags[name] !== true ? String(flags[name]) : null);
 
 /**
@@ -293,7 +308,9 @@ function makeCaller({ timeoutMs, rawDir = null, log = () => {}, flags = {} }) {
   const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { awsBin }), log }) : null;
   const cacheDir = path.resolve(flagValue(flags, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));
   const resolved = oc.resolveOpencode({ cacheDir, binOverride: flagValue(flags, 'opencode-bin') });
-  const caller = makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, credentials, awsProfile, region, timeoutMs, rawDir });
+  const isolation = judgeIsolation(flags);
+  const caller = makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, credentials, awsProfile, region, timeoutMs, rawDir, isolation });
+  log(`read view isolation: ${isolation.mode} (${isolation.reason})`);
   log(`backend: opencode ${caller.info.opencodeVersion}, ${caller.info.region}, system prompt sha256 ${caller.info.systemPromptSha256.slice(0, 12)}`);
   return caller;
 }

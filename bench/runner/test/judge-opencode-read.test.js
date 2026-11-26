@@ -110,6 +110,27 @@ test('a read call is refused when an instruction file sits above the scratch roo
   } finally { s.cleanup(); }
 });
 
+test('the judge command\'s caller resolves --isolate for the read view; when isolation cannot start it offers none and says why', () => {
+  const s = setup();
+  try {
+    const { makeCaller } = require('../../plugins/opencode/judge.js');
+    const { workingMode } = require('../../runner/lib/isolate.js');
+    const flags = { 'aws-creds-file': s.creds, 'opencode-bin': s.fake.file, cache: path.join(s.root, 'cache') };
+    const lines = [];
+    const none = makeCaller({ timeoutMs: 1000, log: (m) => lines.push(m), flags: { ...flags, isolate: 'none' } });
+    assert.deepEqual(none.offers(), []);
+    assert.match(none.why(), /--isolate none/);
+    assert.ok(lines.some((l) => /read view isolation: none/.test(l)));
+    const auto = makeCaller({ timeoutMs: 1000, log: () => {}, flags });
+    if (workingMode()) assert.deepEqual(auto.offers(), ['isolation']);
+    else {
+      // This host refuses user namespaces (DEBT D-6): the caller still judges with the bundle view and refuses the read view.
+      assert.deepEqual(auto.offers(), []);
+      assert.match(auto.why(), /isolation is unavailable/);
+    }
+  } finally { s.cleanup(); }
+});
+
 // The whole pass: runJudging on the opencode backend with a task whose judgeView is read.
 function pass(mode, { files = { 'a.txt': 'fixed\n' }, isolation = { mode: 'unshare', hide: [] }, absPaths = false } = {}) {
   const s = setup({ mode, absPaths });
