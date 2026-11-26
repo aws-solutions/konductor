@@ -61,20 +61,31 @@ function EntryCard({ entry }: { entry: LibraryEntry }) {
   );
 }
 
+type LibraryState =
+  | { ports: NextPorts; phase: 'loading' }
+  | { ports: NextPorts; phase: 'loaded'; entries: LibraryEntry[] }
+  | { ports: NextPorts; phase: 'failed'; message: string };
+
 /** Lists shipped workflows and explains why actions are not yet available. */
 export function LibraryView({ ports }: { ports: NextPorts }) {
-  const [entries, setEntries] = useState<LibraryEntry[]>();
-  const [failure, setFailure] = useState<string>();
+  const [read, setRead] = useState<LibraryState>();
+  const state: LibraryState =
+    read?.ports === ports ? read : { ports, phase: 'loading' };
 
   useEffect(() => {
     const controller = new AbortController();
+    setRead({ ports, phase: 'loading' });
     void ports
       .listLibrary(controller.signal)
-      .then((found) => {
-        if (!controller.signal.aborted) setEntries(found);
+      .then((entries) => {
+        if (!controller.signal.aborted) {
+          setRead({ ports, phase: 'loaded', entries });
+        }
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setFailure(messageOf(error));
+        if (!controller.signal.aborted) {
+          setRead({ ports, phase: 'failed', message: messageOf(error) });
+        }
       });
     return () => controller.abort();
   }, [ports]);
@@ -83,13 +94,16 @@ export function LibraryView({ ports }: { ports: NextPorts }) {
     <Box padding={{ top: 'm' }}>
       <SpaceBetween size="m">
         <Header variant="h2">Workflow Library</Header>
-        {failure && <Alert type="error">{failure}</Alert>}
-        {!entries && !failure && (
+        {state.phase === 'failed' && (
+          <Alert type="error">{state.message}</Alert>
+        )}
+        {state.phase === 'loading' && (
           <StatusIndicator type="loading">Loading Library</StatusIndicator>
         )}
-        {entries?.map((entry) => (
-          <EntryCard key={entry.name} entry={entry} />
-        ))}
+        {state.phase === 'loaded' &&
+          state.entries.map((entry) => (
+            <EntryCard key={entry.name} entry={entry} />
+          ))}
       </SpaceBetween>
     </Box>
   );

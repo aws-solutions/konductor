@@ -162,7 +162,10 @@ function libraryEntryOf(value: unknown): LibraryEntry {
 function libraryOf(body: unknown): LibraryEntry[] {
   const entries = isObject(body) ? body.entries : undefined;
   if (!Array.isArray(entries)) throw new ApiError(BAD_REPLY, 200);
-  return entries.map(libraryEntryOf);
+  const parsed = entries.map(libraryEntryOf);
+  const names = new Set(parsed.map((entry) => entry.name));
+  if (names.size !== parsed.length) throw new ApiError(BAD_REPLY, 200);
+  return parsed;
 }
 
 const RUN_STATUSES: ReadonlySet<unknown> = new Set([

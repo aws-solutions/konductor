@@ -141,6 +141,15 @@ describe('createNextPorts, the library', () => {
     expect(calls[0]?.path).toBe('/api/library');
   });
 
+  it('refuses duplicate lookup ids', async () => {
+    const { fetchFn } = serverOf({
+      body: { entries: [ready, { ...ready, title: 'Another row' }] },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+
   it.each([
     ['a ready entry with waits', { ...ready, waits: 'No reason.' }],
     ['a planned entry without waits', { ...planned, waits: undefined }],
