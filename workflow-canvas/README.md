@@ -426,9 +426,9 @@ replaced are still in the bundle, behind a query:
 - No `ui` in the address, as the launch address the server prints has it,
   opens the two views the page now opens with.
 - `?ui=classic` opens the views they replaced: the Designer tab and the
-  Execution tab, with the graph on both and the run state on each node. Three
-  controls are theirs alone today: **Delete stage**, the **prompt** text area
-  in Properties, and the dialog a Run opens when the workflow is not trusted.
+  Execution tab, with the graph on both and the run state on each node. Two
+  controls are theirs alone today: **Delete stage** and the dialog a Run opens
+  when the workflow is not trusted.
 - Any other value of `ui` opens the views the page opens with, so an older
   `?ui=next` link, from when they were the ones behind a query, still lands
   on them. A query the browser cannot read is no ask either.
@@ -444,12 +444,10 @@ The view has a **Components** column on the left with the save line,
 **Redo**; the graph in the middle; and a side column on the right with two
 tabs: **YAML**, the text of the
 file, and **Properties**. Properties shows the picked stage (the first one when
-the page opens): its `name` and its `agent` to change and every other key the
-server lists for that kind of stage read-only. There is no Delete stage here
-yet. `name` and `agent` are the two keys the editor writes; a key shown
-read-only, such as `prompt` or `prompt_file`, is kept byte for byte by a save
-but cannot be changed on the page yet. The stages run in the order they are
-listed, and there is no way to link or reorder them yet.
+the page opens): its `name`, `agent`, and readable `prompt` to change. A
+`prompt_file` and every other key the server lists are read-only. There is no
+Delete stage here yet. The stages run in the order they are listed, and there
+is no way to link or reorder them yet.
 
 The **YAML** tab shows the whole file in an editable text box, with line
 numbers and the picked stage's lines marked while the drawing and text agree.
@@ -459,11 +457,9 @@ history steps that would replace the raw text pause while a save is running.
 Undo and Redo adopt the text they show, including when the editor already holds
 a different raw text.
 
-The Designer behind `?ui=classic` draws the same graph with an end node in place
-of the stop marks, and has Properties with no YAML tab, **Add stage**, the agent
-list built into the page and **Delete stage**. It edits the same two keys and a
-stage's `prompt`, and shows a `prompt_file` as a read-only path that a save
-keeps.
+The Designer behind `?ui=classic` draws the graph with an end node in place of
+the stop marks. It has no YAML tab, calls its add control **Add stage**, builds
+the agent list into the page, and offers **Delete stage**.
 
 - **Add agent-N** (**Add stage** in the classic Designer) adds a stage at the
   end, named `agent-1` (the first free `agent-N`) with the agent
@@ -479,18 +475,13 @@ keeps.
   Designer has it built into the page (`designer/core/agents.ts`). A file that
   names an agent not on the list keeps it, shown first, and keeps it on offer
   when another agent is chosen. There is no field to type any other id yet.
-- **prompt**, in the Designer behind `?ui=classic` only, is a text area with
-  the count of its characters against 32768, the limit that the contract and
-  the specification table give (`MAX_PROMPT_CHARS`,
-  which a test compares with both). The text is shown as typed, never as HTML.
-  Empty text removes the `prompt` key. A line above the text area says that
-  saving a prompt ends trust, so the next Run asks again; the page grants no
-  trust. A stage with a `prompt_file` shows the path read-only, and the text
-  area is off with the reason "This stage reads its prompt from a file." A stage
-  with both keys shows the finding of the check and keeps the text area off, and
-  the page picks neither. The text area is also off, with the reason, for a
-  prompt that is an alias or has an anchor or a tag, for a stage with two
-  `prompt` keys, and for a file that uses a `<<` merge key.
+- **prompt** is a text area in both views, with its character count against
+  the 32768-character contract limit. Empty text removes the key. Saving a
+  prompt ends trust, so the next Run asks again. A `prompt_file` stays
+  read-only. The text area is also read-only, with the reason, when the page
+  cannot safely identify the value: both prompt keys are present, the prompt
+  is an alias or has an anchor or tag, it appears twice, or the file uses a
+  `<<` merge key.
 - **Delete stage**, in the Designer behind `?ui=classic` only, removes the
   stage, selects the one before it (or the next, for the first) and moves
   focus to its name. A workflow keeps at least one stage, so it is off for the
@@ -519,8 +510,8 @@ theirs are. Every byte outside the block of stages stays as it was, so
 writer knows which stage of the file each stage of the draft was, also after a
 save, so a rename is an edit of that stage and not a new one.
 
-For the classic Designer, the second pass writes prompt edits. The line writer
-cannot find where a block scalar ends, and a prompt is usually one (`>-` in
+The second pass writes prompt edits in either view. The line writer cannot
+find where a block scalar ends, and a prompt is usually one (`>-` in
 `hello-plan.yml`), so `prompt-spots.ts` finds the range of each stage's
 `prompt` value with the `yaml` parser, and `prompt-text.ts` replaces only those
 bytes:
@@ -565,8 +556,8 @@ in its tooltip, as plain text:
   value that goes on to the next line, a double-quoted value with an escape
   that JSON does not read), or does not read as the value the server gave, the
   same warning says so.
-- In the classic Designer, a prompt change that cannot be written in place
-  says why in the same warning: the file mixes line endings or does not read
+- A prompt change that cannot be written in place says why in the same
+  warning: the file mixes line endings or does not read
   as YAML, the stage has both `prompt` and `prompt_file`, two `prompt` keys, or
   a prompt that is an alias or has an anchor or a tag, the file uses a `<<`
   merge key, the stage is in the flow form (`- {name: a}`) and its prompt would
