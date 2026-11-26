@@ -172,6 +172,47 @@ describe.each([
   });
 });
 
+describe('the library with a valid ready source over the text byte limit', () => {
+  const prompt = 'a'.repeat(30_000);
+  const stages = Array.from(
+    { length: 9 },
+    (_, index) =>
+      `  - name: stage-${index}\n    agent: k-developer\n    prompt: ${prompt}\n`,
+  ).join('');
+  const text = `format: konductor/1\nversion: 0.1.0\nintent:\n  outcome: Review a change\nstages:\n${stages}`;
+  const stub = useStub({
+    library: [
+      {
+        name: READY,
+        title: 'Oversized source',
+        summary: 'A source larger than a workflow may be.',
+        status: 'ready',
+        text,
+      },
+    ],
+  });
+
+  it('is over the limit by its own count', () => {
+    expect(new TextEncoder().encode(text).length).toBeGreaterThan(262_144);
+  });
+
+  it('refuses to advertise it', async () => {
+    expectError(await stub().client.get(LIST_PATH), 500, 'io_error');
+  });
+
+  it('refuses to copy it and leaves the root as it was', async () => {
+    expectError(
+      await stub().client.post(copyPath(READY), { as: 'oversized-copy' }),
+      500,
+      'io_error',
+    );
+    expect(await stub().client.get('/api/workflow')).toMatchObject({
+      status: 200,
+      body: { name: 'hello' },
+    });
+  });
+});
+
 describe('GET /api/library/{name}', () => {
   const stub = useStub();
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isMap } from 'yaml';
+import { MAX_TEXT_BYTES } from './contract.ts';
 import { ApiError } from './errors.ts';
 import { entriesOf, parseDocuments } from './yaml-subset.ts';
 import { checkWorkflowText } from './validator.ts';
@@ -113,6 +114,7 @@ function rowOf(value: unknown): ShippedWorkflow | undefined {
 
 function invalidReady(entry: ShippedWorkflow): boolean {
   if (entry.status !== 'ready') return false;
+  if (new TextEncoder().encode(entry.text).length > MAX_TEXT_BYTES) return true;
   if (declaresName(entry.text)) return true;
   const name = entry.name.slice('library/'.length);
   return checkWorkflowText(entry.text, name).view === null;
