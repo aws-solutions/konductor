@@ -10,11 +10,9 @@ const { DEFAULT_RUNTIME } = require('../lib/harness/runtime.js');
 const sandbox = require('../lib/sandbox.js');
 const { canAuditFetches } = require('../lib/contamination.js');
 
-test('harness/index.js exports each harness by its camel-case id and the default runtime as kiro', () => {
-  assert.equal(harnesses.kiro, harnesses.HARNESSES[DEFAULT_RUNTIME]);
-  assert.equal(harnesses.opencode, harnesses.HARNESSES.opencode);
-  assert.equal(harnesses.claudeCode, harnesses.HARNESSES['claude-code']);
-  assert.equal(harnesses.strands, harnesses.HARNESSES.strands);
+test('harness/index.js names no harness: each is reached by id through HARNESSES or harnessFor (B-014 step 3)', () => {
+  assert.deepEqual(Object.keys(harnesses).sort(), ['HARNESSES', 'harnessFor', 'registry', 'runtimeOf']);
+  assert.equal(harnesses.harnessFor({}), harnesses.HARNESSES[DEFAULT_RUNTIME], 'no runtime is the default runtime');
 });
 
 test('the kiro-cli binary name is one constant, and only a harness with a listing check has listingMismatch', () => {
@@ -34,5 +32,5 @@ test('the opencode judge backend id is one constant, and opencode config sits un
   assert.equal(backendRegistry().part(OPENCODE_BACKEND).meta.costUnit, 'usd');
   assert.equal(maxPromptBytes(OPENCODE_BACKEND), 400000);
   assert.equal(maxPromptBytes(DEFAULT_BACKEND), 120000);
-  assert.equal(harnesses.opencode.CONFIG_REL, require('node:path').join('.config', 'opencode'));
+  assert.equal(harnesses.HARNESSES.opencode.CONFIG_REL, require('node:path').join('.config', 'opencode'));
 });

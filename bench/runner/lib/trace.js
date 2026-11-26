@@ -12,7 +12,6 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { parseStream, toolNameOf, isV3Call, skillsCallOf, mcpInputOf, subagentTargets, SUBAGENT_TOOL } = require('./stream.js');
 const { runtimeOf, descriptorOf, supporting, joinNames } = require('./harness/runtime.js');
-const claude = require('../../plugins/claude-code/parse.js');
 const skills = require('./skills.js');
 
 const { readJsonOrNull: readJson } = require('./util.js');
@@ -162,7 +161,8 @@ function kiroTimeline(events) {
 
 // ---- Claude Code ----
 
-function claudeTimeline(events) {
+/** The timeline of a Claude Code stream. `subagentTools` (the harness `streams.subagentTools`) names the tools that start a child. */
+function claudeTimeline(events, { subagentTools }) {
   const entries = [];
   const calls = new Map();
   const targetOf = new Map();
@@ -176,7 +176,7 @@ function claudeTimeline(events) {
         if (b.type === 'text' && b.text) push({ kind: 'assistant', agent, text: b.text });
         else if (b.type === 'thinking') { if (b.thinking) push({ kind: 'thought', agent, text: b.thinking }); } else if (b.type === 'tool_use') {
           let entry;
-          if (claude.SUBAGENT_TOOLS.has(b.name)) {
+          if (subagentTools.has(b.name)) {
             const target = b.input?.subagent_type ?? '(unnamed)';
             targetOf.set(b.id, target);
             entry = push({ kind: 'delegate', agent, target, input: b.input ?? {}, id: b.id, status: null });

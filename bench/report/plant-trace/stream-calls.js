@@ -10,7 +10,7 @@ const { streamCallsOf } = require('../../runner/lib/plant/stream-match.js');
 const { SERVER_NAME } = require('../../runner/lib/plant/agent-file.js');
 const { ALL_TOOLS } = require('../../runner/lib/plant/meta.js');
 const { toolNameOf, subagentTargets, isV3Call, SUBAGENT_TOOL } = require('../../runner/lib/stream.js');
-const { SUBAGENT_TOOLS } = require('../../plugins/claude-code/parse.js');
+const { streamsOfFormat } = require('../../runner/lib/harness/streams.js');
 const { PlantTraceError } = require('./load.js');
 
 const MAX_TEXT = 2000;
@@ -111,6 +111,7 @@ function usageByMessage(events) {
  * that tool_use's id, so children nest to any depth.
  */
 function claudeTrace(events) {
+  const subagentTools = streamsOfFormat('claude-stream-json').subagentTools;
   const usage = usageByMessage(events);
   const calls = [];
   const seen = new Map();
@@ -121,7 +122,7 @@ function claudeTrace(events) {
     if (e?.type !== 'assistant') return;
     const parentId = e.parent_tool_use_id ?? null;
     for (const b of blocksOf(e).filter((x) => x?.type === 'tool_use' && x.id)) {
-      if (SUBAGENT_TOOLS.has(b.name) && !agents.some((a) => a.id === b.id)) agents.push({ id: b.id, name: b.input?.subagent_type ?? '(unnamed)', parentId, order });
+      if (subagentTools.has(b.name) && !agents.some((a) => a.id === b.id)) agents.push({ id: b.id, name: b.input?.subagent_type ?? '(unnamed)', parentId, order });
       if (!b.name?.startsWith(CLAUDE_PREFIX) || seen.has(b.id)) continue;
       const tool = b.name.slice(CLAUDE_PREFIX.length);
       calls.push({ toolCallId: b.id, tool: ALL_TOOLS.includes(tool) ? tool : null, argsSha256: argsSha256(b.input ?? {}), engine: 'claude' });

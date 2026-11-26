@@ -11,7 +11,8 @@ const { tmp, write, makeBench } = require('./helpers.js');
 const { makeFakeOpencode } = require('./fake-opencode.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
-const { opencode: oc } = require('../lib/harness/index.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const oc = HARNESSES.opencode;
 const { copyData, prepareQueryDir } = require('../../plugins/opencode/query.js');
 
 const FX = path.join(__dirname, 'fixtures');

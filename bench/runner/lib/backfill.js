@@ -8,7 +8,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadRun } = require('./load-run.js');
-const { harnessFor, kiro } = require('./harness/index.js');
+const { harnessFor } = require('./harness/index.js');
+// Backfill reads kiro-cli session files only, so it works on the default runtime's harness.
+const kiro = harnessFor({});
 const { aggregateRunDir } = kiro;
 const { orchMetricsOfRunDir } = require('./orch-metrics.js');
 const { streamFields, validateResult } = require('./result.js');

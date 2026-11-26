@@ -1,6 +1,6 @@
 # Design: the opencode judge as a plugin part
 
-Date: 2026-11-25. Status: steps 1 and 2 built (2026-11-25; see BACKLOG B-014). Rows: BACKLOG B-014, DEBT D-212.
+Date: 2026-11-25. Status: steps 1 to 3 built (2026-11-25; see BACKLOG B-014). Rows: BACKLOG B-014, DEBT D-212.
 
 ## The problem
 
@@ -37,7 +37,7 @@ its cache salt text stays the same, so saved judge files and caches still match 
    options. The judge needs `stream`, `run-one`, `sandbox`, `procs` and `aws-creds` from `runner/lib`; the plugin
    lint allows only `bench/sdk`, so these join the SDK first (`runOne` and `procs` added 2026-11-25; the rest were there). Done when the judge tests pass unchanged on the fake
    opencode and `harness-coupling-baseline.json` loses the two `judge/opencode.js` imports.
-3. Drop the named exports `kiro`, `opencode`, `claudeCode` and `strands` from `runner/lib/harness/index.js`. Put
+3. Built. Drop the named exports `kiro`, `opencode`, `claudeCode` and `strands` from `runner/lib/harness/index.js`. Put
    `SUBAGENT_TOOLS` (today in `plugins/claude-code/parse.js`, read by core files) behind the descriptor `streams`.
    Shrink `harness-coupling-baseline.json`.
 4. Docs: `write-a-plugin.md` "A judge backend" names the new hooks; `agents.md` and `reference.md` stay as they are

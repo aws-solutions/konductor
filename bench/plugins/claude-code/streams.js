@@ -66,7 +66,9 @@ module.exports = {
     if (!blank(a.finalText)) return a.finalText;
     return blank(a.lastText) ? a.finalText ?? a.lastText : a.lastText;
   },
-  timeline: (events) => require('../../sdk').trace.claudeTimeline(events),
+  timeline: (events) => require('../../sdk').trace.claudeTimeline(events, { subagentTools: parse.SUBAGENT_TOOLS }),
+  // The tool names that start a sub-agent (trace, introspect scopes and the plant trace read them).
+  subagentTools: parse.SUBAGENT_TOOLS,
   // The Skill tool calls, with their text answers (skills.js extractSkills, `skillAnswer: 'text'`).
   skillCalls: parse.skillCalls,
   skillAnswer: 'text',

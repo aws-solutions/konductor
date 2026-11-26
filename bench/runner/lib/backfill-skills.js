@@ -11,7 +11,9 @@ const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
 const { loadRun } = require('./load-run.js');
 const { collectRows } = require('../../report/skills.js');
-const { harnessFor, kiro } = require('./harness/index.js');
+const { harnessFor } = require('./harness/index.js');
+// Backfill reads kiro-cli session files only, so it works on the default runtime's harness.
+const kiro = harnessFor({});
 const { aggregateRunDir } = kiro;
 const { SKILL_FIELDS, capInvocationOf } = require('./skills.js');
 const { validateResult } = require('./result.js');

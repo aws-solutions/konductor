@@ -7,7 +7,9 @@ const { spawn } = require('node:child_process');
 const { runChecks } = require('./checks.js');
 const { buildResult, errorResult, validateResult } = require('./result.js');
 const { agentEnv, buildCheckEnv } = require('./env.js');
-const { harnessFor, runtimeOf, kiro } = require('./harness/index.js');
+const { harnessFor, runtimeOf } = require('./harness/index.js');
+// The default runtime's harness (kiro-cli): kiroArgs and readTranscripts are re-exported for older callers.
+const kiro = harnessFor({});
 const { makeIsolation, liveStdioDir } = require('./isolate.js');
 const { createTripwire, tripwireFlags } = require('./tripwire.js');
 const procs = require('./procs.js');

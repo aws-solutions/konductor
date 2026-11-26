@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseStream, toolNameOf, SUBAGENT_TOOL } = require('../stream.js');
-const { SUBAGENT_TOOLS: CC_SUBAGENT_TOOLS } = require('../../../plugins/claude-code/parse.js');
+const { streamsOf } = require('../harness/streams.js');
 const skills = require('../skills.js');
 const { readJsonOrNull: readJson } = require('../util.js');
 const { readLines, oneLine, clip, numOrNull } = require('./report-text.js');
@@ -145,13 +145,14 @@ function callScopes(events, harness) {
   const scopeOfCall = new Map();
   const childOfCall = new Map();
   const kind = probeOf(harness);
+  const subagentTools = streamsOf({ runtime: harness }).subagentTools ?? new Set();
   for (const ev of events) {
     if (kind === OTLP) {
       if (ev.type !== 'assistant') continue;
       for (const b of ev.message?.content || []) {
         if (b.type !== 'tool_use' || !b.id || scopeOfCall.has(b.id)) continue;
         scopeOfCall.set(b.id, ev.parent_tool_use_id ?? null);
-        if (CC_SUBAGENT_TOOLS.has(b.name)) childOfCall.set(b.id, b.id);
+        if (subagentTools.has(b.name)) childOfCall.set(b.id, b.id);
       }
     } else if (ev.type === 'sessionUpdate') {
       const u = ev.data?.update || {};

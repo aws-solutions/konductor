@@ -15,7 +15,10 @@ const { makeFakeClaude } = require('./fake-claude.js');
 const { recordGroups, groupGone } = require('./agent-groups.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
-const { harnessFor, claudeCode: cc, kiro, opencode } = require('../lib/harness/index.js');
+const { harnessFor, HARNESSES } = require('../lib/harness/index.js');
+const cc = HARNESSES['claude-code'];
+const kiro = HARNESSES['kiro-cli'];
+const opencode = HARNESSES.opencode;
 const { scanTree } = require('../lib/hygiene.js');
 const { validateResult } = require('../lib/result.js');
 

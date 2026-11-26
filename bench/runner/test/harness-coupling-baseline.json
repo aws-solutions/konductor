@@ -3,9 +3,6 @@
   "createdWithNames": 171,
   "imports": [
     "physical/controls/plant-control.js -> plugins/claude-code/parse.js",
-    "report/plant-trace/stream-calls.js -> plugins/claude-code/parse.js",
-    "runner/lib/introspect/scopes.js -> plugins/claude-code/parse.js",
-    "runner/lib/trace.js -> plugins/claude-code/parse.js",
     "scripts/claude-code-smoke.js -> plugins/claude-code/harness.js"
   ],
   "names": {

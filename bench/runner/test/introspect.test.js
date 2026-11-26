@@ -15,7 +15,9 @@ const { startSink } = require('../lib/introspect/otlp-sink.js');
 const { parseSs, belongsToRun, startWatch } = require('../lib/introspect/collector-watch.js');
 const introspect = require('../lib/introspect/index.js');
 const report = require('../lib/introspect/report.js');
-const { claudeCode: cc, kiro } = require('../lib/harness/index.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const cc = HARNESSES['claude-code'];
+const kiro = HARNESSES['kiro-cli'];
 
 function post(url, body, headers = {}) {
   return new Promise((resolve, reject) => {

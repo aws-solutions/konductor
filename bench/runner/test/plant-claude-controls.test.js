@@ -13,7 +13,8 @@ const { rig, claudePlantRun, readJsonl } = require('./plant-run-rig.js');
 const { TASK_ID } = require('./plant-release-fixture.js');
 const { STUB_RELEASE } = require('./plant-control-stubs.js');
 const { SIDE_FILE, controlOf, controlsSection } = require('../../report/plant-controls.js');
-const { claudeCode: cc } = require('../lib/harness/index.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const cc = HARNESSES['claude-code'];
 const { mainFailure } = require('../lib/plant/score.js');
 
 const CONTROLS = path.join(__dirname, '..', '..', 'physical', 'controls');

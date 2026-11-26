@@ -17,7 +17,8 @@ const { resolveArm, parseArmSpec, isPlantArmId } = require('../lib/arms.js');
 const { checkSuiteShape } = require('../lib/plant/intake.js');
 const { streamCallsOf, hasPlantReader } = require('../lib/plant/stream-match.js');
 const { ReleaseRefused } = require('../lib/plant/manifest.js');
-const { claudeCode: cc } = require('../lib/harness/index.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const cc = HARNESSES['claude-code'];
 
 const STOP_CALLS = [{ tool: 'get_state', args: {} }, { tool: 'stop', args: {} }];
 

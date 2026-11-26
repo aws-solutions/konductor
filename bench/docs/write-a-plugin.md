@@ -237,6 +237,8 @@ plugin's name, version and hash in `run-config.json`.
 
 Plugin API 1 covers harnesses, judge backends and read-only check types. Plants, scorers and unit kinds are still core code. A harness reads its
 own stream through `streams` (CONTRACT.md): `finalText`, plus `timeline` for trace and `stopEvent` for `--stop-on`.
+A stream whose child events point back at the call that started the child also sets `subagentTools`, the Set of those
+tool names; today only the Claude Code readers of the introspect report and the plant trace use it.
 The plant readers stay core in `plant/stream-match.js`, because the plant scorer decides safety: a new stream format
 on a plant arm needs a reader added there by bench code. A few core files still name a runtime, among them `arms.js`,
 `skills.js` and the plant files; `runner/test/harness-coupling-baseline.json` lists each one and its count, and

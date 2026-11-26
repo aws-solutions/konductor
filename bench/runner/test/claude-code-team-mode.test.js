@@ -9,7 +9,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
-const { claudeCode: cc } = require('../lib/harness/index.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const cc = HARNESSES['claude-code'];
 const { GUIDE_ALLOW, applyTeamMode } = require('../../plugins/claude-code/team-mode.js');
 
 const CANON = 'claude-sonnet-5-5';

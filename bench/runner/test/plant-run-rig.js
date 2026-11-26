@@ -15,7 +15,9 @@ const { loadTasks } = require('../lib/tasks.js');
 const { resolveArm } = require('../lib/arms.js');
 const { preparePlantSuite } = require('../lib/plant/intake.js');
 const { DEADLINES } = require('../lib/plant/gateway-proc.js');
-const { claudeCode: cc, strands } = require('../lib/harness/index.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const cc = HARNESSES['claude-code'];
+const strands = HARNESSES.strands;
 
 // Generous on purpose: a test about a limit, a launch failure or a foreign connection must not turn into a gateway that
 // never got ready or lost its heartbeat because the host was busy (the full suite runs many gateways at once). A test

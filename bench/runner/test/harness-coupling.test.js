@@ -78,4 +78,15 @@ test('runtime names: no file over its baseline count, no new file, and the basel
   assert.ok(BASELINE.imports.length <= BASELINE.createdWithImports);
 });
 
+test('the sub-agent tool names come from the Claude Code streams, not a core import of its parse.js (B-014 step 3)', () => {
+  const { streamsOf, streamsOfFormat } = require('../lib/harness/streams.js');
+  const tools = streamsOfFormat('claude-stream-json').subagentTools;
+  assert.deepEqual([...tools].sort(), ['Agent', 'Task']);
+  assert.equal(streamsOf({ runtime: 'claude-code' }).subagentTools, tools);
+  const { imports } = couplingOf(BENCH);
+  for (const f of ['report/plant-trace/stream-calls.js', 'runner/lib/introspect/scopes.js', 'runner/lib/trace.js']) {
+    assert.ok(!imports.includes(`${f} -> plugins/claude-code/parse.js`), `${f} still imports plugins/claude-code/parse.js`);
+  }
+});
+
 module.exports = { couplingOf };

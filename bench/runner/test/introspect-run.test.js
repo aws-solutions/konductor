@@ -12,7 +12,8 @@ const { tmp, write, makeBench } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
-const { claudeCode: cc } = require('../lib/harness/index.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const cc = HARNESSES['claude-code'];
 const { TELEMETRY_NAME } = require('../lib/introspect/index.js');
 
 const FX = path.join(__dirname, 'fixtures', 'claude-code');
