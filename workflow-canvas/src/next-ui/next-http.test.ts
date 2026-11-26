@@ -86,6 +86,19 @@ function sequenceServerOf(
   return { calls, fetchFn: fetchFn as unknown as typeof fetch };
 }
 
+function interruptedCopyServerOf(recovery: unknown) {
+  const calls: string[] = [];
+  const fetchFn = vi.fn(async (path: unknown) => {
+    calls.push(String(path));
+    if (calls.length === 1) throw new TypeError('network error');
+    return new Response(JSON.stringify(recovery), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+  return { calls, fetchFn: fetchFn as unknown as typeof fetch };
+}
+
 const headerOf = (call: Call | undefined) =>
   (call?.init.headers as Record<string, string> | undefined)?.Authorization;
 
@@ -294,6 +307,76 @@ describe('createNextPorts, the library', () => {
       `/api/library/${encodeURIComponent(ready.name)}/copy`,
       '/api/workflow',
     ]);
+  });
+
+  it.each([500, 408, 429])(
+    'reconciles a committed copy after status %i',
+    async (status) => {
+      const { calls, fetchFn } = sequenceServerOf([
+        { status, body: { error: 'Reply lost.' } },
+        { body: copyDocument('review-copy') },
+      ]);
+      const ports = createNextPorts(TOKEN, { fetchFn });
+
+      await expect(
+        ports.copyLibrary(ready.name, 'review-copy'),
+      ).resolves.toMatchObject({ name: 'review-copy' });
+      expect(calls[1]).toBe('/api/workflow');
+    },
+  );
+
+  it.each([500, 408, 429])(
+    'blocks an unconfirmed copy after status %i',
+    async (status) => {
+      const { calls, fetchFn } = sequenceServerOf([
+        { status, body: { error: 'Reply lost.' } },
+        { body: DOCUMENT },
+      ]);
+      const ports = createNextPorts(TOKEN, { fetchFn });
+
+      const failure = await ports
+        .copyLibrary(ready.name, 'review-copy')
+        .catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(ApiError);
+      expect((failure as ApiError).code).toBe(COPY_UNCERTAIN_CODE);
+      expect(calls[1]).toBe('/api/workflow');
+    },
+  );
+
+  it('reconciles a committed copy after the server does not answer', async () => {
+    const { calls, fetchFn } = interruptedCopyServerOf(
+      copyDocument('review-copy'),
+    );
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.copyLibrary(ready.name, 'review-copy'),
+    ).resolves.toMatchObject({ name: 'review-copy' });
+    expect(calls[1]).toBe('/api/workflow');
+  });
+
+  it('blocks an unconfirmed copy after the server does not answer', async () => {
+    const { calls, fetchFn } = interruptedCopyServerOf(DOCUMENT);
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const failure = await ports
+      .copyLibrary(ready.name, 'review-copy')
+      .catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).code).toBe(COPY_UNCERTAIN_CODE);
+    expect(calls[1]).toBe('/api/workflow');
+  });
+
+  it('leaves a clear copy refusal as an ordinary failure', async () => {
+    const { calls, fetchFn } = sequenceServerOf([
+      { status: 409, body: { error: 'Name exists.', code: 'conflict' } },
+    ]);
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.copyLibrary(ready.name, 'review-copy'),
+    ).rejects.toMatchObject({ status: 409, code: 'conflict' });
+    expect(calls).toHaveLength(1);
   });
 
   it.each([

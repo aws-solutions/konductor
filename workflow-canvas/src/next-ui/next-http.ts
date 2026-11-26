@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { ApiError } from '../api/api';
+import { ApiError, canRetryStatus } from '../api/api';
 import { bodyOf, withTimeout } from '../api/http-api';
 import {
   BAD_REPLY,
@@ -520,7 +520,7 @@ export function createNextPorts(
       } catch (error) {
         if (
           !(error instanceof ApiError) ||
-          (error.status !== 200 && error.status !== 0)
+          (error.status !== 200 && !canRetryStatus(error.status))
         ) {
           throw error;
         }
