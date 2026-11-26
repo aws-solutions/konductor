@@ -23,8 +23,8 @@ function subject(over = {}) {
     listLibrary: vi.fn(() => Promise.resolve([READY, PLANNED])),
     ...over,
   });
-  render(<LibraryView ports={ports} />);
-  return ports;
+  const rendered = render(<LibraryView ports={ports} />);
+  return { ports, ...rendered };
 }
 
 describe('LibraryView', () => {
@@ -52,6 +52,36 @@ describe('LibraryView', () => {
       expect(button.getAttribute('aria-disabled')).toBe('true');
       expect((button as HTMLButtonElement).disabled).toBe(false);
     }
+  });
+
+  it('clears a successful result when ports change', async () => {
+    const { rerender } = subject();
+    await screen.findByText(READY.title);
+    const next = fakeNextPorts({
+      listLibrary: vi.fn(() => Promise.resolve([PLANNED])),
+    });
+
+    rerender(<LibraryView ports={next} />);
+
+    expect(screen.queryByText(READY.title)).toBeNull();
+    expect(screen.getByText('Loading Library')).toBeTruthy();
+    expect(await screen.findByText(PLANNED.title)).toBeTruthy();
+  });
+
+  it('clears a failure when ports change', async () => {
+    const { rerender } = subject({
+      listLibrary: vi.fn(() => Promise.reject(new Error('Library failed.'))),
+    });
+    await screen.findByText('Library failed.');
+    const next = fakeNextPorts({
+      listLibrary: vi.fn(() => Promise.resolve([READY])),
+    });
+
+    rerender(<LibraryView ports={next} />);
+
+    expect(screen.queryByText('Library failed.')).toBeNull();
+    expect(screen.getByText('Loading Library')).toBeTruthy();
+    expect(await screen.findByText(READY.title)).toBeTruthy();
   });
 
   it('shows a failed list request', async () => {
