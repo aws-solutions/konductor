@@ -19,6 +19,18 @@ test('copies a library workflow, edits it, and saves the copy', async ({
 
   await expect(canvas.title).toHaveText('library-e2e-copy');
   await expect(canvas.page.getByRole('tab', { name: 'Design' })).toBeFocused();
+
+  await canvas.page.getByRole('tab', { name: 'Run' }).click();
+  await canvas.page.getByLabel('Goal').fill('Review this change');
+  await canvas.page.getByRole('button', { name: 'Run', exact: true }).click();
+  const trust = canvas.page.getByTestId('trust-dialog');
+  await expect(trust).toBeVisible();
+  await expect(canvas.page.getByTestId('trust-command')).toHaveText(
+    'konductor flow trust library-e2e-copy',
+  );
+  await trust.getByRole('button', { name: 'Close', exact: true }).click();
+
+  await canvas.page.getByRole('tab', { name: 'Design' }).click();
   await canvas.page.getByRole('tab', { name: 'Properties' }).click();
   const properties = canvas.page.getByRole('tabpanel', { name: 'Properties' });
   await properties.getByLabel('name', { exact: true }).fill('collect-input');
