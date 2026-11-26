@@ -31,6 +31,8 @@ export interface LoadedWorkflow {
   document: WorkflowDocument;
   edits: EditPort;
   runs: RunPort;
+  /** Rebuilds file-bound calls after the session root changes. */
+  retarget?: (document: WorkflowDocument) => LoadedWorkflow;
 }
 
 /**
@@ -217,15 +219,17 @@ async function loadWith(
   memory: SessionMemory,
 ): Promise<LoadResult> {
   const guard = guardSession(memory, session);
+  const loaded = (document: WorkflowDocument): LoadedWorkflow => ({
+    harness: session.harness,
+    document,
+    edits: editPortFor(api, session.token, guard, document.name),
+    runs: runPortFor(api, session.token, guard, document.name),
+    retarget: loaded,
+  });
   const document = await guard(api.getWorkflow(session.token));
   return {
     ok: true,
-    workflow: {
-      harness: session.harness,
-      document,
-      edits: editPortFor(api, session.token, guard, document.name),
-      runs: runPortFor(api, session.token, guard, document.name),
-    },
+    workflow: loaded(document),
     remember: () => memory.remember(session),
   };
 }
@@ -382,7 +386,10 @@ export function withDocument(
   result: LoadResult | undefined,
   document: WorkflowDocument,
 ): LoadResult | undefined {
-  return result?.ok
-    ? { ...result, workflow: { ...result.workflow, document } }
-    : result;
+  if (!result?.ok) return result;
+  const workflow = result.workflow.retarget?.(document) ?? {
+    ...result.workflow,
+    document,
+  };
+  return { ...result, workflow };
 }

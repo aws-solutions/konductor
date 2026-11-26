@@ -51,6 +51,7 @@ describe('loadWorkflow', () => {
           reload: expect.any(Function),
         },
         runs: { start: expect.any(Function) },
+        retarget: expect.any(Function),
       },
       remember: expect.any(Function),
     });
@@ -91,6 +92,41 @@ describe('loadWorkflow', () => {
     expect(api.checkWorkflow).toHaveBeenCalledWith('token-1', 'text', 'hello');
     expect(api.getWorkflow).toHaveBeenCalledTimes(2);
     expect(api.getWorkflow).toHaveBeenLastCalledWith('token-1');
+  });
+
+  it('retargets file-bound calls when the session root changes', async () => {
+    const api = fakeApi();
+    const result = await loadWorkflow(api, 'code-1', freshMemory());
+    if (!result.ok) throw new Error('The load failed.');
+    const copy = {
+      ...HELLO_DOCUMENT,
+      name: 'review-copy',
+      view: HELLO_DOCUMENT.view && {
+        ...HELLO_DOCUMENT.view,
+        name: 'review-copy',
+      },
+    };
+    const retargeted = withDocument(result, copy);
+    if (!retargeted?.ok) throw new Error('The retarget failed.');
+
+    await retargeted.workflow.edits.save('text', HELLO_HASH);
+    await retargeted.workflow.runs.start(
+      'Ship it',
+      new AbortController().signal,
+    );
+
+    expect(api.saveWorkflow).toHaveBeenLastCalledWith(
+      'token-1',
+      'text',
+      HELLO_HASH,
+      'review-copy',
+    );
+    expect(api.startRun).toHaveBeenLastCalledWith(
+      'token-1',
+      'Ship it',
+      expect.any(AbortSignal),
+      'review-copy',
+    );
   });
 
   it('turns the 409 of a changed file into a conflict', async () => {
@@ -630,17 +666,18 @@ describe('loadWorkflow with a kept session', () => {
 describe('withDocument', () => {
   const document = { ...HELLO_DOCUMENT, hash: 'd'.repeat(64) };
 
-  it('swaps the document of a loaded workflow and keeps the rest', async () => {
+  it('swaps the document and retargets file-bound calls', async () => {
     const result = await loadWorkflow(fakeApi(), 'code-1', freshMemory());
     if (!result.ok) throw new Error('The load failed.');
 
     const swapped = withDocument(result, document);
+    if (!swapped?.ok) throw new Error('The swap failed.');
 
-    expect(swapped).toEqual({
-      ok: true,
-      workflow: { ...result.workflow, document },
-      remember: result.remember,
-    });
+    expect(swapped.workflow.document).toBe(document);
+    expect(swapped.workflow.harness).toBe(result.workflow.harness);
+    expect(swapped.workflow.edits).not.toBe(result.workflow.edits);
+    expect(swapped.workflow.runs).not.toBe(result.workflow.runs);
+    expect(swapped.remember).toBe(result.remember);
   });
 
   it('leaves a failed load and no load as they are', () => {
