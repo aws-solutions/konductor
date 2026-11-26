@@ -215,6 +215,8 @@ Read these before upgrading from 1.2.0.
     the repo merges locally; otherwise it opens a PR. `git-workflow` merges the default branch
     in before a PR instead of rebasing.
 - `NOTICE.txt` lists every shipped crate.
+- The release workflow builds its macOS leg on `macos-latest` and pins the 11.0 deployment
+  target. The retired `macos-14` runner blocked that leg, and with it every release.
 
 ### Security
 
