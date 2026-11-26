@@ -356,8 +356,9 @@ A judge is a model that scores answers. Adding one takes up to three steps.
    A panel needs three judges from three families, none the agent's. With fewer, keep-or-prune records say NO DATA,
    and `judge` refuses to start unless you pass `--allow-small-panel`.
 3. **Reach it.** The judge backend is the program that asks the model: `kiro` (credits, the default) or `opencode`
-   (Amazon Bedrock, USD), chosen with `--judge-backend`. A model neither can call needs a `judge-backend` plugin: a
-   descriptor `{ id, costUnit, label }` and an entry module that exports `makeCaller`.
+   (Amazon Bedrock, USD), chosen with `--judge-backend`. `kiro` is built in; `opencode` is a `judge-backend` part of
+   `bench/plugins/opencode`. A model neither can call needs a `judge-backend` plugin: a descriptor
+   `{ id, costUnit, label, maxPromptBytes? }` and an entry module that exports `makeCaller`.
    [Write a plugin](write-a-plugin.md#a-judge-backend) has a worked example, and `judge-backend-plugin.test.js` loads
    a fake one. The free kit check covers harness plugins only, not judge backends yet.
 

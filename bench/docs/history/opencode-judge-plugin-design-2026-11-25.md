@@ -1,6 +1,6 @@
 # Design: the opencode judge as a plugin part
 
-Date: 2026-11-25. Status: steps 1 to 3 built (2026-11-25; see BACKLOG B-014). Rows: BACKLOG B-014, DEBT D-212.
+Date: 2026-11-25. Status: all four steps built (2026-11-25; see BACKLOG B-014). Rows: BACKLOG B-014, DEBT D-212.
 
 ## The problem
 
@@ -40,8 +40,9 @@ its cache salt text stays the same, so saved judge files and caches still match 
 3. Built. Drop the named exports `kiro`, `opencode`, `claudeCode` and `strands` from `runner/lib/harness/index.js`. Put
    `SUBAGENT_TOOLS` (today in `plugins/claude-code/parse.js`, read by core files) behind the descriptor `streams`.
    Shrink `harness-coupling-baseline.json`.
-4. Docs: `write-a-plugin.md` "A judge backend" names the new hooks; `agents.md` and `reference.md` stay as they are
-   unless a flag moves.
+4. Built. Docs: `write-a-plugin.md` "A judge backend" names the new hooks; `agents.md` and `reference.md` stay as they are
+   unless a flag moves. No flag moved; both now say where the opencode backend lives, and `reference.md` names its
+   400000 byte prompt cap.
 
 ## Kept as it is
 
