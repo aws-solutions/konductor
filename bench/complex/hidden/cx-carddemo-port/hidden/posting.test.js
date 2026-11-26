@@ -178,7 +178,7 @@ test('P8: charges go to cycle credit, payments to cycle debit as a negative numb
   });
 });
 
-test('P8: all ten last digits of a zoned number, positive and negative, are read and written back', () => {
+test('M2: all ten last digits of a zoned number, positive and negative, are read and written back', () => {
   const amounts = ['0.00', '0.01', '0.02', '0.03', '0.04', '0.05', '0.06', '0.07', '0.08', '0.09', '-0.01', '-0.02', '-0.03', '-0.04', '-0.05', '-0.06', '-0.07', '-0.08', '-0.09', '-0.10'];
   const trans = amounts.map((amount, i) => tran({ id: id(i + 1), amount }));
   post(postInputs({ trans, accounts: [account({ balance: '0.00' })] }), (r) => {

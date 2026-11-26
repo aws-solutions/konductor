@@ -74,7 +74,7 @@
   "rubric": [
     {
       "id": "rules-as-written",
-      "criterion": "The five rules the requirements mark for review (P5 payments net against charges, P7 duplicate ids, I2 no rate stops the run, I3 truncation, I4 no interest on a zero or credit balance) are built as REQUIREMENTS.md writes them, not as the COBOL does. The README table of differences from the COBOL lists them honestly, and each point the documents leave open is named as an assumption in the final message instead of being decided silently.",
+      "criterion": "The rules the requirements mark for review are built as REQUIREMENTS.md writes them. Three differ from the COBOL (P5 payments net against charges, P7 duplicate ids, I4 no interest on a zero or credit balance); two match it (I2 no rate stops the run, I3 truncation) and must not be changed. The README table of differences from the COBOL lists them honestly, and each point the documents leave open is named as an assumption in the final message instead of being decided silently.",
       "weight": 3
     },
     {
