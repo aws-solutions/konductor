@@ -49,6 +49,8 @@ const LOADING_VIEWS: readonly { id: ViewId; label: string }[] = [
   { id: 'library', label: 'Library' },
 ];
 
+const ACTIVE_RUN_COPY_REASON = 'A run is already active in this workspace.';
+
 // The calls of a page that has no session to run anything through. It is one
 // object for the life of the page, so the run controller holds one state for
 // as long as there is nothing to follow.
@@ -267,15 +269,12 @@ export function App({
           workflow={loaded}
           agents={next.agents}
           scheduler={scheduler}
+          copyDisabledReason={
+            nextRun.active ? ACTIVE_RUN_COPY_REASON : undefined
+          }
           beforeCopy={() =>
-            (!unsaved && !nextRun.active) ||
-            window.confirm(
-              unsaved && nextRun.active
-                ? 'Opening the copy drops unsaved changes and stops following the run in progress. Continue?'
-                : unsaved
-                  ? 'Opening the copy drops unsaved changes. Continue?'
-                  : 'Opening the copy stops following the run in progress. Continue?',
-            )
+            !unsaved ||
+            window.confirm('Opening the copy drops unsaved changes. Continue?')
           }
           onAnnounce={setLibraryAnnouncement}
           onCopyUncertain={(message) => {

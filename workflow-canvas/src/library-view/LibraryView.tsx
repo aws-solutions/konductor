@@ -45,13 +45,16 @@ function EntryCard({
   onOpen,
   onStart,
   openRef,
+  copyDisabledReason,
 }: {
   entry: LibraryEntry;
   onOpen: () => void;
   onStart: () => void;
   openRef: (button: ButtonProps.Ref | null) => void;
+  copyDisabledReason?: string;
 }) {
   const planned = entry.status === 'planned';
+  const startDisabledReason = entry.waits ?? copyDisabledReason;
   const actions = (
     <SpaceBetween direction="horizontal" size="xs">
       <Button
@@ -66,8 +69,8 @@ function EntryCard({
       <Button
         ariaLabel={`Start from ${entry.title}`}
         variant="primary"
-        disabled={planned}
-        disabledReason={entry.waits}
+        disabled={startDisabledReason !== undefined}
+        disabledReason={startDisabledReason}
         onClick={onStart}
       >
         Start from
@@ -145,6 +148,7 @@ export function LibraryView({
   onCopy,
   onCopyUncertain,
   onAnnounce,
+  copyDisabledReason,
   beforeCopy = () => true,
   scheduler = timerScheduler,
 }: {
@@ -154,6 +158,7 @@ export function LibraryView({
   onCopy: (document: WorkflowDocument) => void;
   onCopyUncertain: (message: string) => void;
   onAnnounce: (message: string) => void;
+  copyDisabledReason?: string;
   beforeCopy?: () => boolean;
   scheduler?: Scheduler;
 }) {
@@ -234,11 +239,15 @@ export function LibraryView({
     [onAnnounce, ports],
   );
 
-  const startFrom = useCallback((entry: LibraryEntry) => {
-    setCopying(entry);
-    setCopyName(copyNameOf(entry));
-    setCopyFailure(undefined);
-  }, []);
+  const startFrom = useCallback(
+    (entry: LibraryEntry) => {
+      if (copyDisabledReason !== undefined) return;
+      setCopying(entry);
+      setCopyName(copyNameOf(entry));
+      setCopyFailure(undefined);
+    },
+    [copyDisabledReason],
+  );
   const nameError =
     copyName === ''
       ? 'Enter a workflow name.'
@@ -246,7 +255,14 @@ export function LibraryView({
         ? undefined
         : 'Use 1 to 64 lowercase letters, numbers, or hyphens, starting with a letter or number.';
   function createCopy() {
-    if (!copying || nameError || copyRequest.current || !beforeCopy()) return;
+    if (
+      !copying ||
+      nameError ||
+      copyDisabledReason !== undefined ||
+      copyRequest.current ||
+      !beforeCopy()
+    )
+      return;
     copyRequest.current = true;
     setSaving(true);
     setCopyFailure(undefined);
@@ -292,6 +308,8 @@ export function LibraryView({
                   </Button>
                   <Button
                     variant="primary"
+                    disabled={copyDisabledReason !== undefined}
+                    disabledReason={copyDisabledReason}
                     onClick={() => startFrom(opened.entry)}
                   >
                     Start from
@@ -334,6 +352,7 @@ export function LibraryView({
                 <EntryCard
                   key={entry.name}
                   entry={entry}
+                  copyDisabledReason={copyDisabledReason}
                   onOpen={() => open(entry)}
                   onStart={() => startFrom(entry)}
                   openRef={(button) => {
@@ -358,7 +377,10 @@ export function LibraryView({
                 <Button
                   variant="primary"
                   loading={saving}
-                  disabled={nameError !== undefined}
+                  disabled={
+                    nameError !== undefined || copyDisabledReason !== undefined
+                  }
+                  disabledReason={copyDisabledReason}
                   onClick={createCopy}
                 >
                   Create copy

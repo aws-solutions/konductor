@@ -40,7 +40,10 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function subject(over = {}) {
+function subject(
+  over = {},
+  options: { copyDisabledReason?: string; beforeCopy?: () => boolean } = {},
+) {
   const ports = fakeNextPorts({
     listLibrary: vi.fn(() => Promise.resolve([READY, PLANNED])),
     getLibrary: vi.fn(() => Promise.resolve(LIBRARY_DOCUMENT)),
@@ -69,6 +72,7 @@ function subject(over = {}) {
       onCopy={onCopy}
       onCopyUncertain={onCopyUncertain}
       onAnnounce={onAnnounce}
+      {...options}
     />,
   );
   return {
@@ -81,7 +85,11 @@ function subject(over = {}) {
   };
 }
 
-function switchPorts(view: ReturnType<typeof subject>, ports: NextPorts) {
+function switchPorts(
+  view: ReturnType<typeof subject>,
+  ports: NextPorts,
+  options: { copyDisabledReason?: string; beforeCopy?: () => boolean } = {},
+) {
   view.rerender(
     <LibraryView
       ports={ports}
@@ -90,6 +98,7 @@ function switchPorts(view: ReturnType<typeof subject>, ports: NextPorts) {
       onCopy={view.onCopy}
       onCopyUncertain={view.onCopyUncertain}
       onAnnounce={view.onAnnounce}
+      {...options}
     />,
   );
 }
@@ -125,6 +134,42 @@ describe('LibraryView', () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false);
+  });
+
+  it('keeps Start from focusable but unavailable during an active run', async () => {
+    const reason = 'A run is already active in this workspace.';
+    subject({}, { copyDisabledReason: reason });
+    await screen.findByText(READY.title);
+
+    const listStart = screen.getByRole('button', {
+      name: `Start from ${READY.title}`,
+    });
+    expect(listStart.getAttribute('aria-disabled')).toBe('true');
+    expect((listStart as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: `Open ${READY.title}` }),
+    );
+    const previewStart = screen.getByRole('button', {
+      name: 'Start from',
+    });
+    expect(previewStart.getAttribute('aria-disabled')).toBe('true');
+    expect((previewStart as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('blocks a copy when a run starts after its dialog opens', async () => {
+    const reason = 'A run is already active in this workspace.';
+    const view = subject();
+    await screen.findByText(READY.title);
+    fireEvent.click(
+      screen.getByRole('button', { name: `Start from ${READY.title}` }),
+    );
+
+    switchPorts(view, view.ports, { copyDisabledReason: reason });
+    const create = screen.getByRole('button', { name: 'Create copy' });
+    expect(create.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(create);
+    expect(view.ports.copyLibrary).not.toHaveBeenCalled();
   });
 
   it('clears a successful list when ports change', async () => {
@@ -327,6 +372,25 @@ describe('LibraryView', () => {
     expect(signals).toHaveLength(2);
     expect(signals[0]?.aborted).toBe(true);
     expect(signals[1]?.aborted).toBe(false);
+  });
+
+  it('shows the server refusal when a run starts before copying', async () => {
+    const refusal = 'A run is already active in this workspace.';
+    subject({
+      copyLibrary: vi.fn(() =>
+        Promise.reject(
+          new ApiError(refusal, 409, 'already_running', '20261024-0412-a7b3c'),
+        ),
+      ),
+    });
+    await screen.findByText(READY.title);
+    fireEvent.click(
+      screen.getByRole('button', { name: `Start from ${READY.title}` }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
+
+    expect(await screen.findByText(refusal)).toBeTruthy();
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
   it('keeps a name clash in the dialog', async () => {

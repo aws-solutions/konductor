@@ -308,9 +308,35 @@ describe('App', () => {
     );
   });
 
+  it('disables Library copies while the current run is active', async () => {
+    const next = fakeNextPorts({
+      listLibrary: async () => [
+        {
+          name: 'library/k-adversarial-pull-request-review',
+          title: 'Adversarial pull request review',
+          summary: 'Review a pull request.',
+          status: 'ready',
+        },
+      ],
+    });
+    render(
+      <App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={() => next} />,
+    );
+    fireEvent.click(await screen.findByRole('tab', { name: 'Run' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+    await vi.waitFor(() => expect(next.startRun).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    const startFrom = await screen.findByRole('button', {
+      name: 'Start from Adversarial pull request review',
+    });
+    expect(startFrom.getAttribute('aria-disabled')).toBe('true');
+    expect((startFrom as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('drops the old run, history, and check source after copying', async () => {
     let root = 'hello';
-    let remembered: string | undefined = '20261024-0412-a7b3c';
+    let remembered: string | undefined;
     const runMemory = {
       recall: () => remembered,
       remember: (runId: string) => {
@@ -354,7 +380,7 @@ describe('App', () => {
               {
                 run_id: '20261024-0412-a7b3c',
                 started_at: '2026-10-24T04:12:05Z',
-                status: 'running',
+                status: 'passed',
                 goal: 'Old goal',
                 goal_truncated: false,
               },
@@ -365,7 +391,6 @@ describe('App', () => {
         return copy;
       },
     });
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
       <App
         load={settled(loaded(HELLO_DOCUMENT))}
@@ -392,7 +417,6 @@ describe('App', () => {
     expect(validate.mock.calls.map(([request]) => request.name)).toContain(
       'review-copy',
     );
-    confirm.mockRestore();
   });
 
   it('blocks edits and runs when a committed copy cannot be reconciled', async () => {

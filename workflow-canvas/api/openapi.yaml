@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.12.0
+  version: 1.13.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -72,7 +72,9 @@ info:
     `WRONG_TYPE`. Version 1.11.0 only adds the workflow library list,
     read-only library entry and copy operations. Version 1.12.0 only adds the
     optional `name` field to `POST /api/run`, so a stale page can prove that it
-    still shows the session root before anything starts.
+    still shows the session root before anything starts. Version 1.13.0 only
+    adds `already_running` to the copy operation. It carries the active
+    `run_id`; no file is created and the root does not move.
 
     **Conventions**
 
@@ -183,7 +185,10 @@ info:
     name and receives that refusal after another page copies a Library entry.
     A missing `name` means the current root for backward compatibility. The
     root may not have a file yet: a file is created by the first save with a
-    `base_hash` of `null`.
+    `base_hash` of `null`. A Library copy is refused with 409
+    `already_running`, including the active `run_id`, while any run in the
+    workspace is active. That refusal creates no file and does not move the
+    root.
 
     **The file.** The file is `<name>.yml` in the server's workflow folder. It
     is opened by that name only. A path that is a link, a directory or any
@@ -1077,7 +1082,9 @@ paths:
         The copy becomes the root of this session. The answer is the ordinary,
         editable workflow document that the page can open without another
         launch-code exchange. The create is exclusive, so an existing name is
-        409 and is never overwritten.
+        409 and is never overwritten. A run active anywhere in the workspace
+        is also 409; the response names that run, no file is created and the
+        root stays where it is.
       tags: [Library]
       parameters:
         - name: name
@@ -1200,14 +1207,21 @@ paths:
           headers:
             X-Konductor-Api:
               $ref: '#/components/headers/XKonductorApi'
-          description: A workflow with the requested name already exists.
+          description: The requested name exists, or a run is active.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: A workflow with this name already exists.
-                code: conflict
+              examples:
+                conflict:
+                  value:
+                    error: A workflow with this name already exists.
+                    code: conflict
+                busy:
+                  value:
+                    error: A run is already active in this workspace.
+                    code: already_running
+                    run_id: 20261024-0412-a7b3c
         '413':
           $ref: '#/components/responses/TooLarge'
         '422':

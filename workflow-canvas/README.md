@@ -174,9 +174,15 @@ empty response says that no shipped workflows are available. The contract
 allows at most 100 entries, 120 characters per title, and 240 characters per
 summary or planned reason.
 
-If a copy succeeds but its response cannot be read, the page checks
-`GET /api/workflow`. It opens the requested copy when that read confirms it.
-Otherwise the page blocks editing and running until it is reloaded.
+If a copy gets no reply, a 408, 429 or 5xx, or an unreadable 200 response,
+the page checks `GET /api/workflow`. It opens the requested copy when that read
+confirms it. Otherwise the page blocks editing and running until it is
+reloaded. A non-retryable 4xx refusal is shown without a reconciliation read.
+
+**Start from** stays focusable but unavailable while a run is active. Its reason
+says that the workspace already has an active run. The server also refuses a
+copy in that state with 409 `already_running` and the active `run_id`; it creates
+no file and does not move the session root.
 
 The page calls `GET /api/library`, `GET /api/library/{name}` and
 `POST /api/library/{name}/copy`. The local stub serves the first ready entry,

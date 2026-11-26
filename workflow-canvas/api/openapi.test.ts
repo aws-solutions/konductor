@@ -911,6 +911,20 @@ describe('workflow canvas API contract', () => {
         false,
       );
     });
+    it('documents name conflicts and active runs on copy', () => {
+      const body = jsonBodyOf(spec, 'POST /api/library/{name}/copy', '409');
+      expect(namedExample(body, 'conflict')).toMatchObject({
+        code: 'conflict',
+      });
+      expect(namedExample(body, 'busy')).toMatchObject({
+        code: 'already_running',
+        run_id: expect.any(String),
+      });
+      expect(spec.info.description.replace(/\s+/g, ' ')).toMatch(
+        /Version 1\.13\.0 only adds `already_running` to the copy operation/,
+      );
+    });
+
     it('keeps ordinary workflow identities out of library lookup space', () => {
       const detail = response('GET /api/library/{name}').example;
       const view = detail['view'] as Record<string, unknown>;
@@ -1177,7 +1191,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.12.0');
+      expect(info.version).toBe('1.13.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
