@@ -8,8 +8,8 @@ import {
 } from '../execution/core/ports';
 import type { WorkflowChecks } from '../api/types';
 import type { ParamDeclaration } from '../api/workflow-extras';
-import type { ParamsState } from './run-params';
 import type { CheckStates } from '../execution/core/run-checks';
+import type { ParamsState } from './run-params';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import {
   EventWaits,
@@ -225,6 +225,7 @@ function drawn({
           ? {}
           : { declaredParams: nextParams.map((param) => ({ ...param })) })}
         {...(nextState === undefined ? {} : { paramsState: nextState })}
+        {...(declaredChecks === undefined ? {} : { declaredChecks })}
         ports={ports}
         {...(memory ? { runMemory: memory } : {})}
         {...(reasonSentence ? { reasonSentence } : {})}
