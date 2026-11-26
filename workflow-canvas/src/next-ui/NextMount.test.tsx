@@ -83,8 +83,8 @@ async function openPage({
 
 const runTab = () => screen.getByRole('tab', { name: 'Run' });
 
-describe('the page without ?ui=next', () => {
-  it('draws the Designer that the page has today', async () => {
+describe('the page with ?ui=classic', () => {
+  it('draws the Designer it replaced', async () => {
     await openPage({ nextUi: false });
 
     expect(screen.getByTestId('node-end')).toBeTruthy();
@@ -97,14 +97,14 @@ describe('the page without ?ui=next', () => {
     expect(portsFor).not.toHaveBeenCalled();
   });
 
-  it('reads none of the calls of the views being built', async () => {
+  it('reads none of the calls of the newer views', async () => {
     const { ports } = await openPage({ nextUi: false });
 
     expect(ports.loadExtras).not.toHaveBeenCalled();
     expect(ports.listAgents).not.toHaveBeenCalled();
   });
 
-  it('keeps the Run tab it has today', async () => {
+  it('keeps the Run tab it replaced', async () => {
     await openPage({ nextUi: false });
 
     await act(async () => {
@@ -115,7 +115,7 @@ describe('the page without ?ui=next', () => {
   });
 });
 
-describe('the page with ?ui=next', () => {
+describe('the page as it opens', () => {
   it('builds the calls of the views for the workflow it shows', async () => {
     const { portsFor, result } = await openPage({ nextUi: true });
 
@@ -182,7 +182,7 @@ describe('the page with ?ui=next', () => {
   });
 });
 
-describe('the run lifecycle with ?ui=next', () => {
+describe('the run lifecycle as the page opens', () => {
   const runningDraft = {
     events: [
       { seq: 1, type: 'stage_state', stage: 'draft', status: 'running' },
@@ -322,7 +322,7 @@ describe('the run lifecycle with ?ui=next', () => {
     );
   });
 
-  it('keeps the live regions of the page it had without the query', async () => {
+  it('keeps the live regions of the views it replaced', async () => {
     await openPage({ nextUi: false });
 
     expect(screen.getAllByTestId('run-live-status')).toHaveLength(1);
@@ -330,7 +330,7 @@ describe('the run lifecycle with ?ui=next', () => {
   });
 });
 
-describe('the check of a text with ?ui=next', () => {
+describe('the check of a text as the page opens', () => {
   const nameBox = () =>
     within(screen.getByRole('tabpanel', { name: 'Properties' })).getByRole(
       'textbox',

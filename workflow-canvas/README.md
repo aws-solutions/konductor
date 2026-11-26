@@ -4,30 +4,43 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page has Design and Run views, picked with a switch in the page
-header. The Design view loads the workflow
-from the API and draws it: the intent, each stage in list order (name, agent
-and harness) and the end, joined by run-order edges. You can pick the agent of
-a stage, rename it, edit its prompt, add a stage, delete one and save the file.
-A save changes only the values it edits and keeps every other key of the file. It shows a
+The page has Design and Run views, picked with a switch in the page header. The
+Design view loads the workflow from the API and draws it: the intent and each
+stage in list order (name, agent and harness), joined by run-order edges, with a
+stop mark on each stage that no other stage follows, where the run ends. Beside
+the drawing it shows the text of the file under **YAML** and the keys of the
+picked stage under **Properties**. You can pick the agent of a stage, rename it,
+add a stage, step back with Undo and Redo, and save the file. A save changes
+only the values it edits and keeps every other key of the file. It shows a
 loading message, an error message or an empty message when there is nothing to
-draw. The Run view draws the saved workflow and runs it: a Run button
-starts a run, and each node shows its live state until the run ends. A blocked
-stage shows its reason, and a Run of a workflow that is not trusted opens a
-dialog with the command that trusts it. The contract, the stub that serves it
-and the tests around both are in this folder.
+draw. The Run view starts a run and follows it: a **Goal** box and a **Run**
+button, then how far the run has got, its stages with the console of the one
+picked, and the past runs of the workflow. A blocked stage shows its reason.
+
+These two views are what the page opens with. The views they replaced are
+still there behind `?ui=classic` while they are being finished (see **Which
+views the page opens**). The contract, the stub that serves it and the tests
+around both are in this folder.
 
 ## Layout
 
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
-  session and load the workflow; `designer/` edits it and `canvas/` draws it;
-  `execution/` runs it and shows the run; `execution/core/` does no IO and reads a run
-  once a second. A read that fails with no answer, a server error, 408 or 429 is tried
+  session and load the workflow; `canvas/` draws the graph. The views the page
+  opens with are `design-view/` (editing) and `run-view/` with `run-client/`
+  (the run). They follow a run through its events with a long poll the server
+  may hold open for 20 seconds. After a network failure or a 408, 429 or 5xx
+  response, the follower retries the call after a second, doubling the wait to
+  16 seconds, and gives up after eight failures in a row. A 401 ends the
+  following at once. Any other 4xx or a malformed successful reply also ends
+  it. The views behind `?ui=classic` are `designer/` and `execution/`, and
+  `execution/core/` reads a run once a second for them: a
+  read that fails with no answer, a server error, 408 or 429 is tried
   again, up to three in a row; any other failure ends the following. A start
   that finds a run already active follows that run. Every run call takes a
   signal, and every call ends on its own, after 15
-  seconds, or 120 seconds for the launch code trade (see **The launch code
+  seconds, 30 for one long poll, or 120 seconds for the launch code trade (see
+  **The launch code
   trade** below), so a server that never answers cannot hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
@@ -300,7 +313,9 @@ does not start it, and the same tests call that server instead.
 `src/graph/` is the core of the canvas. `buildGraph(workflow, harness)` turns
 the workflow view into nodes (the intent, one per stage, the end) and edges
 (one from each node to the next, from the bottom edge of a node to the top
-edge of the next), placed in one column. It imports
+edge of the next), placed in one column. With `{ stopMarks: true }`, which
+the Design view the page opens with asks for, the end node gives way to a
+stop mark on each stage that no other stage follows (`withStopMarks`). It imports
 only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
 imports anything else, or reads a clock, randomness, the environment or the
 network, and the stub core is held to the same rule by the same scan
@@ -390,43 +405,82 @@ The rest wraps the core, so the rules can be tested without a browser:
   with errors, with their messages), or the canvas with its editing (next
   section).
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
-  (`@xyflow/react`). Nodes cannot be moved or connected; the view can be
-  panned, and zoomed with the controls. In the Design view a stage can be
-  selected, with a click or with Enter or Space on the node; the Run view
-  is read-only. Each node can be reached with the Tab key and has a name for
-  screen readers, which ends with "selected" for the selected stage. The view
-  fits the graph again when a stage is added or deleted. The view starts zoomed out
-  far enough to show the longest workflow the API allows (40 stages), where the
-  text is small; use the zoom controls to read it. A node cuts a long name or
-  outcome short, and keeps the whole text in its `title`; an outcome too long
-  for the node is also written out in full under the graph.
+  (`@xyflow/react`). Nodes cannot be moved or connected; the view can be panned,
+  and zoomed with the controls. In the Design view a stage can be selected, with
+  a click or with Enter or Space on the node. The Run view draws no graph; the
+  Execution tab behind `?ui=classic` draws it read-only, with each node's
+  outcome. Each node can be reached with the Tab key and has a name for screen
+  readers, which ends with "selected" for the selected stage. The view fits the
+  graph again when a stage is added (or deleted, in the classic Designer). The
+  view starts zoomed out far enough to show the longest workflow the API allows
+  (40 stages), where the text is small; use the zoom controls to read it. A node
+  cuts a long name or outcome short, and keeps the whole text in its `title`; an
+  outcome too long for the node is also written out in full under the graph.
+
+## Which views the page opens
+
+The page opens with the Design and Run views described below. The views they
+replaced are still in the bundle, behind a query:
+
+- No `ui` in the address, as the launch address the server prints has it,
+  opens the two views the page now opens with.
+- `?ui=classic` opens the views they replaced: the Designer tab and the
+  Execution tab, with the graph on both and the run state on each node. Three
+  controls are theirs alone today: **Delete stage**, the **prompt** text area
+  in Properties, and the dialog a Run opens when the workflow is not trusted.
+- Any other value of `ui` opens the views the page opens with, so an older
+  `?ui=next` link, from when they were the ones behind a query, still lands
+  on them. A query the browser cannot read is no ask either.
+
+The switch is `wantsClassicUi` in `src/next-ui/next-ui.ts`, read once in
+`src/main.tsx`. `?ui=classic` is temporary: it is there while the two views
+are finished, and it goes with the views it opens.
 
 ## The Design view
 
-The tab has the graph on the left, with **Add stage** above it and the save
-line and **Save** in its header, and **Properties** on the right. Properties
-shows the selected stage (the first one when the page opens): its `name`, its
-`agent` and its `prompt`, and **Delete stage**. These are the keys of a stage
-that the Designer edits. A stage may also have a `prompt_file`, which the page
-shows as a read-only path and a save keeps. The stages run in the order they are
-listed, and there is no way to link or reorder them yet. There is no raw YAML
-editor.
+The view has a **Components** column on the left with the save line,
+**Save**, **Add agent-N** (named for the stage it adds), **Undo** and
+**Redo**; the graph in the middle; and a side column on the right with two
+tabs: **YAML**, the text of the
+file, and **Properties**. Properties shows the picked stage (the first one when
+the page opens): its `name` and its `agent` to change and every other key the
+server lists for that kind of stage read-only. There is no Delete stage here
+yet. `name` and `agent` are the two keys the editor writes; a key shown
+read-only, such as `prompt` or `prompt_file`, is kept byte for byte by a save
+but cannot be changed on the page yet. The stages run in the order they are
+listed, and there is no way to link or reorder them yet.
 
-- **Add stage** adds a stage at the end, named `agent-1` (the first free
-  `agent-N`) with the agent `k-developer`, selects it and moves focus to its
+The **YAML** tab shows the file read-only, with line numbers, the lines of the
+picked stage marked and a note that says which they are; a long file shows a
+window of its lines with a button at each end for the next ones. The text is
+checked as the stages change and cannot be typed into yet: to change the file,
+change a stage under Properties and press **Save**. While an earlier text is
+shown, after an Undo, a note says that the drawing and Properties hold the
+workflow as it is now and that a save writes that.
+
+The Designer behind `?ui=classic` draws the same graph with an end node in place
+of the stop marks, and has Properties with no YAML tab, **Add stage**, the agent
+list built into the page and **Delete stage**. It edits the same two keys and a
+stage's `prompt`, and shows a `prompt_file` as a read-only path that a save
+keeps.
+
+- **Add agent-N** (**Add stage** in the classic Designer) adds a stage at the
+  end, named `agent-1` (the first free `agent-N`) with the agent
+  `k-developer`, and selects it. The classic Designer also moves focus to its
   name. It is off at 40 stages, the most the API allows.
 - Typing in **name** renames the stage, and the node changes at once. The name
-  is taken as typed; the API is what says whether it is a good name. The
-  **Complete** or **Needs a fix** mark of a stage shows only for a draft that a
-  check has answered for, so it never says a draft is complete before it was
-  checked.
+  is taken as typed; the API is what says whether it is a good name. In the
+  classic Designer, the **Complete** or **Needs a fix** mark of a stage shows
+  only for a draft that a check has answered for, so it never says a draft is
+  complete before it was checked.
 - **agent** is a list of the agents that Konductor ships, each with a line on
-  what it is for. The API does not look an agent up in this version, so the
-  list is part of the page (`designer/core/agents.ts`); a file that names an
-  agent not on the list keeps it, shown first, and keeps it on offer when
-  another agent is chosen. There is no field to type any other id yet.
-- **prompt** is a text area with the count of its characters against 32768, the
-  limit that the contract and the specification table give (`MAX_PROMPT_CHARS`,
+  what it is for. The Design view takes it from `GET /api/agents`; the classic
+  Designer has it built into the page (`designer/core/agents.ts`). A file that
+  names an agent not on the list keeps it, shown first, and keeps it on offer
+  when another agent is chosen. There is no field to type any other id yet.
+- **prompt**, in the Designer behind `?ui=classic` only, is a text area with
+  the count of its characters against 32768, the limit that the contract and
+  the specification table give (`MAX_PROMPT_CHARS`,
   which a test compares with both). The text is shown as typed, never as HTML.
   Empty text removes the `prompt` key. A line above the text area says that
   saving a prompt ends trust, so the next Run asks again; the page grants no
@@ -436,34 +490,39 @@ editor.
   the page picks neither. The text area is also off, with the reason, for a
   prompt that is an alias or has an anchor or a tag, for a stage with two
   `prompt` keys, and for a file that uses a `<<` merge key.
-- **Delete stage** removes the stage, selects the one before it (or the next,
-  for the first) and moves focus to its name. A workflow keeps at least one
-  stage, so it is off for the last.
-- Choosing a stage by its node (click, or Enter or Space) selects it and moves
-  focus to its name. Enter or Space on the stage that is already selected also
-  moves focus to its name; a click on it changes nothing. Escape on a node
-  leaves focus on it. A polite live region says what was added, deleted or
-  selected.
+- **Delete stage**, in the Designer behind `?ui=classic` only, removes the
+  stage, selects the one before it (or the next, for the first) and moves
+  focus to its name. A workflow keeps at least one stage, so it is off for the
+  last.
+- Choosing a stage by its node (click, or Enter or Space) selects it. In the
+  Design view, each action opens Properties and moves focus to the first
+  editable control, the name. The same happens when the stage is already
+  selected. Escape on a node leaves focus on it. The classic Designer also
+  moves focus to the name, and a polite live region says what was added,
+  deleted or selected.
 
 Nothing is written until **Save**. The line beside it says **No changes**,
-**Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
+**Unsaved changes**, **Saving** or **Saved**, and **Loading** then **Loaded
+again from the server** when the file is loaded again after a conflict, in a
+polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
 The writer (`stage-text.ts`) changes only the bytes of the values it edits, in
 two passes. The first writes `name`, `agent` and whole stages by line. A
 stage whose `name` or `agent` changed keeps every other byte of its item: its
-other keys, such as `prompt` and `prompt_file`, its comments and its layout. A
-deleted stage takes its item and the comments in front of it, and a new stage
-is written after the others, with its dashes where theirs are. Every byte
-outside the block of stages stays as it was, so `format`, `version`, `params`,
-the comments and the line endings are kept. The writer knows which stage of the
-file each stage of the draft was, also after a save, so a rename is an edit of
-that stage and not a new one.
+other keys, such as `prompt` and `prompt_file`, its comments and its layout.
+In the classic Designer, a deleted stage takes its item and the comments in
+front of it. A new stage is written after the others, with its dashes where
+theirs are. Every byte outside the block of stages stays as it was, so
+`format`, `version`, `params`, the comments and the line endings are kept. The
+writer knows which stage of the file each stage of the draft was, also after a
+save, so a rename is an edit of that stage and not a new one.
 
-The second pass writes the prompts. The line writer cannot find where a block
-scalar ends, and a prompt is usually one (`>-` in `hello-plan.yml`), so
-`prompt-spots.ts` finds the range of each stage's `prompt` value with the
-`yaml` parser, and `prompt-text.ts` replaces only those bytes:
+For the classic Designer, the second pass writes prompt edits. The line writer
+cannot find where a block scalar ends, and a prompt is usually one (`>-` in
+`hello-plan.yml`), so `prompt-spots.ts` finds the range of each stage's
+`prompt` value with the `yaml` parser, and `prompt-text.ts` replaces only those
+bytes:
 
 - Text on one line is plain when that is safe. With a `: `, a ` #`, a leading
   indicator, a space at either end or a character that YAML reads as syntax, it
@@ -505,15 +564,15 @@ text:
   value that goes on to the next line, a double-quoted value with an escape
   that JSON does not read), or does not read as the value the server gave, the
   same warning says so.
-- A prompt change that cannot be written in place says why in the same
-  warning: the file mixes line endings or does not read as YAML, the stage has
-  both `prompt` and `prompt_file`, two `prompt` keys, or a prompt that is an
-  alias or has an anchor or a tag, the file uses a `<<` merge key, the stage is
-  in the flow form (`- {name: a}`) and its prompt would be added or removed, or
-  the prompt is the only key on the line of its dash and would be removed. A
-  prompt in the other layouts that stop a `name` or `agent` change (a value on
-  the next line, a block scalar, a flow item) is edited, since the parser gives
-  the range of its value.
+- In the classic Designer, a prompt change that cannot be written in place
+  says why in the same warning: the file mixes line endings or does not read
+  as YAML, the stage has both `prompt` and `prompt_file`, two `prompt` keys, or
+  a prompt that is an alias or has an anchor or a tag, the file uses a `<<`
+  merge key, the stage is in the flow form (`- {name: a}`) and its prompt would
+  be added or removed, or the prompt is the only key on the line of its dash
+  and would be removed. A prompt in the other layouts that stop a `name` or
+  `agent` change (a value on the next line, a block scalar, a flow item) is
+  edited, since the parser gives the range of its value.
 
 A double-quoted value with a YAML escape that JSON cannot read, such as `\x41`
 or `\e`, is refused for an in-place edit, since the page cannot tell its text.
@@ -523,19 +582,23 @@ and a YAML 1.1 reader such as libyaml takes U+0085, U+2028 and U+2029 for line
 breaks.
 
 - **Checking.** A moment (400 ms) after the last change, the text is checked
-  with `POST /api/validate`. What it finds shows under the field it is about,
-  and all of it in an alert above the graph, with the name of the stage in
-  front. What the last check found stays on show while you type, until the
-  check of the new text answers, so the page does not jump at every key. The
-  server has the last word: Save is off while the check of the current draft
-  has errors, with the reason in a tooltip, and a save that goes out in the
-  pause is checked again by the server. A check that cannot reach the server
-  says nothing; the save checks again and reports it. Only an error stops a
-  save: a warning or a note is shown as a note (a warning or info alert, and
-  the text under the field in the warning style) and Save stays on.
-- **A refused save** (422) shows the findings the same way. A refusal with no
-  error among its findings shows the sentence of the server as a failure, so
-  it is never silent.
+  with `POST /api/validate`. The Design view lists what it finds in one
+  warning above the columns, as `Line N:` and the message. An edit clears those
+  line findings until the new check answers. Its check-status line shows when
+  a check cannot reach the server. The classic Designer shows each finding
+  under its field and all findings in an alert above the graph, with the stage
+  name in front. Its last findings stay on show while you type, until the check
+  of the new text answers. An ordinary check failure there says nothing; the
+  save checks again and reports it. In both views, Save is off while the check
+  of the current draft has errors, with the reason in a tooltip, and a save
+  that goes out during the pause is checked again by the server. Only an error
+  stops a save. The Design view lists warnings and notes above the columns; the
+  classic Designer also shows each under its field in the warning style.
+- **A refused save** (422) shows its findings the same way in the classic
+  Designer. The Design view does not show findings that only the refusal
+  brings: Save is off with "Fix the problems in the workflow first." and the
+  list shows what its own check found. A refusal with no error among its findings shows the sentence of the
+  server as a failure, so it is never silent.
 - **A conflict** (409) means the file changed after the page loaded. Nothing
   is written, and an alert says so. If the file already holds the text that was
   sent (the 409 names its hash, and the page reads the file), the earlier write
@@ -551,9 +614,11 @@ breaks.
   replaces it with nothing kept. Note such a change down before loading the
   file again.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
-  a stage can be selected, but the name is read-only and Add stage, Delete
-  stage, the agent list and Save are off. A note above the graph says why, and
-  the buttons carry the reason in a tooltip.
+  a stage can be selected. In the classic Designer the name is read-only and
+  **Add stage**, **Delete stage**, the agent list and Save are off; a note
+  above the graph says why, and the buttons carry the reason in a tooltip. The
+  Design view does not mark it yet: only Save is off, with the reason in its
+  tooltip.
 - **A save whose answer is lost** (no answer, a server error, or a 200 that the
   page cannot read) may still have written the file. The page reads the file
   again: if it holds the text that was sent, the save counts as done. If it
@@ -565,14 +630,15 @@ breaks.
   proxy), the sentence adds that the changes on the page are lost when the
   launch address is opened again. A check that meets a lost session says so at
   once, under "The session is lost", as no save can work then.
-- **Focus and keys.** Everything above works with the keyboard: Tab to **Add
-  stage** and press Enter; the new stage's name has focus. A button that is off
-  (Save, Add stage, Delete stage) stays focusable and gives the reason in a
-  tooltip, so focus stays on the button that was pressed, for instance Save
-  while it saves.
-- **The two tabs.** The draft lives in `App`, so it is kept when you switch
-  tabs. The Run view draws the saved workflow, because a run uses the
-  saved file, and says so when the Design view holds changes that are not saved.
+- **Focus and keys.** Everything above works with the keyboard: Tab to the
+  add button (**Add agent-N**, or **Add stage** in the classic Designer) and
+  press Enter; in the classic Designer the new stage's name has focus. A button that is off (Save, the
+  add button, or **Delete stage** in the classic Designer) stays focusable and
+  gives the reason in a tooltip, so focus stays on the button that was
+  pressed, for instance Save while it saves.
+- **The two views.** The draft lives in `App`, so it is kept when you switch
+  views. A run uses the saved file, not the draft. The Execution tab behind
+  `?ui=classic` says so when the Designer holds changes that are not saved.
 
 While the draft differs from the saved file, closing or reloading the page
 makes the browser ask whether to leave (`useLeaveGuard`, a `beforeunload`
@@ -580,7 +646,7 @@ handler that is on only then), because the draft lives in the page. A change
 that is put back, so the draft equals the file again, does not ask, and nor
 does a draft that has been saved.
 
-The code follows the split of the Run view:
+The code follows the split of the Design view:
 
 - `src/designer/core/` is the core and does no IO: the draft of the stages, the
   text that a save writes (`stage-text.ts`, `prompt-text.ts`), the findings put on the stage and
@@ -595,8 +661,9 @@ The code follows the split of the Run view:
 - `createHttpApi` has `saveWorkflow` and `checkWorkflow`; `loadWorkflow` ties
   them to the session token as the `EditPort`, and turns a 409 `conflict` and
   a 422 `invalid_workflow` (with its `diagnostics`) into the core's own errors.
-- `useEditor` keeps the state in `App`; `DesignerEditor`, `PropertiesPane`,
-  `SaveControls` and `EditAlerts` draw it. `useLeaveGuard` asks the browser to
+- `useEditor` keeps the state in `App`; `DesignView`, with `DesignerLayout`,
+  `SaveControls` and `EditAlerts`, draws it, and `DesignerEditor` with
+  `PropertiesPane` draws it behind `?ui=classic`. `useLeaveGuard` asks the browser to
   confirm leaving while the draft has changes. A stage keeps an id of its own
   while it is renamed, and the node is named from that id, so two stages with
   one name for a moment still have two nodes.
@@ -605,11 +672,76 @@ The code follows the split of the Run view:
 
 ## The Run view
 
-The view draws the same graph as the Design view, read-only, with a **Goal** box
-and a **Run** button beside it. The goal starts as the `default` of the file's
-`params.goal`, and the `description` of that param is the help text of the box.
-A file without a default leaves the box empty and Run off until a goal is typed,
-because the API needs one (1 to 2048 characters) to start a run.
+The view has a **Goal** box with a **Run** button under it, then the run as it
+is followed: how far it has got, its stages with the detail and console of the
+one picked, and the past runs of the workflow. It draws no graph; the drawing
+is the Design view's. The goal starts as the `default` of the file's
+`params.goal`. A file without a default leaves the box empty and Run off until
+a goal is typed, because the API needs one (1 to 2048 characters) to start a
+run.
+
+- **Run** calls `POST /api/run` with the goal, then follows the run through
+  `GET /api/runs/{id}/events`, a long poll the server may hold open for
+  `LONG_POLL_WAIT_S` seconds. Run is off from the click until the run ends;
+  the Goal box stays editable, so the goal of the next run can be typed while
+  one goes on. Enter in the box starts a run, like the button.
+- If the server answers 409 `already_running`, as it does when a run from
+  another tab is going, the page follows the run named in that answer instead
+  of starting one, and the goal typed is not used for it. The API does not
+  give that run's goal, so while it goes the Goal box is read-only, empty and
+  says "Not known"; once that run has ended it comes back with the goal for
+  the next run, the one typed or else the workflow's default.
+- Resume works after a reload: the page keeps the id of the latest run in the
+  storage of the browser tab (`sessionStorage`; the id is no secret) and drops
+  it once the run has ended, turns out to be gone or the follower gives up.
+  While the id is kept, opening the page again with a session reads that run's
+  events from the start, so the stages and the console lines the server still
+  holds come back. After a follow failure, use **Follow again** before
+  reloading to continue from the last event the page read.
+- After a network failure or a 408, 429 or 5xx response, the follower retries
+  the call after `RETRY_FIRST_MS`, doubling the wait to `RETRY_MAX_MS`, until
+  `MAX_FAILURES_IN_A_ROW` have failed in a row. Then the follower gives up and
+  the alert offers **Follow again**. Any other 4xx or a malformed successful
+  reply ends the follower at once; a 401 has its own alert because the server
+  no longer knows the session. When a call brings nothing new, the next read
+  does not start until at least `MIN_POLL_GAP_MS` after that empty read started.
+- A line above the stages says where the run is ("Running draft. 0 of 2 stages
+  passed."), with a bar of the stages that passed or stopped it and the
+  elapsed time. A screen reader hears each change from a polite live region
+  that `App` keeps outside the views, so it is announced while the Design view
+  is open too; the line itself is not a live region, or the change would be
+  heard twice.
+- Each stage of the run is a button in the Tab order. Picking one shows its
+  detail next in the Tab order: where it is, its console lines and why it
+  stopped the run when blocked. For a reason code, the mounted view says
+  "The stage stopped the run with the reason CODE." The lines are live only,
+  as the server drops them a minute after the run ends, and the page keeps at
+  most `CONSOLE_LINES_PER_RUN` of them.
+- The past runs come from `GET /api/runs`, newest first, with the state, id,
+  start time and goal of each. The list is read again once the run has ended.
+  When it cannot be read, a warning says so and the rest of the view goes on
+  working.
+- An error from the API, whether the run does not start or the reads fail,
+  shows in one alert under the Run button, with the sentence the server gave
+  as plain text. A start that gets no answer, or is
+  accepted in a reply the page cannot read, says that it is not known whether
+  the run started and asks for a reload, since a second start could run the
+  workflow twice. The goal is one line: line breaks in the default become
+  spaces, and Enter that ends an input method composition starts no run.
+- A run goes on while the Design view is open, because the page follows it,
+  not the view that draws it. Coming back shows it as it is, with the Goal box
+  as it was. Closing the page stops the reading, not the run.
+- `useRunController` keeps the run in `App` and `RunView` draws what it holds;
+  `run-client/` reads the events and `execution/core/run-follow.ts` builds the
+  run from them, with `RunFloor` drawing the progress line, the stages and the
+  past runs.
+
+### The Execution tab behind `?ui=classic`
+
+The tab it replaced draws the same graph as the Designer, read-only, with the
+**Goal** box and **Run** beside it, and reads a run as a whole rather than
+through its events. The `description` of `params.goal` is the help text of its
+box.
 
 - **Run** calls `POST /api/run` with the goal, then reads
   `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
@@ -619,10 +751,11 @@ because the API needs one (1 to 2048 characters) to start a run.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
-  used for that run. `GET /api/runs` gives the goal of each run, but the Run
-  view does not call `listRuns` yet, so while the tab follows a run that was
-  already going the Goal box is empty, says "Not known" and is labelled so. When that run ends, the status line still says it was
-  already in progress.
+  used for that run. `GET /api/runs` gives the goal of each run, but the
+  Execution tab does not call `listRuns`, so while the tab follows a run that
+  was already going the Goal box is empty, says "Not known" and is labelled
+  so. When that run ends, the status line still says it was already in
+  progress.
 - Resume works after a reload, though the launch code works once: the page
   resumes from the session it kept (see above). If the server was started
   again, the kept token is refused and the page tells the user to start
@@ -674,7 +807,7 @@ because the API needs one (1 to 2048 characters) to start a run.
   shows it as any error is shown.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
   done."). A screen reader hears each change from a polite live region that
-  `App` keeps outside the tabs, so it is announced while the Design view is
+  `App` keeps outside the views, so it is announced while the Designer is
   open too. For a halted run it ends with the sentence of the blocked stage's
   reason, or the code when the page does not know it. Each node's name for a
   screen reader ends with its state.
@@ -682,7 +815,7 @@ because the API needs one (1 to 2048 characters) to start a run.
   in one alert under the Run button, with the sentence the server gave and
   each name in backticks shown as code. A screen reader hears the same
   sentence, without the backticks, from an alert region that `App` keeps outside the
-  tabs, so it is read when it appears even if the Design view is open; the
+  views, so it is read when it appears even if the Designer is open; the
   status line on the tab says only "See the error below.", which the live status region leaves out. When a read fails, the
   nodes are cleared and the alert adds that the run (with its id) may still be
   going on the server. A failed stage is a result, not an error, so it has no
@@ -694,7 +827,7 @@ because the API needs one (1 to 2048 characters) to start a run.
   run started. Node states attach by stage name, so a warning
   above the graph names the stages that are not drawn and those that are not in
   the run.
-- A run goes on while the Design view is open, and the tab shows it again when
+- A run goes on while the Designer is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.
 - The colours of the states are in `src/canvas/canvas.css` and match the theme
@@ -717,9 +850,9 @@ The code follows the ports-and-adapters split of the graph:
   code call after 120 seconds because it works once, and
   `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
   into the core's `RunAlreadyActive` so the core can follow that run.
-- `useExecution` keeps the state in `App`, and `Execution` draws it. The
-  Design and Run views share `WorkflowGate` (loading, error and empty
-  states) and `WorkflowGraphCard` (the card with the graph).
+- `useExecution` keeps the state in `App`, and `Execution` draws it. All four
+  views share `WorkflowGate` (loading, error and empty states), and the two
+  behind `?ui=classic` share `WorkflowGraphCard` (the card with the graph).
 
 ## Theme
 
@@ -780,7 +913,7 @@ http://127.0.0.1:4173, so no server needs to be running first. Its `webServer`
 list is where a backing service starts when the app needs one.
 
 A launch code works once, so `e2e/global-setup.ts` trades the code of the
-config for a session once per run, and the `canvas` fixture answers the page's
+config for a session once per run, and both fixtures answer the page's
 own `POST /api/session` with that session. Every other call, such as
 `GET /api/workflow`, reaches the API. A test that needs the error state opens
 the page with a wrong code or none.
@@ -808,9 +941,9 @@ editing tests, add `--no-deps`, or `functional` runs first as its dependency.
 The stub keeps what is saved until it stops, so the fixture puts the sample
 workflow back before and after each test, and a test that needs the file changed
 by someone else writes it itself (`e2e/support/stub-workflow.ts`, which fails on
-a refused call). The editing tests also cover saves that go wrong: a refusal
-with findings and one with none, a lost session, an answer that is lost or
-cannot be read (the file holds the text, or does not), and a conflict whose
+a refused call). The classic-view editing tests also cover saves that go wrong:
+a refusal with findings and one with none, a lost session, an answer that is
+lost or cannot be read (the file holds the text, or does not), a conflict whose
 draft can be copied, and a graph that grows by added stages and is fitted again.
 They edit the `hello-plan` example of the workflow engine
 (`workflow-engine/examples/hello-plan.yml`, named `hello`, the root of the
@@ -822,11 +955,11 @@ stages are in brackets, and run after a save, which the stub answers with
 A test that says a save "writes nothing" counts the `PUT` requests that the page
 sent; the file is checked only where a request reaches the stub. The HTML report
 is written to `playwright-report/`; open it with `npx playwright show-report`.
-Accessibility is checked with axe-core on each tab, on the error state, on the
-Run view with a stage running, a failed stage, a passed run, the error of
-the API, a goal that cannot be run and the trust dialog, on the Design view
-while editing, with problems shown and with a conflict shown, and in both theme
-modes.
+Accessibility is checked with axe-core on both views the page opens with and
+on both tabs behind `?ui=classic`, on the error state, on the Execution tab
+with a stage running, a failed stage, a passed run, the error of the API, a
+goal that cannot be run and the trust dialog, on the Designer while editing,
+with problems shown and with a conflict shown, and in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the tests that
 start a real run on it (the first run test of `execution.spec.ts`, and the run
@@ -838,22 +971,36 @@ next test gets a 409. For the same reason, if that one test fails and Playwright
 retries it, the retry gets a 409 and follows the run still going.
 
 Shared page objects and helpers live in `e2e/support/`. New tests should
-extend them rather than repeat selectors: import `test` and `expect` from
-`e2e/support/fixtures.ts` to get a `canvas` fixture that has already opened
-the app.
+extend them rather than repeat selectors. There are two fixtures, one per pair
+of views:
+
+- `e2e/support/next-fixtures.ts` gives a `next` fixture that has opened the app
+  as a person does, with no `ui` query, so the page draws the views it opens
+  with. A new test belongs here, with the run helpers of that file
+  (`answerRunWith` and the event builders) for a run the test answers itself.
+  `e2e/tests/next-views.spec.ts` is its spec.
+- `e2e/support/fixtures.ts` gives the `canvas` fixture, which opens
+  `?ui=classic`, for the views the two replaced. It goes when they do, with
+  the specs that use it.
 
 ## Screenshots
 
 `npm run screenshots` saves full-page PNGs to `e2e/screenshots/`, drawn from
 the stub, at 1280x800 with animations frozen. The runs in the Run view
 captures answer with fixed replies, so no capture depends on the clock of the
-stub. The Design view is in the light
+stub. The `next-*` files are the views the page opens with: the Design view
+(`next-design.png`, `next-design-dark.png` in the dark theme, and
+`next-design-properties.png` with the keys of a stage) and the Run view before
+a run (`next-run-idle.png`) and after one passed (`next-run-passed.png`, and
+`next-run-passed-dark.png` in the dark theme). The `designer-*` and
+`execution-*` files are the views behind `?ui=classic`, and go with them. Of
+those, the Designer is in the light
 theme (`designer-tab.png`) and in the dark one (`designer-tab-dark.png`, after
-the theme button is pressed). The Run view is saved before a run
+the theme button is pressed). The Execution tab is saved before a run
 (`execution-tab-idle.png`), while the first stage runs
 (`execution-tab-running.png`) and after the run passed
 (`execution-tab-finished.png`), all in the light theme, and while the first
-stage runs in the dark theme (`execution-tab-dark.png`). The Design view is
+stage runs in the dark theme (`execution-tab-dark.png`). The Designer is
 also saved with unsaved edits (`designer-editing.png`, and
 `designer-editing-dark.png` in the dark theme), after a save
 (`designer-saved.png`), with a problem the server found
@@ -861,8 +1008,8 @@ also saved with unsaved edits (`designer-editing.png`, and
 (`designer-conflict.png`), with a change it cannot write in place
 (`designer-not-in-place.png`), with the prompt of a `hello-plan` stage being
 edited (`designer-prompt.png`) and with a stage that reads its prompt from a
-file (`designer-prompt-file.png`). The Run view is also saved after a stage was
-blocked (`execution-tab-blocked.png`) and with the trust dialog open
+file (`designer-prompt-file.png`). The Execution tab is also saved after a
+stage was blocked (`execution-tab-blocked.png`) and with the trust dialog open
 (`execution-trust-required.png`). Pull request
 descriptions embed these files, so regenerate and commit them when the UI
 changes.

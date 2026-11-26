@@ -9,9 +9,9 @@ import {
 } from '../support/next-fixtures';
 import { saveFullPageScreenshot } from '../support/screenshots';
 
-// Run with `npm run screenshots`. These save the PNGs of the views being
-// built, which `?ui=next` in the address asks for. They assert only what
-// they must to reach the state they save.
+// Run with `npm run screenshots`. These save the PNGs of the views the page
+// now opens with. They assert only what they must to reach the state they
+// save.
 
 test('capture the Design view', async ({ next }) => {
   await expect(next.node('node-stage-draft')).toBeVisible();

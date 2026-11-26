@@ -5,7 +5,7 @@ import type { AgentOption } from '../designer-view/field-rules';
 import { KNOWN_AGENTS } from '../designer/core';
 import type { NextPorts } from './next-http';
 
-/** The fields and the agents that the views being built draw from. */
+/** The fields and the agents that the newer views draw from. */
 export interface NextData {
   readonly extras: WorkflowExtras;
   readonly agents: readonly AgentOption[];

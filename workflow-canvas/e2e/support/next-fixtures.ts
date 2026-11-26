@@ -6,14 +6,11 @@ import { WorkflowCanvasPage } from './workflow-canvas-page';
 
 export { expect } from '@playwright/test';
 
-/** The query that asks the page for the views being built. */
-export const NEXT_UI_QUERY = 'ui=next';
-
 const RUN_ID = '20261024-0412-a7b3c';
 
 /**
- * `test` with a `next` page object that has opened the app with `?ui=next`,
- * so the page draws the views being built.
+ * `test` with a `next` page object that has opened the app as a person does,
+ * with no `ui` query, so the page draws the views it now opens with.
  *
  * A launch code works once, and the global setup has used it, so the page's
  * own `POST /api/session` is answered with that session. Every other call
@@ -25,7 +22,7 @@ export const test = base.extend<{ next: WorkflowCanvasPage }>({
       route.fulfill({ json: sharedSession() }),
     );
     const canvas = new WorkflowCanvasPage(page);
-    await page.goto(`/?${NEXT_UI_QUERY}#${STUB_LAUNCH_CODE}`);
+    await page.goto(`/#${STUB_LAUNCH_CODE}`);
     await canvas.title.waitFor();
     await use(canvas);
   },

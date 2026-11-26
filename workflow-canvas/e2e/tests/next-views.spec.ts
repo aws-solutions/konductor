@@ -297,7 +297,7 @@ test('carries a run reloaded part-way through to its end', async ({ next }) => {
   await expect(next.runButton).toBeEnabled();
 });
 
-test('leaves the page as it is without the query', async ({ page }) => {
+test('draws the views it replaced through ?ui=classic', async ({ page }) => {
   await page.route('**/api/session', (route) =>
     route.fulfill({ json: sharedSession() }),
   );

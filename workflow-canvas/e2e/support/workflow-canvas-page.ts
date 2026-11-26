@@ -43,6 +43,18 @@ export const STEP_TIMEOUT_MS = 10_000;
 /** The most Tab presses between one node and the next one to take focus. */
 const MAX_TABS_TO_NEXT_NODE = 10;
 
+/** The query that asks the page for the views this page object drives. */
+export const CLASSIC_UI_QUERY = 'ui=classic';
+
+/**
+ * An address for those views: the query that asks for them, the extra query
+ * the caller wants kept, and the launch code as a fragment.
+ */
+export function classicUrl(launchCode?: string, query?: string): string {
+  const search = query ? `${query}&${CLASSIC_UI_QUERY}` : CLASSIC_UI_QUERY;
+  return `/?${search}${launchCode ? `#${launchCode}` : ''}`;
+}
+
 /** Page object for the workflow canvas: title, landmark, tabs and the graph. */
 export class WorkflowCanvasPage {
   readonly main: Locator;
@@ -74,11 +86,12 @@ export class WorkflowCanvasPage {
   }
 
   /**
-   * Loads the app, with the launch code in the address as the server prints
-   * it when `launchCode` is given, and waits for the title.
+   * Loads the app in the views this page object drives, which `?ui=classic`
+   * asks for, with the launch code in the address as the server prints it
+   * when `launchCode` is given, and waits for the title.
    */
   async open(launchCode?: string): Promise<void> {
-    await this.page.goto(launchCode ? `/#${launchCode}` : '/');
+    await this.page.goto(classicUrl(launchCode));
     await this.title.waitFor();
   }
 
