@@ -10,6 +10,15 @@
             "async": true
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh\""
+          }
+        ]
       }
     ],
     "SubagentStart": [

@@ -1,14 +1,15 @@
 ---
 name: "sop-k-pre-cr-critique"
-description: "This SOP performs a lightweight, read-only pre-submission code critique on local changes. Unlike the full `k-code-review-workflow` SOP (which runs multi-skill reviews and generates a review report), this is faster, focused on local changes, and produces a structured critique document with issue-level resolution tracking."
+description: "Fast, read-only critique of local changes. Use before a code review; lighter than k-code-review-workflow."
 arguments: [critique_scope, output_dir, mode, focus_areas]
-disable-model-invocation: true
 ---
 
 <agent-sop name="k-pre-cr-critique"><content>
 # Code Critic
 
 ## Overview
+
+Fast, read-only critique of local changes. Use before a code review; lighter than k-code-review-workflow.
 
 This SOP performs a lightweight, read-only pre-submission code critique on local changes. Unlike the full `k-code-review-workflow` SOP (which runs multi-skill reviews and generates a review report), this is faster, focused on local changes, and produces a structured critique document with issue-level resolution tracking.
 

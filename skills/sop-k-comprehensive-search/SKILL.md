@@ -1,14 +1,15 @@
 ---
 name: "sop-k-comprehensive-search"
-description: "This SOP activates search mode to maximize search effort across codebase and external documentation. Use it when finding patterns or implementations in a codebase, searching for external documentation, locating specific code/files/configurations, or for research tasks requiring thorough investigation."
+description: "Thorough search of the codebase and external docs. Use when a quick lookup is not enough to find patterns, implementations, files, configs or docs."
 arguments: [search_target, search_scope, project_root]
-disable-model-invocation: true
 ---
 
 <agent-sop name="k-comprehensive-search"><content>
 # Search
 
 ## Overview
+
+Thorough search of the codebase and external docs. Use when a quick lookup is not enough to find patterns, implementations, files, configs or docs.
 
 This SOP activates search mode to maximize search effort across codebase and external documentation. Use it when finding patterns or implementations in a codebase, searching for external documentation, locating specific code/files/configurations, or for research tasks requiring thorough investigation. When both scopes apply, delegating the codebase and documentation searches to separate agents buys parallelism (they run concurrently instead of serially) and context isolation (each agent's raw multi-pattern search output stays out of the orchestrator's context; only the capped summary returns).
 
@@ -128,6 +129,6 @@ ast-grep -p 'import { $IMPORTS } from "$MODULE"' {project_root}
 
 - Return file paths + 3-5 line snippets, not full file contents
 - Cap at 20 matches per search pattern — report total count if more exist
-- If combined findings exceed ~100 lines, write to `.konductor/handoff/<search-name>.md` and return the path
+- If combined findings exceed ~100 lines, write to `.konductor/handoff/<search-name>.md` and return the path (first create `.konductor/handoff/.gitignore` containing `*` if it is missing)
 
 </content><user-input>$ARGUMENTS</user-input></agent-sop>

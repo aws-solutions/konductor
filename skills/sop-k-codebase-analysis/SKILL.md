@@ -1,14 +1,15 @@
 ---
 name: "sop-k-codebase-analysis"
-description: "This SOP performs comprehensive codebase analysis covering architecture, design principles, patterns, and technical debt. It produces a structured markdown report with Mermaid diagrams. Use `focus_areas=all` for onboarding a newcomer to an unfamiliar codebase (full breadth); use a narrower `focus_areas` selection (e.g."
+description: "Codebase analysis report with Mermaid diagrams: architecture, patterns, technical debt. focus_areas=all for onboarding; a narrower set for an architecture review."
 arguments: [codebase_path, output_file, focus_areas]
-disable-model-invocation: true
 ---
 
 <agent-sop name="k-codebase-analysis"><content>
 # Codebase Analysis
 
 ## Overview
+
+Codebase analysis report with Mermaid diagrams: architecture, patterns, technical debt. focus_areas=all for onboarding; a narrower set for an architecture review.
 
 This SOP performs comprehensive codebase analysis covering architecture, design principles, patterns, and technical debt. It produces a structured markdown report with Mermaid diagrams. Use `focus_areas=all` for onboarding a newcomer to an unfamiliar codebase (full breadth); use a narrower `focus_areas` selection (e.g. `architecture,dependencies,debt`) when the goal is a specific architecture review or refactoring-planning pass — see the `focus_areas` parameter below for the full list of selectable sections.
 

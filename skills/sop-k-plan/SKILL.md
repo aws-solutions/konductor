@@ -1,14 +1,15 @@
 ---
 name: "sop-k-plan"
-description: "This SOP creates detailed work breakdowns with success criteria, task dependencies, agent assignments, and timeline estimates. Use it for multi-step tasks requiring coordination, complex features needing a structured approach, before starting any non-trivial implementation, or when scope needs clarification."
+description: "Work breakdown with success criteria, dependencies, owners and estimates. Use for multi-step work before implementation, or when scope is unclear."
 arguments: [objective, scope, constraints]
-disable-model-invocation: true
 ---
 
 <agent-sop name="k-plan"><content>
 # Plan
 
 ## Overview
+
+Work breakdown with success criteria, dependencies, owners and estimates. Use for multi-step work before implementation, or when scope is unclear.
 
 This SOP creates detailed work breakdowns with success criteria, task dependencies, agent assignments, and timeline estimates. Use it for multi-step tasks requiring coordination, complex features needing a structured approach, before starting any non-trivial implementation, or when scope needs clarification.
 
