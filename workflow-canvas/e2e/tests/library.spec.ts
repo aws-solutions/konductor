@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { Page } from '@playwright/test';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/fixtures';
 
 const READY = 'Adversarial pull request review';
 const PLANNED = 'Design document creation';
 
-async function openLibrary(page: import('@playwright/test').Page) {
+async function openLibrary(page: Page) {
   await page.getByRole('tab', { name: 'Library' }).click();
   await expect(page.getByText(READY)).toBeVisible();
 }
