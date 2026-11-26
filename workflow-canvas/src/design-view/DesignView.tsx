@@ -371,26 +371,24 @@ export function DesignView({
   // Why the text cannot be typed into now, if it cannot: read-only, a load,
   // or a save on its way to the server.
   const blocked = textBlocker(state);
+  // A step adopts its text when it crosses a raw edit, and also whenever the
+  // editor holds a raw text other than the one it lands on: otherwise the box
+  // would move while Save still wrote the raw text.
+  const holdsOther = (next: string | undefined) =>
+    rawText !== undefined && next !== undefined && next !== rawText;
+  const undoAdopts = undoAdoptsText || holdsOther(undoText);
+  const redoAdopts = redoAdoptsText || holdsOther(redoText);
   const stepHistory = useCallback(
     (asked: 'undo' | 'redo') => {
       const undoing = asked === 'undo';
       const next = undoing ? undoText : redoText;
-      const adopts = undoing ? undoAdoptsText : redoAdoptsText;
+      const adopts = undoing ? undoAdopts : redoAdopts;
       if (next === undefined || (adopts && blocked !== undefined)) return;
       if (adopts) editor.setText(next);
       if (undoing) undo();
       else redo();
     },
-    [
-      blocked,
-      editor,
-      redo,
-      redoAdoptsText,
-      redoText,
-      undo,
-      undoAdoptsText,
-      undoText,
-    ],
+    [blocked, editor, redo, redoAdopts, redoText, undo, undoAdopts, undoText],
   );
 
   const onKeyDown = useCallback(
@@ -516,7 +514,7 @@ export function DesignView({
               <Button
                 iconName="undo"
                 disabled={
-                  !history.canUndo || (undoAdoptsText && blocked !== undefined)
+                  !history.canUndo || (undoAdopts && blocked !== undefined)
                 }
                 onClick={onUndo}
               >
@@ -525,7 +523,7 @@ export function DesignView({
               <Button
                 iconName="redo"
                 disabled={
-                  !history.canRedo || (redoAdoptsText && blocked !== undefined)
+                  !history.canRedo || (redoAdopts && blocked !== undefined)
                 }
                 onClick={onRedo}
               >

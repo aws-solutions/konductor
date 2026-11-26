@@ -1473,6 +1473,37 @@ describe('DesignView, typing over the whole text', () => {
     expect(edits.save).toHaveBeenLastCalledWith(redone, SAVED_HASH);
   });
 
+  it('saves the text shown after two Undos that start from a raw edit over an earlier text', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await settle();
+    await typeInto(nameInput(), 'drafted');
+    await settle();
+    await press('Undo');
+    await settle();
+    const earlier = yamlBox().value;
+
+    await typeText(`${earlier}# typed over\n`);
+    await settle();
+    for (let step = 0; step < 2; step += 1) {
+      await act(async () => {
+        fireEvent.keyDown(yamlBox(), { key: 'z', ctrlKey: true });
+      });
+      await settle();
+    }
+
+    expect(yamlBox().value).toBe(HELLO_TEXT);
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+    await press('Save');
+    await settle();
+    expect(edits.save).toHaveBeenLastCalledWith(
+      HELLO_TEXT,
+      HELLO_DOCUMENT.hash,
+    );
+  });
+
   it('steps back over a key of a stage and then over a raw edit', async () => {
     drawn();
 
