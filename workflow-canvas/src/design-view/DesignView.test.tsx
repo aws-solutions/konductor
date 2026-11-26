@@ -1351,6 +1351,16 @@ describe('DesignView, what went wrong with a save', () => {
 
     expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
     expectNoFindings();
+    expectSaveState('Unsaved changes', true);
+    const save = button('Save');
+    await act(async () => save.focus());
+    expect(
+      wrapper()
+        .findAllButtons()
+        .find((one) => one.getElement() === save)
+        ?.findDisabledReason()
+        ?.getElement().textContent,
+    ).toContain('Fix the problems in the workflow first.');
 
     await press('Redo');
     await settle();
