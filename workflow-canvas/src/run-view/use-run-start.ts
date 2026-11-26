@@ -4,8 +4,8 @@ import {
   RunAlreadyActive,
   RunStartUnsure,
   type RunMemory,
-  type RunPort,
 } from '../execution/core';
+import type { RunParams, StartRun } from './run-params';
 import type { RunStart } from './run-start';
 
 const START_FAILED = 'The run did not start.';
@@ -44,7 +44,7 @@ function recalled(memory: RunMemory | undefined): RunStart {
  * new one of either is another session, and so another workflow.
  */
 interface StartSource {
-  readonly start: RunPort['start'];
+  readonly start: StartRun;
   readonly memory: RunMemory | undefined;
 }
 
@@ -62,8 +62,11 @@ interface Started {
 /** The state of starting a run, and the ways to change it. */
 export interface RunStartControls {
   readonly start: RunStart;
-  /** Starts a run with the goal; does nothing while another start is in flight. */
-  begin(goal: string): void;
+  /**
+   * Starts a run with the params, the goal among them; does nothing while
+   * another start is in flight.
+   */
+  begin(params: RunParams): void;
   /**
    * Drops the kept run id, without changing what the view shows, for a run
    * that has ended or is gone: a reload must not take it up again.
@@ -90,7 +93,7 @@ export function useRunStart({
   port,
   memory,
 }: {
-  readonly port: Pick<RunPort, 'start'>;
+  readonly port: { readonly start: StartRun };
   /** Keeps the run across a reload of the page. */
   readonly memory?: RunMemory;
 }): RunStartControls {
@@ -127,7 +130,7 @@ export function useRunStart({
 
   useEffect(() => () => inFlight.current?.abort(), []);
 
-  const begin = useCallback((goal: string) => {
+  const begin = useCallback((params: RunParams) => {
     if (inFlight.current) return;
     const controller = new AbortController();
     inFlight.current = controller;
@@ -135,7 +138,7 @@ export function useRunStart({
     const set = (start: RunStart) => setStarted({ source: now, start });
     set({ kind: 'starting' });
     void now
-      .start(goal, controller.signal)
+      .start(params, controller.signal)
       .then((runId) => {
         if (controller.signal.aborted) return;
         now.memory?.remember(runId);

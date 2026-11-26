@@ -6,6 +6,8 @@ import {
   RunStartUnsure,
   type RunMemory,
 } from '../execution/core/ports';
+import type { ParamDeclaration } from '../api/workflow-extras';
+import type { ParamsState } from './run-params';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import {
   EventWaits,
@@ -16,6 +18,7 @@ import {
   passed,
   running,
 } from '../test-support/held-events';
+import { PARAM_MAX_LENGTH } from './run-params';
 import { RunView } from './RunView';
 import type { RunLifecycle } from './run-start';
 import { useRunController, type RunViewPorts } from './use-run-controller';
@@ -27,6 +30,8 @@ import { useRunController, type RunViewPorts } from './use-run-controller';
 function Drawn({
   stages,
   goalDefault,
+  declaredParams,
+  paramsState,
   ports,
   runMemory,
   reasonSentence,
@@ -34,6 +39,9 @@ function Drawn({
 }: {
   stages: readonly string[];
   goalDefault?: string;
+  declaredParams?: readonly ParamDeclaration[];
+  /** The state of the params; by default they are read and are those above. */
+  paramsState?: ParamsState;
   ports: RunViewPorts;
   runMemory?: RunMemory;
   reasonSentence?: (code: string) => string | undefined;
@@ -42,6 +50,7 @@ function Drawn({
   const controller = useRunController({
     stages,
     ...(goalDefault === undefined ? {} : { goalDefault }),
+    params: paramsState ?? { kind: 'ready', declared: declaredParams ?? [] },
     ports,
     ...(runMemory ? { runMemory } : {}),
   });
@@ -92,6 +101,8 @@ function drawn({
   reasonSentence,
   goalDefault = GOAL_DEFAULT,
   noGoalDefault = false,
+  declaredParams,
+  paramsState,
   clock,
   onRunState,
 }: {
@@ -103,6 +114,10 @@ function drawn({
   goalDefault?: string;
   /** The workflow declares no default goal. */
   noGoalDefault?: boolean;
+  /** The params the workflow declares beside the goal. */
+  declaredParams?: readonly ParamDeclaration[];
+  /** The state of the params; by default they are read and are those above. */
+  paramsState?: ParamsState;
   /** A clock the test moves, for the elapsed time. */
   clock?: { now: () => number };
   /** Told where the run is, as the page is. */
@@ -127,6 +142,8 @@ function drawn({
     <Drawn
       stages={STAGES}
       {...(noGoalDefault ? {} : { goalDefault })}
+      {...(declaredParams === undefined ? {} : { declaredParams })}
+      {...(paramsState === undefined ? {} : { paramsState })}
       ports={ports}
       {...(memory ? { runMemory: memory } : {})}
       {...(reasonSentence ? { reasonSentence } : {})}
@@ -142,8 +159,10 @@ function drawn({
    */
   const rerenderWith = ({
     goalDefault: nextDefault = goalDefault,
+    declaredParams: nextParams = declaredParams,
   }: {
     goalDefault?: string;
+    declaredParams?: readonly ParamDeclaration[];
   }) => {
     const nextEvents = new HeldEvents();
     const nextStart = vi.fn(() => startResult);
@@ -152,6 +171,7 @@ function drawn({
       <Drawn
         stages={STAGES}
         goalDefault={nextDefault}
+        {...(nextParams === undefined ? {} : { declaredParams: nextParams })}
         ports={{
           start: nextStart,
           readEvents: nextEvents.readEvents,
@@ -164,10 +184,44 @@ function drawn({
     );
     return { events: nextEvents, start: nextStart, listRuns: nextList };
   };
-  return { events, start, listRuns, waits, rerenderWith, rerenderSame };
+  /**
+   * Draws the view again as the page does after a save: the same session, so
+   * the same calls, with the workflow's fields read once more. The read
+   * yields an equal declaration list under a new identity, and the caller may
+   * pass the declarations the saved file now has.
+   */
+  const rerenderRead = (
+    nextParams: readonly ParamDeclaration[] | undefined = declaredParams,
+    nextState: ParamsState | undefined = paramsState,
+  ) =>
+    rerender(
+      <Drawn
+        stages={STAGES}
+        {...(noGoalDefault ? {} : { goalDefault })}
+        {...(nextParams === undefined
+          ? {}
+          : { declaredParams: nextParams.map((param) => ({ ...param })) })}
+        {...(nextState === undefined ? {} : { paramsState: nextState })}
+        ports={ports}
+        {...(memory ? { runMemory: memory } : {})}
+        {...(reasonSentence ? { reasonSentence } : {})}
+        {...(onRunState ? { onRunState } : {})}
+      />,
+    );
+  return {
+    events,
+    start,
+    listRuns,
+    waits,
+    rerenderWith,
+    rerenderRead,
+    rerenderSame,
+  };
 }
 
-const goalBox = () => screen.getByRole('textbox') as HTMLInputElement;
+const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
+const paramBox = (name: string) =>
+  screen.getByLabelText(name) as HTMLTextAreaElement;
 const runButton = () => screen.getByRole('button', { name: 'Run' });
 const followAgainButton = () =>
   screen.getByRole('button', { name: 'Follow again' });
@@ -252,7 +306,10 @@ describe('RunView when a run starts', () => {
 
     await press();
 
-    expect(start).toHaveBeenCalledWith(GOAL_DEFAULT, expect.anything());
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
     expect(events.calls).toEqual([{ runId: RUN_ID, after: 0 }]);
   });
 
@@ -632,7 +689,7 @@ describe('RunView when the page opens another workflow', () => {
     expect(goalBox().value).toBe('Write the release note');
     await press();
     expect(other.start).toHaveBeenCalledWith(
-      'Write the release note',
+      { goal: 'Write the release note' },
       expect.anything(),
     );
   });
@@ -762,6 +819,349 @@ describe('RunView, the Goal box of a workflow with no default goal', () => {
   });
 });
 
+describe('RunView, the params the workflow declares', () => {
+  const DIFF: ParamDeclaration = {
+    name: 'diff_input',
+    type: 'string',
+    description: 'The diff to read.',
+    required: true,
+  };
+  const BRANCH: ParamDeclaration = {
+    name: 'branch',
+    default: 'main',
+    required: false,
+  };
+
+  async function typeParam(name: string, text: string) {
+    await act(async () => {
+      fireEvent.change(paramBox(name), { target: { value: text } });
+    });
+  }
+
+  it('asks for each declared param, in the order of the file', () => {
+    drawn({ declaredParams: [DIFF, BRANCH] });
+
+    expect(paramBox('diff_input')).toBeTruthy();
+    expect(paramBox('branch')).toBeTruthy();
+  });
+
+  it('says what a param is for', () => {
+    drawn({ declaredParams: [DIFF] });
+
+    expect(screen.getByText('The diff to read.')).toBeTruthy();
+  });
+
+  it('prefills the declared default', () => {
+    drawn({ declaredParams: [BRANCH] });
+
+    expect(paramBox('branch').value).toBe('main');
+  });
+
+  it('asks for nothing when the goal is the only param', () => {
+    drawn({ declaredParams: [] });
+
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+
+  it('sends the params with the goal when the run starts', async () => {
+    const { start } = drawn({ declaredParams: [DIFF, BRANCH] });
+    await typeParam('diff_input', 'the.diff');
+
+    await press();
+
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT, diff_input: 'the.diff', branch: 'main' },
+      expect.anything(),
+    );
+  });
+
+  it('leaves an empty box out, so the server applies the default', async () => {
+    const { start } = drawn({ declaredParams: [BRANCH] });
+
+    await typeParam('branch', '');
+    await press();
+
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
+  });
+
+  it('keeps Run off while a required param has no value, and says why', () => {
+    drawn({ declaredParams: [DIFF] });
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain(
+      'Enter a value for diff_input to run.',
+    );
+  });
+
+  it('turns Run on once the required param has a value', async () => {
+    drawn({ declaredParams: [DIFF] });
+
+    await typeParam('diff_input', 'the.diff');
+
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('runs a required param cleared back to its default, with its key left out', async () => {
+    const required = { ...BRANCH, required: true };
+    const { start } = drawn({ declaredParams: [required] });
+
+    await typeParam('branch', '');
+
+    expect(isOff(runButton())).toBe(false);
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
+  });
+
+  it('sends a value of white space as it was typed', async () => {
+    const { start } = drawn({ declaredParams: [DIFF] });
+
+    await typeParam('diff_input', '   ');
+    await press();
+
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT, diff_input: '   ' },
+      expect.anything(),
+    );
+  });
+
+  // A param is any string the API takes, a diff among them, so the box must
+  // keep the line breaks of a value that has them.
+  it('keeps the line breaks of a value, and sends them as typed', async () => {
+    const { start } = drawn({ declaredParams: [DIFF] });
+
+    await typeParam('diff_input', 'line 1\nline 2');
+
+    expect(paramBox('diff_input').value).toBe('line 1\nline 2');
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT, diff_input: 'line 1\nline 2' },
+      expect.anything(),
+    );
+  });
+
+  it('takes several lines in a box, which Enter adds to', () => {
+    drawn({ declaredParams: [DIFF] });
+
+    expect(paramBox('diff_input').tagName).toBe('TEXTAREA');
+    expect(paramBox('diff_input').rows).toBeGreaterThan(1);
+  });
+
+  it('starts no run on Enter in a param box', async () => {
+    const { start } = drawn({ declaredParams: [DIFF] });
+    await typeParam('diff_input', 'the.diff');
+
+    await act(async () => {
+      fireEvent.keyDown(paramBox('diff_input'), { key: 'Enter' });
+    });
+
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('says what an empty box gets only when the param has a default', () => {
+    drawn({
+      declaredParams: [DIFF, BRANCH, { name: 'note', required: false }],
+    });
+
+    expect(
+      screen.getByText(
+        'Left empty, the run takes the value the workflow declares.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('A value is needed to run.')).toBeTruthy();
+    expect(screen.getByText('Optional.')).toBeTruthy();
+  });
+
+  it('takes a required param that the file gives a default', () => {
+    drawn({ declaredParams: [{ ...BRANCH, required: true }] });
+
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('marks a value over the limit and keeps Run off', async () => {
+    drawn({ declaredParams: [BRANCH] });
+
+    await typeParam('branch', 'a'.repeat(PARAM_MAX_LENGTH + 1));
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('branch');
+  });
+
+  it('shows what the server said about params it refused', async () => {
+    const refused = Promise.reject(
+      new Error('The workflow does not declare the param "branch".'),
+    );
+    const { start } = drawn({
+      declaredParams: [BRANCH],
+      startResult: refused,
+    });
+
+    await press();
+
+    expect(start).toHaveBeenCalled();
+    expect(screen.getByTestId('run-start-error').textContent).toContain(
+      'does not declare the param "branch"',
+    );
+  });
+
+  it('keeps the boxes of a run that was already going out of reach', async () => {
+    const { start } = drawn({
+      declaredParams: [BRANCH],
+      startResult: Promise.reject(new RunAlreadyActive('Busy.', RUN_ID)),
+    });
+
+    await press();
+
+    expect(start).toHaveBeenCalled();
+    expect(paramBox('branch').readOnly).toBe(true);
+    expect(paramBox('branch').value).toBe('');
+  });
+
+  // A save makes the page read the workflow's fields again, which yields an
+  // equal list of declarations under a new identity. What a person typed is
+  // theirs and must outlive that read.
+  it('keeps the typed goal and param values when the workflow is read again', async () => {
+    const { start, rerenderRead } = drawn({ declaredParams: [DIFF, BRANCH] });
+    await type('Fix the build');
+    await typeParam('diff_input', 'the.diff');
+    await typeParam('branch', 'release');
+
+    rerenderRead();
+
+    expect(goalBox().value).toBe('Fix the build');
+    expect(paramBox('diff_input').value).toBe('the.diff');
+    expect(paramBox('branch').value).toBe('release');
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      {
+        goal: 'Fix the build',
+        diff_input: 'the.diff',
+        branch: 'release',
+      },
+      expect.anything(),
+    );
+  });
+
+  it('keeps a cleared box cleared when the workflow is read again', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', '');
+
+    rerenderRead();
+
+    expect(paramBox('branch').value).toBe('');
+  });
+
+  it('draws a param the save added from its own default, keeping the rest', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    rerenderRead([BRANCH, { name: 'note', default: 'none', required: false }]);
+
+    expect(paramBox('branch').value).toBe('release');
+    expect(paramBox('note').value).toBe('none');
+  });
+
+  it('drops the text of a param the save took out of the file', async () => {
+    const { start, rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    rerenderRead([]);
+
+    await press();
+    expect(start).toHaveBeenCalledWith(
+      { goal: GOAL_DEFAULT },
+      expect.anything(),
+    );
+  });
+
+  // The text of a param the file no longer declares is dropped, not merely
+  // hidden, so declaring the name again starts from the new default.
+  it('starts a param declared again from its new default, not the old text', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    await act(async () => rerenderRead([]));
+    await act(async () => rerenderRead([{ ...BRANCH, default: 'trunk' }]));
+
+    expect(paramBox('branch').value).toBe('trunk');
+  });
+
+  it('keeps the text of a param that was there all along', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [DIFF, BRANCH] });
+    await typeParam('diff_input', 'the.diff');
+    await typeParam('branch', 'release');
+
+    await act(async () => rerenderRead([DIFF]));
+    await act(async () => rerenderRead([DIFF, BRANCH]));
+
+    expect(paramBox('diff_input').value).toBe('the.diff');
+    expect(paramBox('branch').value).toBe('main');
+  });
+
+  it('keeps every typed value while the read of the fields is going', async () => {
+    const { rerenderRead } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+
+    // A save sends the page back to a read in flight before the new
+    // declarations arrive. Nothing is pruned then: the file still declares
+    // whatever it declares, and the page has not been told otherwise.
+    await act(async () => rerenderRead([], { kind: 'loading' }));
+    await act(async () => rerenderRead([BRANCH]));
+
+    expect(paramBox('branch').value).toBe('release');
+  });
+
+  it('keeps Run off with a reason while the fields are not known', async () => {
+    drawn({ declaredParams: [BRANCH], paramsState: { kind: 'loading' } });
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('still being read');
+    expect(screen.queryByLabelText('branch')).toBeNull();
+  });
+
+  it('says why the fields could not be read, and keeps Run off', () => {
+    drawn({
+      declaredParams: [BRANCH],
+      paramsState: { kind: 'failed', reason: 'The server said no.' },
+    });
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('The server said no.');
+  });
+
+  it('puts the goal first when both the goal and the fields stop a run', () => {
+    drawn({ noGoalDefault: true, paramsState: { kind: 'loading' } });
+
+    expect(runButton().textContent).toContain('Enter a goal to run.');
+  });
+
+  it('starts another workflow afresh, the goal and the params alike', async () => {
+    const { rerenderWith } = drawn({ declaredParams: [BRANCH] });
+    await type('Fix the build');
+    await typeParam('branch', 'release');
+
+    rerenderWith({ goalDefault: 'Write the release note' });
+
+    expect(goalBox().value).toBe('Write the release note');
+    expect(paramBox('branch').value).toBe('main');
+  });
+
+  it('starts the next workflow from its own param defaults', async () => {
+    const { rerenderWith } = drawn({ declaredParams: [BRANCH] });
+    await typeParam('branch', 'release');
+    expect(paramBox('branch').value).toBe('release');
+
+    rerenderWith({ declaredParams: [{ ...BRANCH, default: 'trunk' }] });
+
+    expect(paramBox('branch').value).toBe('trunk');
+  });
+});
+
 describe('the Run view and the controller the page keeps', () => {
   // The page holds the controller, so the view can come and go, as it does
   // when a person looks at the Design view and comes back.
@@ -769,6 +1169,7 @@ describe('the Run view and the controller the page keeps', () => {
     const controller = useRunController({
       stages: STAGES,
       goalDefault: GOAL_DEFAULT,
+      params: { kind: 'ready', declared: [] },
       ports,
     });
     return shown ? <RunView controller={controller} /> : <p>Another view</p>;

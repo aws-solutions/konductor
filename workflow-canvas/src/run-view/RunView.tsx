@@ -9,6 +9,8 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import { GOAL_MAX_LENGTH, goalProblem } from '../execution/core/goal';
 import { RunFloor } from '../execution/RunFloor';
 import type { ReasonSentence } from '../execution/core/stage-detail';
+import { ParamFields } from './ParamFields';
+import type { ParamBox } from './run-params';
 import { startsOnEnter } from './run-start';
 import type { RunController } from './use-run-controller';
 
@@ -20,20 +22,24 @@ const GOAL_DESCRIPTION =
 
 function GoalPanel({
   goal,
+  params,
   ofThisRun,
   touched,
   canStart,
   disabledReason,
   onGoal,
+  onParam,
   onStart,
 }: {
   goal: string;
+  params: readonly ParamBox[];
   ofThisRun: boolean;
   /** Whether the person has typed a goal or asked for a run. */
   touched: boolean;
   canStart: boolean;
   disabledReason: string | undefined;
   onGoal: (goal: string) => void;
+  onParam: (name: string, text: string) => void;
   onStart: () => void;
 }) {
   // An untouched box of a workflow with no default goal is empty because
@@ -60,6 +66,7 @@ function GoalPanel({
             }}
           />
         </FormField>
+        <ParamFields params={params} readOnly={!ofThisRun} onParam={onParam} />
         <Button
           variant="primary"
           disabled={!canStart}
@@ -74,16 +81,16 @@ function GoalPanel({
 }
 
 /**
- * The Run view: a Goal box with the workflow's default goal in it, a Run
- * button, how far the run has got, its stages with the console of the one
- * picked, and the past runs.
+ * The Run view: a Goal box with the workflow's default goal in it, a box for
+ * each param the workflow declares, a Run button, how far the run has got,
+ * its stages with the console of the one picked, and the past runs.
  *
  * It draws what `controller` holds and asks it to start a run; the run is
  * followed by the page, which keeps that controller whether this view is on
  * show or not, so a change of tab does not stop the only follower of a run.
- * The Goal box is read-only while a run that was already going is still
- * going, because the API does not give that run's goal. It adds no live
- * region: the run status is announced once, elsewhere on the page.
+ * The Goal and param boxes are read-only while a run that was already going
+ * is still going, because the API does not give that run's inputs. It adds no
+ * live region: the run status is announced once, elsewhere on the page.
  */
 export function RunView({
   controller,
@@ -99,11 +106,13 @@ export function RunView({
     <SpaceBetween size="m">
       <GoalPanel
         goal={controller.goal}
+        params={controller.params}
         ofThisRun={controller.ofThisRun}
         touched={controller.goalTouched}
         canStart={controller.canStart}
         disabledReason={controller.disabledReason}
         onGoal={controller.goalTyped}
+        onParam={controller.paramTyped}
         onStart={controller.startRun}
       />
       {notice && (

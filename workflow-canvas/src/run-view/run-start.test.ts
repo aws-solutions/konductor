@@ -197,14 +197,65 @@ describe('startDisabledReason', () => {
   });
 });
 
-describe('sameGoalSource', () => {
-  const source = {
-    start: () => undefined,
-    list: () => undefined,
-    goalDefault: 'Say hello',
-  };
+describe('canStartRun and startDisabledReason, the params', () => {
+  const idle = { start: { kind: 'idle' } as RunStart, runFinished: false };
 
-  it('is the same workflow for the same calls and default goal', () => {
+  it('starts when the params are ones the API takes', () => {
+    expect(
+      canStartRun({
+        ...idle,
+        goalProblem: undefined,
+        paramsProblem: undefined,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not start while a param stops it', () => {
+    expect(
+      canStartRun({
+        ...idle,
+        goalProblem: undefined,
+        paramsProblem: 'Enter a value for diff_input to run.',
+      }),
+    ).toBe(false);
+  });
+
+  it('says why the params stop it', () => {
+    expect(
+      startDisabledReason({
+        ...idle,
+        goalProblem: undefined,
+        paramsProblem: 'Enter a value for diff_input to run.',
+      }),
+    ).toBe('Enter a value for diff_input to run.');
+  });
+
+  it('says the goal first, the box a person fills in first', () => {
+    expect(
+      startDisabledReason({
+        ...idle,
+        goalProblem: 'Enter a goal to run.',
+        paramsProblem: 'Enter a value for diff_input to run.',
+      }),
+    ).toBe('Enter a goal to run.');
+  });
+
+  it('says a run is in progress before either box', () => {
+    expect(
+      startDisabledReason({
+        start: going,
+        runFinished: false,
+        goalProblem: undefined,
+        paramsProblem: 'Enter a value for diff_input to run.',
+      }),
+    ).toBe('A run is in progress.');
+  });
+});
+
+describe('sameGoalSource', () => {
+  const source = { start: () => undefined, list: () => undefined };
+
+  it('is the same workflow for the same calls', () => {
     expect(sameGoalSource({ ...source }, source)).toBe(true);
   });
 
@@ -218,12 +269,6 @@ describe('sameGoalSource', () => {
     expect(sameGoalSource({ ...source, list: () => undefined }, source)).toBe(
       false,
     );
-  });
-
-  it('is another workflow when the default goal changes', () => {
-    expect(
-      sameGoalSource({ ...source, goalDefault: 'Fix the build' }, source),
-    ).toBe(false);
   });
 
   it('is no workflow before anything is typed', () => {

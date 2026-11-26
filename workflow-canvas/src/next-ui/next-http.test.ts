@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/api';
+import { RunAlreadyActive, RunStartUnsure } from '../execution/core/ports';
 import { createNextPorts } from './next-http';
 
 const TOKEN = 'token-1';
@@ -134,6 +135,99 @@ describe('createNextPorts, the past runs', () => {
     await expect(ports.listRuns(new AbortController().signal)).rejects.toThrow(
       ApiError,
     );
+  });
+});
+
+describe('createNextPorts, the start of a run', () => {
+  const signal = () => new AbortController().signal;
+
+  it('sends the goal and the params, and gives back the run id', async () => {
+    const { calls, fetchFn } = serverOf({
+      status: 202,
+      body: { run_id: RUN_ID },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const runId = await ports.startRun(
+      { goal: 'Add a greeting', diff_input: 'the.diff' },
+      signal(),
+    );
+
+    expect(runId).toBe(RUN_ID);
+    expect(calls[0]?.path).toBe('/api/run');
+    expect(calls[0]?.init.method).toBe('POST');
+    expect(headerOf(calls[0])).toBe(`Bearer ${TOKEN}`);
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      params: { goal: 'Add a greeting', diff_input: 'the.diff' },
+    });
+  });
+
+  it('follows the run the server already has', async () => {
+    const { fetchFn } = serverOf({
+      status: 409,
+      body: {
+        error: 'A run is already active.',
+        code: 'already_running',
+        run_id: RUN_ID,
+      },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const failed = await ports
+      .startRun({ goal: 'Add a greeting' }, signal())
+      .catch((error: unknown) => error);
+
+    expect(failed).toBeInstanceOf(RunAlreadyActive);
+    expect((failed as RunAlreadyActive).runId).toBe(RUN_ID);
+  });
+
+  it('says what the server said about params it refused', async () => {
+    const { fetchFn } = serverOf({
+      status: 422,
+      body: {
+        error: 'The workflow does not declare the param "branch".',
+        code: 'bad_params',
+      },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.startRun({ goal: 'Add a greeting', branch: 'main' }, signal()),
+    ).rejects.toThrow('does not declare the param "branch"');
+  });
+
+  it('is unsure when the server does not answer', async () => {
+    const fetchFn = vi.fn(() =>
+      Promise.reject(new Error('socket closed')),
+    ) as unknown as typeof fetch;
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.startRun({ goal: 'Add a greeting' }, signal()),
+    ).rejects.toThrow(RunStartUnsure);
+  });
+
+  it('is unsure when the accepted run has a reply it cannot read', async () => {
+    const { fetchFn } = serverOf({ status: 202, body: { run_id: 7 } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.startRun({ goal: 'Add a greeting' }, signal()),
+    ).rejects.toThrow(/may have started/);
+  });
+
+  it('tells the page when the server no longer knows the session', async () => {
+    const { fetchFn } = serverOf({
+      status: 401,
+      body: { error: 'The session is gone.' },
+    });
+    const lost = vi.fn();
+    const ports = createNextPorts(TOKEN, { fetchFn, onSessionLost: lost });
+
+    await expect(
+      ports.startRun({ goal: 'Add a greeting' }, signal()),
+    ).rejects.toThrow(/no longer knows/);
+    expect(lost).toHaveBeenCalledTimes(1);
   });
 });
 

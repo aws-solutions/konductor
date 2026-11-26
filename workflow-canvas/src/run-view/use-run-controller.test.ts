@@ -25,7 +25,11 @@ function following(over: Partial<RunViewPorts> = {}) {
     ...over,
   };
   const { result } = renderHook(() =>
-    useRunController({ stages: STAGES, ports }),
+    useRunController({
+      stages: STAGES,
+      params: { kind: 'ready', declared: [] },
+      ports,
+    }),
   );
   const started = async () => {
     await act(async () => result.current.startRun());

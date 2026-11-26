@@ -1,26 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError } from '../api/api';
 import { bodyOf, withTimeout } from '../api/http-api';
-import { BAD_REPLY, errorCodeOf, errorMessageOf, isObject } from '../api/parse';
+import {
+  BAD_REPLY,
+  errorCodeOf,
+  errorMessageOf,
+  errorRunIdOf,
+  isObject,
+  parseRunStarted,
+} from '../api/parse';
 import {
   parseWorkflowExtras,
   type WorkflowExtras,
 } from '../api/workflow-extras';
 import type { AgentOption } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
+import { RunAlreadyActive, RunStartUnsure } from '../execution/core/ports';
 import type { RunSummaryRow } from '../execution/core/run-history';
 import type { ReadEvents } from '../run-client/follow-run-events';
 import { runEventsPath } from '../run-client/follow-run-events';
+import type { StartRun } from '../run-view/run-params';
 import type { ListRuns } from '../run-view/use-run-history';
 
 /*
  * The calls that the newer views need and the page's API client does
  * not have yet: the extra fields of the workflow, the agents, the past runs,
- * the events of a run and a check of a text that keeps the lines of each
- * stage. They talk to the relative `/api`, as the client does, so the page
- * and the server share one origin, and they carry the transport and the
- * error reading of `api/http-api.ts` and `api/parse.ts`, so an error of
- * these calls says what to do about it in the same words.
+ * the events of a run, the start of a run with its params and a check of a
+ * text that keeps the lines of each stage. They talk to the relative `/api`,
+ * as the client does, so the page and the server share one origin, and they
+ * carry the transport and the error reading of `api/http-api.ts` and
+ * `api/parse.ts`, so an error of these calls says what to do about it in the
+ * same words.
  */
 
 type Fetch = typeof fetch;
@@ -37,6 +47,27 @@ const SESSION_UNKNOWN =
 /** The status that says the server no longer knows the session. */
 const SESSION_LOST_STATUS = 401;
 
+const RUN_ACCEPTED_UNREADABLE =
+  'The server accepted the run, but its reply could not be read. The run may have started.';
+
+// The server names the run it already has in its 409, so the view can follow
+// that one instead of starting another.
+function activeRunOf(error: unknown): RunAlreadyActive | undefined {
+  return error instanceof ApiError &&
+    error.code === 'already_running' &&
+    error.runId !== undefined
+    ? new RunAlreadyActive(error.message, error.runId)
+    : undefined;
+}
+
+// No answer at all: the server may have taken the run, so the view offers a
+// reload rather than a second start.
+function startUnsureOf(error: unknown): RunStartUnsure | undefined {
+  return error instanceof ApiError && error.status === 0
+    ? new RunStartUnsure(error.message)
+    : undefined;
+}
+
 /** How long one of these calls may take before the page gives up on it. */
 export const NEXT_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -50,6 +81,13 @@ export interface NextPorts {
   ) => Promise<readonly AgentOption[]>;
   readonly listRuns: ListRuns;
   readonly readEvents: ReadEvents;
+  /**
+   * Starts a run with the goal and the params, as `POST /api/run` does, and
+   * resolves to its id. It rejects with `RunAlreadyActive` when the server
+   * already has a run, and with `RunStartUnsure` when the outcome of the
+   * start is not known.
+   */
+  readonly startRun: StartRun;
   /** Checks a text and keeps the lines of each stage of its view. */
   readonly validate: (
     request: ValidateRequest,
@@ -317,10 +355,13 @@ export function createNextPorts(
     if (response.status === SESSION_LOST_STATUS) sessionLost();
     // The sentence of the body with its `fix`, which says what to do about
     // the error, and the `code`, which tells a proxy's 401 from the server's.
+    // The `run_id` comes with it, because a 409 on a start names the run the
+    // server already has.
     throw new ApiError(
       errorMessageOf(body) ?? `The server answered ${response.status}.`,
       response.status,
       errorCodeOf(body),
+      errorRunIdOf(body),
     );
   };
   return {
@@ -329,6 +370,28 @@ export function createNextPorts(
     listAgents: async (signal) =>
       agentsOf(await send('/api/agents', {}, signal)),
     listRuns: async (signal) => runsOf(await send('/api/runs', {}, signal)),
+    startRun: async (params, signal) => {
+      try {
+        const body = await send(
+          '/api/run',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ params }),
+          },
+          signal,
+        );
+        // The server took the run, so a reply this page cannot read does not
+        // mean the run did not start.
+        try {
+          return parseRunStarted(body);
+        } catch {
+          throw new RunStartUnsure(RUN_ACCEPTED_UNREADABLE);
+        }
+      } catch (error) {
+        throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
+      }
+    },
     // The long poll holds the call open, so the follower's own limit times it
     // and this one does not: it reads the reply as the follower expects.
     readEvents: async (runId, after, wait, signal) => {

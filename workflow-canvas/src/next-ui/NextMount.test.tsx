@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { WorkflowExtras } from '../api/workflow-extras';
+import type { AgentOption } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import type { RunMemory, RunPort } from '../execution/core/ports';
 import type { SwapRisk } from '../launch/swap-guard';
@@ -30,6 +31,7 @@ function portsOf(over: Partial<NextPorts> = {}): NextPorts {
       Promise.resolve([{ id: 'k-developer', summary: 'Code' }]),
     ),
     listRuns: vi.fn(() => Promise.resolve([])),
+    startRun: vi.fn(() => Promise.resolve(RUN_ID)),
     readEvents: vi.fn(
       () => new Promise<never>(() => undefined),
     ) as unknown as NextPorts['readEvents'],
@@ -209,14 +211,15 @@ describe('the run lifecycle as the page opens', () => {
 
   it('follows a run through the new view only', async () => {
     const events = new HeldEvents();
-    const { runs } = await openPage({
-      nextUi: true,
-      ports: portsOf({ readEvents: events.readEvents }),
-    });
+    const ports = portsOf({ readEvents: events.readEvents });
+    const { runs } = await openPage({ nextUi: true, ports });
 
     await startRun(events);
 
-    expect(runs.start).toHaveBeenCalledTimes(1);
+    // The newer view starts through its own calls, not the session's run
+    // port, which the view it replaced used.
+    expect(ports.startRun).toHaveBeenCalledTimes(1);
+    expect(runs.start).not.toHaveBeenCalled();
     // The controller of the Run tab reads `GET /api/runs/{id}`; nothing may.
     expect(runs.get).not.toHaveBeenCalled();
     expect(events.calls.length).toBeGreaterThan(0);
@@ -487,5 +490,149 @@ describe('the check of a text as the page opens', () => {
     });
 
     expect(isOff(saveButton())).toBe(true);
+  });
+});
+
+describe('the Run view while the fields of the workflow are not known', () => {
+  const GOAL = 'Fix the build';
+
+  /** Opens the page on the Run view with that answer for the extras read. */
+  async function onRunView(loadExtras: NextPorts['loadExtras']) {
+    const page = await openPage({
+      nextUi: true,
+      ports: portsOf({ loadExtras }),
+    });
+    await act(async () => {
+      fireEvent.click(runTab());
+    });
+    return page;
+  }
+
+  const runButton = () => screen.getByRole('button', { name: 'Run' });
+
+  const typeGoal = async (text: string) => {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Goal'), {
+        target: { value: text },
+      });
+    });
+  };
+
+  const isOff = (button: HTMLElement) =>
+    button.hasAttribute('disabled') ||
+    button.getAttribute('aria-disabled') === 'true';
+
+  it('keeps Run off, and starts nothing, while the read is still going', async () => {
+    const { ports } = await onRunView(
+      () => new Promise<WorkflowExtras>(() => undefined),
+    );
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('still being read');
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).not.toHaveBeenCalled();
+  });
+
+  it('keeps Run off, and starts nothing, after a read that failed', async () => {
+    const { ports } = await onRunView(() =>
+      Promise.reject(new Error('The server said no.')),
+    );
+    await act(async () => {});
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(true);
+    expect(runButton().textContent).toContain('The server said no.');
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).not.toHaveBeenCalled();
+  });
+
+  it('turns Run on once the read answers, and starts with the typed goal', async () => {
+    const { ports } = await onRunView(() => Promise.resolve(EXTRAS));
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(false);
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).toHaveBeenCalledWith(
+      { goal: GOAL },
+      expect.anything(),
+    );
+  });
+});
+
+describe('the Run view when the agents cannot be listed', () => {
+  const GOAL = 'Fix the build';
+
+  async function onRunView(listAgents: NextPorts['listAgents']) {
+    const page = await openPage({
+      nextUi: true,
+      ports: portsOf({ listAgents }),
+    });
+    await act(async () => {
+      fireEvent.click(runTab());
+    });
+    return page;
+  }
+
+  const runButton = () => screen.getByRole('button', { name: 'Run' });
+
+  const typeGoal = async (text: string) => {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Goal'), {
+        target: { value: text },
+      });
+    });
+  };
+
+  const isOff = (button: HTMLElement) =>
+    button.hasAttribute('disabled') ||
+    button.getAttribute('aria-disabled') === 'true';
+
+  // The Run view needs no agent: a list that is still coming, or one the
+  // server would not give, must not hold up a workflow whose inputs are known.
+  it('runs while the list is still coming', async () => {
+    const { ports } = await onRunView(
+      () => new Promise<readonly AgentOption[]>(() => undefined),
+    );
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(false);
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).toHaveBeenCalledWith(
+      { goal: GOAL },
+      expect.anything(),
+    );
+  });
+
+  it('runs after the list failed, and says why the list is short', async () => {
+    const { ports } = await onRunView(() =>
+      Promise.reject(new Error('No agent list.')),
+    );
+
+    await typeGoal(GOAL);
+
+    expect(isOff(runButton())).toBe(false);
+    await act(async () => {
+      fireEvent.click(runButton());
+    });
+    expect(ports.startRun).toHaveBeenCalledWith(
+      { goal: GOAL },
+      expect.anything(),
+    );
+    expect(screen.getByTestId('next-data-error').textContent).toContain(
+      'No agent list.',
+    );
   });
 });

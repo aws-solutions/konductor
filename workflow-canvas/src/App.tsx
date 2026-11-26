@@ -24,7 +24,8 @@ import type { SwapRisk } from './launch/swap-guard';
 import type { NextPorts } from './next-ui/next-http';
 import { NextRunAnnouncements } from './next-ui/NextRunAnnouncements';
 import { oneCheck } from './next-ui/one-check';
-import { useNextData } from './next-ui/use-next-data';
+import { useNextData, type NextData } from './next-ui/use-next-data';
+import { PARAMS_LOADING, type ParamsState } from './run-view/run-params';
 import { RunView } from './run-view/RunView';
 import {
   useRunController,
@@ -51,6 +52,29 @@ const NO_RUN_PORTS: RunViewPorts = {
   scheduler: timerScheduler,
   now: () => Date.now(),
 };
+
+/**
+ * What the page knows about the params of the workflow. Until the fields of
+ * the workflow have been read for the load the page has now, it knows
+ * nothing, which is not the same as a workflow that declares none: a run
+ * started then would send the goal alone and leave every typed value behind.
+ */
+function paramsState(next: NextData): ParamsState {
+  if (next.failure !== undefined)
+    return { kind: 'failed', reason: next.failure };
+  if (!next.ready) return PARAMS_LOADING;
+  return { kind: 'ready', declared: next.extras.params ?? [] };
+}
+
+/**
+ * What could not be read of the workflow, each as its own notice. The fields
+ * and the agents are read apart, so one may fail while the other answers.
+ */
+function dataFailures(next: NextData): readonly string[] {
+  return [next.failure, next.agentsFailure].filter(
+    (reason): reason is string => reason !== undefined,
+  );
+}
 
 /**
  * True when the Run view draws a workflow, so it has a Run button. A load
@@ -175,15 +199,16 @@ export function App({
       ),
     [saved],
   );
-  // The calls the newer Run view follows a run through,
-  // which belong to the workflow that loaded: another workflow is another
-  // object, and the controller starts again for it, the run its session kept
-  // included.
+  // The calls the newer Run view starts and follows a run through, which
+  // belong to the workflow that loaded: another workflow is another object,
+  // and the controller starts again for it, the run its session kept
+  // included. The start goes through those calls too, so the params of the
+  // run travel with the goal.
   const nextRunPorts = useMemo(
     () =>
       nextUi && nextPorts && runs
         ? {
-            start: runs.start,
+            start: nextPorts.startRun,
             readEvents: nextPorts.readEvents,
             listRuns: nextPorts.listRuns,
             scheduler,
@@ -199,6 +224,7 @@ export function App({
     ...(next.extras.goalDefault === undefined
       ? {}
       : { goalDefault: next.extras.goalDefault }),
+    params: paramsState(next),
     ports: nextRunPorts,
     // Only once there is a session: the page has no run of its own to keep
     // before one, and the controller drops the run of the session it is
@@ -287,11 +313,11 @@ export function App({
             }
           >
             {notice}
-            {next.failure !== undefined && (
-              <Alert type="warning" data-testid="next-data-error">
-                {next.failure}
+            {dataFailures(next).map((reason) => (
+              <Alert key={reason} type="warning" data-testid="next-data-error">
+                {reason}
               </Alert>
-            )}
+            ))}
             {nextViews ? (
               <NextRunAnnouncements run={nextRun} />
             ) : (
