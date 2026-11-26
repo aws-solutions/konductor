@@ -39,11 +39,29 @@ async function stagesOf(stub: TestStub, runId: string): Promise<string[]> {
 describe('POST /api/run', () => {
   const stub = useStub();
 
-  it('accepts the run at once and returns its id', async () => {
+  it('accepts the run without a name and returns its id', async () => {
     const reply = await stub().client.post(RUN, GOAL);
     expectContract(reply, 'POST', RUN);
     expect(reply.status).toBe(202);
     expect(reply.body).toEqual({ run_id: '20261024-0412-00001' });
+  });
+
+  it('accepts the root by name', async () => {
+    const reply = await stub().client.post(RUN, { name: 'hello', ...GOAL });
+    expectContract(reply, 'POST', RUN);
+    expect(reply.status).toBe(202);
+  });
+
+  it('refuses another name and starts nothing', async () => {
+    const refused = await stub().client.post(RUN, { name: 'other', ...GOAL });
+    expectContract(refused, 'POST', RUN);
+    expectError(refused, 403, 'read_only_workflow');
+    expect((refused.body as { error: string }).error).toMatch(
+      /Reload the page/,
+    );
+
+    const accepted = await stub().client.post(RUN, GOAL);
+    expect(accepted.status).toBe(202);
   });
 
   it('refuses a second run while one is active, with the id of the first', async () => {

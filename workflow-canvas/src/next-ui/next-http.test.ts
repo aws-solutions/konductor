@@ -116,6 +116,91 @@ describe('createNextPorts, the agents', () => {
   });
 });
 
+describe('createNextPorts, the library', () => {
+  const ready = {
+    name: 'library/k-adversarial-pull-request-review',
+    title: 'Adversarial pull request review',
+    summary: 'Review a pull request.',
+    status: 'ready',
+  };
+  const planned = {
+    name: 'library/k-design-doc-creation',
+    title: 'Design document creation',
+    summary: 'Create a design document.',
+    status: 'planned',
+    waits: 'The workflow needs human gates.',
+  };
+
+  it('lists ready and planned entries', async () => {
+    const { calls, fetchFn } = serverOf({
+      body: { entries: [ready, planned] },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).resolves.toEqual([ready, planned]);
+    expect(calls[0]?.path).toBe('/api/library');
+  });
+
+  it('accepts the list and display limits at their maximum', async () => {
+    const entries = Array.from({ length: 100 }, (_, index) => ({
+      ...planned,
+      name: `library/workflow-${index}`,
+      title: 't'.repeat(120),
+      summary: 's'.repeat(240),
+      waits: 'w'.repeat(240),
+    }));
+    const { fetchFn } = serverOf({ body: { entries } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).resolves.toHaveLength(100);
+  });
+
+  it('refuses one entry over the list limit', async () => {
+    const entries = Array.from({ length: 101 }, (_, index) => ({
+      ...ready,
+      name: `library/workflow-${index}`,
+    }));
+    const { fetchFn } = serverOf({ body: { entries } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+
+  it.each([
+    ['title', { ...ready, title: 't'.repeat(121) }],
+    ['summary', { ...ready, summary: 's'.repeat(241) }],
+    ['waits', { ...planned, waits: 'w'.repeat(241) }],
+  ])('refuses a %s one character over its limit', async (_, entry) => {
+    const { fetchFn } = serverOf({ body: { entries: [entry] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+
+  it('refuses duplicate lookup ids', async () => {
+    const { fetchFn } = serverOf({
+      body: { entries: [ready, { ...ready, title: 'Another row' }] },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+
+  it.each([
+    ['a ready entry with waits', { ...ready, waits: 'No reason.' }],
+    ['a planned entry without waits', { ...planned, waits: undefined }],
+    ['a multiline title', { ...ready, title: 'One\nTwo' }],
+    ['a multiline reason', { ...planned, waits: 'One\nTwo' }],
+    ['an unknown status', { ...ready, status: 'retired' }],
+    ['an empty summary', { ...ready, summary: '' }],
+  ])('refuses %s', async (_, entry) => {
+    const { fetchFn } = serverOf({ body: { entries: [entry] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(ports.listLibrary()).rejects.toThrow(ApiError);
+  });
+});
+
 describe('createNextPorts, the past runs', () => {
   it('lists the runs the server gives', async () => {
     const { calls, fetchFn } = serverOf({ body: { runs: [RUN_ROW] } });
@@ -153,6 +238,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     const runId = await ports.startRun(
+      'hello',
       { goal: 'Add a greeting', diff_input: 'the.diff' },
       signal(),
     );
@@ -162,6 +248,7 @@ describe('createNextPorts, the start of a run', () => {
     expect(calls[0]?.init.method).toBe('POST');
     expect(headerOf(calls[0])).toBe(`Bearer ${TOKEN}`);
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      name: 'hello',
       params: { goal: 'Add a greeting', diff_input: 'the.diff' },
     });
   });
@@ -178,7 +265,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     const failed = await ports
-      .startRun({ goal: 'Add a greeting' }, signal())
+      .startRun('hello', { goal: 'Add a greeting' }, signal())
       .catch((error: unknown) => error);
 
     expect(failed).toBeInstanceOf(RunAlreadyActive);
@@ -199,7 +286,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     const failed = await ports
-      .startRun({ goal: 'Add a greeting' }, signal())
+      .startRun('hello', { goal: 'Add a greeting' }, signal())
       .catch((error: unknown) => error);
 
     expect(failed).toBeInstanceOf(RunNeedsTrust);
@@ -217,7 +304,11 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting', branch: 'main' }, signal()),
+      ports.startRun(
+        'hello',
+        { goal: 'Add a greeting', branch: 'main' },
+        signal(),
+      ),
     ).rejects.toThrow('does not declare the param "branch"');
   });
 
@@ -228,7 +319,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting' }, signal()),
+      ports.startRun('hello', { goal: 'Add a greeting' }, signal()),
     ).rejects.toThrow(RunStartUnsure);
   });
 
@@ -237,7 +328,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting' }, signal()),
+      ports.startRun('hello', { goal: 'Add a greeting' }, signal()),
     ).rejects.toThrow(/may have started/);
   });
 
@@ -250,7 +341,7 @@ describe('createNextPorts, the start of a run', () => {
     const ports = createNextPorts(TOKEN, { fetchFn, onSessionLost: lost });
 
     await expect(
-      ports.startRun({ goal: 'Add a greeting' }, signal()),
+      ports.startRun('hello', { goal: 'Add a greeting' }, signal()),
     ).rejects.toThrow(/Start `flow view` again/);
     expect(lost).toHaveBeenCalledTimes(1);
   });

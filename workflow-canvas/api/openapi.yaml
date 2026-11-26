@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.10.0
+  version: 1.12.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -69,7 +69,10 @@ info:
     `NOT_SUPPORTED_BY_THIS_BUILD` for one of those two keys is now read. The
     one answer that changes for a file that was never accepted is a string as
     a `run` check, which was reported as a key of a later slice and is now
-    `WRONG_TYPE`.
+    `WRONG_TYPE`. Version 1.11.0 only adds the workflow library list,
+    read-only library entry and copy operations. Version 1.12.0 only adds the
+    optional `name` field to `POST /api/run`, so a stale page can prove that it
+    still shows the session root before anything starts.
 
     **Conventions**
 
@@ -135,11 +138,12 @@ info:
     name, a value that is not a string, and a value over its own limit are all
     422 `bad_params` (400 `bad_request` for a value that is not a string)
     before anything about the run is looked at. `POST /api/run` has no text in
-    its body: it reads the saved file, so after the body its order is 404 for
-    the file, then 422 `invalid_workflow`, then the params against the
-    declaration, as 422 `bad_params`: first a param the workflow does not
-    declare, then a param it declares as `required` with neither a value in
-    the call nor a `default`. After the params come 409 `trust_required`, then
+    its body: after the body, a malformed `name` is 400 `bad_name`, a `name`
+    other than the root is 403 `read_only_workflow`, and then the server reads
+    the saved file, so its remaining order is 404 for the file, then 422
+    `invalid_workflow`, then the params against the declaration, as 422
+    `bad_params`: first a param the workflow does not declare, then a param it
+    declares as `required` with neither a value in the call nor a `default`. After the params come 409 `trust_required`, then
     409 `already_running`, then 409 `harness_unavailable`. A workflow that is not trusted is refused
     before anything about the runs is looked at, so a refused call neither
     reveals nor touches the state of a run. These orders are normative, so that
@@ -169,11 +173,17 @@ info:
     is a fallback, not the requirement.
 
     **Which workflow.** A server is started on one workflow, the `root`
-    that `POST /api/session` returns. Only the root can be loaded, saved,
-    checked and run. `GET /api/workflow` with another `name` is 404
-    `not_found`, and `PUT /api/workflow` or `POST /api/validate` with another
-    `name` is 403 `read_only_workflow`. The root may not have a file yet: a
-    file is created by the first save with a `base_hash` of `null`.
+    that `POST /api/session` returns. A successful Library copy moves the root
+    to the new project workflow so the existing load, save, check and run calls
+    address the copy. Only the current root can be loaded, saved, checked and
+    run. `GET /api/workflow` with another `name` is 404 `not_found`; PUT
+    `/api/workflow`, `POST /api/validate` or `POST /api/run` with another
+    `name` is 403 `read_only_workflow`, performs no write or run, and tells the
+    person to reload. A page that still shows the earlier root sends its shown
+    name and receives that refusal after another page copies a Library entry.
+    A missing `name` means the current root for backward compatibility. The
+    root may not have a file yet: a file is created by the first save with a
+    `base_hash` of `null`.
 
     **The file.** The file is `<name>.yml` in the server's workflow folder. It
     is opened by that name only. A path that is a link, a directory or any
@@ -560,6 +570,9 @@ paths:
                   - listAgents
                   - getRunEvents
                   - listRuns
+                  - listLibrary
+                  - getLibraryWorkflow
+                  - copyLibraryWorkflow
                 limits:
                   text_bytes: 262144
                   stages: 40
@@ -887,6 +900,328 @@ paths:
           $ref: '#/components/responses/TooLarge'
         '422':
           $ref: '#/components/responses/InvalidWorkflow'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+  /api/library:
+    get:
+      operationId: listLibrary
+      summary: List shipped workflows
+      description: |
+        Lists the workflows shipped with this server. A ready entry can be
+        opened or copied. A planned entry names what it waits for and cannot
+        be opened or copied.
+      tags: [Library]
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The shipped workflow library.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryList'
+              example:
+                entries:
+                  - name: library/k-adversarial-pull-request-review
+                    title: Adversarial pull request review
+                    summary: Review a pull request for security, integrity, and schema risks.
+                    status: ready
+                  - name: library/k-design-doc-creation
+                    title: Design document creation
+                    summary: Turn requirements into a reviewed design document.
+                    status: planned
+                    waits: The workflow needs human gates.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGet'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+  /api/library/{name}:
+    get:
+      operationId: getLibraryWorkflow
+      summary: Open a shipped workflow read-only
+      description: |
+        Returns a ready shipped workflow in the shape of `GET /api/workflow`.
+        Its document name includes the `library/` lookup prefix, while the
+        parsed view has the workflow's own name. `read_only` is always true.
+      tags: [Library]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: The shipped workflow id, including `library/`.
+          schema:
+            $ref: '#/components/schemas/LibraryName'
+          example: library/k-adversarial-pull-request-review
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The shipped workflow, read-only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyLibraryDocument'
+              example:
+                name: library/k-adversarial-pull-request-review
+                text: "format: konductor/1\nversion: 0.1.0\nintent:\n  outcome: Review a pull request for security, integrity, and schema risks\nstages:\n  - name: ingest\n    agent: k-researcher\n    prompt: Read the pull request diff and identify the changed contracts.\n  - name: review-security\n    agent: k-developer\n    prompt: Review the changes for information disclosure and authorization gaps.\n  - name: review-integrity\n    agent: k-quality-assurance\n    prompt: Review mutations for atomicity, ordering, and idempotency gaps.\n  - name: consolidate\n    agent: k-developer\n    prompt: Validate the findings and write one prioritized review.\n"
+                hash: 1da6f238bf67dc82b9cdd62624d3a1f8bc2de898ee478bba800f056ccf5fbc86
+                read_only: true
+                view:
+                  format: konductor/1
+                  version: 0.1.0
+                  name: k-adversarial-pull-request-review
+                  intent:
+                    outcome: Review a pull request for security, integrity, and schema risks
+                  stages:
+                    - name: ingest
+                      kind: agent
+                      agent: k-researcher
+                      prompt: Read the pull request diff and identify the changed contracts.
+                      range: { line: 6, end_line: 8 }
+                    - name: review-security
+                      kind: agent
+                      agent: k-developer
+                      prompt: Review the changes for information disclosure and authorization gaps.
+                      range: { line: 9, end_line: 11 }
+                    - name: review-integrity
+                      kind: agent
+                      agent: k-quality-assurance
+                      prompt: Review mutations for atomicity, ordering, and idempotency gaps.
+                      range: { line: 12, end_line: 14 }
+                    - name: consolidate
+                      kind: agent
+                      agent: k-developer
+                      prompt: Validate the findings and write one prioritized review.
+                      range: { line: 15, end_line: 17 }
+                diagnostics: []
+                stage_fields:
+                  agent:
+                    - key: name
+                      type: name
+                      required: true
+                      max_length: 64
+                      pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                      reserved: [start, end, run, halt]
+                    - key: agent
+                      type: name
+                      required: true
+                      max_length: 64
+                      pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                    - key: prompt
+                      type: text
+                      required: false
+                      min_length: 1
+                      max_length: 32768
+                      excludes: [prompt_file]
+                    - key: prompt_file
+                      type: path
+                      required: false
+                      pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
+                      excludes: [prompt]
+        '400':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The `name` is not a shipped workflow id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: The library workflow name is not valid.
+                code: bad_name
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The entry is unknown.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: There is no library workflow with this name.
+                code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGet'
+        '422':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The entry is planned and cannot be opened yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: This library workflow is not available yet.
+                code: not_available
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+  /api/library/{name}/copy:
+    post:
+      operationId: copyLibraryWorkflow
+      summary: Copy a shipped workflow
+      description: |
+        Copies a ready shipped workflow into the workflow folder under `as`.
+        The copy becomes the root of this session. The answer is the ordinary,
+        editable workflow document that the page can open without another
+        launch-code exchange. The create is exclusive, so an existing name is
+        409 and is never overwritten.
+      tags: [Library]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: The shipped workflow id, including `library/`.
+          schema:
+            $ref: '#/components/schemas/LibraryName'
+          example: library/k-adversarial-pull-request-review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LibraryCopyRequest'
+            example:
+              as: adversarial-review
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The editable copy, now the root of the session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryCopyDocument'
+              example:
+                name: adversarial-review
+                text: "format: konductor/1\nversion: 0.1.0\nintent:\n  outcome: Review a pull request for security, integrity, and schema risks\nstages:\n  - name: ingest\n    agent: k-researcher\n    prompt: Read the pull request diff and identify the changed contracts.\n  - name: review-security\n    agent: k-developer\n    prompt: Review the changes for information disclosure and authorization gaps.\n  - name: review-integrity\n    agent: k-quality-assurance\n    prompt: Review mutations for atomicity, ordering, and idempotency gaps.\n  - name: consolidate\n    agent: k-developer\n    prompt: Validate the findings and write one prioritized review.\n"
+                hash: 1da6f238bf67dc82b9cdd62624d3a1f8bc2de898ee478bba800f056ccf5fbc86
+                read_only: false
+                view:
+                  format: konductor/1
+                  version: 0.1.0
+                  name: adversarial-review
+                  intent:
+                    outcome: Review a pull request for security, integrity, and schema risks
+                  stages:
+                    - name: ingest
+                      kind: agent
+                      agent: k-researcher
+                      prompt: Read the pull request diff and identify the changed contracts.
+                      range: { line: 6, end_line: 8 }
+                    - name: review-security
+                      kind: agent
+                      agent: k-developer
+                      prompt: Review the changes for information disclosure and authorization gaps.
+                      range: { line: 9, end_line: 11 }
+                    - name: review-integrity
+                      kind: agent
+                      agent: k-quality-assurance
+                      prompt: Review mutations for atomicity, ordering, and idempotency gaps.
+                      range: { line: 12, end_line: 14 }
+                    - name: consolidate
+                      kind: agent
+                      agent: k-developer
+                      prompt: Validate the findings and write one prioritized review.
+                      range: { line: 15, end_line: 17 }
+                diagnostics: []
+                stage_fields:
+                  agent:
+                    - key: name
+                      type: name
+                      required: true
+                      max_length: 64
+                      pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                      reserved: [start, end, run, halt]
+                    - key: agent
+                      type: name
+                      required: true
+                      max_length: 64
+                      pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                    - key: prompt
+                      type: text
+                      required: false
+                      min_length: 1
+                      max_length: 32768
+                      excludes: [prompt_file]
+                    - key: prompt_file
+                      type: path
+                      required: false
+                      pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
+                      excludes: [prompt]
+        '400':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The body is malformed, or either name is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                malformed:
+                  $ref: '#/components/examples/BadRequestError'
+                badName:
+                  value:
+                    error: The workflow name is not valid.
+                    code: bad_name
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The entry is unknown.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: There is no library workflow with this name.
+                code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedPost'
+        '409':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: A workflow with the requested name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: A workflow with this name already exists.
+                code: conflict
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '422':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The entry is planned and cannot be copied yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: This library workflow is not available yet.
+                code: not_available
         '500':
           $ref: '#/components/responses/StorageFailure'
   /api/agents:
@@ -1264,7 +1599,10 @@ paths:
       operationId: startRun
       summary: Start a run
       description: |
-        Starts a run of the root workflow and returns at once with its id.
+        Starts a run of `name`, which must be the current root, and returns at
+        once with its id. `name` is optional for backward compatibility and
+        otherwise defaults to the root. A stale page names the workflow it
+        still shows and gets 403 `read_only_workflow` before anything starts.
         The run works from the file as last saved, so a client saves first, and
         the params are read against that file: the goal, and a value for each
         param it declares. A param left out takes its `default`. A save after
@@ -1279,6 +1617,7 @@ paths:
             schema:
               $ref: '#/components/schemas/RunRequest'
             example:
+              name: hello
               params:
                 goal: Add a greeting to the README
       responses:
@@ -1298,7 +1637,24 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The `name` is not the current root (`read_only_workflow`), or the
+            `Host` or `Origin` is refused. A name mismatch starts nothing and
+            tells the person to reload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                readOnly:
+                  $ref: '#/components/examples/ReadOnlyError'
+                foreignOrigin:
+                  value:
+                    error: The Origin header does not match this server.
+                    code: forbidden_origin
         '404':
           headers:
             X-Konductor-Api:
@@ -1888,9 +2244,9 @@ components:
         error: The request body is not valid.
         code: bad_request
     ReadOnlyError:
-      summary: The workflow is not the root
+      summary: The page is not showing the current root
       value:
-        error: This workflow is read-only.
+        error: The session root changed. Reload the page before saving, checking, or running.
         code: read_only_workflow
     InvalidWorkflowError:
       summary: The text has an error
@@ -1908,6 +2264,71 @@ components:
             end_column: 6
             message: Unknown key `owner`.
   schemas:
+    LibraryName:
+      type: string
+      pattern: '^library/[a-z0-9][a-z0-9-]{0,63}$'
+      description: The lookup id of a shipped workflow.
+      examples: [library/k-adversarial-pull-request-review]
+    LibraryStatus:
+      type: string
+      enum: [ready, planned]
+    LibraryEntry:
+      type: object
+      required: [name, title, summary, status]
+      description: |
+        One shipped workflow. A ready entry's source text omits the top-level
+        `name` key; the name is inferred from its `library/<name>` lookup id.
+      properties:
+        name:
+          $ref: '#/components/schemas/LibraryName'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '^[^\r\n]*$'
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 240
+          pattern: '^[^\r\n]*$'
+          description: One line saying what the workflow does.
+        status:
+          $ref: '#/components/schemas/LibraryStatus'
+        waits:
+          type: string
+          minLength: 1
+          maxLength: 240
+          pattern: '^[^\r\n]*$'
+          description: Why a planned entry is not ready. Present only when status is `planned`.
+      if:
+        properties:
+          status:
+            const: planned
+      then:
+        properties:
+          waits: {}
+        required: [waits]
+      else:
+        properties:
+          waits: false
+    LibraryList:
+      type: object
+      required: [entries]
+      description: Shipped workflows whose lookup ids are unique within the list.
+      properties:
+        entries:
+          type: array
+          maxItems: 100
+          description: Lookup ids are unique within the list.
+          items:
+            $ref: '#/components/schemas/LibraryEntry'
+    LibraryCopyRequest:
+      type: object
+      additionalProperties: false
+      required: [as]
+      properties:
+        as:
+          $ref: '#/components/schemas/Name'
     Name:
       type: string
       pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
@@ -2235,13 +2656,10 @@ components:
               type: integer
               minimum: 0
               description: The number of stages in `view`, or 0 when `view` is `null`.
-    WorkflowDocument:
+    WorkflowDocumentFields:
       type: object
-      required: [name, text, hash, read_only, view, diagnostics, stage_fields]
-      description: A workflow file as stored.
+      required: [text, hash, read_only, view, diagnostics, stage_fields]
       properties:
-        name:
-          $ref: '#/components/schemas/Name'
         text:
           type: [string, 'null']
           description: The file text exactly as stored, or `null` if the file does not exist yet.
@@ -2252,7 +2670,7 @@ components:
           description: Send this back as `base_hash` when saving. `null` if the file does not exist yet.
         read_only:
           type: boolean
-          description: True when the file cannot be saved. This version loads only the root, so it is always `false`.
+          description: True when the file cannot be saved.
         view:
           oneOf:
             - $ref: '#/components/schemas/WorkflowView'
@@ -2265,6 +2683,49 @@ components:
             $ref: '#/components/schemas/Diagnostic'
         stage_fields:
           $ref: '#/components/schemas/StageFields'
+    WorkflowDocument:
+      description: An ordinary project workflow file as stored.
+      allOf:
+        - $ref: '#/components/schemas/WorkflowDocumentFields'
+        - type: object
+          required: [name]
+          properties:
+            name:
+              $ref: '#/components/schemas/Name'
+    ReadyLibraryDocument:
+      description: A ready shipped workflow that can be previewed read-only.
+      allOf:
+        - $ref: '#/components/schemas/WorkflowDocumentFields'
+        - type: object
+          required: [name]
+          properties:
+            name:
+              $ref: '#/components/schemas/LibraryName'
+            text:
+              type: string
+            hash:
+              $ref: '#/components/schemas/Hash'
+            read_only:
+              const: true
+            view:
+              $ref: '#/components/schemas/WorkflowView'
+    LibraryCopyDocument:
+      description: An editable project copy that became the session root.
+      allOf:
+        - $ref: '#/components/schemas/WorkflowDocumentFields'
+        - type: object
+          required: [name]
+          properties:
+            name:
+              $ref: '#/components/schemas/Name'
+            text:
+              type: string
+            hash:
+              $ref: '#/components/schemas/Hash'
+            read_only:
+              const: false
+            view:
+              $ref: '#/components/schemas/WorkflowView'
     StageFields:
       type: object
       required: [agent]
@@ -2482,6 +2943,9 @@ components:
       additionalProperties: false
       required: [params]
       properties:
+        name:
+          $ref: '#/components/schemas/Name'
+          description: The workflow the page shows. It defaults to the current root.
         params:
           type: object
           required: [goal]
@@ -2915,6 +3379,7 @@ components:
         - too_large
         - invalid_workflow
         - bad_params
+        - not_available
         - io_error
     Error:
       type: object

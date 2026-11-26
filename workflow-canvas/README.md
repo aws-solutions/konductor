@@ -4,7 +4,7 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page has Design and Run views, picked with a switch in the page
+The page has Design, Run and Library views, picked with a switch in the page
 header. The Design view loads the workflow
 from the API and draws it: the intent and each stage in list order (name,
 agent and harness), joined by run-order edges, with a mark under the last
@@ -17,15 +17,18 @@ draw. The Run view starts a run and follows it: a Goal box and a Run button,
 then how far the run has got, its stages with the detail and console of the
 one picked, and the past runs of the workflow. A blocked
 stage shows its reason, and a Run of a workflow that is not trusted opens a
-dialog with the command that trusts it. The contract, the stub that serves it
-and the tests around both are in this folder.
+dialog with the command that trusts it. The Library view lists shipped
+workflows, their readiness and what planned entries wait for. Preview and copy
+arrive in the stacked follow-up. The contract, the stub that serves it and the
+tests around both are in this folder.
 
 ## Layout
 
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `design-view/` edits it and `canvas/` draws it;
-  `run-view/` runs it and shows the run; `execution/core/` and `run-client/` do
+  `run-view/` runs it and shows the run; `library-view/` lists shipped
+  workflows; `execution/core/` and `run-client/` do
   no IO and follow a run through its events, a long poll the server may hold
   open for 20 seconds. A call that fails is tried again after a second,
   doubling to 16, until eight in a row have failed; a 401 ends the following
@@ -75,17 +78,20 @@ npm run screenshots # Regenerate e2e/screenshots/*.png
 `api/openapi.yaml` is the OpenAPI 3.1 description of the HTTP API that the
 canvas calls. It covers these operations:
 
-| Method and path             | `operationId`   | What it does                            |
-| --------------------------- | --------------- | --------------------------------------- |
-| `POST /api/session`         | `createSession` | Exchange the launch code for a token    |
-| `GET /api/workflow`         | `getWorkflow`   | Load a workflow                         |
-| `PUT /api/workflow`         | `saveWorkflow`  | Save a workflow                         |
-| `GET /api/agents`           | `listAgents`    | List the agents a stage may name        |
-| `POST /api/validate`        | `checkWorkflow` | Check workflow text and report problems |
-| `POST /api/run`             | `startRun`      | Start a run                             |
-| `GET /api/runs`             | `listRuns`      | List the past runs, newest first        |
-| `GET /api/runs/{id}`        | `getRun`        | Get the status of a run                 |
-| `GET /api/runs/{id}/events` | `getRunEvents`  | Follow the events of a run              |
+| Method and path                 | `operationId`         | What it does                            |
+| ------------------------------- | --------------------- | --------------------------------------- |
+| `POST /api/session`             | `createSession`       | Exchange the launch code for a token    |
+| `GET /api/workflow`             | `getWorkflow`         | Load a workflow                         |
+| `PUT /api/workflow`             | `saveWorkflow`        | Save a workflow                         |
+| `GET /api/library`              | `listLibrary`         | List shipped workflows                  |
+| `GET /api/library/{name}`       | `getLibraryWorkflow`  | Open a shipped workflow read-only       |
+| `POST /api/library/{name}/copy` | `copyLibraryWorkflow` | Copy a shipped workflow                 |
+| `GET /api/agents`               | `listAgents`          | List the agents a stage may name        |
+| `POST /api/validate`            | `checkWorkflow`       | Check workflow text and report problems |
+| `POST /api/run`                 | `startRun`            | Start a run                             |
+| `GET /api/runs`                 | `listRuns`            | List the past runs, newest first        |
+| `GET /api/runs/{id}`            | `getRun`              | Get the status of a run                 |
+| `GET /api/runs/{id}/events`     | `getRunEvents`        | Follow the events of a run              |
 
 A workflow in this version has a `format`, a `version`, an `intent` with an
 `outcome` and optional `accept` checks, optional `params`, and `stages`.
@@ -154,6 +160,25 @@ know, and requests with a field the contract does not name are refused.
   and `run`.
 
 CI runs it on each pull request, and `npm test` includes it.
+
+## The Library
+
+The **Library** view lists workflows shipped by the server. Each row shows its
+title, summary, and Ready or Planned status. Planned rows include the reason
+they are not yet available. The action buttons remain focusable while disabled
+so their tooltip explains the current limitation. Preview and **Start from**
+are enabled by the stacked follow-up. A valid empty response says that no
+shipped workflows are available. The contract allows at most 100 entries,
+120 characters per title, and 240 characters per summary or planned reason.
+
+The page calls `GET /api/library`. The API contract and local stub also define
+`GET /api/library/{name}` and `POST /api/library/{name}/copy` for that follow-up.
+The stub serves `library/k-adversarial-pull-request-review` as ready, plus
+planned examples. A ready source omits the top-level YAML `name` key; its lookup
+id supplies the source name without rewriting the YAML. A successful copy
+moves the session root to the new project workflow, which starts untrusted. Save,
+check, and run requests name the workflow the page shows; a stale page gets 403
+`read_only_workflow`, changes nothing, and must reload.
 
 ## Stub API
 
@@ -395,7 +420,7 @@ The rest wraps the core, so the rules can be tested without a browser:
   trade.
 - `workflow/WorkflowGate.tsx` shows the result before there is a workflow to
   draw: loading, error, or empty (no file yet, or a file with errors, with
-  their messages). Once there is one, the two views draw it (next section).
+  their messages). Once there is one, the Design and Run views draw it (next section).
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
   (`@xyflow/react`). Nodes cannot be moved or connected; the view can be
   panned, and zoomed with the controls. A stage can be selected, with a click
@@ -588,7 +613,7 @@ breaks.
   (Save, Add stage, Delete stage) stays focusable and gives the reason in a
   tooltip, so focus stays on the button that was pressed, for instance Save
   while it saves.
-- **The two views.** The draft lives in `App`, so it is kept when you switch
+- **Switching views.** The draft lives in `App`, so it is kept when you switch
   views. A run uses the saved file, not the draft.
 
 While the draft differs from the saved file, closing or reloading the page
@@ -773,9 +798,9 @@ corner radii, in a light and a dark mode.
   was at load: a later change of the system setting, or of the choice in
   another tab, shows after a reload.
 - The page header is a dark band with the breadcrumb `Workflows > <workflow>`
-  (the page has no list of workflows yet, so no crumb is a link), the name of
+  (the page has no separate workflow index, so no crumb is a link), the name of
   the workflow as the title ("Workflow canvas" until one has loaded) and, on
-  the same row, the switch between Design and Run
+  the same row, the switch between Design, Run and Library
   (`src/chrome/ModeSwitch.tsx`). The switch is a tab list drawn as segments:
   Tab reaches the selected one, and the arrow keys, Home and End select
   another.

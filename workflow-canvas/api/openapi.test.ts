@@ -75,6 +75,9 @@ const STABLE_OPERATION_IDS = [
   'listAgents',
   'getRunEvents',
   'listRuns',
+  'listLibrary',
+  'getLibraryWorkflow',
+  'copyLibraryWorkflow',
 ];
 
 // This version has these operations and no others.
@@ -82,6 +85,9 @@ const OPERATIONS = [
   'POST /api/session createSession',
   'GET /api/workflow getWorkflow',
   'PUT /api/workflow saveWorkflow',
+  'GET /api/library listLibrary',
+  'GET /api/library/{name} getLibraryWorkflow',
+  'POST /api/library/{name}/copy copyLibraryWorkflow',
   'GET /api/agents listAgents',
   'POST /api/validate checkWorkflow',
   'POST /api/run startRun',
@@ -104,7 +110,7 @@ const ERROR_CODES_BY_STATUS: Record<string, string[]> = {
     'trust_required',
   ],
   '413': ['too_large'],
-  '422': ['invalid_workflow', 'bad_params'],
+  '422': ['invalid_workflow', 'bad_params', 'not_available'],
   '500': ['io_error'],
 };
 
@@ -449,7 +455,22 @@ function listTextsAndAnswers(spec: Spec): TextAndAnswer[] {
       'invalid',
     ),
   };
-  return [...checks, ...loads, saved, refused];
+  const library = jsonBodyOf(spec, 'GET /api/library/{name}', '200')
+    .example as Record<string, unknown>;
+  const copied = jsonBodyOf(spec, 'POST /api/library/{name}/copy', '200')
+    .example as Record<string, unknown>;
+  return [
+    ...checks,
+    ...loads,
+    saved,
+    refused,
+    {
+      label: 'library entry',
+      text: library['text'] as string,
+      answer: library,
+    },
+    { label: 'library copy', text: copied['text'] as string, answer: copied },
+  ];
 }
 
 // What a run promises about its own fields. Returns the broken promises.
@@ -710,8 +731,12 @@ describe('workflow canvas API contract', () => {
             ...stage,
             ...places[index],
           }));
+          const documentName = String(answer['name'] ?? 'hello');
+          const inferredName = documentName.startsWith('library/')
+            ? documentName.slice('library/'.length)
+            : documentName;
           expect(answer['view'], label).toEqual({
-            name: 'hello',
+            name: inferredName,
             ...read,
             stages,
           });
@@ -848,6 +873,112 @@ describe('workflow canvas API contract', () => {
         expect(runProblems(answer['run'] as Record<string, unknown>)).toEqual(
           [],
         );
+      }
+    });
+  });
+
+  describe('library document response shapes', () => {
+    const response = (route: string) => {
+      const media = jsonBodyOf(spec, route, '200');
+      return {
+        schema: media.schema!,
+        example: media.example as Record<string, unknown>,
+      };
+    };
+
+    it.each([
+      ['name', 'hello'],
+      ['read_only', false],
+      ['text', null],
+      ['hash', null],
+      ['view', null],
+    ])('rejects a ready detail with %s changed', (key, value) => {
+      const { schema, example } = response('GET /api/library/{name}');
+      expect(valueMatchesSchema(schema, { ...example, [key]: value })).toBe(
+        false,
+      );
+    });
+
+    it.each([
+      ['name', 'library/k-adversarial-pull-request-review'],
+      ['read_only', true],
+      ['text', null],
+      ['hash', null],
+      ['view', null],
+    ])('rejects a copy with %s changed', (key, value) => {
+      const { schema, example } = response('POST /api/library/{name}/copy');
+      expect(valueMatchesSchema(schema, { ...example, [key]: value })).toBe(
+        false,
+      );
+    });
+    it('keeps ordinary workflow identities out of library lookup space', () => {
+      const detail = response('GET /api/library/{name}').example;
+      const view = detail['view'] as Record<string, unknown>;
+      expect(
+        valueMatchesSchema(spec.components.schemas['WorkflowView']!, {
+          ...view,
+          name: detail['name'],
+        }),
+      ).toBe(false);
+      const ordinary = namedExample(
+        jsonBodyOf(spec, 'GET /api/workflow', '200'),
+        'existing',
+      );
+      expect(
+        valueMatchesSchema(spec.components.schemas['WorkflowDocument']!, {
+          ...ordinary,
+          name: detail['name'],
+        }),
+      ).toBe(false);
+    });
+
+    it('matches detail and copy view identities to their requests', () => {
+      const detail = response('GET /api/library/{name}').example;
+      const detailView = detail['view'] as Record<string, unknown>;
+      expect(detailView['name']).toBe(
+        String(detail['name']).slice('library/'.length),
+      );
+      const copy = response('POST /api/library/{name}/copy').example;
+      const copyView = copy['view'] as Record<string, unknown>;
+      const request = jsonBodyOf(spec, 'POST /api/library/{name}/copy')
+        .example as Record<string, unknown>;
+      expect(copy['name']).toBe(request['as']);
+      expect(copyView['name']).toBe(request['as']);
+    });
+
+    it('requires unique lookup ids in a library list', () => {
+      const media = jsonBodyOf(spec, 'GET /api/library', '200');
+      const list = media.example as { entries: Record<string, unknown>[] };
+      const unique = (entries: Record<string, unknown>[]) =>
+        new Set(entries.map((entry) => entry['name'])).size === entries.length;
+      expect(unique(list.entries)).toBe(true);
+      expect(unique([...list.entries, { ...list.entries[0]! }])).toBe(false);
+      expect(JSON.stringify(spec.components.schemas['LibraryList'])).toContain(
+        'Lookup ids are unique',
+      );
+    });
+    it('bounds the list and each display string', () => {
+      const libraryList = spec.components.schemas['LibraryList']!;
+      const entries = Array.from({ length: 100 }, (_, index) => ({
+        name: `library/workflow-${index}`,
+        title: 't'.repeat(120),
+        summary: 's'.repeat(240),
+        status: 'planned',
+        waits: 'w'.repeat(240),
+      }));
+      expect(valueMatchesSchema(libraryList, { entries })).toBe(true);
+      expect(
+        valueMatchesSchema(libraryList, {
+          entries: [...entries, { ...entries[0]!, name: 'library/overflow' }],
+        }),
+      ).toBe(false);
+      for (const key of ['title', 'summary', 'waits'] as const) {
+        const tooLong = key === 'title' ? 'x'.repeat(121) : 'x'.repeat(241);
+        expect(
+          valueMatchesSchema(libraryList, {
+            entries: [{ ...entries[0]!, [key]: tooLong }],
+          }),
+        ).toBe(false);
       }
     });
   });
@@ -1046,7 +1177,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.10.0');
+      expect(info.version).toBe('1.12.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1586,6 +1717,33 @@ describe('workflow canvas API contract', () => {
       'CHECK_FAILED',
     ];
 
+    it('takes an optional project workflow name on a run', () => {
+      const request = schema('RunRequest');
+      const params = { goal: 'Ship it' };
+      expect(valueMatchesSchema(request, { params })).toBe(true);
+      expect(valueMatchesSchema(request, { name: 'hello', params })).toBe(true);
+      expect(
+        valueMatchesSchema(request, { name: 'library/hello', params }),
+      ).toBe(false);
+    });
+
+    it('documents root changes and stale-page refusal', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(/A successful Library copy moves the root/);
+      expect(description).toMatch(
+        /`POST \/api\/run` with another `name` is 403 `read_only_workflow`/,
+      );
+      expect(description).toMatch(/tells the person to reload/);
+      expect(description).toMatch(
+        /Version 1\.12\.0 only adds the optional `name` field to `POST \/api\/run`/,
+      );
+      const forbidden = jsonBodyOf(spec, 'POST /api/run', '403');
+      expect(namedExample(forbidden, 'readOnly')).toMatchObject({
+        code: 'read_only_workflow',
+        error: expect.stringMatching(/Reload the page/),
+      });
+    });
+
     it('names the three harnesses, one of them for tests', () => {
       expect(schema('Harness')['enum']).toEqual(['kiro-cli', 'claude', 'fake']);
       expect(String(schema('Harness')['description'])).toMatch(
@@ -1649,7 +1807,7 @@ describe('workflow canvas API contract', () => {
     it('checks the params and trust after the workflow, and before the active run and the harness', () => {
       const description = words(spec.info.description);
       expect(description).toMatch(
-        /after the body its order is 404 for the file, then 422 `invalid_workflow`, then the params against the declaration, as 422 `bad_params`: first a param the workflow does not declare, then a param it declares as `required` with neither a value in the call nor a `default`\. After the params come 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
+        /after the body, a malformed `name` is 400 `bad_name`, a `name` other than the root is 403 `read_only_workflow`, and then the server reads the saved file, so its remaining order is 404 for the file, then 422 `invalid_workflow`, then the params against the declaration, as 422 `bad_params`: first a param the workflow does not declare, then a param it declares as `required` with neither a value in the call nor a `default`\. After the params come 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
       );
       const run = spec.paths['/api/run']?.['post']?.responses?.['409'];
       const text = words(

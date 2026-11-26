@@ -23,6 +23,7 @@ export const STATUS_BY_CODE: Record<ErrorCode, number> = {
   too_large: 413,
   invalid_workflow: 422,
   bad_params: 422,
+  not_available: 422,
   io_error: 500,
 };
 

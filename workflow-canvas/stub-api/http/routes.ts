@@ -9,6 +9,7 @@ import { badName } from '../core/errors.ts';
 import type { WorkflowApi } from '../core/workflow-api.ts';
 import {
   readCheckRequest,
+  readLibraryCopyRequest,
   readRunRequest,
   readSaveRequest,
   readSessionRequest,
@@ -55,6 +56,14 @@ function nameFrom(query: URLSearchParams): string | undefined {
     throw badName();
   }
   return names[0];
+}
+
+function libraryNameOf(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw badName();
+  }
 }
 
 /** The `operationId` of every operation that `routes` serves. */
@@ -110,6 +119,42 @@ export function buildRoutes(
       },
     },
     {
+      pattern: /^\/api\/library$/,
+      operations: {
+        GET: {
+          id: 'listLibrary',
+          secured: true,
+          handle: () => ok(api.listLibrary()),
+        },
+      },
+    },
+    {
+      pattern: /^\/api\/library\/([^/]+)$/,
+      operations: {
+        GET: {
+          id: 'getLibraryWorkflow',
+          secured: true,
+          handle: ({ params }) =>
+            ok(api.loadLibrary(libraryNameOf(params[0] ?? ''))),
+        },
+      },
+    },
+    {
+      pattern: /^\/api\/library\/([^/]+)\/copy$/,
+      operations: {
+        POST: {
+          id: 'copyLibraryWorkflow',
+          secured: true,
+          handle: ({ params, body }) => {
+            const request = readLibraryCopyRequest(body);
+            return ok(
+              api.copyLibrary(libraryNameOf(params[0] ?? ''), request.as),
+            );
+          },
+        },
+      },
+    },
+    {
       pattern: /^\/api\/validate$/,
       operations: {
         POST: {
@@ -126,8 +171,8 @@ export function buildRoutes(
           id: 'startRun',
           secured: true,
           handle: ({ body }) => {
-            const { params } = readRunRequest(body);
-            return { status: 202, body: api.startRun(params) };
+            const { name, params } = readRunRequest(body);
+            return { status: 202, body: api.startRun(name, params) };
           },
         },
       },

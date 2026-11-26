@@ -14,8 +14,27 @@ import {
 import { saveFullPageScreenshot } from '../support/screenshots';
 import { overwriteWorkflow, SAMPLE_TEXT } from '../support/stub-workflow';
 
-// Run with `npm run screenshots`. These save the PNGs of the two views. They
+// Run with `npm run screenshots`. These save the PNGs of the page views. They
 // assert only what they must to reach the state they save.
+
+test('capture the Library list', async ({ canvas }) => {
+  await canvas.selectTab('Library');
+  await expect(
+    canvas.page.getByText('Adversarial pull request review'),
+  ).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-library');
+});
+
+test('capture the Library list in the dark mode', async ({ canvas }) => {
+  await canvas.switchTheme();
+  await canvas.selectTab('Library');
+  await expect(
+    canvas.page.getByText('Adversarial pull request review'),
+  ).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-library-dark');
+});
 
 test('capture the Design view', async ({ canvas }) => {
   await expect(canvas.node('node-stage-draft')).toBeVisible();

@@ -10,6 +10,14 @@ import {
 import { AGENTS, type Agent } from './agents.ts';
 import { ApiError, badName } from './errors.ts';
 import { STAGE_FIELDS } from './fields.ts';
+import { sha256Hex } from './hash.ts';
+import {
+  findLibrary,
+  listLibrary,
+  SHIPPED_LIBRARY,
+  type LibraryEntry,
+  type ShippedWorkflow,
+} from './library.ts';
 import type {
   CheckResult,
   Run,
@@ -39,6 +47,7 @@ export interface WorkflowApiOptions {
   runs: RunSimulator;
   /** How a run of the root is answered. The default is a run that passes. */
   behavior?: Behavior;
+  library?: readonly ShippedWorkflow[];
 }
 
 /**
@@ -46,17 +55,18 @@ export interface WorkflowApiOptions {
  * contract's order and throws an `ApiError` for the first one that fails.
  */
 export class WorkflowApi {
-  readonly root: string;
+  root: string;
   private readonly store: WorkflowStore;
   private readonly runs: RunSimulator;
   private readonly behavior: Behavior;
+  private readonly library: readonly ShippedWorkflow[];
   /**
    * The hash of the root file when the stub started, which stands for the
    * user's confirmation in a terminal: a root that is not `untrusted` begins
    * trusted. A save that changes the bytes leaves the record where it is, so
    * the file stops matching it, as the contract says.
    */
-  private readonly trustedHash: string | undefined;
+  private trustedHash: string | undefined;
   private otherRunStarted = false;
 
   constructor(options: WorkflowApiOptions) {
@@ -64,6 +74,7 @@ export class WorkflowApi {
     this.store = options.store;
     this.runs = options.runs;
     this.behavior = options.behavior ?? {};
+    this.library = options.library ?? SHIPPED_LIBRARY;
     this.trustedHash = this.behavior.untrusted
       ? undefined
       : this.store.read(this.root)?.hash;
@@ -119,17 +130,21 @@ export class WorkflowApi {
    * trust, a run that is active, the harness. The workflow is trusted only
    * while the file still has the bytes it had when the stub started.
    */
-  startRun(params: Record<string, string>): { run_id: string } {
-    const file = this.store.read(this.root);
+  startRun(
+    name: string | undefined,
+    params: Record<string, string>,
+  ): { run_id: string } {
+    const target = this.writableName(name);
+    const file = this.store.read(target);
     if (!file) {
       throw new ApiError('not_found', 'The workflow has not been saved yet.');
     }
-    const check = checkWorkflowText(file.text, this.root);
+    const check = checkWorkflowText(file.text, target);
     if (!check.view) throw invalidWorkflow(check);
     const view = check.view;
     resolveParams(params, view);
     const stageNames = view.stages.map((stage) => stage.name);
-    if (this.trustedHash !== file.hash) throw untrusted(this.root);
+    if (this.trustedHash !== file.hash) throw untrusted(target);
     this.findOtherRun();
     const active = this.runs.activeRunId();
     if (active) {
@@ -151,7 +166,7 @@ export class WorkflowApi {
       );
     }
     const runId = this.runs.start(
-      this.root,
+      target,
       stageNames,
       params.goal ?? '',
       this.planOfRun(view),
@@ -181,6 +196,73 @@ export class WorkflowApi {
       neverEnds: true,
       checks: checksOf(view),
     });
+  }
+
+  /** Lists the shipped workflows without their source text. */
+  listLibrary(): { entries: LibraryEntry[] } {
+    return { entries: listLibrary(this.library) };
+  }
+
+  /** Opens a ready shipped workflow as a read-only document. */
+  loadLibrary(
+    name: string,
+  ): WorkflowDocument & { text: string; view: WorkflowView } {
+    const entry = this.readyLibrary(name);
+    const text = entry.text;
+    const target = name.slice('library/'.length);
+    const check = checkWorkflowText(text, target);
+    if (!check.view) {
+      throw new ApiError(
+        'io_error',
+        'The server could not read or write its files.',
+      );
+    }
+    return {
+      name,
+      text,
+      hash: sha256Hex(text),
+      read_only: true,
+      view: check.view,
+      diagnostics: check.diagnostics,
+      stage_fields: STAGE_FIELDS,
+    };
+  }
+
+  /** Copies a ready shipped workflow and makes the copy this session's root. */
+  copyLibrary(name: string, as: string): WorkflowDocument {
+    if (!isName(as)) throw badName();
+    const source = this.loadLibrary(name);
+    if (this.store.read(as)) {
+      throw new ApiError(
+        'conflict',
+        'A workflow with this name already exists.',
+      );
+    }
+    this.store.save(as, source.text, null);
+    this.trustedHash = undefined;
+    this.root = as;
+    return this.loadWorkflow(undefined);
+  }
+
+  private readyLibrary(name: string): { text: string } {
+    listLibrary(this.library);
+    if (!/^library\/[a-z0-9][a-z0-9-]{0,63}$/.test(name)) {
+      throw badName();
+    }
+    const entry = findLibrary(name, this.library);
+    if (!entry) {
+      throw new ApiError(
+        'not_found',
+        'There is no library workflow with this name.',
+      );
+    }
+    if (entry.status !== 'ready' || entry.text === undefined) {
+      throw new ApiError(
+        'not_available',
+        'This library workflow is not available yet.',
+      );
+    }
+    return { text: entry.text };
   }
 
   listAgents(): { agents: Agent[] } {
@@ -241,7 +323,10 @@ export class WorkflowApi {
   private writableName(name: string | undefined): string {
     const target = this.nameOrRoot(name);
     if (target !== this.root) {
-      throw new ApiError('read_only_workflow', 'This workflow is read-only.');
+      throw new ApiError(
+        'read_only_workflow',
+        'The session root changed. Reload the page before saving, checking, or running.',
+      );
     }
     return target;
   }

@@ -10,6 +10,7 @@ import {
   isObject,
   parseRunStarted,
 } from '../api/parse';
+import type { LibraryEntry } from '../api/types';
 import {
   parseWorkflowExtras,
   type WorkflowExtras,
@@ -25,7 +26,7 @@ import type { RunSummaryRow } from '../execution/core/run-history';
 import type { ReadEvents } from '../run-client/follow-run-events';
 import { runEventsPath } from '../run-client/follow-run-events';
 import type { CheckStates, ReadChecks } from '../execution/core/run-checks';
-import type { StartRun } from '../run-view/run-params';
+import type { RunParams } from '../run-view/run-params';
 import type { ListRuns } from '../run-view/use-run-history';
 
 /*
@@ -85,7 +86,7 @@ function startUnsureOf(error: unknown): RunStartUnsure | undefined {
 /** How long one of these calls may take before the page gives up on it. */
 export const NEXT_REQUEST_TIMEOUT_MS = 15_000;
 
-/** The calls that the Design and Run views make, beyond the session's own. */
+/** The calls that the Design, Run and Library views make beyond the session's own. */
 export interface NextPorts {
   /** Reads the `kind`, `range`, `stage_fields` and default goal of the workflow. */
   readonly loadExtras: (signal?: AbortSignal) => Promise<WorkflowExtras>;
@@ -93,6 +94,8 @@ export interface NextPorts {
   readonly listAgents: (
     signal?: AbortSignal,
   ) => Promise<readonly AgentOption[]>;
+  /** Lists the shipped workflows. */
+  readonly listLibrary: (signal?: AbortSignal) => Promise<LibraryEntry[]>;
   readonly listRuns: ListRuns;
   readonly readEvents: ReadEvents;
   /**
@@ -101,7 +104,11 @@ export interface NextPorts {
    * already has a run, and with `RunStartUnsure` when the outcome of the
    * start is not known.
    */
-  readonly startRun: StartRun;
+  readonly startRun: (
+    name: string,
+    params: RunParams,
+    signal: AbortSignal,
+  ) => Promise<string>;
   /**
    * The state of each check of a run, by check id, as
    * `GET /api/runs/{id}` reports it. Only the checks are read from there:
@@ -129,6 +136,52 @@ function agentsOf(body: unknown): readonly AgentOption[] {
   const agents = isObject(body) ? body.agents : undefined;
   if (!Array.isArray(agents)) throw new ApiError(BAD_REPLY, 200);
   return agents.map(agentOf);
+}
+
+const LIBRARY_NAME = /^library\/[a-z0-9][a-z0-9-]{0,63}$/;
+const MAX_LIBRARY_ENTRIES = 100;
+const MAX_LIBRARY_TITLE = 120;
+const MAX_LIBRARY_DETAIL = 240;
+const characters = (text: string) => [...text].length;
+
+function libraryEntryOf(value: unknown): LibraryEntry {
+  if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
+  const name = textOrFail(value.name);
+  const title = textOrFail(value.title);
+  const summary = textOrFail(value.summary);
+  const { status, waits } = value;
+  if (
+    !LIBRARY_NAME.test(name) ||
+    title === '' ||
+    characters(title) > MAX_LIBRARY_TITLE ||
+    /[\r\n]/.test(title) ||
+    summary === '' ||
+    characters(summary) > MAX_LIBRARY_DETAIL ||
+    /[\r\n]/.test(summary) ||
+    (status !== 'ready' && status !== 'planned') ||
+    (status === 'ready' && waits !== undefined) ||
+    (status === 'planned' &&
+      (typeof waits !== 'string' ||
+        waits === '' ||
+        characters(waits) > MAX_LIBRARY_DETAIL ||
+        /[\r\n]/.test(waits)))
+  ) {
+    throw new ApiError(BAD_REPLY, 200);
+  }
+  return status === 'ready'
+    ? { name, title, summary, status }
+    : { name, title, summary, status, waits: waits as string };
+}
+
+function libraryOf(body: unknown): LibraryEntry[] {
+  const entries = isObject(body) ? body.entries : undefined;
+  if (!Array.isArray(entries) || entries.length > MAX_LIBRARY_ENTRIES) {
+    throw new ApiError(BAD_REPLY, 200);
+  }
+  const parsed = entries.map(libraryEntryOf);
+  const names = new Set(parsed.map((entry) => entry.name));
+  if (names.size !== parsed.length) throw new ApiError(BAD_REPLY, 200);
+  return parsed;
 }
 
 const RUN_STATUSES: ReadonlySet<unknown> = new Set([
@@ -404,15 +457,17 @@ export function createNextPorts(
       parseWorkflowExtras(await send('/api/workflow', {}, signal)),
     listAgents: async (signal) =>
       agentsOf(await send('/api/agents', {}, signal)),
+    listLibrary: async (signal) =>
+      libraryOf(await send('/api/library', {}, signal)),
     listRuns: async (signal) => runsOf(await send('/api/runs', {}, signal)),
-    startRun: async (params, signal) => {
+    startRun: async (name, params, signal) => {
       try {
         const body = await send(
           '/api/run',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ params }),
+            body: JSON.stringify({ name, params }),
           },
           signal,
         );

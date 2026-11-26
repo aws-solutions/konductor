@@ -20,6 +20,7 @@ import {
 } from './execution/core';
 import { timerScheduler } from './execution/timer-scheduler';
 import type { SwapRisk } from './launch/swap-guard';
+import { LibraryView } from './library-view/LibraryView';
 import type { NextPorts } from './next-ui/next-http';
 import { NextRunAnnouncements } from './next-ui/NextRunAnnouncements';
 import { oneCheck } from './next-ui/one-check';
@@ -39,12 +40,13 @@ import {
 } from './workflow/load-workflow';
 import { WorkflowGate } from './workflow/WorkflowGate';
 
-type ViewId = 'designer' | 'execution';
+type ViewId = 'designer' | 'execution' | 'library';
 
-/** The two views, by the labels the switch shows, before either can draw. */
+/** The page views, by the labels the switch shows, before any can draw. */
 const LOADING_VIEWS: readonly { id: ViewId; label: string }[] = [
   { id: 'designer', label: 'Design' },
   { id: 'execution', label: 'Run' },
+  { id: 'library', label: 'Library' },
 ];
 
 // The calls of a page that has no session to run anything through. It is one
@@ -78,9 +80,9 @@ function dataFailures(next: NextData): readonly string[] {
 
 /**
  * Root component: the top bar, then the page header (breadcrumbs, the name of
- * the workflow as the title, and the Design and Run switch), then the
- * selected view. Both views draw the workflow that `load` settles with, and
- * Run runs it, waiting with `scheduler` between two reads of the run.
+ * the workflow as the title, and the Design, Run and Library switch), then
+ * the selected view. Design and Run use the loaded workflow, while Library
+ * lists shipped workflows through the same session.
  *
  * `nextPortsFor` gives the views the calls they need beyond the session's
  * own. The page, not the view that draws it, follows a run, so a change of
@@ -173,9 +175,10 @@ export function App({
   // controller starts again for it, the run its session kept included.
   const nextRunPorts = useMemo(
     () =>
-      nextPorts && runs
+      nextPorts && runs && workflowName
         ? {
-            start: nextPorts.startRun,
+            start: (params, signal) =>
+              nextPorts.startRun(workflowName, params, signal),
             readEvents: nextPorts.readEvents,
             listRuns: nextPorts.listRuns,
             readChecks: nextPorts.readChecks,
@@ -183,7 +186,7 @@ export function App({
             now: () => Date.now(),
           }
         : NO_RUN_PORTS,
-    [nextPorts, runs, scheduler],
+    [nextPorts, runs, scheduler, workflowName],
   );
   // The page follows the run, not the view that draws it: a person who looks
   // at Design must not take the only follower off the page.
@@ -203,7 +206,7 @@ export function App({
     ...(runMemory && nextRunPorts !== NO_RUN_PORTS ? { runMemory } : {}),
   });
   const nextRun = nextRunner.lifecycle;
-  const views: PageView<ViewId>[] =
+  const workflowViews: PageView<ViewId>[] =
     editor && nextPorts && runs && loaded && checks
       ? [
           {
@@ -234,13 +237,24 @@ export function App({
             ),
           },
         ]
-      : // Before there is a workflow to draw: the load is still going, it
-        // failed, or it holds nothing to draw. The gate says which, in both
-        // views, and never reaches a child without a workflow.
-        LOADING_VIEWS.map((view) => ({
-          ...view,
-          content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
-        }));
+      : LOADING_VIEWS.filter((candidate) => candidate.id !== 'library').map(
+          (candidate) => ({
+            ...candidate,
+            content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
+          }),
+        );
+  const views: PageView<ViewId>[] = [
+    ...workflowViews,
+    {
+      id: 'library',
+      label: 'Library',
+      content: nextPorts ? (
+        <LibraryView ports={nextPorts} />
+      ) : (
+        <WorkflowGate result={result}>{() => null}</WorkflowGate>
+      ),
+    },
+  ];
   useEffect(
     () => swapRisk?.set({ draft: unsaved, run: nextRun.active }),
     [swapRisk, unsaved, nextRun.active],

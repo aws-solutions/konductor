@@ -64,7 +64,12 @@ describe('loadWorkflow', () => {
     const { signal } = new AbortController();
     await result.workflow.runs.start('Ship it', signal);
 
-    expect(api.startRun).toHaveBeenCalledWith('token-1', 'Ship it', signal);
+    expect(api.startRun).toHaveBeenCalledWith(
+      'token-1',
+      'Ship it',
+      signal,
+      'hello',
+    );
   });
 
   it('ties the edit calls to the session token', async () => {
@@ -81,8 +86,9 @@ describe('loadWorkflow', () => {
       'token-1',
       'text',
       HELLO_HASH,
+      'hello',
     );
-    expect(api.checkWorkflow).toHaveBeenCalledWith('token-1', 'text');
+    expect(api.checkWorkflow).toHaveBeenCalledWith('token-1', 'text', 'hello');
     expect(api.getWorkflow).toHaveBeenCalledTimes(2);
     expect(api.getWorkflow).toHaveBeenLastCalledWith('token-1');
   });
