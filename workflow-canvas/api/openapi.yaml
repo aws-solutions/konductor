@@ -2280,9 +2280,11 @@ components:
     LibraryList:
       type: object
       required: [entries]
+      description: Shipped workflows whose lookup ids are unique within the list.
       properties:
         entries:
           type: array
+          description: Lookup ids are unique within the list.
           items:
             $ref: '#/components/schemas/LibraryEntry'
     LibraryCopyRequest:
@@ -2508,10 +2510,7 @@ components:
         version:
           $ref: '#/components/schemas/Version'
         name:
-          oneOf:
-            - $ref: '#/components/schemas/Name'
-            - $ref: '#/components/schemas/LibraryName'
-          description: The file name, or the lookup id for a shipped workflow.
+          $ref: '#/components/schemas/Name'
         intent:
           $ref: '#/components/schemas/Intent'
         params:
@@ -2622,16 +2621,10 @@ components:
               type: integer
               minimum: 0
               description: The number of stages in `view`, or 0 when `view` is `null`.
-    WorkflowDocument:
+    WorkflowDocumentFields:
       type: object
-      required: [name, text, hash, read_only, view, diagnostics, stage_fields]
-      description: A workflow file as stored.
+      required: [text, hash, read_only, view, diagnostics, stage_fields]
       properties:
-        name:
-          oneOf:
-            - $ref: '#/components/schemas/Name'
-            - $ref: '#/components/schemas/LibraryName'
-          description: The file name, or the lookup id for a shipped workflow.
         text:
           type: [string, 'null']
           description: The file text exactly as stored, or `null` if the file does not exist yet.
@@ -2642,7 +2635,7 @@ components:
           description: Send this back as `base_hash` when saving. `null` if the file does not exist yet.
         read_only:
           type: boolean
-          description: True when the file cannot be saved, as for a shipped workflow.
+          description: True when the file cannot be saved.
         view:
           oneOf:
             - $ref: '#/components/schemas/WorkflowView'
@@ -2655,11 +2648,21 @@ components:
             $ref: '#/components/schemas/Diagnostic'
         stage_fields:
           $ref: '#/components/schemas/StageFields'
+    WorkflowDocument:
+      description: An ordinary project workflow file as stored.
+      allOf:
+        - $ref: '#/components/schemas/WorkflowDocumentFields'
+        - type: object
+          required: [name]
+          properties:
+            name:
+              $ref: '#/components/schemas/Name'
     ReadyLibraryDocument:
       description: A ready shipped workflow that can be previewed read-only.
       allOf:
-        - $ref: '#/components/schemas/WorkflowDocument'
+        - $ref: '#/components/schemas/WorkflowDocumentFields'
         - type: object
+          required: [name]
           properties:
             name:
               $ref: '#/components/schemas/LibraryName'
@@ -2674,8 +2677,9 @@ components:
     LibraryCopyDocument:
       description: An editable project copy that became the session root.
       allOf:
-        - $ref: '#/components/schemas/WorkflowDocument'
+        - $ref: '#/components/schemas/WorkflowDocumentFields'
         - type: object
+          required: [name]
           properties:
             name:
               $ref: '#/components/schemas/Name'

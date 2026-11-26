@@ -50,6 +50,55 @@ describe('GET /api/library with a named ready source', () => {
   });
 });
 
+describe('GET /api/library with duplicate lookup ids', () => {
+  const stub = useStub({
+    library: [
+      {
+        name: PLANNED,
+        title: 'First',
+        summary: 'First planned workflow.',
+        status: 'planned',
+        waits: 'A prerequisite.',
+      },
+      {
+        name: PLANNED,
+        title: 'Second',
+        summary: 'Second planned workflow.',
+        status: 'planned',
+        waits: 'Another prerequisite.',
+      },
+    ],
+  });
+
+  it('refuses the ambiguous list', async () => {
+    expectError(await stub().client.get(LIST_PATH), 500, 'io_error');
+  });
+});
+
+describe.each([
+  ['syntax-invalid', 'format: [\n'],
+  [
+    'semantically invalid',
+    'format: konductor/1\nversion: 0.1.0\nintent:\n  outcome: Review a change\nstages: []\n',
+  ],
+])('GET /api/library with a %s ready source', (_kind, text) => {
+  const stub = useStub({
+    library: [
+      {
+        name: READY,
+        title: 'Broken source',
+        summary: 'A source that cannot be opened.',
+        status: 'ready',
+        text,
+      },
+    ],
+  });
+
+  it('refuses to advertise it', async () => {
+    expectError(await stub().client.get(LIST_PATH), 500, 'io_error');
+  });
+});
+
 describe('GET /api/library/{name}', () => {
   const stub = useStub();
 
