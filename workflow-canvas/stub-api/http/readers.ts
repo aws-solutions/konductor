@@ -117,3 +117,8 @@ export const readCheckRequest = object<{
 export const readRunRequest = object<{ params: Record<string, string> }>({
   params: runParams,
 });
+
+/** Reads the requested name of a copied library workflow. */
+export const readLibraryCopyRequest = object<{ as: string }>({
+  as: string,
+});

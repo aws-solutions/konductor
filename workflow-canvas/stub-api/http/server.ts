@@ -11,6 +11,7 @@ import {
   type Behavior,
 } from '../core/sample.ts';
 import { WorkflowStore } from '../core/store.ts';
+import type { ShippedWorkflow } from '../core/library.ts';
 import { WorkflowApi } from '../core/workflow-api.ts';
 import { DEFAULT_PORT, LOOPBACK, originOf } from '../address.ts';
 import { dispatch, type Dispatcher } from './dispatch.ts';
@@ -35,6 +36,8 @@ export interface StubOptions {
   root?: string;
   /** How a run is answered. The default is that of the fixture of the root. */
   behavior?: Behavior;
+  /** Replaces the sample shipped library in tests. */
+  library?: readonly ShippedWorkflow[];
   /** How a long poll waits. The default is a timer on the real clock. */
   pause?: (ms: number) => Promise<void>;
 }
@@ -58,6 +61,7 @@ export async function startStub(
   const api = new WorkflowApi({
     root,
     behavior: options.behavior ?? FIXTURES[root]?.behavior,
+    library: options.library,
     store: new WorkflowStore(options.files ?? SAMPLE_FILES),
     runs: new RunSimulator({
       clock,

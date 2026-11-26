@@ -19,6 +19,7 @@ export const ERROR_CODES = [
   'too_large',
   'invalid_workflow',
   'bad_params',
+  'not_available',
   'io_error',
 ] as const;
 

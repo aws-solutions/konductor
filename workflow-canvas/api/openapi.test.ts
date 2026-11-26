@@ -75,6 +75,9 @@ const STABLE_OPERATION_IDS = [
   'listAgents',
   'getRunEvents',
   'listRuns',
+  'listLibrary',
+  'getLibraryWorkflow',
+  'copyLibraryWorkflow',
 ];
 
 // This version has these operations and no others.
@@ -82,6 +85,9 @@ const OPERATIONS = [
   'POST /api/session createSession',
   'GET /api/workflow getWorkflow',
   'PUT /api/workflow saveWorkflow',
+  'GET /api/library listLibrary',
+  'GET /api/library/{name} getLibraryWorkflow',
+  'POST /api/library/{name}/copy copyLibraryWorkflow',
   'GET /api/agents listAgents',
   'POST /api/validate checkWorkflow',
   'POST /api/run startRun',
@@ -104,7 +110,7 @@ const ERROR_CODES_BY_STATUS: Record<string, string[]> = {
     'trust_required',
   ],
   '413': ['too_large'],
-  '422': ['invalid_workflow', 'bad_params'],
+  '422': ['invalid_workflow', 'bad_params', 'not_available'],
   '500': ['io_error'],
 };
 
@@ -449,7 +455,22 @@ function listTextsAndAnswers(spec: Spec): TextAndAnswer[] {
       'invalid',
     ),
   };
-  return [...checks, ...loads, saved, refused];
+  const library = jsonBodyOf(spec, 'GET /api/library/{name}', '200')
+    .example as Record<string, unknown>;
+  const copied = jsonBodyOf(spec, 'POST /api/library/{name}/copy', '200')
+    .example as Record<string, unknown>;
+  return [
+    ...checks,
+    ...loads,
+    saved,
+    refused,
+    {
+      label: 'library entry',
+      text: library['text'] as string,
+      answer: library,
+    },
+    { label: 'library copy', text: copied['text'] as string, answer: copied },
+  ];
 }
 
 // What a run promises about its own fields. Returns the broken promises.
@@ -710,8 +731,12 @@ describe('workflow canvas API contract', () => {
             ...stage,
             ...places[index],
           }));
+          const documentName = String(answer['name'] ?? 'hello');
+          const inferredName = documentName.startsWith('library/')
+            ? documentName.slice('library/'.length)
+            : documentName;
           expect(answer['view'], label).toEqual({
-            name: 'hello',
+            name: inferredName,
             ...read,
             stages,
           });
@@ -849,6 +874,42 @@ describe('workflow canvas API contract', () => {
           [],
         );
       }
+    });
+  });
+
+  describe('library document response shapes', () => {
+    const response = (route: string) => {
+      const media = jsonBodyOf(spec, route, '200');
+      return {
+        schema: media.schema!,
+        example: media.example as Record<string, unknown>,
+      };
+    };
+
+    it.each([
+      ['name', 'hello'],
+      ['read_only', false],
+      ['text', null],
+      ['hash', null],
+      ['view', null],
+    ])('rejects a ready detail with %s changed', (key, value) => {
+      const { schema, example } = response('GET /api/library/{name}');
+      expect(valueMatchesSchema(schema, { ...example, [key]: value })).toBe(
+        false,
+      );
+    });
+
+    it.each([
+      ['name', 'library/k-adversarial-pull-request-review'],
+      ['read_only', true],
+      ['text', null],
+      ['hash', null],
+      ['view', null],
+    ])('rejects a copy with %s changed', (key, value) => {
+      const { schema, example } = response('POST /api/library/{name}/copy');
+      expect(valueMatchesSchema(schema, { ...example, [key]: value })).toBe(
+        false,
+      );
     });
   });
 
@@ -1046,7 +1107,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.10.0');
+      expect(info.version).toBe('1.11.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
