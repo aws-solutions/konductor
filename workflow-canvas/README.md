@@ -542,7 +542,9 @@ breaks.
   the text under the field in the warning style) and Save stays on.
 - **A refused save** (422) shows its findings in the Design view's warning
   list. Those findings stay until the text changes; checking the unchanged text
-  does not clear them. A refusal with no error among its findings shows the
+  does not clear them. The list is about the text in the YAML box, so while
+  Undo shows an earlier text it leaves them out, and Redo brings them back.
+  A refusal with no error among its findings shows the
   sentence of the server as a failure, so it is never silent.
 - **A conflict** (409) means the file changed after the page loaded. Nothing
   is written, and an alert says so. If the file already holds the text that was
