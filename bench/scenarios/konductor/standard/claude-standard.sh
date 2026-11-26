@@ -136,7 +136,7 @@ main() {
     exit 0
   fi
   export TMPDIR=/tmp   # bench refuses a Claude Code scratch dir under HOME (home .claude skills would load)
-  [ "$(git -C "$R" rev-parse HEAD)" = "$bench_sha" ] || stop "$R is not at the plan's bench commit ${bench_sha:0:8}"
+  [ "$(git -C "$R" rev-parse HEAD)" = "$(git -C "$R" rev-parse -q --verify "$bench_sha^{commit}")" ] || stop "$R is not at the plan's bench commit ${bench_sha:0:8}"
   CLAUDE=${CC_CLAUDE_BIN:-$(ls -d "$HOME"/.toolbox/tools/claude-code/*/claude 2>/dev/null | sort -V | tail -1)}
   [ -x "${CLAUDE:-}" ] || stop "no claude binary (set CC_CLAUDE_BIN to <tools>/claude-code/<version>/claude)"
   wait_quiet || stop "$STOPPED"

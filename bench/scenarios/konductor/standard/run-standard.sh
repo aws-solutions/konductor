@@ -228,7 +228,7 @@ main() {
   fi
   git -C "$R" cat-file -e "$KONDUCTOR_SHA^{commit}" 2>/dev/null || stop "konductor commit $KONDUCTOR_SHA is not in $R"
   [ -z "$(git -C "$R" status --porcelain)" ] || stop "$R has local changes: use a clean worktree"
-  if [ "$(git -C "$R" rev-parse HEAD)" != "$BENCH_SHA" ]; then
+  if [ "$(git -C "$R" rev-parse HEAD)" != "$(git -C "$R" rev-parse -q --verify "$BENCH_SHA^{commit}")" ]; then
     git -C "$R" checkout -q --detach "$BENCH_SHA" || stop "checkout of $BENCH_SHA failed"
     say "pin moved to ${BENCH_SHA:0:8}"
   fi

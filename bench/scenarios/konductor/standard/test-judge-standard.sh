@@ -78,6 +78,10 @@ mk_root B
 : > "$T/calls"; STUB_USD=24.6 run B; rc=$?
 [ "$rc" = 1 ] && [ "$(judges)" = 1 ] && grep -q 'STOP: spent USD 24.6 of the USD 25 cap before r2 t1' "$T/log" && ok "cap stop before a unit that could pass it" || bad "cap: rc $rc; $(tail -n 2 "$T/log")"
 
+mk_root S; printf '{"benchSha":"%s"}\n' "${SHA:0:8}" > "$T/S/plan.json"
+: > "$T/calls"; run S --plan; rc=$?
+[ "$rc" = 0 ] && [ "$(judges)" = 3 ] && ok "short benchSha in plan.json: pin check resolves it, --plan runs" || { bad "short sha: rc $rc"; cat "$T/log"; }
+
 mk_root C
 : > "$T/calls"; flock -x "$T/heavy.lock" sleep 60 & HOLDER=$!; sleep 0.3
 run C; rc=$?

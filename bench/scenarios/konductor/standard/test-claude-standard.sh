@@ -100,6 +100,10 @@ mk_root D 0000000000000000000000000000000000000000
 : > "$T/calls"; run D --prepare-only; rc=$?
 [ "$rc" = 1 ] && [ "$(runs)" = 0 ] && grep -q "is not at the plan's bench commit" "$T/log" && ok "bench worktree off the plan's commit refused" || bad "pin: rc $rc"
 
+mk_root P "${SHA:0:8}"
+: > "$T/calls"; run P --prepare-only; rc=$?
+[ "$rc" = 0 ] && [ "$(runs)" = 1 ] && ok "short benchSha in plan.json: pin check resolves it" || { bad "short sha: rc $rc"; cat "$T/log"; }
+
 : > "$T/calls"; CALLS="$T/calls" S="$HOME/.stdc-should-not-exist-$$" R="$T/R" bash "$SCRIPT" --prepare-only > "$T/log" 2>&1; rc=$?
 [ "$rc" = 1 ] && grep -q 'is under HOME' "$T/log" && [ ! -e "$HOME/.stdc-should-not-exist-$$" ] && ok "ROOT under HOME refused" || bad "home: rc $rc"
 

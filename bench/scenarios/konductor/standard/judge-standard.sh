@@ -55,7 +55,7 @@ main() {
   bench_sha=$(node -p 'require(process.argv[1]).benchSha' "$ROOT/plan.json")
   mkdir -p "$J/packs" "$J/runs"
   [ -d "$B" ] || git -C "$R" worktree add -q --detach "$B" "$bench_sha" || stop "cannot add a judge worktree at $bench_sha"
-  [ "$(git -C "$B" rev-parse HEAD)" = "$bench_sha" ] || stop "$B is not at $bench_sha"
+  [ "$(git -C "$B" rev-parse HEAD)" = "$(git -C "$B" rev-parse -q --verify "$bench_sha^{commit}")" ] || stop "$B is not at $bench_sha"
   mapfile -t units < <({ find "$ROOT"/runs/r* -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort; find "$ROOT"/claude/runs/r* -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort; })
   [ "${#units[@]}" -gt 0 ] || stop "no run units under $ROOT/runs or $ROOT/claude/runs"
   cd "$B" || exit 1
