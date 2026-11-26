@@ -651,12 +651,12 @@ test('input over the cap is dropped whole, not cut and passed on; null and undef
 // A pattern that backtracks from every start position grows with the square of the length. Each input below repeats one
 // shape that would trigger it; the sanitizer runs in a worker, so a slow pattern fails the test instead of hanging the run.
 const SANITIZE_JS = require.resolve('../../cap/sanitize.js');
-const sanitizeInWorker = (textSource, { scanned = false } = {}) =>
+const sanitizeInWorker = (textSource, { scanned = false, limitMs } = {}) =>
   timeInWorker(`
 const sanitizer = require(${JSON.stringify(SANITIZE_JS)});
 const text = ${textSource};
 const result = sanitizer.sanitizeAnswer(text, { skill: ${JSON.stringify(SKILL)}, request: 'the skill' });
-if (${scanned} && result.too_long) throw new Error('the input was dropped as too long, so nothing was scanned');`);
+if (${scanned} && result.too_long) throw new Error('the input was dropped as too long, so nothing was scanned');`, limitMs);
 for (const [name, unit] of [
   ['one long hyphenated token', 'a-'],
   ['one long path', 'a/'],
@@ -676,7 +676,9 @@ for (const [name, unit] of [
   test(`cost stays linear: ${name}`, () =>
     sanitizeInWorker(`${JSON.stringify(unit)}.repeat(100000)`));
 }
-// Each input is built to exactly MAX_INPUT_CHARS, so it is scanned and not dropped as too long.
+// Each input is built to exactly MAX_INPUT_CHARS, so it is scanned and not dropped as too long. The fence input takes
+// about 3 s alone (linear: 0.4 s at an eighth of the cap) and passed 10 s once under a full parallel suite, so these get
+// 30 s; a square-law pattern at a million characters takes hours, so the limit still catches one.
 for (const unit of [
   'Skill(',
   'Skill( ',
@@ -688,7 +690,7 @@ for (const unit of [
   test(`cost stays linear at the true cap: ${JSON.stringify(unit.slice(0, 8))}`, () =>
     sanitizeInWorker(
       `${JSON.stringify(unit)}.repeat(Math.ceil(sanitizer.MAX_INPUT_CHARS / ${unit.length})).slice(0, sanitizer.MAX_INPUT_CHARS)`,
-      { scanned: true },
+      { scanned: true, limitMs: 30000 },
     ));
 }
 
