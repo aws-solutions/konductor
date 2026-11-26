@@ -26,11 +26,7 @@ import {
   type ShortcutKey,
 } from '../designer-view/use-edit-history';
 import { useYamlDraft } from '../designer-view/use-yaml-draft';
-import type {
-  CheckAnswer,
-  DraftStatus,
-  ValidatePort,
-} from '../designer-view/yaml-draft';
+import type { DraftStatus, ValidatePort } from '../designer-view/yaml-draft';
 import {
   canAddStage,
   canEdit,
@@ -55,7 +51,13 @@ import type { Scheduler } from '../execution/core/ports';
 import { buildGraph, stageNodeId } from '../graph';
 import '../execution/announcements.css';
 import './design-view.css';
-import { FINDINGS_PER_PAGE, findingsPage, nextShown } from './findings';
+import {
+  FINDINGS_PER_PAGE,
+  findingsPage,
+  mergeFindings,
+  nextShown,
+  type Finding,
+} from './findings';
 import {
   SAVABLE_KEYS,
   fieldValuesOf,
@@ -98,9 +100,9 @@ const count = (n: number) => n.toLocaleString('en-US');
  * thousands of findings, so `findingsPage` gives a page of them at a time and
  * the list says how many are left.
  */
-function Findings({ answer }: { answer: CheckAnswer | undefined }) {
+function Findings({ diagnostics }: { diagnostics: readonly Finding[] }) {
   const [shown, setShown] = useState(FINDINGS_PER_PAGE);
-  const { page, left, more } = findingsPage(answer, shown);
+  const { page, left, more } = findingsPage({ diagnostics }, shown);
   if (page.length === 0) return null;
   return (
     <Alert
@@ -110,8 +112,10 @@ function Findings({ answer }: { answer: CheckAnswer | undefined }) {
     >
       <ul>
         {page.map((finding, index) => (
-          <li key={`${finding.line}-${finding.code}-${index}`}>
-            Line {finding.line}: {finding.message}
+          <li key={`${finding.line}-${finding.path}-${index}`}>
+            {finding.line === undefined
+              ? finding.message
+              : `Line ${finding.line}: ${finding.message}`}
           </li>
         ))}
       </ul>
@@ -284,6 +288,14 @@ export function DesignView({
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
+  const findings = useMemo(
+    () =>
+      mergeFindings(
+        answer?.diagnostics ?? [],
+        state.check.revision === state.revision ? state.check.diagnostics : [],
+      ),
+    [answer, state.check, state.revision],
+  );
   // The view of the text as it is now, when a check of it has answered with
   // one. Anything else is a view of an earlier text, which names the stages
   // of this draft only while no stage was added, deleted or moved since.
@@ -497,7 +509,7 @@ export function DesignView({
         )}
         <CheckLine status={draft.status} failure={draft.failure} />
         <EditAlerts state={state} onReload={editor.reload} />
-        <Findings answer={answer} />
+        <Findings diagnostics={findings} />
         <DesignerLayout
           drawing={<WorkflowCanvas graph={graph} selection={selection} />}
           yaml={{

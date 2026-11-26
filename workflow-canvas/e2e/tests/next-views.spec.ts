@@ -201,6 +201,50 @@ test('checks a changed stage and marks its lines in the text', async ({
   ).toContainText('are stage drafting');
 });
 
+test('shows a diagnostic when the server refuses a save', async ({
+  canvas,
+}) => {
+  await canvas.page.route('**/api/workflow', async (route) => {
+    if (route.request().method() !== 'PUT') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 422,
+      json: {
+        error: 'The workflow has errors.',
+        code: 'invalid_workflow',
+        diagnostics: [
+          {
+            code: 'RESERVED_NAME',
+            severity: 'error',
+            path: 'stages[0].name',
+            line: 7,
+            column: 11,
+            end_line: 7,
+            end_column: 19,
+            message: 'The server does not allow this stage name.',
+          },
+        ],
+      },
+    });
+  });
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  await canvas.page
+    .getByRole('tabpanel', { name: 'Properties' })
+    .getByLabel('name', { exact: true })
+    .fill('drafting');
+
+  await canvas.page.getByRole('button', { name: 'Save' }).click();
+
+  await expect(canvas.page.getByTestId('yaml-problems')).toContainText(
+    'Line 7: The server does not allow this stage name.',
+  );
+  await expect(
+    canvas.page.getByRole('button', { name: 'Save' }),
+  ).toBeDisabled();
+});
+
 test('goes back to the text before an edit, and comes back to it', async ({
   canvas,
 }) => {
