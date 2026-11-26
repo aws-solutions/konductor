@@ -9,8 +9,9 @@ import {
   errorRunIdOf,
   isObject,
   parseRunStarted,
+  parseWorkflowDocument,
 } from '../api/parse';
-import type { LibraryEntry } from '../api/types';
+import type { LibraryEntry, WorkflowDocument } from '../api/types';
 import {
   parseWorkflowExtras,
   type WorkflowExtras,
@@ -50,6 +51,11 @@ const NO_SESSION =
 
 const SESSION_UNKNOWN =
   'The server no longer knows this session. It may have been started again. Start `flow view` again and open the address it prints. An address works once.';
+
+/** Internal code for a copy whose committed root cannot be confirmed. */
+export const COPY_UNCERTAIN_CODE = 'copy_uncertain';
+const COPY_UNCERTAIN =
+  "The copy may have been created, but the server's current workflow could not be confirmed. Reload the page before editing or running anything.";
 
 /** The status that says the server no longer knows the session. */
 const SESSION_LOST_STATUS = 401;
@@ -96,6 +102,17 @@ export interface NextPorts {
   ) => Promise<readonly AgentOption[]>;
   /** Lists the shipped workflows. */
   readonly listLibrary: (signal?: AbortSignal) => Promise<LibraryEntry[]>;
+  /** Opens one ready shipped workflow read-only. */
+  readonly getLibrary: (
+    name: string,
+    signal?: AbortSignal,
+  ) => Promise<WorkflowDocument>;
+  /** Copies a ready shipped workflow under a new name. */
+  readonly copyLibrary: (
+    name: string,
+    as: string,
+    signal?: AbortSignal,
+  ) => Promise<WorkflowDocument>;
   readonly listRuns: ListRuns;
   readonly readEvents: ReadEvents;
   /**
@@ -178,6 +195,29 @@ function libraryOf(body: unknown): LibraryEntry[] {
   const names = new Set(parsed.map((entry) => entry.name));
   if (names.size !== parsed.length) throw new ApiError(BAD_REPLY, 200);
   return parsed;
+}
+
+const LIBRARY_HASH = /^[0-9a-f]{64}$/;
+
+function libraryDocumentOf(
+  body: unknown,
+  name: string,
+  readOnly: boolean,
+): WorkflowDocument {
+  const document = parseWorkflowDocument(body);
+  const viewName = readOnly ? name.slice('library/'.length) : name;
+  if (
+    document.name !== name ||
+    document.readOnly !== readOnly ||
+    document.text === null ||
+    document.hash === null ||
+    !LIBRARY_HASH.test(document.hash) ||
+    document.view === null ||
+    document.view.name !== viewName
+  ) {
+    throw new ApiError(BAD_REPLY, 200);
+  }
+  return document;
 }
 
 const RUN_STATUSES: ReadonlySet<unknown> = new Set([
@@ -455,6 +495,37 @@ export function createNextPorts(
       agentsOf(await send('/api/agents', {}, signal)),
     listLibrary: async (signal) =>
       libraryOf(await send('/api/library', {}, signal)),
+    getLibrary: async (name, signal) =>
+      libraryDocumentOf(
+        await send(`/api/library/${encodeURIComponent(name)}`, {}, signal),
+        name,
+        true,
+      ),
+    copyLibrary: async (name, as, signal) => {
+      const body = await send(
+        `/api/library/${encodeURIComponent(name)}/copy`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ as }),
+        },
+        signal,
+      );
+      try {
+        return libraryDocumentOf(body, as, false);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 200) throw error;
+        try {
+          return libraryDocumentOf(
+            await send('/api/workflow', {}, signal),
+            as,
+            false,
+          );
+        } catch {
+          throw new ApiError(COPY_UNCERTAIN, 200, COPY_UNCERTAIN_CODE);
+        }
+      }
+    },
     listRuns: async (signal) => runsOf(await send('/api/runs', {}, signal)),
     startRun: async (params, signal) => {
       try {
