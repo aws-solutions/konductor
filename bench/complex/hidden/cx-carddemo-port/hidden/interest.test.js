@@ -39,8 +39,9 @@ test('I3 (reviewed rule): interest is balance times rate over 1200, cut off at 2
   const catbals = [['0001', '1234.56'], ['0002', '100.00'], ['0003', '6.00'], ['0004', '99999.99'], ['0005', '5000.00']].map(([cat, balance]) => catbal({ cat, balance }));
   interest(interestInputs({ catbals, rates }), (r) => {
     assert.equal(r.status, 0, r.stderr);
-    // 18.5184 -> 18.51, 0.0833 -> 0.08, 0.005 -> none, 2082.4997 -> 2082.49, 0.0416 -> 0.04
-    assert.equal(maskedTrans(r), lines([itran({ n: 1, amount: '18.51' }), itran({ n: 2, amount: '0.08' }), itran({ n: 3, amount: '2082.49' }), itran({ n: 4, amount: '0.04' })]));
+    // 18.5184 -> 18.51, 0.0833 -> 0.08, 0.005 -> 0.00, 2082.4997 -> 2082.49, 0.0416 -> 0.04.
+    // The rules do not say whether the 0.00 row is written, so a correct +0.00 row is dropped before the comparison.
+    assert.equal(cd.dropZeroInterest(maskedTrans(r), { cards: { [A1]: CARD1 }, date: DATE }).text, lines([itran({ n: 1, amount: '18.51' }), itran({ n: 2, amount: '0.08' }), itran({ n: 3, amount: '2082.49' }), itran({ n: 4, amount: '0.04' })]));
     assert.equal(r.read('acctdata.txt'), lines([account({ balance: '2201.12' })]));
   });
 });

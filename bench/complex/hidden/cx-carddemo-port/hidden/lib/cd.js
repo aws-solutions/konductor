@@ -105,13 +105,46 @@ function run(job, files, check, { args = [], prepare = null, outName = 'out' } =
       cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' }, timeout: 60000,
     });
     const exists = fs.existsSync(outDir);
-    const read = (name) => fs.readFileSync(path.join(outDir, name), 'utf8');
+    // The rules do not fix the line end of output files, so CRLF is read as LF; every other byte still counts.
+    const read = (name) => fs.readFileSync(path.join(outDir, name), 'utf8').replace(/\r\n/g, '\n');
     return check({
       status: r.status, stdout: r.stdout || '', stderr: r.stderr || '', inDir, outDir, root, exists, read,
       files: exists && fs.statSync(outDir).isDirectory() ? fs.readdirSync(outDir).sort() : null,
       siblings: fs.readdirSync(root).sort(),
     });
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
+
+/**
+ * Interest transactions `text` (both timestamps masked) without its +0.00 rows, the 6-digit counter (I6) renumbered.
+ * The rules do not say whether a row whose interest truncates to 0.00 (I3) is written (I4, I5), so both are accepted.
+ * A row is dropped only when it is, in every other field, the I5 row of its account: `cards` maps each account id to
+ * its card, `date` is the run date. Nothing is changed when the counter of `text` does not run 000001, 000002, ...
+ * Returns { text, dropped }; a row that is not dropped stays, so the caller's exact comparison still sees it.
+ */
+function dropZeroInterest(text, { cards, date }) {
+  const rows = text === '' ? [] : text.replace(/\n$/, '').split('\n');
+  const count = (n) => String(n).padStart(6, '0');
+  if (rows.some((row, i) => row.slice(0, 16) !== `${date}${count(i + 1)}`)) return { text, dropped: 0 };
+  const zero = (row, i) => {
+    const acct = row.slice(45, 56);
+    return cards[acct] !== undefined && row === tran({
+      id: `${date}${count(i + 1)}`, type: '01', cat: '0005', source: 'System', desc: `Int. for a/c ${acct}`, amount: '0.00', merchantId: '000000000',
+      merchant: '', city: '', zip: '', card: cards[acct], orig: MASKED_STAMP, proc: MASKED_STAMP,
+    });
+  };
+  const kept = rows.filter((row, i) => !zero(row, i)).map((row, i) => `${date}${count(i + 1)}${row.slice(16)}`);
+  return { text: lines(kept), dropped: rows.length - kept.length };
+}
+
+/** Lowest card number per account id from cross reference `text` (I5). */
+function lowestCards(text) {
+  const cards = {};
+  for (const line of text.split(/\r?\n/).filter(Boolean)) {
+    const [card, acct] = [line.slice(0, 16).trimEnd(), line.slice(25, 36)];
+    if (cards[acct] === undefined || card < cards[acct]) cards[acct] = card;
+  }
+  return cards;
 }
 
 const POST_FILES = ['acctdata.txt', 'dalyrejs.txt', 'summary.json', 'tcatbal.txt', 'transact.txt'];
@@ -136,4 +169,4 @@ function assertRefused(assert, r) {
   return r;
 }
 
-module.exports = { ROOT, STAMP, MASKED_STAMP, zoned, account, xref, catbal, disc, tran, reject, TEXT, lines, splice, maskStamps, run, POST_FILES, INTEREST_FILES, postInputs, interestInputs, assertRefused };
+module.exports = { ROOT, STAMP, MASKED_STAMP, zoned, account, xref, catbal, disc, tran, reject, TEXT, lines, splice, maskStamps, dropZeroInterest, lowestCards, run, POST_FILES, INTEREST_FILES, postInputs, interestInputs, assertRefused };
