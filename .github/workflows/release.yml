@@ -198,21 +198,32 @@ jobs:
           # leg skips the musl-toolchain install step entirely (see "Install
           # musl toolchain"'s `if:` guard below).
           #
-          # `macos-14` is confirmed GA and arm64 by default as of this edit
-          # (EOL Nov 2026 per actions/runner-images), but GitHub's `-latest`
-          # labels migrate over time -- re-check
-          # https://github.com/actions/runner-images#available-images
-          # if there's a lag between this edit and merge.
+          # `macos-latest` (arm64), not a pin: a pinned image breaks this
+          # leg, and with it every release, the day that image retires --
+          # `publish` needs `build.result == 'success'`. `-latest` buys
+          # that back for nothing, since the macOS floor below is set
+          # explicitly rather than inherited from the runner's SDK.
           - arch: aarch64-macos
-            runner: macos-14
+            runner: macos-latest
             target: aarch64-apple-darwin
             primary: false
+            # Rust's own default for this target today. Pinned so the
+            # floor is a decision in this file, not whatever the
+            # unpinned `stable` toolchain happens to default to.
+            macos_deployment_target: "11.0"
     runs-on: ${{ matrix.runner }}
     env:
       RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
+      - name: Pin the macOS deployment target
+        # Set here, not as a job-level `env:`, so the Linux legs never see
+        # the variable at all -- an empty value is not the same as unset to
+        # every build script that reads it.
+        if: runner.os == 'macOS'
+        run: echo "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_deployment_target }}" >> "$GITHUB_ENV"
 
       - name: Set up Rust toolchain
         # No repo convention to match -- cli/konductor-rs pins no MSRV, so
@@ -305,7 +316,7 @@ jobs:
           cp mcp/target/release/skill-lookup-mcp "$ASSET_DIR/$MCP_BIN_ASSET_NAME"
 
           # sha256sum has no equivalent on the aarch64-macos leg
-          # (macos-14 lacks it on PATH), so this falls back to
+          # (macOS lacks it on PATH), so this falls back to
           # shasum -a 256. Its output uses the same two-space
           # separator that install::artifact::parse_sidecar
           # requires; a single space parses as malformed.
