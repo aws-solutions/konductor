@@ -525,11 +525,19 @@ export function createNextPorts(
           throw error;
         }
         try {
-          return libraryDocumentOf(
+          const root = libraryDocumentOf(
             await send('/api/workflow', {}, signal),
             as,
             false,
           );
+          const source = libraryDocumentOf(
+            await send(`/api/library/${encodeURIComponent(name)}`, {}, signal),
+            name,
+            true,
+          );
+          // Another tab's unedited copy is safe because it has the source bytes.
+          if (root.text !== source.text) throw new ApiError(BAD_REPLY, 200);
+          return root;
         } catch {
           throw new ApiError(COPY_UNCERTAIN, 200, COPY_UNCERTAIN_CODE);
         }

@@ -175,8 +175,11 @@ allows at most 100 entries, 120 characters per title, and 240 characters per
 summary or planned reason.
 
 If a copy gets no reply, a 408, 429 or 5xx, or an unreadable 200 response,
-the page checks `GET /api/workflow`. It opens the requested copy when that read
-confirms it. Otherwise the page blocks editing and running until it is
+the page reads both `GET /api/workflow` and the selected Library source. It
+opens the requested copy only when the root has the requested name and its text
+matches the source byte for byte. An unedited copy of the same entry made by
+another tab is harmless because it has those same bytes. An edited or unrelated
+root, or either failed read, blocks editing and running until the page is
 reloaded. A non-retryable 4xx refusal is shown without a reconciliation read.
 
 **Start from** stays focusable but unavailable while a run is active. Its reason

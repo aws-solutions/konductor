@@ -86,12 +86,13 @@ function sequenceServerOf(
   return { calls, fetchFn: fetchFn as unknown as typeof fetch };
 }
 
-function interruptedCopyServerOf(recovery: unknown) {
+function interruptedCopyServerOf(recovery: unknown, source: unknown) {
   const calls: string[] = [];
   const fetchFn = vi.fn(async (path: unknown) => {
     calls.push(String(path));
     if (calls.length === 1) throw new TypeError('network error');
-    return new Response(JSON.stringify(recovery), {
+    const body = calls.length === 2 ? recovery : source;
+    return new Response(JSON.stringify(body), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -172,6 +173,51 @@ describe('createNextPorts, the library', () => {
     name,
     view: { ...DOCUMENT.view, name },
   });
+
+  function sharedCopyServerOf({ libraryFails = false } = {}) {
+    let root = DOCUMENT;
+    let copyRequests = 0;
+    const calls: string[] = [];
+    const fetchFn = vi.fn(async (path: unknown, init: RequestInit = {}) => {
+      const requestPath = String(path);
+      calls.push(requestPath);
+      if (init.method === 'POST') {
+        copyRequests += 1;
+        if (copyRequests === 1) {
+          root = copyDocument('review-copy');
+          return new Response(JSON.stringify(root), { status: 200 });
+        }
+        throw new TypeError('copy refusal reply lost');
+      }
+      if (requestPath === '/api/workflow') {
+        return new Response(JSON.stringify(root), { status: 200 });
+      }
+      if (requestPath === `/api/library/${encodeURIComponent(ready.name)}`) {
+        return new Response(
+          JSON.stringify(
+            libraryFails
+              ? { error: 'The Library source could not be read.' }
+              : detailDocument,
+          ),
+          { status: libraryFails ? 500 : 200 },
+        );
+      }
+      return new Response(JSON.stringify({ error: 'Not found.' }), {
+        status: 404,
+      });
+    }) as unknown as typeof fetch;
+    return {
+      calls,
+      fetchFn,
+      editRoot: (text: string) => {
+        root = {
+          ...copyDocument('review-copy'),
+          text,
+          hash: 'b'.repeat(64),
+        };
+      },
+    };
+  }
 
   it('lists ready and planned entries', async () => {
     const { calls, fetchFn } = serverOf({
@@ -257,6 +303,55 @@ describe('createNextPorts, the library', () => {
     });
   });
 
+  it('blocks when another tab edited the target before a lost refusal', async () => {
+    const server = sharedCopyServerOf();
+    const tabA = createNextPorts(TOKEN, { fetchFn: server.fetchFn });
+    const tabB = createNextPorts(TOKEN, { fetchFn: server.fetchFn });
+    await tabB.copyLibrary(ready.name, 'review-copy');
+    server.editRoot(`${detailDocument.text}# edited by tab B\n`);
+
+    const failure = await tabA
+      .copyLibrary(ready.name, 'review-copy')
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).code).toBe(COPY_UNCERTAIN_CODE);
+    expect(server.calls).toContain(
+      `/api/library/${encodeURIComponent(ready.name)}`,
+    );
+  });
+
+  it('accepts another tab unedited copy after a lost refusal', async () => {
+    const server = sharedCopyServerOf();
+    const tabA = createNextPorts(TOKEN, { fetchFn: server.fetchFn });
+    const tabB = createNextPorts(TOKEN, { fetchFn: server.fetchFn });
+    await tabB.copyLibrary(ready.name, 'review-copy');
+
+    await expect(
+      tabA.copyLibrary(ready.name, 'review-copy'),
+    ).resolves.toMatchObject({
+      name: 'review-copy',
+      text: detailDocument.text,
+    });
+    expect(server.calls).toContain(
+      `/api/library/${encodeURIComponent(ready.name)}`,
+    );
+  });
+
+  it('blocks when the Library source cannot be read during reconciliation', async () => {
+    const server = sharedCopyServerOf({ libraryFails: true });
+    const tabA = createNextPorts(TOKEN, { fetchFn: server.fetchFn });
+    const tabB = createNextPorts(TOKEN, { fetchFn: server.fetchFn });
+    await tabB.copyLibrary(ready.name, 'review-copy');
+
+    const failure = await tabA
+      .copyLibrary(ready.name, 'review-copy')
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).code).toBe(COPY_UNCERTAIN_CODE);
+  });
+
   it('recovers a committed copy after an unreadable success body', async () => {
     let root = 'hello';
     const calls: string[] = [];
@@ -265,6 +360,9 @@ describe('createNextPorts, the library', () => {
       if (init.method === 'POST') {
         root = 'review-copy';
         return new Response(JSON.stringify({ copied: true }), { status: 200 });
+      }
+      if (String(path).startsWith('/api/library/')) {
+        return new Response(JSON.stringify(detailDocument), { status: 200 });
       }
       return new Response(JSON.stringify(copyDocument(root)), {
         status: 200,
@@ -279,6 +377,7 @@ describe('createNextPorts, the library', () => {
     expect(calls).toEqual([
       `/api/library/${encodeURIComponent(ready.name)}/copy`,
       '/api/workflow',
+      `/api/library/${encodeURIComponent(ready.name)}`,
     ]);
   });
 
@@ -295,6 +394,9 @@ describe('createNextPorts, the library', () => {
           json: () => Promise.reject(new TypeError('body stream failed')),
         } as Response;
       }
+      if (String(path).startsWith('/api/library/')) {
+        return new Response(JSON.stringify(detailDocument), { status: 200 });
+      }
       return new Response(JSON.stringify(copyDocument(root)), { status: 200 });
     }) as unknown as typeof fetch;
     const ports = createNextPorts(TOKEN, { fetchFn });
@@ -306,6 +408,7 @@ describe('createNextPorts, the library', () => {
     expect(calls).toEqual([
       `/api/library/${encodeURIComponent(ready.name)}/copy`,
       '/api/workflow',
+      `/api/library/${encodeURIComponent(ready.name)}`,
     ]);
   });
 
@@ -315,6 +418,7 @@ describe('createNextPorts, the library', () => {
       const { calls, fetchFn } = sequenceServerOf([
         { status, body: { error: 'Reply lost.' } },
         { body: copyDocument('review-copy') },
+        { body: detailDocument },
       ]);
       const ports = createNextPorts(TOKEN, { fetchFn });
 
@@ -346,6 +450,7 @@ describe('createNextPorts, the library', () => {
   it('reconciles a committed copy after the server does not answer', async () => {
     const { calls, fetchFn } = interruptedCopyServerOf(
       copyDocument('review-copy'),
+      detailDocument,
     );
     const ports = createNextPorts(TOKEN, { fetchFn });
 
@@ -356,7 +461,10 @@ describe('createNextPorts, the library', () => {
   });
 
   it('blocks an unconfirmed copy after the server does not answer', async () => {
-    const { calls, fetchFn } = interruptedCopyServerOf(DOCUMENT);
+    const { calls, fetchFn } = interruptedCopyServerOf(
+      DOCUMENT,
+      detailDocument,
+    );
     const ports = createNextPorts(TOKEN, { fetchFn });
 
     const failure = await ports
@@ -428,6 +536,7 @@ describe('createNextPorts, the library', () => {
     const { calls, fetchFn } = sequenceServerOf([
       { body: badCopy },
       { body: copyDocument('review-copy') },
+      { body: detailDocument },
     ]);
     const ports = createNextPorts(TOKEN, { fetchFn });
 
