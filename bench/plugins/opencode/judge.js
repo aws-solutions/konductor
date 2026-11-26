@@ -23,13 +23,14 @@ const { JUDGE_SYSTEM_PROMPT, systemPromptSha256 } = sdk.judgePrompt;
 
 // Panel ids stay the logical names used everywhere else (family checks run on them). `temperature: null` means the
 // model rejects the field on Bedrock, so the no-temperature agent is used and nothing is sent.
-// `limit` is opencode's context and output cap for the model; the output cap is far above the longest reply seen.
+// `limit` is opencode's context and output cap for the model; the output cap is far above the longest reply seen. The
+// context caps of minimax-m2.5 (196K) and qwen3-coder-next (256K) are their Bedrock model cards.
 const OPENCODE_MODELS = {
   'gpt-5.6-luna': { bedrockId: 'global.openai.gpt-5.6-luna', temperature: null, limit: { context: 900000, output: 8000 } },
   'deepseek-3.2': { bedrockId: 'deepseek.v3.2', temperature: 0, limit: { context: 160000, output: 8000 } },
   'glm-5': { bedrockId: 'zai.glm-5', temperature: 0, limit: { context: 200000, output: 8000 } },
-  'qwen3-coder-next': { bedrockId: 'qwen.qwen3-coder-next', temperature: 0, limit: { context: 200000, output: 8000 } },
-  'minimax-m2.5': { bedrockId: 'minimax.minimax-m2.5', temperature: 0, limit: { context: 200000, output: 8000 } },
+  'qwen3-coder-next': { bedrockId: 'qwen.qwen3-coder-next', temperature: 0, limit: { context: 256000, output: 8000 } },
+  'minimax-m2.5': { bedrockId: 'minimax.minimax-m2.5', temperature: 0, limit: { context: 196000, output: 8000 } },
 };
 
 const known = () => Object.keys(OPENCODE_MODELS).join(', ');
@@ -58,24 +59,29 @@ function checkJudges(judges) {
 const THROTTLE = new RegExp(`${oc.THROTTLE.source}|ServiceUnavailable|ModelNotReady|ModelTimeout`, 'i');
 const AUTH = /ExpiredToken|UnrecognizedClient|InvalidSignature|AccessDenied|InvalidClientTokenId|security token|credentials? (?:are|is) (?:invalid|expired)|Could not load credentials/i;
 
+// opencode reads these in config/config.ts; with the config's `compaction` block they keep the judge from summarizing.
+const NO_COMPACTION_ENV = Object.freeze({ OPENCODE_DISABLE_AUTOCOMPACT: '1', OPENCODE_DISABLE_PRUNE: '1', OPENCODE_DISABLE_CLAUDE_CODE: '1' });
+
 const sha12 = (text) => crypto.createHash('sha256').update(text).digest('hex').slice(0, 12);
 const clip = (text, n = 300) => String(text).trim().replace(/\s+/g, ' ').slice(-n);
 
 // One model, one agent. The built-in agents are switched off so the judge agent is the only one that can run.
+// Compaction and pruning are off: a judge must grade what it was sent, never opencode's own summary of it.
 function configJson(m, { region, profile }) {
   const agent = { mode: 'primary', description: 'bare evaluator', prompt: JUDGE_SYSTEM_PROMPT, tools: { '*': false }, permission: { '*': 'deny' } };
   if (m.temperature !== null) agent.temperature = m.temperature;
   return {
-    $schema: 'https://opencode.ai/config.json', share: 'disabled', snapshot: false, autoupdate: false, enabled_providers: [oc.PROVIDER],
+    $schema: 'https://opencode.ai/config.json', share: 'disabled', snapshot: false, autoupdate: false, enabled_providers: [oc.PROVIDER], compaction: { auto: false, prune: false },
     provider: { [oc.PROVIDER]: { options: { region, profile }, models: { [m.bedrockId]: { name: m.bedrockId, limit: m.limit, temperature: m.temperature !== null } } } },
     agent: { ...Object.fromEntries(oc.BUILTIN_AGENTS.map((n) => [n, { disable: true }])), [m.agent]: agent },
   };
 }
 
-// Reads the session row(s) of the call's own database. One query: the rollup needs nothing else, and each `opencode db` start costs about a second.
-function readSessions(bin, env) {
+// Runs one read-only query on the call's own database. Each `opencode db` start costs about a second, so a call makes
+// two: the session rows (the rollup needs nothing else) and the compaction check.
+function runDb(bin, env, sql) {
   return new Promise((resolve, reject) => {
-    const child = execFile(bin, ['db', SQL.sessions, '--format', 'json'], { env, encoding: 'utf8', timeout: 60000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
+    const child = execFile(bin, ['db', sql, '--format', 'json'], { env, encoding: 'utf8', timeout: 60000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
       if (err) return reject(err);
       try { resolve(JSON.parse(stdout)); } catch (e) { reject(e); }
     });
@@ -139,6 +145,7 @@ function makeOpencodeCaller({
       const { env } = oc.envSetup({ arm: { vanilla: true }, config: {}, ctx: { awsProfile }, home, tmpdir });
       env.AWS_REGION = region;
       env.AWS_DEFAULT_REGION = region;
+      Object.assign(env, NO_COMPACTION_ENV);
       const args = ['run', '--dir', cwd, '--agent', m.agent, '-m', `${oc.PROVIDER}/${m.bedrockId}`, '--format', 'json', '--title', oc.TITLE];
       const exec = await spawnWithTimeout(bin, args, { cwd, env, timeoutMs, stdoutPath: outPath, stderrPath: errPath, stdinPath: promptPath });
       keepRaw(model, prompt, outPath, errPath);
@@ -155,9 +162,15 @@ function makeOpencodeCaller({
         if (exec.exitCode === 0 && !a.errors.length && !a.steps && !stderr.trim()) return { ...base, error: 'opencode returned no reply' };
         return { ...base, error: `opencode exit ${exec.exitCode}${clip(failure) ? `: ${clip(failure)}` : ''}` };
       }
+      // Compaction is off, so a summary means the guard failed: the reply would grade a summary. The db check is the proof;
+      // a db that cannot be read proves nothing, so the call is not scored. More than one step with tools off is the stream signal.
+      if (a.steps > 1) return { ...base, error: `compacted: ${a.steps} model steps in a tools-off call` };
+      let compacted;
+      try { [compacted] = await runDb(bin, env, SQL.compaction); } catch (e) { return { ...base, error: `could not check the call's database for compaction: ${clip(scrub(e.message))}` }; }
+      if (!compacted || compacted.messages > 0 || compacted.parts > 0) return { ...base, error: `compacted: the call's database holds ${compacted?.messages ?? '?'} summary message(s) and ${compacted?.parts ?? '?'} compaction part(s)` };
       let usage = { tokens: a.steps ? { ...a.tokens } : null, usd: a.steps ? a.costUsd : null, usageSource: a.steps ? 'stream' : null };
       try {
-        const rolled = rollUp({ sessions: await readSessions(bin, env), messages: [], tools: [] }, a.sessionId);
+        const rolled = rollUp({ sessions: await runDb(bin, env, SQL.sessions), messages: [], tools: [] }, a.sessionId);
         if (rolled) {
           if (rolled.rootModel && rolled.rootModel !== m.bedrockId) return { ...base, error: `opencode served model "${rolled.rootModel}", expected "${m.bedrockId}"` };
           usage = { tokens: rolled.tokens, usd: rolled.costUsd, usageSource: 'db' };

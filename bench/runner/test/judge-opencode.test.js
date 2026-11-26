@@ -131,6 +131,51 @@ test('without the database the stream totals are used and marked as such', async
   } finally { s.cleanup(); }
 });
 
+test('compaction and pruning are off for every judge call, in the config and in the env', async () => {
+  const s = setup();
+  try {
+    for (const model of ['deepseek-3.2', 'gpt-5.6-luna']) assert.equal((await s.mk()({ model, prompt: RUBRIC_PROMPT })).error, undefined);
+    for (const c of s.calls()) {
+      assert.deepEqual(JSON.parse(c.config).compaction, { auto: false, prune: false });
+      for (const k of ['OPENCODE_DISABLE_AUTOCOMPACT', 'OPENCODE_DISABLE_PRUNE', 'OPENCODE_DISABLE_CLAUDE_CODE']) assert.equal(c.env[k], '1', k);
+    }
+  } finally { s.cleanup(); }
+});
+
+test('the context limits match the Bedrock model cards for minimax-m2.5 and qwen3-coder-next', () => {
+  assert.equal(OPENCODE_MODELS['minimax-m2.5'].limit.context, 196000);
+  assert.equal(OPENCODE_MODELS['qwen3-coder-next'].limit.context, 256000);
+});
+
+test('a call whose database holds a compaction summary or part is an error "compacted", never a reply', async () => {
+  for (const compaction of [{ messages: 1, parts: 0 }, { messages: 0, parts: 1 }]) {
+    const s = setup({ compaction });
+    try {
+      const r = await s.mk()({ model: 'glm-5', prompt: RUBRIC_PROMPT });
+      assert.equal(r.text, '');
+      assert.match(r.error, /^compacted: /);
+      assert.equal(s.calls().length, 1, 'a compacted call is not retried');
+    } finally { s.cleanup(); }
+  }
+});
+
+test('a tools-off call with more than one step is an error "compacted" (the stream signal)', async () => {
+  const s = setup({ mode: 'twosteps' });
+  try {
+    const r = await s.mk()({ model: 'glm-5', prompt: RUBRIC_PROMPT });
+    assert.match(r.error, /^compacted: 2 model steps/);
+  } finally { s.cleanup(); }
+});
+
+test('a call whose database cannot be read for the compaction check is an error, not a reply', async () => {
+  const s = setup({ dbFails: true });
+  try {
+    const r = await s.mk()({ model: 'glm-5', prompt: RUBRIC_PROMPT });
+    assert.equal(r.text, '');
+    assert.match(r.error, /could not check the call's database for compaction/);
+  } finally { s.cleanup(); }
+});
+
 test('a reply that is not JSON still comes back as text; the caller does not judge it', async () => {
   const s = setup({ mode: 'prose' });
   try {

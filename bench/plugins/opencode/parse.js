@@ -12,6 +12,9 @@ const SQL = {
   sessions: 'select id, parent_id, agent, model, cost, tokens_input, tokens_output, tokens_reasoning, tokens_cache_read, tokens_cache_write, title from session order by time_created',
   messages: "select session_id, count(*) as n from message where json_extract(data, '$.role') = 'assistant' group by session_id",
   tools: "select session_id, json_extract(data, '$.tool') as tool, count(*) as n from part where json_extract(data, '$.type') = 'tool' group by session_id, tool",
+  // What opencode's auto-compaction leaves behind (session/compaction.ts in 1.19.5): a summary assistant message
+  // (`summary: true`, `mode: "compaction"`) after a user message holding a part of type `compaction`.
+  compaction: "select (select count(*) from message where json_extract(data, '$.summary') = 1 or json_extract(data, '$.mode') = 'compaction') as messages, (select count(*) from part where json_extract(data, '$.type') = 'compaction') as parts",
 };
 
 // opencode's own total: reasoning tokens are already inside output.

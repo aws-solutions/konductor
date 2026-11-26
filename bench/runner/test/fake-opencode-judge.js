@@ -4,7 +4,8 @@
 // Builds a stand-in `opencode` for the judge backend (a node script). It answers `--version`, `run` (the prompt arrives on
 // stdin, the reply is a JSON event stream) and `db` (one session row per run, kept in the run's own XDG data dir).
 // Every `run` is recorded in <dir>/call-N.json. Behavior per call comes from fake-opencode-judge.config.json next to the script:
-// `mode` for all calls, or `modes[i]` for call i + 1. Modes: good, prose, crash, throttle, auth, sleep, tool, empty, wrongmodel, leak, nodb.
+// `mode` for all calls, or `modes[i]` for call i + 1. Modes: good, prose, crash, throttle, auth, sleep, tool, empty, wrongmodel, leak, nodb, twosteps.
+// `compaction: {messages, parts}` is what the compaction query of `db` returns; `dbFails` makes every `db` call fail.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -20,7 +21,8 @@ if (args[0] === 'db') {
   if (cfg.dbFails) process.exit(1);
   let rows;
   try { rows = JSON.parse(fs.readFileSync(dbFile(), 'utf8')); } catch { process.exit(1); }
-  console.log(JSON.stringify(/from session/.test(args[1]) ? rows.sessions : []));
+  if (/compaction/.test(args[1])) console.log(JSON.stringify([rows.compaction || { messages: 0, parts: 0 }]));
+  else console.log(JSON.stringify(/from session/.test(args[1]) ? rows.sessions : []));
   process.exit(0);
 }
 if (args[0] !== 'run') { console.error('unexpected command ' + args[0]); process.exit(2); }
@@ -49,14 +51,15 @@ const goodReply = () => {
 const tokens = Object.assign({ input: Math.ceil(prompt.length / 4), output: 20, reasoning: 0, cacheRead: 0, cacheWrite: 0 }, cfg.tokens || {});
 const cost = cfg.cost === undefined ? 0.01 : cfg.cost;
 const finish = (text, servedModel) => {
+  const step = () => out({ type: 'step_finish', part: { type: 'step-finish', reason: 'stop', cost, tokens: { input: tokens.input, output: tokens.output, reasoning: tokens.reasoning, cache: { read: tokens.cacheRead, write: tokens.cacheWrite } } } });
   out({ type: 'step_start', part: { type: 'step-start' } });
+  if (mode === 'twosteps') { out({ type: 'text', part: { type: 'text', text: 'summary of the conversation' } }); step(); out({ type: 'step_start', part: { type: 'step-start' } }); }
   out({ type: 'text', part: { type: 'text', text } });
-  out({ type: 'step_finish', part: { type: 'step-finish', reason: 'stop', cost, tokens: { input: tokens.input, output: tokens.output, reasoning: tokens.reasoning, cache: { read: tokens.cacheRead, write: tokens.cacheWrite } } } });
-  if (mode !== 'nodb') {
-    const row = { id: sessionID, parent_id: null, agent: args[args.indexOf('--agent') + 1], model: JSON.stringify({ id: servedModel, providerID: 'amazon-bedrock' }), cost, tokens_input: tokens.input, tokens_output: tokens.output, tokens_reasoning: tokens.reasoning, tokens_cache_read: tokens.cacheRead, tokens_cache_write: tokens.cacheWrite, title: 'bench' };
-    fs.mkdirSync(path.dirname(dbFile()), { recursive: true });
-    fs.writeFileSync(dbFile(), JSON.stringify({ sessions: [row] }));
-  }
+  step();
+  // nodb: the database is there but holds no session row, so the usage comes from the stream.
+  const row = { id: sessionID, parent_id: null, agent: args[args.indexOf('--agent') + 1], model: JSON.stringify({ id: servedModel, providerID: 'amazon-bedrock' }), cost, tokens_input: tokens.input, tokens_output: tokens.output, tokens_reasoning: tokens.reasoning, tokens_cache_read: tokens.cacheRead, tokens_cache_write: tokens.cacheWrite, title: 'bench' };
+  fs.mkdirSync(path.dirname(dbFile()), { recursive: true });
+  fs.writeFileSync(dbFile(), JSON.stringify({ sessions: mode === 'nodb' ? [] : [row], compaction: cfg.compaction || { messages: 0, parts: 0 } }));
 };
 if (mode === 'sleep') { setTimeout(() => {}, 60000); return; }
 if (mode === 'crash') { console.error('boom'); process.exit(3); }
