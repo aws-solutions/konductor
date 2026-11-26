@@ -47,8 +47,7 @@ STOPPED=""
 PY312=${PY312:-}
 ARMS="vanilla,konductor=$KONDUCTOR_SHA"
 
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 q() { node -p "const p=require('$PLAN'); $1"; }
 
 # ---------- money and fill (the v2 parts; the test sources these with LITE_LIB=1)

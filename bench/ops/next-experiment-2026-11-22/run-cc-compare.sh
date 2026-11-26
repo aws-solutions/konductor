@@ -60,7 +60,7 @@ WAIT_PAT=${WAIT_PAT:-bench/runner/bench[.]js run}
 STUB=${STUB:-}
 MODE=${1:-}
 DRY_SPENT=0
-say() { echo "[$(date -u +%H:%M)] $*"; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 stop() { echo "stop: $*" >&2; exit 1; }
 . "$(dirname "$0")/lib.sh"   # shared spend and host helpers (D-242)
 

@@ -42,8 +42,7 @@ t9-review-checkout-ui,t10-tpm-ring-rollout,t11-wide-settings-refactor,\
 t12-handoff-export-dates,t12-sdlc-contact-import,t12-parallel-backlog,t12-delegated-worker-fix,\
 t1-neg-config-alias,t8-neg-alert-threshold
 
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 MODE=${1:-}
 case "$MODE" in ''|--foreground|--prepare-only) ;; *) echo "usage: bash $0 [--foreground|--prepare-only]"; exit 64 ;; esac
 mkdir -p "$ROOT"

@@ -18,7 +18,7 @@ set -eu
 HERE0=$(cd "$(dirname "$0")" && pwd)
 T=$(mktemp -d /var/tmp/cc-team-stub.XXXXXX)   # outside HOME: run-cc-compare.sh refuses a ROOT under it
 trap 'rm -r -- "$T"' EXIT
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 SHA=69149846ad65f1016ec386e88ec9043bdec57203
 KSHA=f5d184596378ae72ae531d80647548512c14cacf
 TASKS='t8-dec-deploy-strategy t5-qa-checkout-strategy t5-qa-sync-strategy t6-req-field-inspections t2-dr-notify-fanout t2-arch-dr-split-checkout t7-program-brief t1-nfr-report-queries'

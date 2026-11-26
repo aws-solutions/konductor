@@ -60,7 +60,7 @@ for (const arm of arms) for (const rep of [1, 2, 3]) {
 }
 if (String(process.env.STUB_ERR || '').split(':')[0] === task) process.exit(5);
 JS
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 copy() { mkdir -p "$1"; cp "$HERE0/run-nudge.sh" "$HERE0/lib.sh" "$1/"; }
 
 copy "$T/a"

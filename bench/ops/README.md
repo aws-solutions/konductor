@@ -12,6 +12,7 @@ so every old command still works.
 | Versioned script | `bench/ops/workspace/<f>`, `bench/ops/next-experiment-2026-11-22/<f>` | The real code. It reads the workspace from `KONDUCTOR_WS` and stops when that is not set, so no committed file names a host path. |
 | Launcher | `<workspace>/scripts/<f>`, `<workspace>/reports/next-experiment-2026-11-22/<f>` | Sets `KONDUCTOR_WS` to the workspace and runs the versioned copy with the same arguments. Data files (JSON, prompt, queue) are symlinks. |
 | Ops checkout | `<workspace>/worktrees/ops` (or `KONDUCTOR_OPS`) | A detached checkout of `feat/bench-pilot-nk` that the launchers run from. |
+| Message helpers | `bench/ops/lib.sh` | `say`, `stop` and `fail`, sourced (`. "$(dirname "$0")/../lib.sh"`) by the 26 scripts that had copied them; a script that needs another form defines its own after the source line (B-005). `runner/test/ops-lib.test.js` checks what each prints and that no script keeps a copy. |
 | Launcher writer | `bench/ops/make-launchers.sh <workspace> [--replace]` | Writes every launcher. It refuses a file that is not a launcher yet unless `--replace` is given, and never replaces a script a running process names. |
 
 Change a script here, land it, then move the ops checkout to the new head:

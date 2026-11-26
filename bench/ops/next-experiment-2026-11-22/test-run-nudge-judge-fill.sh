@@ -12,7 +12,7 @@ T=$(mktemp -d "${KIROCREW_SCRATCH:-/var/tmp}/nudge-judge-fill.XXXXXX")
 mkdir -p "$T/reports/next-experiment-2026-11-22/runs-nudge/t1-nfr-report-queries" "$T/reports/lite-run-2026-11-21/judge" "$T/scripts"
 ln -s "$KONDUCTOR_WS/reports/lite-run-2026-11-21/judge/bench" "$T/reports/lite-run-2026-11-21/judge/bench"
 touch "$T/reports/next-experiment-2026-11-22/runs-nudge/t8-dec-deploy-strategy.done"
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 
 if KONDUCTOR_WS=$T bash "$SRC" --fill > "$T/a.log" 2>&1; then fail "case 1 should stop"; fi
 grep -q 't1-nfr-report-queries.done is missing' "$T/a.log" || { cat "$T/a.log"; fail "case 1: wrong stop"; }

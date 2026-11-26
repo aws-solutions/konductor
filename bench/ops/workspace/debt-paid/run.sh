@@ -38,8 +38,7 @@ JOB_LOCK=${JOB_LOCK:-/var/tmp/konductor-debt-paid.lock}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 PAID_PAT=${PAID_PAT:-run-overnight[.]sh|run-clean-fill[.]sh|run-cc-[a-z-]*[.]sh|run-model-swap|run-nudge|run-forced|run-aa-pack|run-pilot|run-fw30|pilot-wave[.]sh|plant-wave[.]sh|standard-recheck/run[.]sh|run-rest[.]sh|bench/runner/bench[.]js run|kiro-cli chat --no-interactive}
 COUNT_MIN=15
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../../lib.sh"   # say, stop and fail (B-005)
 prep() { BENCH_REPO=$PIN_REPO node "$HERE/prep.js" "$@"; }
 spent() { touch "$LEDGER"; awk '{ s += $3 } END { printf "%g", s + 0 }' "$LEDGER"; }
 calls_of() { awk -v j="$JOB" '$1 == j' "$JOBS"; }

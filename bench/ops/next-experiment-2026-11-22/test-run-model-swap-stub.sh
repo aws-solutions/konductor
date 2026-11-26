@@ -47,7 +47,7 @@ for (const arm of arms) for (let rep = 1; rep <= reps; rep++) {
   fs.writeFileSync(path.join(d, 'session', 'sess_1', 'messages.jsonl'), JSON.stringify({ payload: { type: 'user', content: text } }) + '\n');
 }
 JS
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 copy() { mkdir -p "$1"; cp "$HERE0/run-model-swap.sh" "$HERE0/model-swap-summary.js" "$HERE0/lib.sh" "$HERE0/nudge-fill.js" "$1/"; }
 
 # A fake reused baseline: the LITE run's konductor cells (runs/r<rep>/<batch>/konductor/<task>/<rep>) for the 8 tasks,

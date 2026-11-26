@@ -8,7 +8,7 @@ set -u
 WS=$KONDUCTOR_WS
 PILOT=$WS/worktrees/pilot
 WAVE=$PILOT/bench/scripts/pilot-wave.sh
-say() { echo "[$(date -u +%H:%M)] $*"; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 
 say "waiting for run-reruns.sh and any wave to end"
 while pgrep -f 'run-reruns.sh|pilot-wave.sh' >/dev/null; do sleep 30; done

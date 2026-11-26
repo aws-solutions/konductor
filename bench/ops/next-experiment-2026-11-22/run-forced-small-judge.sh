@@ -26,8 +26,7 @@ CAP_USD=${CAP_USD:-1}
 PER_RUN_WORST=0.3
 PROFILE=${AWS_PROFILE_NAME:-default}
 PANEL=gpt-5.6-luna,deepseek-3.2,qwen3-coder-next
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 PLAN_ONLY=0; [ "${1:-}" = --plan ] && PLAN_ONLY=1
 
 # Never a Claude judge for a Claude agent.

@@ -8,7 +8,7 @@
 set -u
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 S=$KONDUCTOR_WS/scripts
-say() { echo "[$(date -u +%H:%M)] $*"; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 
 say "step 1: run-reruns-2.sh"
 bash "$S/run-reruns-2.sh" || say "step 1 returned an error: going on"

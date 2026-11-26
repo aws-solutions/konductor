@@ -21,7 +21,7 @@ fs.appendFileSync(path.join(path.dirname(out), 'calls.log'), a.join(' ') + '\n')
 const spend = Number(process.env.STUB_SPEND || 1);
 fs.writeFileSync(path.join(out, 'credit-ledger.jsonl'), JSON.stringify({ kind: 'run', unit: 'credits', arm: 'vanilla', task: val('--tasks'), replicate: 7, status: 'success', credits: spend, charged: spend, censored: false }) + '\n');
 JS
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 copy() { mkdir -p "$1"; cp "$HERE0/run-forced-small.sh" "$HERE0/lib.sh" "$1/"; cp -r "$KONDUCTOR_WS/reports/next-experiment-2026-11-22/prefixes" "$1/"; }
 ENV="WAIT_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK=$T/heavy.lock"
 

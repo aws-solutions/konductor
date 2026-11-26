@@ -34,7 +34,7 @@ for (const arm of arms) for (let rep = 1; rep <= Number(val('--replicates')); re
   fs.writeFileSync(path.join(d, 'result.json'), JSON.stringify({ costUsd: 0.5 }) + '\n');
 }
 JS
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 go() { local base=$1; shift; env WAIT_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK="$T/heavy.lock" CC_AWS_PROFILE=stub-profile \
   STUB="node $STUBJS" CCM_ROOT="$base" CC_TEAM_ROOT="$base/cc-team" bash "$HERE0/run-cc-model-swap.sh" "$@"; }
 

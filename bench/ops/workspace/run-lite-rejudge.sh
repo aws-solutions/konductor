@@ -32,8 +32,7 @@ PROFILE=${AWS_PROFILE_NAME:-default}
 PANEL=gpt-5.6-luna,deepseek-3.2,qwen3-coder-next
 HEAVY_LOCK=/var/tmp/konductor-heavy.lock
 LITE_LOCK=/var/tmp/konductor-lite.lock
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 
 MODE=${1:-}
 case "$MODE" in ''|--foreground|--plan) ;; *) echo "usage: bash $0 [--plan|--foreground]"; exit 64 ;; esac

@@ -54,8 +54,7 @@ TASKS='t8-dec-deploy-strategy t5-qa-checkout-strategy t5-qa-sync-strategy t6-req
 PLAN_ONLY=0
 FILL=0
 JR=$J/runs                                             # this pass's judge copies (runs-fill with --fill)
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 
 bench() { if [ -n "$STUB" ]; then $STUB "$@"; else nice -n 19 node bench/runner/bench.js "$@"; fi; }
 

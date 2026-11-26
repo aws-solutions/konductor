@@ -11,7 +11,7 @@ WS=$KONDUCTOR_WS
 PILOT=$WS/worktrees/pilot
 WAVE=$PILOT/bench/scripts/pilot-wave.sh
 EDITED=$WS/reports/tasks-edited-wave11-12.md
-say() { echo "[$(date -u +%H:%M)] $*"; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 
 say "waiting for the edited-task list (up to 90 min)"
 for _ in $(seq 1 180); do

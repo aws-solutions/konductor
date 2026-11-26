@@ -39,7 +39,7 @@ for (const arm of ['cc-vanilla', 'cc-konductor']) for (const rep of [1, 2]) {
   fs.writeFileSync(path.join(d, 'result.json'), JSON.stringify(skip ? { status: 'budget_skipped', costUsd: 0 } : { costUsd: Number(process.env.STUB_SPEND || 0.5) }) + '\n');
 }
 JS
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 go() { local root=$1; shift; env WAIT_PAT=no-such-process-x9 LOAD_MAX=999 HEAVY_LOCK="$T/heavy.lock" CC_AWS_PROFILE=stub-profile \
   STUB="node $STUBJS" ROOT="$root" "$@" bash "$HERE0/run-cc-compare.sh" --go; }
 

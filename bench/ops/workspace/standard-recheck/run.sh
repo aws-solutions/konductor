@@ -33,8 +33,7 @@ COUNT_MIN=15
 LEDGER=${LEDGER:-$WS/reports/standard-recheck-2026-11-23.ledger}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 WAIT_MAX=${WAIT_MAX:-3600}
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../../lib.sh"   # say, stop and fail (B-005)
 
 spent() { touch "$LEDGER"; awk '{ s += $3 } END { printf "%g", s + 0 }' "$LEDGER"; }
 busy() {

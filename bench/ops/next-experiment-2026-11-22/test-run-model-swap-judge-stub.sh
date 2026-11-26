@@ -16,7 +16,7 @@ set -eu
 HERE0=$(cd "$(dirname "$0")" && pwd)
 T=$(mktemp -d "${KIROCREW_SCRATCH:-/var/tmp}/msj-stub.XXXXXX")
 trap 'rm -r -- "$T"' EXIT
-fail() { echo "FAIL: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 
 TASKS='t8-dec-deploy-strategy t5-qa-checkout-strategy t5-qa-sync-strategy t6-req-field-inspections t2-dr-notify-fanout t2-arch-dr-split-checkout t7-program-brief t1-nfr-report-queries'
 

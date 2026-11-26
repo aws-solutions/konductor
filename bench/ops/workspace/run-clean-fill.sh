@@ -15,7 +15,7 @@
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 X=$KONDUCTOR_WS/reports/next-experiment-2026-11-22
-say() { echo "[$(date -u +%H:%M)] $*"; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 step() { say "== $1"; shift; "$@"; }
 case "${1:---plan}" in
   --plan)

@@ -32,8 +32,7 @@ PER_RUN_WORST=0.3
 PROFILE=${AWS_PROFILE_NAME:-default}
 PANEL=gpt-5.6-luna,deepseek-3.2,qwen3-coder-next
 BATCHES='t8 t5 t6 t2 t7 t1'
-say() { echo "[$(date -u +%H:%M)] $*"; }
-stop() { say "STOP: $*"; exit 1; }
+. "$(dirname "$0")/../lib.sh"   # say, stop and fail (B-005)
 PLAN_ONLY=0
 case "${1:-}" in --plan) PLAN_ONLY=1 ;; "") ;; *) echo "usage: bash run-aa-pack-judge.sh [--plan]" >&2; exit 64 ;; esac
 
