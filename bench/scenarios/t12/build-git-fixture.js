@@ -25,7 +25,8 @@ function build(id) {
   fs.rmSync(dotgit, { recursive: true, force: true });
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 't12-fixture-'));
   try {
-    fs.cpSync(fixture, work, { recursive: true });
+    // The answer key is judge-only: the runner leaves it out of the workspace, so it must not be in the history either.
+    fs.cpSync(fixture, work, { recursive: true, filter: (p) => path.basename(p) !== '.bench-answer-key.md' && p !== dotgit });
     const git = (...a) => execFileSync('git', a, { cwd: work, env: ENV, encoding: 'utf8' }).trim();
     git('init', '-q', '-b', 'main', '--template=');
     git('add', '-A');

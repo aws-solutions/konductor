@@ -89,8 +89,11 @@ test('patternKeyProblems needs a Pattern key section with needed and enterprise 
 });
 
 test('every bench task that declares a pattern type has the Pattern key its criteria are judged against', () => {
-  const { loadTasks } = require('../lib/tasks.js');
-  const tasks = loadTasks(BENCH);
+  const { loadTasks, suiteExtraDirs } = require('../lib/tasks.js');
+  // The shipped tasks and every suite's extra task directory (pack scenarios, complex tasks).
+  const extraDirs = fs.readdirSync(path.join(BENCH, 'suites')).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
+    .flatMap((f) => suiteExtraDirs(path.basename(f, '.json'), BENCH));
+  const tasks = loadTasks(BENCH, { extraDirs: [...new Set(extraDirs)] });
   for (const [taskId, types] of Object.entries(pack.taskArtifacts)) {
     if (!types.some((t) => t === 'pattern-key' || t === 'enterprise-pattern')) continue;
     const task = tasks.get(taskId);

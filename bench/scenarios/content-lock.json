@@ -226,16 +226,16 @@
       "sha256": "40b12cee682980cadc0db2f706560e3972f1449748d113fb517121afa300542e"
     },
     "t12-split-four-jobs": {
-      "version": 1,
-      "sha256": "7cfe34854593160df2dd9082d102d372a7c1bcd536c6b27206eb65099596b55d"
+      "version": 3,
+      "sha256": "07c306ae7d8656cd26789e29f90f819112d1f48eaae43652fd26d7d0494638af"
     },
     "t12-split-shared-file": {
-      "version": 1,
-      "sha256": "9f6ed02199de828cfd2d9b27ea5c1bee6df574cd7a94be354943867d6706ce9f"
+      "version": 2,
+      "sha256": "8fc9bf20dd5c56dcd540d55ad3f9e27b89479ba5fa69f7d9f5a836118790c9ab"
     },
     "t12-split-three-modules": {
-      "version": 1,
-      "sha256": "d31083e6d40191d009eeb60518fb7f51a6671c48658abc3e9d81bf79f3a0fe7f"
+      "version": 3,
+      "sha256": "2b0e0f64e292a05f959b08cd3777f460cc2c3858d97de8dfaea21b0428a68fa3"
     },
     "t13-doc-agents-onboarding": {
       "version": 1,

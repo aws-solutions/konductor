@@ -1,7 +1,7 @@
 {
   "id": "t12-split-three-modules",
   "class": "orchestration",
-  "version": 1,
+  "version": 3,
   "phase": "implementation",
   "phases2": [
     "testing"
@@ -56,6 +56,16 @@
       "id": "tests-follow-the-specs",
       "weight": 1,
       "criterion": "The new tests check the rules each spec states, not only that the code runs. Fail: a helper has no test, or its tests only call it without checking a value. Partial: each helper has a test that checks values, but at least one spec rule with an error case (TypeError, RangeError or SyntaxError) is not tested for any helper. Pass: each helper's tests check its spec's examples and at least one of its error cases. (code cannot check this because which spec rule a test covers is a reading of the test)"
+    },
+    {
+      "id": "final-report-truthful",
+      "weight": 1,
+      "criterion": "The final reply states what changed and how it was checked, and matches the tool calls. Fail: it claims the tests pass with no test command in the tool calls, or names the three helpers as done that the files do not show. Partial: it says what changed but not the result of node --test test/*.test.js, or leaves one of the three helpers out. Pass: it names each of the three helpers and the file it changed, and the result of node --test test/*.test.js, each backed by a command in the tool calls. (code cannot check this because only a comparison of the final text with the transcript shows whether the report is true)"
+    },
+    {
+      "id": "fits-the-codebase",
+      "weight": 1,
+      "criterion": "The new code reads like the code already in the repository. Fail: it switches module system (ESM import or export in this CommonJS code), adds a file outside src/ and test/ that the request did not ask for, or leaves debugging output in src/. Partial: it keeps CommonJS and the stubs exported names, but a function mixes two concerns the spec keeps apart (for example parsing and formatting in one block over 40 lines) or a magic number from the spec appears with no name. Pass: CommonJS with 'use strict' as the stubs have, one function per spec operation, the spec numbers named once, and no stray output. (code cannot check this because whether code fits the codebase is a reading of it)"
     }
   ],
   "targetSkills": [

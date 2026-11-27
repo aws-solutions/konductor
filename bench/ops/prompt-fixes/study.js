@@ -4,12 +4,16 @@
 
 // Free helper of run-prompt-fix-arms.sh (bench/ops/workspace). No model call; reads files only.
 //   node study.js cells STEP                    one "task arm rep" line per run of STEP, in run order
-//   node study.js forecast [RUNS]               JSON: per step, the runs, the forecast credits per arm and in all, the
-//                                               cap, the per-run limit and the worst case (runs x per-run limit)
+//   node study.js forecast [RUNS]               JSON: per step (steps), the runs, the forecast credits per arm and in all,
+//                                               the cap, the per-run limit, the worst case (runs x per-run limit), the runs
+//                                               the per-run check lets start, and the judge USD; the judge panel and cap
 //   node study.js spent DIR                     "<credits> <unknown>" from every credit-ledger.jsonl under DIR
 //   node study.js may-start DIR STEP            exit 0 when spend under DIR plus the step's per-run limit stays within
 //                                               the cap, and the 60% stop rule has not fired; else exit 1 and say why
 //   node study.js gate DIR                      the smoke gate over DIR: exit 0 PASS, 1 FAIL; prints the reasons
+//   node study.js usd-spent DIR                 USD the judge calls under DIR were charged
+//   node study.js judge-may-start DIR TASK CAP  exit 0 when judge spend under DIR plus one run of TASK (high estimate)
+//                                               stays within CAP USD; else exit 1 and say why
 // RUNS (default /var/tmp/konductor-standard-v2/runs) holds the saved STANDARD v2 runs the forecast measures vanilla
 // and konductor per task from. Steps, caps and limits are the owner's approval of 2026-11-27.
 
@@ -21,12 +25,33 @@ const { readLedger } = require('../../runner/lib/credit-ledger.js');
 const ARMS = ['vanilla', 'konductor-adaptive', 'konductor-coordinator'];
 const byRow = (lo, hi) => Object.entries(EXPECT.tasks).filter(([, e]) => e.row >= lo && e.row <= hi).sort((a, b) => a[1].row - b[1].row).map(([id]) => id);
 // Smoke: rows 10, 1, 7 and 8; the team task first, so the gate's team-writer evidence comes before the cap can bind.
+// Batch C: cx-carddemo-batchday on the owner's CardDemo approval (600 total, 125.5 spent: cap 474), soft per-run caps
+// as run-cx.sh --soft: a run is never killed, its worst case is the 3600 s timeout at the top measured rate of 4.5
+// credits a minute (270). Measured per run (owner, 2026-11-27): konductor 77, vanilla 48.5; the two konductor arms are
+// planned at konductor's 77 (inferred). 3 reps when they fit the cap, else 2.
+const CX = { id: 'cx-carddemo-batchday', cap: 474, softWorst: 270, perRun: { vanilla: 48.5, 'konductor-adaptive': 77, 'konductor-coordinator': 77 } };
+const cxPerRep = Object.values(CX.perRun).reduce((a, b) => a + b, 0);
 const STEPS = {
   smoke: { tasks: ['t12-mux-parallel-merge', 't1-bug-date-range', 't12-split-shared-file', 'probe-e2e-explicit-yes'], reps: 1, cap: 90, runLimit: 25 },
   A: { tasks: byRow(1, 9), reps: 3, cap: 800, runLimit: 100 },
   B: { tasks: byRow(10, 14), reps: 3, cap: 700, runLimit: 100 },
+  C: { tasks: [CX.id], reps: 3 * cxPerRep <= CX.cap ? 3 : 2, cap: CX.cap, runLimit: CX.softWorst, soft: true },
 };
 const STOP_SHARE = 0.6;
+
+// Judge cost (USD, the 3-judge panel per run), from STANDARD v2: the rubric pass (bundle view) cost USD 9.02 over 496
+// runs, 0.0182 a run; the quality-pack plan of r1-t1 estimated 0.0204 a run (mean) to 0.0297 (p90). The read view is
+// rubric-only and costs about 5 to 10 times a bundle call (reports/judge-read-tools-build-2026-11-26.md, rough):
+// planned at 7.5, high 10. The quality pack runs in the bundle view (the read view does not serve the pack mode).
+// A CardDemo run is a much larger output: 3 times both (inferred).
+const JUDGE = { rubricBundle: 0.0182, readMid: 7.5, readHigh: 10, packMean: 0.0204, packP90: 0.0297, cxFactor: 3 };
+const PANEL = ['gpt-5.6-luna', 'deepseek-3.2', 'qwen3-coder-next'];
+
+/** USD one run's two judge passes may cost: { mid, high }. */
+function judgePerRun(task) {
+  const f = task === CX.id ? JUDGE.cxFactor : 1;
+  return { mid: f * (JUDGE.rubricBundle * JUDGE.readMid + JUDGE.packMean), high: f * (JUDGE.rubricBundle * JUDGE.readHigh + JUDGE.packP90) };
+}
 
 // Forecast rule (inferred, not measured; prompt-fix spec Part C): a solo-type row costs 1.3 times the larger of the
 // measured vanilla and konductor means (forced review and the new lines); a team row costs 3.5 times vanilla (3 writers
@@ -63,6 +88,7 @@ function measured(runsDir) {
 }
 
 function perRun(task, arm, mean) {
+  if (task === CX.id) return CX.perRun[arm];
   const [dv, dk] = DEFAULTS[task] ?? [4, 6];
   const v = mean(task, 'vanilla') ?? dv;
   const k = mean(task, 'konductor') ?? dk;
@@ -74,14 +100,20 @@ function perRun(task, arm, mean) {
 const r1 = (x) => Math.round(x * 10) / 10;
 function forecast(runsDir = '/var/tmp/konductor-standard-v2/runs') {
   const mean = measured(runsDir);
-  const out = {};
+  const steps = {};
+  let mid = 0; let high = 0;
   for (const [step, s] of Object.entries(STEPS)) {
     const list = cells(step);
     const arms = Object.fromEntries(ARMS.map((a) => [a, r1(list.filter((c) => c.arm === a).reduce((n, c) => n + perRun(c.task, a, mean), 0))]));
     const total = r1(Object.values(arms).reduce((a, b) => a + b, 0));
-    out[step] = { tasks: s.tasks, reps: s.reps, runs: list.length, arms, total, cap: s.cap, runLimit: s.runLimit, worstCase: list.length * s.runLimit, fits: total <= s.cap };
+    // How many runs the per-run check lets start when each costs its forecast: spend plus the limit within the cap.
+    let spent = 0; let startable = 0;
+    for (const c of list) { if (spent + s.runLimit > s.cap) break; spent += perRun(c.task, c.arm, mean); startable++; }
+    const judge = list.reduce((j, c) => { const p = judgePerRun(c.task); return { mid: j.mid + p.mid, high: j.high + p.high }; }, { mid: 0, high: 0 });
+    mid += judge.mid; high += judge.high;
+    steps[step] = { tasks: s.tasks, reps: s.reps, runs: list.length, arms, total, cap: s.cap, runLimit: s.runLimit, soft: Boolean(s.soft), worstCase: list.length * s.runLimit, fits: total <= s.cap, startable, judgeUsd: { mid: Math.round(judge.mid * 100) / 100, high: Math.round(judge.high * 100) / 100 } };
   }
-  return out;
+  return { steps, judge: { panel: PANEL, mid: Math.round(mid * 100) / 100, high: Math.round(high * 100) / 100, capUsd: Math.ceil(high) } };
 }
 
 function ledgerDirs(dir) {
@@ -149,16 +181,32 @@ function gate(dir) {
   return why;
 }
 
-function main([cmd, a, b]) {
-  if (cmd === 'cells') { for (const c of cells(a)) console.log(`${c.task} ${c.arm} ${c.rep}`); return 0; }
+/** USD the judge calls under DIR were charged (ledger lines in unit usd). */
+function usdSpent(dir) {
+  let usd = 0;
+  for (const d of ledgerDirs(dir)) usd += readLedger(d).totals.usd || 0;
+  return Math.round(usd * 10000) / 10000;
+}
+
+/** Null when one more run of TASK may be judged under CAP_USD (spend plus that run's high estimate), else the reason. */
+function judgeMayStart(dir, task, capUsd) {
+  const spent = usdSpent(dir);
+  const worst = judgePerRun(task).high;
+  return spent + worst > capUsd ? `judge cap: USD ${spent} spent of ${capUsd}, and judging ${task} may cost up to ${Math.round(worst * 1000) / 1000}` : null;
+}
+
+function main([cmd, a, b, c]) {
+  if (cmd === 'cells') { for (const x of cells(a)) console.log(`${x.task} ${x.arm} ${x.rep}`); return 0; }
+  if (cmd === 'usd-spent') { console.log(usdSpent(a)); return 0; }
+  if (cmd === 'judge-may-start') { const why = judgeMayStart(a, b, Number(c)); if (why) { console.log(why); return 1; } return 0; }
   if (cmd === 'forecast') { console.log(JSON.stringify(forecast(a), null, 2)); return 0; }
   if (cmd === 'spent') { const s = spent(a); console.log(`${s.credits} ${s.unknown}`); return 0; }
   if (cmd === 'may-start') { const why = mayStart(a, b); if (why) { console.log(why); return 1; } return 0; }
   if (cmd === 'gate') { const why = gate(a); console.log(why.length ? `FAIL: ${why.join('; ')}` : 'PASS'); return why.length ? 1 : 0; }
-  console.error('usage: study.js cells STEP | forecast [RUNS] | spent DIR | may-start DIR STEP | gate DIR');
+  console.error('usage: study.js cells STEP | forecast [RUNS] | spent DIR | usd-spent DIR | may-start DIR STEP | judge-may-start DIR TASK CAP_USD | gate DIR');
   return 64;
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { ARMS, STEPS, cells, forecast, spent, mayStart, gate };
+module.exports = { ARMS, STEPS, CX, PANEL, cells, forecast, spent, usdSpent, mayStart, judgeMayStart, judgePerRun, gate };

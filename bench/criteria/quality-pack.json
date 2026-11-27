@@ -82,6 +82,22 @@
       "nfr-code",
       "enterprise-pattern"
     ],
+    "cx-carddemo-batchday": [
+      "code",
+      "tests",
+      "readme",
+      "pattern-key"
+    ],
+    "t12-split-three-modules": [
+      "code",
+      "tests",
+      "pattern-key"
+    ],
+    "t12-split-four-jobs": [
+      "code",
+      "tests",
+      "pattern-key"
+    ],
     "sdlc-problem-framing": [
       "framing"
     ],

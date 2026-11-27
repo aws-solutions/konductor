@@ -179,6 +179,18 @@ Three hard tasks need these criteria, and each has hidden tests that measure the
 | `hard-export-formats` | code, tests, extension, pattern-key | 14 | TSV behaviour, plus the hidden extension step: the number of existing source files that name every format, at most 2 and at most 1 |
 | `hard-catalog-limits` | code, tests, nfr-code, enterprise-pattern | 14 | supplier calls over 1000 lookups, expiry and eviction, at most 4 calls in flight, retry waits, work per category listing over 10,000 items, supplier field names read in one module |
 
+Three more tasks declare `pattern-key` since 2026-11-27 (prompt-fix step 0). Their hidden tests check behaviour only, so
+the Pattern key is judged by the pack alone, and each key names the equivalents a fair answer may use.
+
+| Task | Declares | Pattern key asks for |
+|---|---|---|
+| `cx-carddemo-batchday` | code, tests, readme, pattern-key | one shared fixed-width record layer, one edited-amount formatter, one handler per job behind one contract and one dispatching entry (owner sign-off needed: the task is signed) |
+| `t12-split-three-modules` | code, tests, pattern-key | a table-driven Roman numeral conversion and one standard-form rule for parsing |
+| `t12-split-four-jobs` | code, tests, pattern-key | pure `run(input)` steps, fixed-point money, calendar dates as day numbers |
+
+`t12-split-shared-file` has no Pattern key: no pattern is clearly right for two small options in one file, and
+`mod-pattern-fit` covers it.
+
 The hidden extension step counts files and does not run a second agent turn: a file whose code names every format is a file the next format must edit. A file that keeps the list in a plain loop over a copy, or hides the names in a computed string, is not caught. The NFR-4 test counts snapshot reads and array visits; a plain index loop over a copy is not counted.
 
 The diagram criteria read the design document as a whole, fenced blocks included. A view is needed when the content calls for it:

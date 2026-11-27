@@ -4,7 +4,10 @@
 # line per run and logs its arguments, and ADAPTIVE_ARM stands in for the built variant, so no model is called and
 # nothing is installed. Cases: --plan prints the forecast and runs nothing; A refuses before a smoke run; a smoke run
 # whose adaptive runs write no Plan line fails the gate and A still refuses; a passing smoke run writes PASS, passes the
-# coordinator its --arm-config and every run a per-run limit; a step stops at its cap before the run that could pass it.
+# coordinator its --arm-config and every run a per-run limit; a step stops at its cap before the run that could pass it;
+# batch C refuses until the CardDemo Pattern key is signed off for its current bytes, then runs 2 reps from the git
+# copy with soft caps; the judge step stops at its USD cap and otherwise runs the read-view rubric pass and the quality
+# pack on every finished run, then the report.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 REPO=$(cd "$HERE/../../.." && pwd -P)
@@ -24,6 +27,11 @@ const path = require('node:path');
 const a = process.argv.slice(2);
 const opt = (k) => a[a.indexOf(k) + 1];
 fs.appendFileSync(process.env.STUB_CALLS, `${a.join(' ')}\n`);
+if (a[0] === 'judge') {
+  fs.appendFileSync(path.join(opt('--run'), 'credit-ledger.jsonl'), `${JSON.stringify({ kind: 'judge', unit: 'usd', usd: 0.01, credits: 0 })}\n`);
+  process.exit(0);
+}
+if (a[0] === 'report') { fs.mkdirSync(opt('--out'), { recursive: true }); fs.writeFileSync(path.join(opt('--out'), 'report.md'), '# stub\n'); process.exit(0); }
 const out = opt('--out'); const task = opt('--tasks'); const arm = opt('--arms').split('=')[0];
 const rep = Number(opt('--replicate-offset')) + 1;
 const credits = Number(process.env.STUB_CREDITS || 2);
@@ -48,8 +56,10 @@ S1=$(mktemp -d /var/tmp/pfa-s1.XXXX); S2=$(mktemp -d /var/tmp/pfa-s2.XXXX); S3=$
 trap 'find "$T" "$S1" "$S2" "$S3" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3"' EXIT
 
 run "$S1" --plan
-{ [ "$code" = 0 ] && grep -q 'plan only: nothing was run' "$T/log" && grep -qE '^smoke +12 ' "$T/log" && grep -qE '^A +81 ' "$T/log" && [ "$(calls)" = 0 ]; } \
-  && ok "--plan prints 12 smoke and 81 A runs and calls no bench run" || bad "--plan (exit $code): $(tail -3 "$T/log")"
+{ [ "$code" = 0 ] && grep -q 'plan only: nothing was run' "$T/log" && grep -qE '^smoke +12 ' "$T/log" && grep -qE '^A +81 ' "$T/log" && [ "$(calls)" = 0 ] \
+  && grep -q '^batch C: 2 reps' "$T/log" && grep -q 'judge: gpt-5.6-luna, deepseek-3.2, qwen3-coder-next; rubric in the read view' "$T/log" \
+  && grep -q 'CardDemo Pattern key: NOT signed off' "$T/log"; } \
+  && ok "--plan prints 12 smoke and 81 A runs, batch C at 2 reps, the judge cost and the sign-off state, and calls no bench run" || bad "--plan (exit $code): $(tail -3 "$T/log")"
 
 run "$S1" A --foreground
 { [ "$code" = 1 ] && grep -q 'smoke gate has not passed' "$T/log" && [ "$(calls)" = 0 ]; } && ok "A refuses before a smoke run" || bad "A before smoke (exit $code): $(tail -2 "$T/log")"
@@ -72,5 +82,30 @@ run "$S1" smoke --foreground
 STUB_CREDITS=35 run "$S3" smoke --foreground
 { [ "$code" = 1 ] && grep -q 'STOP: cap: 70 spent of 90' "$T/log" && [ "$(find "$S3/runs/smoke" -name result.json | wc -l)" = 2 ]; } \
   && ok "the cap stops the run that could pass it" || bad "cap (exit $code): $(tail -2 "$T/log")"
+
+# Batch C: refused until the CardDemo Pattern key is signed off; then 2 reps x 3 arms from the git copy, soft caps.
+run "$S1" C --foreground
+{ [ "$code" = 1 ] && grep -q 'Pattern key .* is not signed off' "$T/log" && [ ! -d "$S1/runs/C" ]; } && ok "C refuses before the Pattern key sign-off" || bad "C before sign-off (exit $code): $(tail -2 "$T/log")"
+run "$S1" sign-carddemo-key
+{ [ "$code" = 0 ] && grep -q '^## Pattern key' "$T/log" && [ ! -e "$S1/carddemo-key.signoff" ]; } && ok "sign-carddemo-key shows the key and records nothing without --yes" || bad "sign show (exit $code)"
+run "$S1" sign-carddemo-key --yes
+[ "$code" = 0 ] && [ -s "$S1/carddemo-key.signoff" ] && ok "sign-carddemo-key --yes records the sign-off" || bad "sign --yes (exit $code)"
+: > "$T/calls.log"
+run "$S1" C --foreground
+{ [ "$code" = 0 ] && [ "$(calls)" = 6 ] && [ "$(grep -c -- "--suite complex --suites-dir $S1/tasks-c/suites --timeout-sec 3600 --run-credit-limit-mode soft" "$T/calls.log")" = 6 ] \
+  && grep -q -- '--run-credit-limit 270' "$T/calls.log" && [ -d "$S1/tasks-c/tasks/fixtures/cx-carddemo-batchday/dotgit" ]; } \
+  && ok "C runs 6 runs (2 reps) from the git copy with the soft 270 cap" || bad "C (exit $code, $(calls) calls): $(tail -3 "$T/log")"
+printf 'feedbeef %s\n' x > "$S1/carddemo-key.signoff"
+run "$S1" C --foreground
+[ "$code" = 1 ] && grep -q 'not signed off' "$T/log" && ok "a sign-off for other answer-key bytes is refused" || bad "stale sign-off (exit $code)"
+
+# Judge: the cap refuses before any call; then both passes on every finished run (rubric read view, quality pack).
+: > "$T/calls.log"
+JUDGE_CAP_USD=0.01 run "$S1" judge --foreground
+{ [ "$code" = 1 ] && grep -q 'judge cap: USD 0 spent of 0.01' "$T/log" && [ "$(calls)" = 0 ]; } && ok "the judge cap refuses a pass that could pass it" || bad "judge cap (exit $code): $(tail -2 "$T/log")"
+run "$S1" judge --foreground
+{ [ "$code" = 0 ] && [ "$(grep -c -- '^judge .*--mode rubric --judge-view read --isolate unshare' "$T/calls.log")" = 18 ] \
+  && [ "$(grep -c -- '^judge .*--criteria-pack quality' "$T/calls.log")" = 18 ] && grep -q -- '--judges gpt-5.6-luna,deepseek-3.2,qwen3-coder-next' "$T/calls.log" \
+  && grep -q '^report ' "$T/calls.log"; } && ok "judge runs both passes on 18 runs, then the report" || bad "judge (exit $code, $(calls) calls): $(tail -3 "$T/log")"
 
 [ "$fails" = 0 ] && echo "ALL PASS" || { echo "$fails FAILED"; exit 1; }

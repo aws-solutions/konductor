@@ -46,9 +46,9 @@ test('planCall: proceed tasks are not scored on the word; no expectation gives n
   assert.equal(q.writerSpawns, null);
 });
 
-test('the pre-registered expectations name 14 tasks with a known plan and review value', () => {
+test('the pre-registered expectations name 15 tasks (14 rows and CardDemo) with a known plan and review value', () => {
   const t = Object.entries(EXPECT.tasks);
-  assert.equal(t.length, 14);
+  assert.equal(t.length, 15);
   for (const [id, e] of t) {
     assert.ok(['solo', 'team', 'proceed'].includes(e.plan), id);
     assert.ok(['always', 'exempt-or-one', 'not-needed'].includes(e.review), id);

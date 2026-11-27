@@ -89,6 +89,12 @@
       "plan": "team",
       "review": "always",
       "why": "four independent small jobs"
+    },
+    "cx-carddemo-batchday": {
+      "row": 15,
+      "plan": "team",
+      "review": "always",
+      "why": "batch C, registered 2026-11-27 before any run: four separate batch jobs in one long port (bench/complex, run from a git-initialised copy of its fixture)"
     }
   }
 }
