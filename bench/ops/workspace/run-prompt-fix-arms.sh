@@ -48,6 +48,8 @@
 # rounded up); before each run's pass, judge spend plus that run's high estimate must stay within it.
 # The first paid start freezes the plan in $S/plan.json (bench sha, adaptive arm and tree hash, expect.json hash); later
 # steps check the bench worktree R is still at that sha and clean. Rerun a step to resume: finished runs are skipped.
+# ADAPTIVE_WITH=p1p2 builds the adaptive arm with P1 and P2 too: only for a new study (a new S and R), since a frozen
+# plan keeps its own arm.
 # Needs (defaults in brackets): S [/var/tmp/konductor-prompt-fix], R [$KONDUCTOR_WS/worktrees/prompt-fix, made from the
 # ops checkout on the first --plan], KBIN [the pinned kiro-cli 3.5.0], PY312 [mise Python 3.12], CACHE [$S/cache],
 # AWS_PROFILE_NAME [default] for the judge.
@@ -81,6 +83,7 @@ SIGNOFF=$S/carddemo-key.signoff
 CX_KEY_REL=bench/complex/fixtures/cx-carddemo-batchday/.bench-answer-key.md
 STUDY=""; ARM_ADAPTIVE=""; ARM_HASH=""
 CANDIDATE_ARM=${CANDIDATE_ARM:-}
+ADAPTIVE_WITH=${ADAPTIVE_WITH:-}
 RC_S=$S/reply-check
 RC_REPO=${RC_REPO:-$WS/worktrees/reply-check}
 REVIEWER=${REVIEWER:-claude-opus-5.5}
@@ -172,10 +175,11 @@ build_arm() {
   return 0
 }
 
-# adaptive_arm: the frozen study's konductor-adaptive arm (fixes 1 to 9); sets ARM_ADAPTIVE and ARM_HASH.
+# adaptive_arm: the study's konductor-adaptive arm (fixes 1 to 9, plus the edit set ADAPTIVE_WITH names, for example
+# p1p2 for a new study after the reply check); sets ARM_ADAPTIVE and ARM_HASH.
 adaptive_arm() {
   if [ -n "$ADAPTIVE_ARM" ]; then ARM_ADAPTIVE=$ADAPTIVE_ARM; ARM_HASH=test; return 0; fi
-  build_arm "$R" "$S" konductor-adaptive
+  build_arm "$R" "$S" konductor-adaptive "$ADAPTIVE_WITH"
   ARM_ADAPTIVE=$BUILT_ARM; ARM_HASH=$BUILT_HASH
   say "adaptive arm: $ARM_ADAPTIVE (variantHash ${ARM_HASH:0:12}, verifyInstalled ok)"
 }
