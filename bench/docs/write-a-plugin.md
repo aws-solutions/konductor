@@ -65,6 +65,10 @@ bench/plugins/strands/
 }
 ```
 
+`bench/schema/plugin.schema.json` gives the shape of every field, for all four kinds. The registry checks the rest
+when it loads the folder: `name` equals the folder name, `meta` and `entry` exist inside the folder, and the `meta`
+id equals `name`.
+
 `meta.js` is the descriptor. It says the arm prefix (`st-`), the cost unit (`usd`), the stream format, which run
 flags apply, what the reports say about its cost (`report`) and how `cap` reaches a capability (`capabilities`). The full field list is under "Descriptor" in
 [CONTRACT.md](../runner/lib/harness/CONTRACT.md). The file has no `require`, because the runner reads it before any

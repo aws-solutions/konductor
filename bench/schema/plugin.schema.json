@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Konductor bench plugin manifest (plugin.json)",
+  "$comment": "Written from the hand checks in core/registry.js (manifestProblem) and runner/lib/plant/kinds.js (readPlantManifest); runner/test/plugin-schema.test.js tests every plugin.json against it. The registry also checks what a schema cannot: name equals the folder name, meta and entry exist inside the folder, each part kind is used once, and meta.id equals name. The plant fields are required by the plant reader for kind plant only.",
+  "type": "object",
+  "required": ["benchApi", "kind", "name", "version", "meta", "entry"],
+  "additionalProperties": false,
+  "properties": {
+    "$comment": { "type": "string" },
+    "benchApi": { "const": 1 },
+    "kind": { "enum": ["harness", "judge-backend", "check-type", "plant"] },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "meta": { "type": "string", "minLength": 1 },
+    "entry": { "type": "string", "minLength": 1 },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "meta", "entry"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "enum": ["harness", "judge-backend", "check-type"] },
+          "meta": { "type": "string", "minLength": 1 },
+          "entry": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "order": { "type": "integer" },
+    "prompt": { "type": "string", "minLength": 1 },
+    "gatewayModules": { "type": "array", "items": { "type": "string" } },
+    "sharedControls": {
+      "type": "object",
+      "required": ["prefix", "names"],
+      "additionalProperties": false,
+      "properties": {
+        "prefix": { "type": "string" },
+        "names": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
