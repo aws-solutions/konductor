@@ -2,7 +2,7 @@
 'use strict';
 
 // Validator for the JSON Schema subset used by bench/schema/*.json:
-// type (string or list), enum, const, required, properties, additionalProperties:false,
+// type (string or list), enum, const, anyOf, required, properties, additionalProperties:false,
 // items, minItems, minLength, maxLength, minimum, pattern. No external dependencies.
 
 const fs = require('node:fs');
@@ -36,6 +36,10 @@ function validate(schema, value, at = '$') {
       errors.push(`${at}: expected ${wanted.join('|')}, got ${typeOf(value)}`);
       return errors;
     }
+  }
+  if (schema.anyOf) {
+    const branches = schema.anyOf.map((s) => validate(s, value, at));
+    if (!branches.some((e) => !e.length)) errors.push(`${at}: matches none of ${branches.length} allowed shapes (${branches.map((e) => e.join('; ')).join(' | ')})`);
   }
   if (typeof value === 'string') {
     if (schema.minLength !== undefined && value.length < schema.minLength) {

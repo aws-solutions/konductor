@@ -1375,7 +1375,7 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   and a hash of the task file without its bookkeeping (pilot, review, handEdited, authorship, version, lockedAt) plus its fixture and hidden dirs. A
   change to the prompt, checks, rubric, key or fixture at the same version is a lock blocker in `scenarios ready` (`content changed, version not
   bumped`), fails `content-lock.test.js`, and is refused by `--write`; after a version bump, `--write` records it. A hand-edited task needs a
-  `review.recheck` that records its current version; a recheck with no `version` covers only up to the entry's `legacyRecheckVersion` (DEBT D-150).
+  `review.recheck` that records its current version; a recheck with no `version` covers only up to the entry's `legacyRecheckVersion` (DEBT D-150). The schema takes `review.recheck` in two shapes: per-check (`family`, `model`, `date`, `items`) and whole-task (`family`, `model`, `date`, `pin`, `source`, `verdict`, `families`, as in `bench/complex/cx-carddemo-*.json`); a whole-task record may stand as the only key of `review` (DEBT D-292).
 - `scenarios prereg freeze DIR --base REF|dir:PATH [--accept-gaps REASON] [--date YYYY-MM-DD]` first runs `scenarios lint` and the coverage gate on the
   `--base` tree and refuses (exit 1, nothing written) on a new lint finding or a stale lint baseline entry, and on coverage holes or phase or role
   shortfalls unless `--accept-gaps` gives the reason; the lock records the gates (`gates.lint`, `gates.coverage` with `acceptedBecause`). It then

@@ -157,3 +157,20 @@ test('task schema accepts handEdited null (checked, not edited) and pilot.blocke
   assert.deepEqual(validate(schema, { ...TASK, handEdited: null }), []);
   assert.ok(validate(schema, { ...TASK, pilot: { ...pilot, blockers: [''] } }).length);
 });
+
+test('a whole-task recheck record is a valid review; a half-filled one is not (DEBT D-292)', () => {
+  const schema = loadSchema('task');
+  const family = { call: 'C1.json', family: 'openai', model: 'm', mismatches: 0, notes: [], checked: 'read the hidden tests' };
+  const recheck = { family: 'openai', model: 'm', date: '2026-11-27', pin: 'b46f24e8', source: 'DEBT D-275', verdict: 'pass', families: [family] };
+  assert.deepEqual(validate(schema, { ...TASK, review: { recheck } }), []);
+  const { pin, ...noPin } = recheck;
+  assert.match(validate(schema, { ...TASK, review: { recheck: noPin } }).join(), /matches none/);
+  assert.match(validate(schema, { ...TASK, review: { recheck: { ...recheck, verdict: 'maybe' } } }).join(), /verdict/);
+  assert.match(validate(schema, { ...TASK, review: { family: 'zhipu', date: '2026-11-19' } }).join(), /matches none/);
+});
+
+test('validate: anyOf passes when one branch matches and names every branch when none does', () => {
+  const schema = { anyOf: [{ required: ['a'] }, { required: ['b'] }] };
+  assert.deepEqual(validate(schema, { b: 1 }), []);
+  assert.match(validate(schema, {}).join(), /matches none of 2.*missing required "a".*missing required "b"/);
+});

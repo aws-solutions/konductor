@@ -1038,11 +1038,6 @@
     },
     "review": {
       "type": "object",
-      "required": [
-        "family",
-        "date",
-        "verdicts"
-      ],
       "additionalProperties": false,
       "properties": {
         "family": {
@@ -1087,12 +1082,6 @@
         },
         "recheck": {
           "type": "object",
-          "required": [
-            "family",
-            "model",
-            "date",
-            "items"
-          ],
           "additionalProperties": false,
           "properties": {
             "family": {
@@ -1142,14 +1131,106 @@
               "type": "integer",
               "minimum": 1,
               "description": "The task version the recheck read."
+            },
+            "pin": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Whole-task recheck: the commit the recheck read."
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Whole-task recheck: the DEBT rows and where the call results are kept."
+            },
+            "verdict": {
+              "enum": [
+                "pass",
+                "fail"
+              ]
+            },
+            "families": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "call",
+                  "family",
+                  "model",
+                  "mismatches"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "call": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "family": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mismatches": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "notes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "checked": {
+                    "type": "string"
+                  }
+                }
+              }
             }
-          }
+          },
+          "anyOf": [
+            {
+              "required": [
+                "family",
+                "model",
+                "date",
+                "items"
+              ]
+            },
+            {
+              "required": [
+                "family",
+                "model",
+                "date",
+                "pin",
+                "source",
+                "verdict",
+                "families"
+              ]
+            }
+          ]
         },
         "model": {
           "type": "string",
           "minLength": 1
         }
-      }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "family",
+            "date",
+            "verdicts"
+          ]
+        },
+        {
+          "required": [
+            "recheck"
+          ]
+        }
+      ]
     },
     "pilot": {
       "type": [
