@@ -130,7 +130,9 @@ const matches = (res, text) => res.some((re) => re.test(text));
 
 const stagesOf = (call) => (Array.isArray(call.input.stages) && call.input.stages.length ? call.input.stages : [call.input]);
 const briefOf = (st) => [st.prompt_template, st.prompt, st.description].find((v) => typeof v === 'string') ?? '';
-const taskLineOf = (brief) => /^\s*(?:\d+[.)]\s*)?\**TASK\**:\s*(.+)$/im.exec(brief)?.[1] ?? null;
+// "TASK: text", "1. TASK: text", or "TASK:" or a markdown heading "### 1. TASK" with the text on the next line.
+const TASK_RE = /^[ \t]*(?:#+[ \t]*)?(?:\d+[.)][ \t]*)?\**TASK\**(?::[ \t]*(\S.*)|:?[ \t]*\r?\n[ \t]*(\S.*))$/im;
+const taskLineOf = (brief) => { const m = TASK_RE.exec(brief); return m ? m[1] ?? m[2] : null; };
 
 function headlineOf(call, limit) {
   const parts = [call.input.task, call.input.__tool_use_purpose].filter((v) => typeof v === 'string');

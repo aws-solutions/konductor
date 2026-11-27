@@ -117,6 +117,12 @@ test('a brief whose TASK starts with a review verb is a review, even when it nam
   assert.deepEqual({ maker: f.makerSpawns, reviewer: f.reviewerSpawns }, { maker: 1, reviewer: 4 });
 });
 
+test('a markdown TASK heading takes the next line as the task (read from STANDARD v2 konductor-noskills)', () => {
+  const heading = { name: 'k-architect', prompt: '## Delegation to k-architect\n\n### 1. TASK\nReview, findings only, the design note against the fix list below.\n\n### 2. CONTEXT\nfix the review findings' };
+  const ev = [child('root'), { type: 'sessionUpdate', data: { sessionId: 'root', update: { sessionUpdate: 'tool_call', toolCallId: 'h1', _meta: { kiro: { toolName: 'subagent' } }, rawInput: { stages: [heading] } } } }];
+  assert.deepEqual(om.reviewFlow(ev, spec()).sequence, ['review']);
+});
+
 test('a fix brief that follows a passing review is a rework after a pass', () => {
   const f = flow([
     { role: 'k-architect', task: 'Review the design doc', out: 'Verdict: PASS. No critical or important findings.' },
