@@ -7,17 +7,25 @@
 // `poll()` is every credit seen, and `live()` is the part that arrived while the agent could still be stopped. Engine v2
 // meters after each model call, so its credits are live. Engine v3 reports a prompt turn's whole spend in one
 // turn_completion summary written when the turn ends, a few lines before the process exits, so v3 credits are counted
-// by `poll()` but not by `live()`. Instead, on a stream with no v2 metering, `live()` is an estimate: ESTIMATE_RATE
-// times the sum of the context-window percentages the agent reports in `context_usage` events (DEBT D-67). The
-// estimate only decides a kill; it is never charged or reported as credits.
+// by `poll()` but not by `live()`. Instead, on a stream with no v2 metering, `live()` is an estimate made from the sum
+// of the context-window percentages the agent reports in `context_usage` events (estimateCredits, DEBT D-67). The
+// estimate decides a kill; the ledger then charges the killed run at least the limit (orchestrate.js makeLedger).
 
 const fs = require('node:fs');
 
-// Credits per percentage point of context window per context_usage event. Fitted on 225 v3 streams (pilot waves, LITE
-// 2026-11-21, probe runs): turn credits over the sum of reported percentages ran 0.020 to 0.126, median 0.058. The rate
-// sits above every one of them, so the estimate runs high and a run is stopped early rather than late.
-// shortcut: one fixed rate for every model; refit when a model's streams land above it.
-const ESTIMATE_RATE = 0.13;
+// The estimate's coefficients, fitted on saved v3 turns: profiles/v3-credit-estimate.json holds the samples, the method
+// and the date. Real spend is bounded by slopeCap x pct on short turns and by intercept + slope x pct on long ones,
+// where most input is cached; the estimate is margin x the smaller of the two, so it runs high but by about 1.1x to
+// 3x on long turns, not the 4x of the old single rate 0.13.
+// shortcut: fitted on claude-sonnet-5.5 turns only; refit when another model's turns land above it.
+const ESTIMATE = require('../../profiles/v3-credit-estimate.json').estimate;
+
+/** Estimated credits of a v3 turn whose context_usage percentages sum to `pct`. */
+function estimateCredits(pct) {
+  if (!(pct > 0)) return 0;
+  const { slopeCap, intercept, slope, margin } = ESTIMATE;
+  return margin * Math.min(slopeCap * pct, intercept + slope * pct);
+}
 
 function makeCreditMeter(file) {
   let offset = 0;
@@ -68,7 +76,7 @@ function makeCreditMeter(file) {
     /** poll(), then the credits metered mid-run (engine v2), or the estimate from context_usage when no v2 metering came. */
     live() {
       this.poll();
-      return sawV2 ? liveTotal : Math.max(liveTotal, contextPct * ESTIMATE_RATE);
+      return sawV2 ? liveTotal : Math.max(liveTotal, estimateCredits(contextPct));
     },
     /** True when live() is the context_usage estimate (no v2 metering seen and some context reported). */
     estimated() {
@@ -78,4 +86,4 @@ function makeCreditMeter(file) {
   };
 }
 
-module.exports = { makeCreditMeter, ESTIMATE_RATE };
+module.exports = { makeCreditMeter, estimateCredits, ESTIMATE };

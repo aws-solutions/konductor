@@ -127,7 +127,13 @@ function median(values) {
  * Budget accounting. A run killed before its final metering event has unobserved spend,
  * so it is charged the median of the arm's completed runs (or `floor` when there are none).
  */
-const CREDITS = (r) => ({ observed: r.credits || 0, censored: Boolean(r.creditsCensored), known: r.credits != null });
+// `killedAt`: for a run the per-run credit limit killed, the larger of the limit and the v3 estimate at the kill.
+const CREDITS = (r) => ({
+  observed: r.credits || 0,
+  censored: Boolean(r.creditsCensored),
+  known: r.credits != null,
+  killedAt: r.flags?.includes('creditLimit') && r.creditLimit != null ? Math.max(r.creditLimit, r.creditEstimate ?? 0) : null,
+});
 const USD = (r) => ({ observed: r.costUsd || 0, censored: Boolean(r.costCensored), known: r.costUsd != null });
 
 // `costOf(result)` says what a run spent and in which unit: credits for kiro-cli, list-price USD for opencode.
@@ -137,9 +143,12 @@ function makeLedger({ budgetCredits: initialBudget, floor = DEFAULT_CENSORED_FLO
   const ledger = { observed: 0, charged: 0, runs: 0, largest: 0 };
   let reason = null;
   ledger.add = (r) => {
-    const { observed, censored, known } = costOf(r);
+    const { observed, censored, known, killedAt = null } = costOf(r);
     let charge = observed;
-    if (censored) charge = Math.max(observed, median(completed.get(r.armId) || []) ?? floor);
+    // A run killed at the per-run limit spent up to the limit (more on v2 when metered past it); any other censored
+    // run (a timeout, an early stop) is charged the arm's median finished run, or the floor.
+    if (censored && killedAt != null) charge = Math.max(observed, killedAt);
+    else if (censored) charge = Math.max(observed, median(completed.get(r.armId) || []) ?? floor);
     else if (known) completed.set(r.armId, [...(completed.get(r.armId) || []), observed]);
     ledger.observed += observed;
     ledger.charged += charge;

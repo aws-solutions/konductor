@@ -137,6 +137,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     creditsCharged: null,
     creditsSessionTotal: meta.creditsSessionTotal ?? null,
     ...(meta.creditLimit != null ? { creditLimit: meta.creditLimit, creditOvershoot: meta.creditOvershoot ?? null } : {}),
+    // The engine v3 estimate (credit-watch.js) at which the per-run limit killed the run; never metered credits.
+    ...(meta.creditEstimate != null ? { creditEstimate: meta.creditEstimate } : {}),
     ...(meta.creditLimitMode ? { creditLimitMode: meta.creditLimitMode } : {}),
     ...(meta.creditLimitWarning ? { creditLimitWarning: meta.creditLimitWarning } : {}),
     modelCalls: usd

@@ -14,7 +14,8 @@ const { makeFakeKiro } = require('./fake-kiro.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { validateResult } = require('../lib/result.js');
-const { makeCreditMeter, ESTIMATE_RATE } = require('../lib/credit-watch.js');
+const { makeCreditMeter, estimateCredits, ESTIMATE } = require('../lib/credit-watch.js');
+const PROFILE = require('../../profiles/v3-credit-estimate.json');
 
 const ARM = { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, harness: 'none', agent: null, vanilla: true };
 const config = (agentEngine) => ({ model: 'claude-sonnet-5.5', effort: 'high', agentEngine });
@@ -73,14 +74,14 @@ test('the meter counts v2 credits as live and v3 turn-end credits only in the to
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('v3: the meter estimates live credits from context_usage events at ESTIMATE_RATE, and never once v2 metering is seen', () => {
+test('v3: the meter estimates live credits from context_usage events with estimateCredits, and never once v2 metering is seen', () => {
   const root = tmp();
   const ctxEv = (pct) => JSON.stringify({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: pct } } } } });
   try {
     const v3 = path.join(root, 'v3.jsonl');
     write(v3, `${ctxEv(10)}\n${ctxEv(30)}\n`);
     const m = makeCreditMeter(v3);
-    assert.ok(Math.abs(m.live() - 40 * ESTIMATE_RATE) < 1e-9);
+    assert.ok(Math.abs(m.live() - estimateCredits(40)) < 1e-9);
     assert.equal(m.estimated(), true);
     assert.equal(m.poll(), 0, 'the estimate is never a charged figure');
     const mixed = path.join(root, 'mixed.jsonl');
@@ -89,6 +90,22 @@ test('v3: the meter estimates live credits from context_usage events at ESTIMATE
     assert.equal(n.live(), 1);
     assert.equal(n.estimated(), false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('v3 estimate: the fitted profile sits above every saved turn by the margin and is at most 3.1x on long turns', () => {
+  assert.deepEqual(ESTIMATE, PROFILE.estimate, 'credit-watch.js reads its coefficients from the profile');
+  assert.equal(PROFILE.samples.length, PROFILE.sampleCount);
+  assert.ok(PROFILE.sampleCount >= 500, `${PROFILE.sampleCount} samples`);
+  const tol = 1e-9;
+  for (const [pct, credits, run] of PROFILE.samples) {
+    assert.ok(estimateCredits(pct) >= PROFILE.estimate.margin * credits - tol, `${run}: estimate ${estimateCredits(pct)} below ${PROFILE.estimate.margin} x ${credits}`);
+    if (pct >= PROFILE.fit.longTurnPct) assert.ok(estimateCredits(pct) <= 3.1 * credits, `${run}: estimate ${estimateCredits(pct)} over 3.1 x ${credits}`);
+  }
+  // The carddemo port turns of 2026-11-26: 0.13 per point guessed 4x their real credits.
+  const port = PROFILE.samples.find(([, , run]) => run.endsWith('20261126T0450/konductor/cx-carddemo-port/1'));
+  assert.ok(port, 'the carddemo konductor port turn is in the fit');
+  assert.ok(estimateCredits(port[0]) / port[1] < 2.7 && 0.13 * port[0] / port[1] > 4);
+  assert.equal(estimateCredits(0), 0);
 });
 
 // ---- engine v2: unchanged ----
@@ -152,6 +169,8 @@ test('v3: a one-shot run whose estimated credits pass the limit is killed and re
     assert.match(r.error, /per-run credit limit 2 reached at an estimated [0-9.]+ credits/);
     assert.equal(r.creditsCensored, true);
     assert.equal(r.creditLimit, 2);
+    assert.ok(r.creditEstimate > 2, `the estimate at the kill is its own field: ${r.creditEstimate}`);
+    assert.match(r.error, new RegExp(`estimated ${r.creditEstimate.toFixed(3)} credits`));
     assert.deepEqual(validateResult(r), []);
   } finally { s.cleanup(); }
 });

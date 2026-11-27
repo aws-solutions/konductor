@@ -352,7 +352,8 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
       } else if (exec.stopped) {
         exec.error = `stopped early: ${exec.stopped.reason} (${exec.stopped.detail})`;
       }
-      if (exec.creditLimitHit) exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${limitText(exec.creditEstimate == null ? spent : { estimate: spent + exec.creditEstimate })}`;
+      if (exec.creditLimitHit && exec.creditEstimate != null) exec.creditEstimate += spent;
+      if (exec.creditLimitHit) exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${limitText(exec.creditEstimate == null ? spent : { estimate: exec.creditEstimate })}`;
       execs.push(exec);
       if (exec.creditLimitHit || (exec.stopped && exec.stopped.reason !== 'end_turn')) break;
       if (!multi) break;
@@ -383,6 +384,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     exitCode: last.exitCode,
     timedOut: execs.some((e) => e.timedOut),
     creditLimitHit: execs.some((e) => e.creditLimitHit),
+    creditEstimate: execs.find((e) => e.creditLimitHit)?.creditEstimate ?? null,
     ...(ctx.runCreditLimit == null ? {} : { creditLimit: ctx.runCreditLimit, creditOvershoot: over ? spent - ctx.runCreditLimit : null }),
     ...(soft && ctx.runCreditLimit != null ? { creditLimitMode: 'soft', ...(over ? { creditLimitWarning: `per-run credit limit ${ctx.runCreditLimit} passed at ${spent.toFixed(3)} credits (soft mode: the run was not stopped)` } : {}) } : {}),
     stopped: execs.map((e) => e.stopped).find((x) => x && x.reason !== 'end_turn') ?? null,
@@ -437,6 +439,7 @@ function noteOutcome(meta, { agg, exec, outDir }) {
   if (exec?.creditLimitHit) meta.flags.push('creditLimit');
   else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
   if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
+  if (exec?.creditEstimate != null) meta.creditEstimate = exec.creditEstimate;
   if (exec?.creditLimitMode) meta.creditLimitMode = exec.creditLimitMode;
   if (exec?.creditLimitWarning) meta.creditLimitWarning = exec.creditLimitWarning;
   if (exec?.stopped) meta.flags.push('earlyStopped');

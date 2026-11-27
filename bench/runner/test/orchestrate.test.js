@@ -50,6 +50,20 @@ test('ledger charges a censored run at the arm median, or the floor when the arm
   assert.ok(Math.abs(ledger.charged - (1.5 + 2 + 6 + 4 + 9)) < 1e-9);
 });
 
+test('ledger charges a run killed by the per-run credit limit max(its estimate, the limit), never the arm median or floor', () => {
+  const ledger = makeLedger({ budgetCredits: 1000, floor: 1, runsPerReplicate: 2 });
+  const killed = (extra) => ({ armId: 'a', credits: null, creditsCensored: true, flags: ['creditLimit'], creditLimit: 160, ...extra });
+  assert.equal(ledger.add(killed({ creditEstimate: 164.1 })), 164.1, 'estimate above the limit');
+  assert.equal(ledger.add(killed({ creditEstimate: null })), 160, 'no estimate: the limit');
+  ledger.add({ armId: 'a', credits: 20, creditsCensored: false });
+  assert.equal(ledger.add(killed({ creditEstimate: 150 })), 160, 'the arm median does not lower it');
+  // v2 kill: metered credits already past the limit are charged as metered.
+  assert.equal(ledger.add(killed({ credits: 171, creditEstimate: null })), 171);
+  // A timeout with a limit set keeps the median or floor rule.
+  assert.equal(ledger.add({ armId: 'a', credits: null, creditsCensored: true, flags: [], creditLimit: 160 }), 20);
+  assert.equal(ledger.add({ armId: 'b', credits: null, creditsCensored: true, flags: ['earlyStopped'] }), 1);
+});
+
 test('ledger skips whole later replicates when the next one is projected to overshoot', () => {
   const ledger = makeLedger({ budgetCredits: 13, runsPerReplicate: 2 });
   assert.equal(ledger.shouldSkip({ replicate: 1 }), false);

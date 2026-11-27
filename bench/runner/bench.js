@@ -80,8 +80,9 @@ const USAGE = `Usage:
        needs --prereg. run-config.json records the level, its list hash and the picks, and report-2x2 shows it in its header)
        (--suites-dir DIR looks for the suite file DIR/<suite>.json first and then in <bench-dir>/suites, so a generated skilleval-* suite needs no file in the checkout)
        (--run-credit-limit X: on engine v2 the run is killed at the poll once its metered credits pass X and is recorded as censored. On v3 credits
-       arrive once, at the end of a turn, so a one-shot run always finishes: over X it gets creditLimitExceeded and creditOvershoot, nothing is killed;
-       a conversation task is checked after each turn and stops before the next one. --budget-credits is the only bound on total spend: new launches stop
+       arrive once, at the end of a turn, so a one-shot run is killed when an estimate from its context_usage events passes X (creditEstimate
+       in result.json; profiles/v3-credit-estimate.json); a conversation task is also checked after each turn and stops before the next one.
+       A killed run is charged max(X, its estimate) against --budget-credits. --budget-credits is the only bound on total spend: new launches stop
        when charged credits plus the largest run so far would pass it. --run-credit-limit-mode hard (the default) stops the run as above; soft never stops it:
        a run that ends over X gets creditLimitExceeded, a warning in runner.log and creditLimitWarning in result.json, and runs to its natural end)
        (--auth-db is the kiro-cli auth database each run's scratch HOME gets a copy of, default the standard location under HOME)

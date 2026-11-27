@@ -418,6 +418,9 @@
         "null"
       ]
     },
+    "creditEstimate": {
+      "type": "number"
+    },
     "creditLimitMode": {
       "enum": [
         "soft"

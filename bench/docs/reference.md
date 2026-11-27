@@ -807,8 +807,10 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
 
 ## Metrics notes
 - A run that times out or dies before its final metering event has unobserved spend: `creditsCensored`
-  is true and `creditsLowerBound` is the known floor. The budget guard charges such a run the median of
-  the arm's completed runs, or `--censored-floor` (default 1.0), stored as `creditsCharged`; reports use
+  is true and `creditsLowerBound` is the known floor. The budget guard charges a run that the per-run
+  credit limit killed (flag `creditLimit`) the larger of the limit and its `creditEstimate`, and any
+  other such run the median of the arm's completed runs in this command, or `--censored-floor`
+  (default 1.0), stored as `creditsCharged`; reports use
   that value, never 0. Failure rates sit beside every cost figure. `turnDurationMs` is null without
   a `runFinished` event.
 - Engine v3 reports credits only at turn end (a `turn_completion` summary in the stream), never before. A single prompt is one turn, sub-agents
@@ -1273,10 +1275,12 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   `run` stops launching at 90% of `--budget-credits` or when charged credits plus the largest run so far would pass it, and `--run-credit-limit X`
   limits one run to X credits. Engine v2 meters after every model call, so the run's process group is killed once the credits metered so far pass
   X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend only when the turn ends, so during the turn the
-  runner estimates it: 0.13 credits per percentage point of context window in each `context_usage` event (`ESTIMATE_RATE` in
-  `runner/lib/credit-watch.js`; on 225 saved v3 streams the real ratio was 0.020 to 0.126, so the estimate runs high). Past X on the estimate
-  the process group is killed and the run is censored (flag `creditLimit`, an error saying "an estimated ... credits"); the estimate is never
-  charged. A v3 run that reports no context usage still finishes, and if it spent more than X it gets the flag `creditLimitExceeded`. A conversation task (autonomy) is checked when each
+  runner estimates it from the sum `pct` of the context-window percentages in its `context_usage` events: 1.1 x min(0.15 x pct,
+  19.69 + 0.0437 x pct) (`estimateCredits` in `runner/lib/credit-watch.js`; coefficients, method and the 551 fitted turns in
+  `profiles/v3-credit-estimate.json`, 2026-11-26). It sits above every fitted turn by at least 1.1x and at most 3.0x on turns of 400
+  points or more; the old single rate 0.13 ran up to 4.6x high there. Past X on the estimate the process group is killed and the run is
+  censored (flag `creditLimit`, an error saying "an estimated ... credits", the figure in `creditEstimate`); the budget ledger charges it
+  max(X, `creditEstimate`). A v3 run that reports no context usage still finishes, and if it spent more than X it gets the flag `creditLimitExceeded`. A conversation task (autonomy) is checked when each
   turn ends, and over the limit the next turn is not started (flag `creditLimit`, an error naming the turn). With a limit, `result.json` records
   `creditLimit` and `creditOvershoot` (credits above X, else null) for v2 and v3 alike, and the `done` line shows the overshoot. On v3 an
   estimate can sit below the real spend, so `--budget-credits` stays the bound on total spend.
