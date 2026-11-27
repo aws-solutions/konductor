@@ -101,7 +101,7 @@ is the docs owner's page and points here.
 | `run-pilot-rerun.sh` | Keep-or-prune pilot step 3 again after pilot 1: controls only (cap 1,800), then `--unit` (cap 3,375). Paid. |
 | `run-pilot-v2-rerun.sh` | Keep-or-prune pilot rerun on baseline v2 with the FW-36 role line on both unit arms; needs the v2 sign-off and the Fable review mark (or `--skip-fable-review`). Paid (cap 3,240, `UNIT_CAP`); `--plan` is free. |
 | `run-pilot-v2-rewrite.sh` | Keep-or-prune pilot baseline v2: the 5 BAD tasks written again (deepseek-3.2 writes, glm-5 reviews), the other 10 copied byte for byte. Paid (cap 120, at most 4 calls); `--dry-run` is free. |
-| `run-prompt-fix-arms.sh` | Konductor prompt-fix study, three arms (vanilla, konductor-adaptive, konductor-coordinator): `--plan` builds and verifies the adaptive arm and batch C's git copy of CardDemo and prints the credit and judge forecast (free); `smoke`, `A`, `B`, `C` are the paid steps with their caps, the per-run credit check and the smoke gate; `judge` is the USD judge pass (read-view rubric, quality pack); `sign-carddemo-key --yes` records the owner's sign-off batch C needs. Paid. |
+| `run-prompt-fix-arms.sh` | Konductor prompt-fix study, three arms (vanilla, konductor-adaptive, konductor-coordinator): `--plan` builds and verifies the adaptive arm and batch C's git copy of CardDemo and prints the credit and judge forecast (free); `smoke`, `A`, `B`, `C` are the paid steps with their caps, the per-run credit check and the smoke gate; `judge` is the USD judge pass (read-view rubric, quality pack); `sign-carddemo-key --yes` records the owner's sign-off batch C needs; `rebook --yes` (free) moves the bench pin to a commit with the D-297 meter fix and un-books runs the old v3 estimate stopped under their limit. Paid. |
 | `run-reruns-2.sh` | Second rerun batch of the pilot waves. |
 | `run-reruns.sh` | Reruns of the pilot waves whose keys changed. |
 | `run-standard-claude.sh` | STANDARD Claude Code step with this host's paths. |
@@ -129,7 +129,7 @@ is the docs owner's page and points here.
 | `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
 | `test-run-standard-quality-pack.sh` | Stub test of `run-standard-quality-pack.sh`. Free. |
-| `test-run-prompt-fix-arms.sh` | Stub test of `run-prompt-fix-arms.sh` with a fake bench.js: plan, smoke gate, coordinator config, run limit, resume, cap, batch C sign-off and soft caps, judge cap and passes. Free. |
+| `test-run-prompt-fix-arms.sh` | Stub test of `run-prompt-fix-arms.sh` with a fake bench.js: plan, smoke gate, coordinator config, run limit, resume, cap, batch C sign-off and soft caps, rebook, judge cap and passes. Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |

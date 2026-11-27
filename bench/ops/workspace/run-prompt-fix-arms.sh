@@ -13,6 +13,9 @@
 #   bash run-prompt-fix-arms.sh <step> --foreground    the same, in this terminal
 #   bash run-prompt-fix-arms.sh sign-carddemo-key [--yes]   free: shows CardDemo's Pattern key; --yes records the
 #                                                      owner's sign-off, which batch C needs
+#   bash run-prompt-fix-arms.sh rebook [--yes]         free: moves the bench pin to BENCH_REF when it carries the D-297
+#                                                      meter fix, and un-books runs the old v3 estimate stopped under
+#                                                      their limit (booked at measured spend, run again); --yes applies
 #
 # Steps (bench/ops/prompt-fixes/study.js STEPS): smoke 4 tasks x 3 arms x 1 rep, cap 90 credits, 25 a run; A rows 1-9
 # x 3 arms x 3 reps, cap 800; B rows 10-14 x 3 arms x 3 reps, cap 700; per-run limit 100 in A and B; C cx-carddemo-
@@ -64,7 +67,7 @@ CX_KEY_REL=bench/complex/fixtures/cx-carddemo-batchday/.bench-answer-key.md
 STUDY=""; ARM_ADAPTIVE=""; ARM_HASH=""
 
 . "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
-usage() { echo "usage: bash $0 --plan | smoke|A|B|C|judge [--foreground] | sign-carddemo-key [--yes]"; exit 64; }
+usage() { echo "usage: bash $0 --plan | smoke|A|B|C|judge [--foreground] | sign-carddemo-key [--yes] | rebook [--yes]"; exit 64; }
 
 # under_home PATH: true when PATH (resolved through its nearest existing parent) is under HOME.
 under_home() {
@@ -330,11 +333,52 @@ judge_mode() {
   say "report: $S/report/report.md"
 }
 
+# rebook_mode YES: free. Moves the frozen bench pin to BENCH_REF (it must carry the D-297 meter fix and be ahead of the
+# pin; plan.json keeps the old pin under repins), then un-books every estimate-fault stop of every step (study.js rebook):
+# the cell moves to $S/incomplete and is booked at its measured spend, so the next step run runs it again. Without
+# --yes it only says what it would do.
+rebook_mode() {
+  local yes=$1 old new st tool
+  exec 9> "$OWN_LOCK"
+  flock -n 9 || stop "a prompt-fix step holds $OWN_LOCK: wait for it to end"
+  [ -s "$PLAN" ] || stop "no frozen plan in $PLAN: nothing to re-book"
+  old=$(node -p "require('$PLAN').benchSha")
+  new=$old
+  if [ "$GIT_CHECK" != 0 ]; then
+    [ -z "$(git -C "$R" status --porcelain)" ] || stop "$R has local changes: use a clean worktree"
+    [ "$NO_FETCH" = 1 ] || git -C "$R" fetch -q origin feat/bench-pilot-nk || stop "fetch failed in $R"
+    new=$(git -C "$R" rev-parse "$BENCH_REF") || stop "cannot resolve $BENCH_REF in $R"
+    git -C "$R" merge-base --is-ancestor "$old" "$new" || stop "$BENCH_REF (${new:0:8}) is not ahead of the frozen pin ${old:0:8}"
+    git -C "$R" grep -q 'D-297' "$new" -- bench/runner/lib/credit-watch.js || stop "$BENCH_REF (${new:0:8}) has no D-297 meter fix"
+  fi
+  tool=$OPS/bench/ops/prompt-fixes/study.js
+  [ -f "$tool" ] || tool=$STUDY
+  for st in smoke A B C; do
+    [ -d "$S/runs/$st" ] || continue
+    say "$st: booked $(node "$tool" spent "$S/runs/$st" | cut -d' ' -f1) of $(node -p "require('$tool').STEPS['$st'].cap")"
+    node "$tool" rebook "$S/runs/$st" "$S/incomplete" | sed "s/^/  /"
+  done
+  if [ "$yes" != 1 ]; then
+    say "dry run: nothing moved. bench pin ${old:0:8} -> ${new:0:8}. Apply: bash $0 rebook --yes"
+    return 0
+  fi
+  if [ "$new" != "$old" ]; then
+    git -C "$R" checkout -q --detach "$new" || stop "checkout of ${new:0:8} failed in $R"
+    node -e 'const [f, o, n] = process.argv.slice(1); const p = JSON.parse(require("fs").readFileSync(f, "utf8")); p.repins = [...(p.repins || []), { from: o, to: n, at: new Date().toISOString(), reason: "D-297: the v3 per-run limit meters the session creditSplit" }]; p.benchSha = n; require("fs").writeFileSync(f, JSON.stringify(p, null, 2) + "\n");' "$PLAN" "$old" "$new"
+    say "bench pin moved: ${old:0:8} -> ${new:0:8} (plan.json repins)"
+  fi
+  for st in smoke A B C; do
+    [ -d "$S/runs/$st" ] || continue
+    node "$STUDY" rebook "$S/runs/$st" "$S/incomplete" --apply | sed "s/^/  /"
+    say "$st: booked $(node "$STUDY" spent "$S/runs/$st" | cut -d' ' -f1) of $(node -p "require('$STUDY').STEPS['$st'].cap") after the re-book"
+  done
+}
+
 main() {
   local mode="" fg=0 yes=0 a
   for a in "$@"; do
     case "$a" in
-      --plan|smoke|A|B|C|judge|sign-carddemo-key) [ -z "$mode" ] || usage; mode=$a ;;
+      --plan|smoke|A|B|C|judge|sign-carddemo-key|rebook) [ -z "$mode" ] || usage; mode=$a ;;
       --foreground) fg=1 ;;
       --yes) yes=1 ;;
       *) usage ;;
@@ -350,6 +394,7 @@ main() {
   case "$mode" in
     --plan) plan_mode; return ;;
     sign-carddemo-key) sign_mode "$yes"; return ;;
+    rebook) rebook_mode "$yes"; return ;;
   esac
   if [ "$fg" = 0 ]; then
     setsid nohup bash "${BASH_SOURCE[0]}" "$mode" --foreground >> "$S/$mode.log" 2>&1 < /dev/null &

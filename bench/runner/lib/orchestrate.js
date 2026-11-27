@@ -127,12 +127,13 @@ function median(values) {
  * Budget accounting. A run killed before its final metering event has unobserved spend,
  * so it is charged the median of the arm's completed runs (or `floor` when there are none).
  */
-// `killedAt`: for a run the per-run credit limit killed, the larger of the limit and the v3 estimate at the kill.
+// `killedAt`: for a run the per-run credit limit killed, the larger of the limit and the v3 figure at the kill (the
+// session's measured creditSplit, or the context_usage estimate when the session wrote none).
 const CREDITS = (r) => ({
   observed: r.credits || 0,
   censored: Boolean(r.creditsCensored),
   known: r.credits != null,
-  killedAt: r.flags?.includes('creditLimit') && r.creditLimit != null ? Math.max(r.creditLimit, r.creditEstimate ?? 0) : null,
+  killedAt: r.flags?.includes('creditLimit') && r.creditLimit != null ? Math.max(r.creditLimit, r.creditMeasured ?? r.creditEstimate ?? 0) : null,
 });
 const USD = (r) => ({ observed: r.costUsd || 0, censored: Boolean(r.costCensored), known: r.costUsd != null });
 

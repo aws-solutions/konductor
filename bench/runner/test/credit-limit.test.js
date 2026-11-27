@@ -15,6 +15,7 @@ const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { validateResult } = require('../lib/result.js');
 const { makeCreditMeter, estimateCredits, ESTIMATE } = require('../lib/credit-watch.js');
+const { CREDITS } = require('../lib/orchestrate.js');
 const PROFILE = require('../../profiles/v3-credit-estimate.json');
 
 const ARM = { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, harness: 'none', agent: null, vanilla: true };
@@ -173,6 +174,64 @@ test('v3: a one-shot run whose estimated credits pass the limit is killed and re
     assert.match(r.error, new RegExp(`estimated ${r.creditEstimate.toFixed(3)} credits`));
     assert.deepEqual(validateResult(r), []);
   } finally { s.cleanup(); }
+});
+
+// The prompt-fix smoke stop of 2026-11-27 (D-297): context usage that sums to 157.6 points made an estimate of 26 under a
+// limit of 25, while the session's own creditSplit said 3.29. With the measured figure there the estimate is not used.
+test('v3: a run whose session writes creditSplit is metered on it, not on the context_usage estimate (D-297)', async () => {
+  const s = setup({ creditSplit: [0.4, 1.9, 3.29], contextUsage: [50, 50, 57.6], credits: 3.3, lingerMs: 400 }, { engine: 'v3', limit: 25 });
+  try {
+    assert.ok(estimateCredits(157.6) > 25, 'the old estimate alone would have killed this run');
+    const r = await s.run();
+    assert.equal(r.status, 'success', r.error);
+    assert.deepEqual(r.flags.filter((f) => /^creditLimit/.test(f)), []);
+    assert.equal(r.credits, 3.3);
+  } finally { s.cleanup(); }
+});
+
+test('v3: a one-shot run whose measured creditSplit passes the limit is killed, censored and charged its measured spend (D-297)', async () => {
+  const s = setup({ creditSplit: [1, 2.5, 3.25], contextUsage: [1], hangAfterContext: true }, { engine: 'v3', limit: 2 });
+  try {
+    const r = await s.run();
+    const { pid } = JSON.parse(fs.readFileSync(s.started(1), 'utf8'));
+    assert.equal(alive(pid), false, 'the fake agent is gone');
+    assert.equal(r.status, 'error');
+    assert.ok(r.flags.includes('creditLimit'), r.flags.join());
+    assert.match(r.error, /per-run credit limit 2 reached at 3\.250 credits \(measured mid-turn from the session's creditSplit\)/);
+    assert.equal(r.creditsCensored, true);
+    assert.equal(r.creditMeasured, 3.25);
+    assert.equal('creditEstimate' in r, false, 'no estimate decided this kill');
+    assert.equal(CREDITS(r).killedAt, 3.25, 'the ledger charges the larger of the limit and the measured spend');
+    assert.deepEqual(validateResult(r), []);
+  } finally { s.cleanup(); }
+});
+
+test('the meter reads creditSplit from v3 session folders: growth since it started, never lower, links skipped (D-297)', () => {
+  const root = tmp();
+  const split = (main, delegated = 0) => `${JSON.stringify({ payload: { type: 'session_metadata', key: 'creditSplit', value: { main, delegated, auxiliary: 0.5 } } })}\n`;
+  try {
+    const stream = path.join(root, 'stream.jsonl');
+    write(stream, `${JSON.stringify({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: 400 } } } } })}\n`);
+    const sessions = path.join(root, 'home/.kiro/sessions');
+    const old = path.join(sessions, 'ws1/sess_old/messages.jsonl');
+    write(old, split(9.5));
+    const m = makeCreditMeter(stream, { sessionsDir: sessions });
+    assert.equal(m.live(), 0, 'a session that spent before the meter started is its baseline');
+    assert.equal(m.measured(), true);
+    assert.equal(m.estimated(), false, 'the context_usage estimate is not used once a creditSplit is seen');
+    fs.appendFileSync(old, split(10.5));
+    write(path.join(sessions, 'ws1/sess_new/messages.jsonl'), split(2, 1.5));
+    assert.equal(m.live(), 5, '1 more in the old session, 2 + 1.5 + 0.5 in the new one');
+    fs.appendFileSync(old, split(0));
+    assert.equal(m.live(), 5, 'a lower line cannot lower what was measured');
+    const elsewhere = path.join(root, 'elsewhere/sess_x');
+    write(path.join(elsewhere, 'messages.jsonl'), split(100));
+    fs.symlinkSync(elsewhere, path.join(sessions, 'ws1/sess_link'));
+    assert.equal(m.live(), 5, 'a linked session folder is not read');
+    const none = makeCreditMeter(stream, { sessionsDir: path.join(root, 'nothing') });
+    assert.equal(none.measured(), false);
+    assert.equal(none.estimated(), true, 'with no session figure the estimate is still the fallback');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
 test('v3: a run under the limit has no flag and no overshoot', async () => {

@@ -83,6 +83,27 @@ STUB_CREDITS=35 run "$S3" smoke --foreground
 { [ "$code" = 1 ] && grep -q 'STOP: cap: 70 spent of 90' "$T/log" && [ "$(find "$S3/runs/smoke" -name result.json | wc -l)" = 2 ]; } \
   && ok "the cap stops the run that could pass it" || bad "cap (exit $code): $(tail -2 "$T/log")"
 
+# Rebook (D-297): a smoke run the old v3 estimate stopped at 26 under the limit 25, while its session measured 3.29,
+# is listed by a dry run, then moved to incomplete and booked at measured spend plus one call; the next smoke run runs it.
+S4=$(mktemp -d /var/tmp/pfa-s4.XXXX)
+trap 'find "$T" "$S1" "$S2" "$S3" "$S4" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3" "$S4"' EXIT
+cp "$S1/plan.json" "$S4/plan.json"
+U4=$S4/runs/smoke/t12-mux-parallel-merge/konductor-adaptive/r1
+mkdir -p "$U4/konductor-adaptive/t12-mux-parallel-merge/1/session/sess_a"
+printf '%s\n' '{"kind":"run","unit":"credits","credits":null,"charged":26.005,"censored":true}' > "$U4/credit-ledger.jsonl"
+printf '%s\n' '{"armId":"konductor-adaptive","taskId":"t12-mux-parallel-merge","status":"error","flags":["creditLimit"],"creditLimit":25,"creditEstimate":26.005}' > "$U4/konductor-adaptive/t12-mux-parallel-merge/1/result.json"
+printf '%s\n' '{"payload":{"type":"session_metadata","key":"creditSplit","value":{"main":2.9,"delegated":0,"auxiliary":0}}}' '{"payload":{"type":"session_metadata","key":"creditSplit","value":{"main":3.29,"delegated":0,"auxiliary":0}}}' > "$U4/konductor-adaptive/t12-mux-parallel-merge/1/session/sess_a/messages.jsonl"
+echo '{}' > "$U4/run-config.json"
+run "$S4" rebook
+{ [ "$code" = 0 ] && grep -q 'smoke: booked 26.01 of 90' "$T/log" && grep -q 'measured 3.29; would book 3.68' "$T/log" && [ -d "$U4" ]; } \
+  && ok "rebook without --yes lists the estimate-fault stop and moves nothing" || bad "rebook dry run (exit $code): $(tail -3 "$T/log")"
+run "$S4" rebook --yes
+{ [ "$code" = 0 ] && [ ! -e "$U4" ] && ls "$S4/incomplete" | grep -q 'estimate-stop' && grep -q 'smoke: booked 3.68 of 90 after the re-book' "$T/log"; } \
+  && ok "rebook --yes moves the cell aside and books its measured spend" || bad "rebook apply (exit $code): $(tail -3 "$T/log")"
+: > "$T/calls.log"
+run "$S4" smoke --foreground
+{ [ "$code" = 0 ] && [ "$(calls)" = 12 ] && [ -s "$U4/credit-ledger.jsonl" ]; } && ok "the next smoke run runs the re-booked cell again" || bad "smoke after rebook (exit $code, $(calls) calls): $(tail -3 "$T/log")"
+
 # Batch C: refused until the CardDemo Pattern key is signed off; then 2 reps x 3 arms from the git copy, soft caps.
 run "$S1" C --foreground
 { [ "$code" = 1 ] && grep -q 'Pattern key .* is not signed off' "$T/log" && [ ! -d "$S1/runs/C" ]; } && ok "C refuses before the Pattern key sign-off" || bad "C before sign-off (exit $code): $(tail -2 "$T/log")"

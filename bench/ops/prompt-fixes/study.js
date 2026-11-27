@@ -11,6 +11,7 @@
 //   node study.js may-start DIR STEP            exit 0 when spend under DIR plus the step's per-run limit stays within
 //                                               the cap, and the 60% stop rule has not fired; else exit 1 and say why
 //   node study.js gate DIR                      the smoke gate over DIR: exit 0 PASS, 1 FAIL; prints the reasons
+//   node study.js rebook DIR ASIDE [--apply]   un-books estimate-fault stops under the step folder DIR (D-297; see rebook)
 //   node study.js usd-spent DIR                 USD the judge calls under DIR were charged
 //   node study.js judge-may-start DIR TASK CAP  exit 0 when judge spend under DIR plus one run of TASK (high estimate)
 //                                               stays within CAP USD; else exit 1 and say why
@@ -21,6 +22,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { EXPECT } = require('../../report/plan-call.js');
 const { readLedger } = require('../../runner/lib/credit-ledger.js');
+const { makeSplitReader } = require('../../runner/lib/credit-watch.js');
 
 const ARMS = ['vanilla', 'konductor-adaptive', 'konductor-coordinator'];
 const byRow = (lo, hi) => Object.entries(EXPECT.tasks).filter(([, e]) => e.row >= lo && e.row <= hi).sort((a, b) => a[1].row - b[1].row).map(([id]) => id);
@@ -195,7 +197,67 @@ function judgeMayStart(dir, task, capUsd) {
   return spent + worst > capUsd ? `judge cap: USD ${spent} spent of ${capUsd}, and judging ${task} may cost up to ${Math.round(worst * 1000) / 1000}` : null;
 }
 
+/** Every result.json under `dir`, as [{ file, result }]. */
+function resultFiles(dir) {
+  const out = [];
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name === 'result.json') out.push({ file: p, result: JSON.parse(fs.readFileSync(p, 'utf8')) });
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+const up3 = (x) => Math.ceil(x * 1000 - 1e-6) / 1000;
+
+/**
+ * Un-books the cells under the step folder `dir` that the per-run limit stopped on the old engine v3 context_usage
+ * estimate (creditEstimate, no creditMeasured) while the run session's own creditSplit stayed under the limit: an
+ * estimate fault, not spend (DEBT D-297). For each one, with `apply`, a ledger line at the measured spend plus the
+ * largest rise between two creditSplit lines (about one model call, the most a stop can leave unwritten) goes to
+ * <dir>/rebooked/<cell>/credit-ledger.jsonl, then the cell folder moves to `aside` (kept, never deleted), so the next
+ * step run runs that cell again. Returns [{ cell, measured, charge, estimate, movedTo }]; without `apply` it only reports.
+ */
+function rebook(dir, aside, { apply = false } = {}) {
+  const out = [];
+  for (const cell of ledgerDirs(dir)) {
+    if (path.relative(dir, cell).split(path.sep)[0] === 'rebooked') continue;
+    const faults = resultFiles(cell).filter(({ result: r }) => r.status === 'error' && (r.flags || []).includes('creditLimit')
+      && r.creditEstimate != null && r.creditMeasured == null && r.creditLimit != null);
+    if (faults.length !== 1) continue;
+    const { file, result: r } = faults[0];
+    const reader = makeSplitReader(path.join(path.dirname(file), 'session'), { flat: true });
+    const measured = reader.read();
+    if (measured == null || measured >= r.creditLimit) continue;
+    const rel = path.relative(dir, cell);
+    const name = rel.split(path.sep).join('-');
+    const item = { cell: rel, estimate: r.creditEstimate, measured: up3(measured), charge: up3(measured + reader.maxStep()), movedTo: null };
+    if (apply) {
+      const booked = path.join(dir, 'rebooked', name);
+      fs.mkdirSync(booked, { recursive: true });
+      const line = { at: new Date().toISOString(), kind: 'run', unit: 'credits', arm: r.armId, task: r.taskId, replicate: r.replicate ?? null, status: 'error',
+        credits: item.measured, charged: item.charge, censored: true, rebooked: { estimate: r.creditEstimate, measured: item.measured, from: rel, reason: 'D-297 estimate-fault stop' } };
+      fs.appendFileSync(path.join(booked, 'credit-ledger.jsonl'), `${JSON.stringify(line)}\n`);
+      fs.mkdirSync(aside, { recursive: true });
+      item.movedTo = path.join(aside, `${name}.estimate-stop.${Date.now()}`);
+      fs.renameSync(cell, item.movedTo);
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 function main([cmd, a, b, c]) {
+  if (cmd === 'rebook') {
+    const done = rebook(a, b, { apply: c === '--apply' });
+    for (const x of done) console.log(`${x.cell}: stopped at an estimate of ${x.estimate.toFixed(3)}, measured ${x.measured}; ${c === '--apply' ? 'booked' : 'would book'} ${x.charge}${x.movedTo ? `, moved to ${x.movedTo}` : ''}`);
+    if (!done.length) console.log('no estimate-fault stop found');
+    return 0;
+  }
   if (cmd === 'cells') { for (const x of cells(a)) console.log(`${x.task} ${x.arm} ${x.rep}`); return 0; }
   if (cmd === 'usd-spent') { console.log(usdSpent(a)); return 0; }
   if (cmd === 'judge-may-start') { const why = judgeMayStart(a, b, Number(c)); if (why) { console.log(why); return 1; } return 0; }
@@ -203,10 +265,10 @@ function main([cmd, a, b, c]) {
   if (cmd === 'spent') { const s = spent(a); console.log(`${s.credits} ${s.unknown}`); return 0; }
   if (cmd === 'may-start') { const why = mayStart(a, b); if (why) { console.log(why); return 1; } return 0; }
   if (cmd === 'gate') { const why = gate(a); console.log(why.length ? `FAIL: ${why.join('; ')}` : 'PASS'); return why.length ? 1 : 0; }
-  console.error('usage: study.js cells STEP | forecast [RUNS] | spent DIR | usd-spent DIR | may-start DIR STEP | judge-may-start DIR TASK CAP_USD | gate DIR');
+  console.error('usage: study.js cells STEP | rebook DIR ASIDE [--apply] | forecast [RUNS] | spent DIR | usd-spent DIR | may-start DIR STEP | judge-may-start DIR TASK CAP_USD | gate DIR');
   return 64;
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { ARMS, STEPS, CX, PANEL, cells, forecast, spent, usdSpent, mayStart, judgeMayStart, judgePerRun, gate };
+module.exports = { ARMS, STEPS, CX, PANEL, cells, forecast, spent, rebook, usdSpent, mayStart, judgeMayStart, judgePerRun, gate };

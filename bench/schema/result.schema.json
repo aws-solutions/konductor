@@ -421,6 +421,9 @@
     "creditEstimate": {
       "type": "number"
     },
+    "creditMeasured": {
+      "type": "number"
+    },
     "creditLimitMode": {
       "enum": [
         "soft"

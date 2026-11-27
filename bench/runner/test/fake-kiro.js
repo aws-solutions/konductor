@@ -83,6 +83,12 @@ const finish = () => {
   // contextUsage: context-window percentages the v3 agent reports during the turn; hangAfterContext stops there, before any credit event.
   // contextBreakdown: the breakdown object of a first v3 context_usage event (what the session loaded at start).
   if (engine === 'v3' && tc.contextBreakdown) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: 1, breakdown: tc.contextBreakdown } } } });
+  // creditSplit: the cumulative credits an engine v3 session writes to its messages.jsonl after each model call.
+  if (engine === 'v3' && tc.creditSplit) {
+    const sdir = path.join(process.env.HOME, '.kiro/sessions', 'ab12cd34ef56ab78', 'sess_' + sid);
+    fs.mkdirSync(sdir, { recursive: true });
+    for (const main of tc.creditSplit) fs.appendFileSync(path.join(sdir, 'messages.jsonl'), JSON.stringify({ payload: { type: 'session_metadata', key: 'creditSplit', value: { main, delegated: 0, auxiliary: 0 } } }) + '\\n');
+  }
   if (engine === 'v3') for (const pct of tc.contextUsage || []) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: pct, contextUsage: { usagePercentage: pct } } } } });
   if (tc.hangAfterContext) { setTimeout(() => {}, 60000); return; }
   if (engine === 'v3') v3Completion(); else ev('metadata', { sessionId: sid, turnDurationMs: 100, meteringUsage: [{ value: tc.credits ?? 0.5, unit: 'credit' }] });

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { cells, forecast, mayStart, judgeMayStart, gate, STEPS } = require('../../ops/prompt-fixes/study.js');
+const { cells, forecast, mayStart, judgeMayStart, gate, rebook, spent, STEPS } = require('../../ops/prompt-fixes/study.js');
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'pfs-'));
 const ledger = (dir, credits) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'credit-ledger.jsonl'), `${JSON.stringify({ ts: '2026-11-27T00:00:00Z', kind: 'run', credits, armId: 'vanilla', taskId: 'x', replicate: 1 })}\n`); };
@@ -75,4 +75,39 @@ test('gate: PASS needs a parsed Plan line on every adaptive run and 2 writers on
   const why = gate(d).join('; ');
   assert.match(why, /t1-bug-date-range: no Plan line/);
   assert.match(why, /1 writer spawns/);
+});
+
+// The smoke stop of 2026-11-27 (D-297): the adaptive t12 run was stopped at an estimate of 26.005 under a limit of 25 and
+// booked 26.005, while its session's creditSplit said 3.29.
+test('rebook: an estimate-fault stop is moved aside and re-booked at its measured spend; a real stop is left alone', () => {
+  const d = tmp();
+  const steps = path.join(d, 'runs/smoke');
+  const aside = path.join(d, 'incomplete');
+  const split = (main) => `${JSON.stringify({ payload: { type: 'session_metadata', key: 'creditSplit', value: { main, delegated: 0, auxiliary: 0.01 } } })}\n`;
+  const cell = (rel, { charged, r, mains }) => {
+    const u = path.join(steps, rel);
+    fs.mkdirSync(u, { recursive: true });
+    fs.writeFileSync(path.join(u, 'credit-ledger.jsonl'), `${JSON.stringify({ kind: 'run', unit: 'credits', arm: r.armId, task: r.taskId, replicate: 1, credits: null, charged, censored: true })}\n`);
+    const run = path.join(u, `${r.armId}/${r.taskId}/1`);
+    result(run, r);
+    fs.mkdirSync(path.join(run, 'session/sess_a'), { recursive: true });
+    fs.writeFileSync(path.join(run, 'session/sess_a/messages.jsonl'), mains.map(split).join(''));
+    return u;
+  };
+  const stop = { status: 'error', flags: ['creditLimit'], creditLimit: 25, creditsCensored: true };
+  const fault = cell('t12-mux-parallel-merge/konductor-adaptive/r1', { charged: 26, r: { ...stop, armId: 'konductor-adaptive', taskId: 't12-mux-parallel-merge', creditEstimate: 26.005 }, mains: [0, 0.4, 3.28] });
+  const real = cell('t1-bug-date-range/konductor-adaptive/r1', { charged: 31, r: { ...stop, armId: 'konductor-adaptive', taskId: 't1-bug-date-range', creditEstimate: 31 }, mains: [0, 12, 26] });
+  ledger(path.join(steps, 't1-bug-date-range/vanilla/r1'), 1.62);
+  assert.equal(spent(steps).credits, 58.62);
+  const dry = rebook(steps, aside, { apply: false });
+  assert.equal(dry.length, 1);
+  assert.equal(dry[0].measured, 3.29);
+  assert.equal(dry[0].charge, 6.17, 'measured plus the largest rise between two lines (2.88), the most one unwritten call adds');
+  assert.equal(fs.existsSync(fault), true, 'a dry run moves nothing');
+  const done = rebook(steps, aside, { apply: true });
+  assert.equal(fs.existsSync(fault), false);
+  assert.equal(fs.existsSync(path.join(done[0].movedTo, 'konductor-adaptive/t12-mux-parallel-merge/1/result.json')), true, 'the evidence is kept');
+  assert.equal(fs.existsSync(real), true, 'a stop whose measured spend passed the limit stays booked');
+  assert.equal(spent(steps).credits, 38.79, '31 + 1.62 + 6.17');
+  assert.deepEqual(rebook(steps, aside, { apply: true }), [], 'a second pass finds nothing');
 });

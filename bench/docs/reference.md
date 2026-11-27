@@ -816,8 +816,8 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
 - Engine v3 reports credits only at turn end (a `turn_completion` summary in the stream), never before. A single prompt is one turn, sub-agents
   included, and the summary is written a few lines before `runFinished`. In four saved runs (8 to 15 minutes, 15.4 to 29.4 credits) it was the only
   credit event; the session log's `usage_summary` is written at the same instant, and `context_usage` events carry context-window tokens, not spend.
-  So the metered total stays at 0 until a run finishes; `--run-credit-limit` stops a one-shot v3 run on an estimate made from the
-  `context_usage` events instead (see the limit's contract below; `--budget-credits` still stops new runs between runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
+  So the metered total stays at 0 until a run finishes; `--run-credit-limit` stops a one-shot v3 run on the session's mid-turn `creditSplit`
+  lines instead (an estimate from the `context_usage` events only before the first one) (see the limit's contract below; `--budget-credits` still stops new runs between runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
   sub-agents used, so it appears to cover their spend (seen on one coordinator run). `modelCalls.meteringEntries` counts turns on v3, not model calls. v3 names a tool call by title, so tool names are mapped from the titles in `lib/stream.js` and unmapped
   titles count as `unknown`; a sub-agent call is "Sub-agent: <name>" with the target in `rawInput.name`.
 - `backfill --run DIR [--credits] [--skills] [--write]` repairs v3 runs saved before the runner could read this, from each `stream.jsonl` with
@@ -1278,8 +1278,12 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   `DIR/<id>.json`, `DIR/fixtures`, `DIR/hidden`, masked from the agent; check with `validate-tasks.js --only-extra --extra-tasks DIR`);
   `run` stops launching at 90% of `--budget-credits` or when charged credits plus the largest run so far would pass it, and `--run-credit-limit X`
   limits one run to X credits. Engine v2 meters after every model call, so the run's process group is killed once the credits metered so far pass
-  X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend only when the turn ends, so during the turn the
-  runner estimates it from the sum `pct` of the context-window percentages in its `context_usage` events: 1.1 x min(0.15 x pct,
+  X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend in the stream only when the turn ends, but its
+  session writes the cumulative credits after every model call (its own and its sub-agents') as a `creditSplit` line in
+  `HOME/.kiro/sessions/<hash>/sess_<id>/messages.jsonl`; the last line of a finished session equals its credits (513 saved runs, ratio 1.000 to
+  1.008). So during the turn the runner meters that measured figure, one model call behind, and a run past X on it is killed and censored
+  (an error saying "... credits (measured mid-turn from the session's creditSplit)", the figure in `creditMeasured`; the ledger charges
+  max(X, `creditMeasured`); DEBT D-297). Only while the session has written no `creditSplit` line does the runner estimate the spend from the sum `pct` of the context-window percentages in its `context_usage` events: 1.1 x min(0.15 x pct,
   19.69 + 0.0437 x pct) (`estimateCredits` in `runner/lib/credit-watch.js`; coefficients, method and the 551 fitted turns in
   `profiles/v3-credit-estimate.json`, 2026-11-26). It sits above every fitted turn by at least 1.1x and at most 3.0x on turns of 400
   points or more; the old single rate 0.13 ran up to 4.6x high there. Past X on the estimate the process group is killed and the run is
