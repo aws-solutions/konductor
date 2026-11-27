@@ -210,7 +210,7 @@ describe('App', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
     await screen.findByTestId('node-stage-draft');
 
-    expect(screen.getByTestId('save-status').textContent).toBe('Saved');
+    expect(screen.getByTestId('save-status').textContent).toBe('No changes');
     expect(screen.getByTestId('yaml-check-status').textContent).toContain(
       'Not checked yet',
     );

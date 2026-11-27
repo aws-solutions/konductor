@@ -59,6 +59,7 @@
 
 .wf-places button[aria-current='page'] {
   background: var(--wf-color-surface-alt);
+  box-shadow: inset 0 -3px 0 var(--wf-color-accent);
   color: var(--wf-color-text);
 }
 

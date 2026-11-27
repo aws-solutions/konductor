@@ -21,6 +21,12 @@ describe.each(MODES)('the %s shell chrome', (mode) => {
     );
   });
 
+  it('draws the current place cue against its field', () => {
+    expect(contrastRatio(colors.accent, colors.field)).toBeGreaterThanOrEqual(
+      AA_GRAPHIC,
+    );
+  });
+
   it('draws the focus ring against both top bar surfaces', () => {
     for (const background of [colors.surface, colors.field]) {
       expect(contrastRatio(colors.accent, background)).toBeGreaterThanOrEqual(

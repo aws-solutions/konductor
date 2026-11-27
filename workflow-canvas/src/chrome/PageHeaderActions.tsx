@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import Button from '@cloudscape-design/components/button';
 import type { DraftStatus } from '../designer-view/yaml-draft';
-import { isDirty, saveBlocker, type EditState } from '../designer/core';
+import {
+  saveBlocker,
+  saveStatus,
+  type EditState,
+  type SaveStatusKind,
+} from '../designer/core';
 import { plainText } from '../workflow/message-parts';
 import { ModeSwitch, type PageView } from './ModeSwitch';
 
@@ -20,17 +25,19 @@ export interface FlowCheckPill {
   failure?: string;
 }
 
+function workflowTone(kind: SaveStatusKind): string {
+  if (kind === 'warning') return 'unsaved';
+  if (kind === 'in-progress') return 'saving';
+  return 'saved';
+}
+
 function workflowState(
   state: EditState,
   running: boolean,
 ): { text: string; tone: string } {
   if (running) return { text: 'Running', tone: 'running' };
-  if (state.save.phase === 'saving') {
-    return { text: 'Saving', tone: 'saving' };
-  }
-  return isDirty(state)
-    ? { text: 'Unsaved changes', tone: 'unsaved' }
-    : { text: 'Saved', tone: 'saved' };
+  const status = saveStatus(state);
+  return { text: status.text, tone: workflowTone(status.kind) };
 }
 
 function checkTone(status: DraftStatus): string {
