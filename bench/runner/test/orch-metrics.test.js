@@ -209,12 +209,21 @@ test('a per-feature phase needs every feature to have every document', () => {
 });
 
 test('an empty file does not count, and the project-root documents are read from the workspace root', () => {
-  const root = workspace(['README.md', 'developer-guide.md']);
+  const root = workspace(['developer-guide.md']);
   write(path.join(root, '.konductor/sdlc-summary.md'), '');
   try {
     const r = om.phaseDocuments(root, om.loadPhaseDocs());
     assert.equal(r.phases.documentation.complete, true);
     assert.deepEqual(r.phases.summary.missing, ['sdlc-checklist.md', 'sdlc-summary.md']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a README alone is not a documentation phase document: almost every fixture ships one', () => {
+  const root = workspace(['README.md']);
+  try {
+    const r = om.phaseDocuments(root, om.loadPhaseDocs());
+    assert.equal(r.phases.documentation.present, 0);
+    assert.deepEqual(r.phases.documentation.missing, ['developer-guide.md']);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

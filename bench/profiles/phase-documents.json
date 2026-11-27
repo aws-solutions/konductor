@@ -1,5 +1,5 @@
 {
-  "description": "The documents each phase of the full SDLC SOP leaves behind, from agent-sops/k-full-sdlc.sop.md (Artifact Layout, and the expected-artifact sets under Progress Tracking). Paths are relative to a root. A * stands for one directory name, such as a feature. A phase with a * is complete only when every feature that has any of its documents has all of them. An empty file does not count.",
+  "description": "The documents each phase of the full SDLC SOP leaves behind, from agent-sops/k-full-sdlc.sop.md (Artifact Layout, and the expected-artifact sets under Progress Tracking). Paths are relative to a root. A * stands for one directory name, such as a feature. A phase with a * is complete only when every feature that has any of its documents has all of them. An empty file does not count. The documentation phase leaves out README.md, which the SOP also lists: almost every task fixture ships one, so it said nothing about the run (in STANDARD v2, 122 to 123 of the 124 runs of every arm, vanilla included, had a phase document).",
   "roots": [".konductor"],
   "phases": [
     { "id": "codebase-analysis", "name": "Codebase analysis", "documents": ["codebase-analysis/analysis.md"] },
@@ -11,6 +11,6 @@
     { "id": "code-review", "name": "Code review", "documents": ["*/code-review/report.md", "*/code-review/status.md"] },
     { "id": "testing", "name": "Testing", "documents": ["*/testing/test-gap-analysis.md", "*/testing/e2e-test-strategy.md", "*/testing/test-coverage-review-report.md"] },
     { "id": "summary", "name": "Final summary", "documents": ["sdlc-checklist.md", "sdlc-summary.md"] },
-    { "id": "documentation", "name": "Documentation", "documents": ["README.md", "developer-guide.md"], "atWorkspaceRoot": true }
+    { "id": "documentation", "name": "Documentation", "documents": ["developer-guide.md"], "atWorkspaceRoot": true }
   ]
 }
