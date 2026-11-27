@@ -105,6 +105,18 @@ test('maker and reviewer spawns split the spawns: a fix is build work, a review 
   assert.equal(f.reviewerSpawns, 2);
 });
 
+test('a brief whose TASK starts with a review verb is a review, even when it names the fix it checks (read from STANDARD v2 runs)', () => {
+  const f = flow([
+    { role: 'k-architect', task: 'Evaluate docs/design/payment-status-events.md with the design-evaluation skill', out: 'Verdict: FAIL' },
+    { role: 'k-architect', task: 'Re-evaluate docs/design/payment-status-events.md after the fix', out: 'Verdict: PASS' },
+    { role: 'k-developer', task: 'Re-review, once, the fix for the one IMPORTANT finding from your first review', out: 'Verdict: PASS' },
+    { role: 'k-architect', task: 'Re-review docs/threat-model.md after one fix round and return findings only.', out: 'Verdict: PASS' },
+    { role: 'k-developer', task: 'Fix the IMPORTANT finding from the review', out: 'done' },
+  ]);
+  assert.deepEqual(f.sequence, ['review', 'review', 'review', 'review', 'fix']);
+  assert.deepEqual({ maker: f.makerSpawns, reviewer: f.reviewerSpawns }, { maker: 1, reviewer: 4 });
+});
+
 test('a fix brief that follows a passing review is a rework after a pass', () => {
   const f = flow([
     { role: 'k-architect', task: 'Review the design doc', out: 'Verdict: PASS. No critical or important findings.' },

@@ -82,13 +82,15 @@ test('orchMetrics reads the review flow from the v3 calls', () => {
   const m = om.orchMetrics({ events });
   assert.equal(m.spawns, 4);
   assert.equal(m.maxSpawnDepth, 1);
-  assert.equal(m.reviewRounds, 1);
-  assert.deepEqual(m.reviewVerdicts, ['fail']);
+  // "Re-review ... after one fix pass ... findings" also matches the fix pattern, but its TASK line starts with a
+  // review verb (reviewLead in profiles/orch-metrics.json), so it is a second review round. The run timed out
+  // during it, so its verdict is unknown.
+  assert.equal(m.reviewRounds, 2);
+  assert.deepEqual(m.reviewVerdicts, ['fail', 'unknown']);
   assert.equal(m.reworksAfterPass, 0);
-  // The fix pattern in profiles/orch-metrics.json also matches "Re-review ... after one fix pass ... findings", so
-  // the re-review counts as a second fix and not as a second review round. The patterns are unchanged here.
-  assert.equal(m.fixSpawns, 2);
-  assert.deepEqual(om.reviewFlow(events).sequence, ['other', 'review', 'fix', 'fix']);
+  assert.equal(m.fixSpawns, 1);
+  assert.deepEqual({ maker: m.makerSpawns, reviewer: m.reviewerSpawns }, { maker: 2, reviewer: 2 });
+  assert.deepEqual(om.reviewFlow(events).sequence, ['other', 'review', 'fix', 'review']);
 });
 
 // ---- nesting, built from the same event shape ----

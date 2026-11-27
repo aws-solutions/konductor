@@ -16,7 +16,7 @@ const PHASES_FILE = path.join(PROFILES, 'phase-documents.json');
 const { readJson } = require('./util.js');
 
 // Bump when a field is added or a rule changes, so report/orch.js recomputes older stored records from the run directory.
-const ORCH_VERSION = 2;
+const ORCH_VERSION = 3;
 
 function compile(list, name, file) {
   if (!Array.isArray(list)) throw new Error(`${file}: "${name}" must be a list of patterns`);
@@ -30,7 +30,7 @@ function loadMetricsSpec(file = METRICS_FILE) {
   const raw = readJson(file);
   return {
     headlineChars: Number.isInteger(raw.headlineChars) ? raw.headlineChars : 400,
-    fix: compile(raw.fix, 'fix', file), review: compile(raw.review, 'review', file),
+    fix: compile(raw.fix, 'fix', file), review: compile(raw.review, 'review', file), reviewLead: compile(raw.reviewLead ?? [], 'reviewLead', file),
     fail: compile(raw.fail, 'fail', file), pass: compile(raw.pass, 'pass', file),
     verdictWords: { pass: raw.verdictWords?.pass ?? [], fail: raw.verdictWords?.fail ?? [] },
   };
@@ -128,19 +128,27 @@ function spawnTree(events) {
 
 const matches = (res, text) => res.some((re) => re.test(text));
 
+const stagesOf = (call) => (Array.isArray(call.input.stages) && call.input.stages.length ? call.input.stages : [call.input]);
+const briefOf = (st) => [st.prompt_template, st.prompt, st.description].find((v) => typeof v === 'string') ?? '';
+const taskLineOf = (brief) => /^\s*(?:\d+[.)]\s*)?\**TASK\**:\s*(.+)$/im.exec(brief)?.[1] ?? null;
+
 function headlineOf(call, limit) {
   const parts = [call.input.task, call.input.__tool_use_purpose].filter((v) => typeof v === 'string');
-  const stages = Array.isArray(call.input.stages) && call.input.stages.length ? call.input.stages : [call.input];
-  for (const st of stages) {
-    const brief = [st.prompt_template, st.prompt, st.description].find((v) => typeof v === 'string') ?? '';
-    const task = /^\s*(?:\d+[.)]\s*)?\**TASK\**:\s*(.+)$/im.exec(brief);
-    parts.push(st.role ?? st.agent ?? '', st.name ?? '', task ? task[1] : brief.slice(0, limit));
+  for (const st of stagesOf(call)) {
+    const brief = briefOf(st);
+    parts.push(st.role ?? st.agent ?? '', st.name ?? '', taskLineOf(brief) ?? brief.slice(0, limit));
   }
   return parts.join('\n').slice(0, limit * 3);
 }
 
-/** 'fix', 'review' or 'other'. A fix brief mentions the review it answers, so fix is tested first. */
+/**
+ * 'fix', 'review' or 'other'. A TASK line that starts with a review verb (spec.reviewLead) is a review, even when it
+ * names the fix it checks ("Re-review the fix for..."). Otherwise a fix brief mentions the review it answers, so fix
+ * is tested before review.
+ */
 function kindOf(call, spec) {
+  const tasks = [call.input.task, ...stagesOf(call).map((st) => taskLineOf(briefOf(st)))].filter((v) => typeof v === 'string');
+  if (tasks.some((t) => matches(spec.reviewLead, t))) return 'review';
   const head = headlineOf(call, spec.headlineChars);
   if (matches(spec.fix, head)) return 'fix';
   return matches(spec.review, head) ? 'review' : 'other';
