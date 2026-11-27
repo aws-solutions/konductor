@@ -279,3 +279,13 @@ Key-only fixes from the STANDARD key audit (the LITE audit method; report `repor
 - `t8-nfr-slo-burn-v4` (block-kit key): the alert-list cap of 4 is not in the request; the multi-window burn-rate pattern pages and tickets at up to four windows per objective, so two objectives need up to 8 (both saved pilot runs listed 7 and 8).
 - `t8-inc-memory-leak-v5` (block-kit key): the action-item cap of 10 is not in the request (a saved run listed 11 owned actions); 15 matches the timeline cap.
 - `t8-runbook-db-failover-v5` (block-kit key): the folder never says monitor, watch or observe; the saved runs wrote the post-change window as "Wait 60 seconds" or "client errors continue 30 seconds after the check", in action or verify, so the item reads the whole step and takes wait, re-check and check-again wordings.
+
+## t8-bug-retry-storm: a hanging agent suite no longer voids the hidden suite (2026-11-26, mate t8 hang-fix worker, claude)
+
+Version 3 to 4. Cause: an agent's own test that waits forever on the original code (an unresolved promise) kept the regress proof running to its 60 s limit, which is also the whole `tests` check limit, so the check was cut off with no output and read "hidden suite did not parse" (3 of 8 STANDARD runs; their 10 behaviour tests passed).
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t8-bug-retry-storm | 2026-11-26 | `regress-kit/config.json`: cmd `node --test --test-timeout=5000 test/` (was `node --test test/`), `timeoutSec` 20 (was 60); new test `bench/scenarios/t8/test/regress-hang.test.js` (fails before: "0/25 ... unparsed: timed out"; passes after) | a test that hangs on the original code is a failing suite, so the proof counts it as caught and every other hidden test still counts. Key, prompt and checks unchanged. Free gates unchanged: reference 100, stub 10, lazy 35.7, alt 100 |
+
+Recheck: none due. The change is a time limit in the scoring harness; the request, answer key and rubric are untouched, so the 2026-11-20 deepseek-3.2 recheck still covers them.

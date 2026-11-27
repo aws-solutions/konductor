@@ -1,7 +1,7 @@
 {
   "id": "t8-bug-retry-storm",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "bugfix",
   "role": "sre",
   "phases2": [
@@ -145,7 +145,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker; regress-kit limits 2026-11-26 by the mate t8 hang-fix worker (claude)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
