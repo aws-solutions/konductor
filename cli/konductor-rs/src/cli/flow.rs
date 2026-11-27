@@ -21,12 +21,14 @@
 // before it searches for `.konductor/`. `flow check` and `flow show` still use the current directory as in 1c.
 // `library/<name>` names a shipped workflow, and none exist yet.
 //
-// Harness: `--harness` takes `kiro-cli`, `claude` or `fake`. Without it the one runner harness that the install index
-// records is used (`flow_harness.rs` reads the index). A stage whose agent the harness cannot see is a usage error (exit
-// 64) before the first stage and before the trust question.
+// Harness: `--harness` takes `kiro-cli`, `claude`, `kiro-cli-acp`, `claude-acp` or `fake`. Without it the one runner
+// harness that the install index records is used (`flow_harness.rs` reads the index); an ACP harness is never chosen
+// that way. A stage whose agent the harness cannot see is a usage error (exit 64) before the first stage and before
+// the trust question.
 //
-// Interrupts: on Kiro CLI and on Claude Code, SIGINT, SIGTERM and SIGHUP end the running session's process group
-// through the launcher and halt the run (`flow_interrupt.rs`). The command exits 1 like any halted run.
+// Interrupts: on Kiro CLI, on Claude Code and on their ACP adapters, SIGINT, SIGTERM and SIGHUP end the running
+// session's process group through the launcher and halt the run (`flow_interrupt.rs`). The command exits 1 like any
+// halted run.
 //
 // Trust: a project workflow, and any workflow in a repository that has tool configuration files, runs only after
 // the user confirmed its trust hash. The hash is made from the bytes the loader parsed (`workflow_core::trust`). The
@@ -42,10 +44,10 @@ use std::sync::Arc;
 
 use workflow_adapters::process::current_owner;
 use workflow_adapters::{
-    config_folders, find_program, resolve_harness, scan_repo_config, ClaudeHarness, FakeHarness,
-    FileAgentCatalog, FileRunLock, FileRunStore, FileTrustStore, Found, HarnessChoice,
-    InstalledFiles, KiroHarness, Located, Lookup, Scope, Script, SimulatedClock, Skip, Skipped,
-    StdTerminal, SystemLauncher, FAKE_SCRIPT_ENV, NO_TIMEOUT_WARNING,
+    config_folders, find_program, resolve_harness, scan_repo_config, AcpHarness, AcpKind,
+    ClaudeHarness, FakeHarness, FileAgentCatalog, FileRunLock, FileRunStore, FileTrustStore, Found,
+    HarnessChoice, InstalledFiles, KiroHarness, Located, Lookup, Scope, Script, SimulatedClock,
+    Skip, Skipped, StdTerminal, SystemLauncher, FAKE_SCRIPT_ENV, NO_TIMEOUT_WARNING,
 };
 use workflow_core::json::Json;
 use workflow_core::ports::{
@@ -60,7 +62,9 @@ use workflow_core::trust::{
 };
 use workflow_core::{check_text, parse_reference, Checked, Reference, ReferenceError};
 
-use crate::cli::flow_harness::{check_claude_agents, check_kiro_agents, installed_runners};
+use crate::cli::flow_harness::{
+    check_claude_acp_agents, check_claude_agents, check_kiro_agents, installed_runners,
+};
 use crate::cli::flow_interrupt;
 use crate::cli::output::{self, status, ColorMode};
 use crate::cli::FlowAction;
@@ -517,7 +521,11 @@ fn run_workflow(
         find_program(&["kiro-cli"], None).and_then(|path| path.to_str().map(str::to_string));
     let claude_program =
         find_program(&["claude"], None).and_then(|path| path.to_str().map(str::to_string));
+    let claude_acp_program = find_program(&["claude-agent-acp"], None)
+        .and_then(|path| path.to_str().map(str::to_string));
     let claude_catalog = claude_catalog(context);
+    // The ACP harnesses search for agents where the CLI harness of the same tool does.
+    let uses_claude_agents = matches!(choice, HarnessChoice::Claude | HarnessChoice::ClaudeAcp);
     let script = match &choice {
         HarnessChoice::Fake { script } => match Script::load(script) {
             Ok(script) => Some(script),
@@ -528,7 +536,10 @@ fn run_workflow(
         },
         // A stage whose agent the harness cannot see fails before the first stage, and before the trust question: the
         // user has to change the install or the folder, so nothing is shown that cannot run.
-        HarnessChoice::KiroCli | HarnessChoice::Claude => {
+        HarnessChoice::KiroCli
+        | HarnessChoice::Claude
+        | HarnessChoice::KiroCliAcp
+        | HarnessChoice::ClaudeAcp => {
             // A session starts in the project root, which a path that is not UTF-8 cannot be given to the launcher as.
             if context.project_root.to_str().is_none() {
                 return usage_error(
@@ -539,8 +550,15 @@ fn run_workflow(
                 );
             }
             let stages = &prepared.workflow.stages;
-            let visible = if choice == HarnessChoice::Claude {
+            let visible = if uses_claude_agents {
                 check_claude_agents(stages, &claude_catalog, context.project_root, context.home)
+                    .and_then(|()| {
+                        if choice == HarnessChoice::ClaudeAcp {
+                            check_claude_acp_agents(stages, &claude_catalog)
+                        } else {
+                            Ok(())
+                        }
+                    })
             } else {
                 check_kiro_agents(stages, &kiro_catalog, context.project_root, context.home)
             };
@@ -560,7 +578,19 @@ fn run_workflow(
                     err,
                 );
             }
-            if choice == HarnessChoice::KiroCli && kiro_program.is_none() {
+            if choice == HarnessChoice::ClaudeAcp && claude_acp_program.is_none() {
+                return usage_error(
+                    "`claude-agent-acp` was not found in an absolute folder of `PATH`. A relative or empty `PATH` entry is \
+                     not searched, so a file in the project cannot stand in for it. Install the adapter or fix `PATH`, \
+                     then run the workflow again.",
+                    context,
+                    out,
+                    err,
+                );
+            }
+            if matches!(choice, HarnessChoice::KiroCli | HarnessChoice::KiroCliAcp)
+                && kiro_program.is_none()
+            {
                 return usage_error(
                     "`kiro-cli` was not found in an absolute folder of `PATH`. A relative or empty `PATH` entry is not \
                      searched, so a file in the project cannot stand in for it. Install Kiro CLI or fix `PATH`, then run \
@@ -576,11 +606,11 @@ fn run_workflow(
 
     let catalog = match &choice {
         HarnessChoice::Fake { .. } => agent_catalog(context),
-        HarnessChoice::KiroCli => kiro_catalog.clone(),
-        HarnessChoice::Claude => claude_catalog.clone(),
+        HarnessChoice::KiroCli | HarnessChoice::KiroCliAcp => kiro_catalog.clone(),
+        HarnessChoice::Claude | HarnessChoice::ClaudeAcp => claude_catalog.clone(),
     };
     let mut assessment = assess(context, &checked, &found, &catalog);
-    if choice == HarnessChoice::Claude {
+    if uses_claude_agents {
         // The summary above is the Claude catalog. The search from the current folder is compared as well, because
         // the hash scan starts there, so a file nearer to it is never left unshown.
         add_claude_mismatches(
@@ -611,7 +641,7 @@ fn run_workflow(
     // From here on a Ctrl-C, SIGTERM or SIGHUP does not end this process by itself on a real harness: it ends the session's
     // group through the launcher and halts the run. The fake harness starts no process, so it keeps the default.
     let interrupt = Arc::new(AtomicBool::new(false));
-    if matches!(choice, HarnessChoice::KiroCli | HarnessChoice::Claude) {
+    if !matches!(choice, HarnessChoice::Fake { .. }) {
         if let Err(error) = flow_interrupt::watch(&interrupt) {
             let message =
                 format!("Interrupts cannot be handled, so the run was not started: {error}");
@@ -620,7 +650,11 @@ fn run_workflow(
     }
     let mut launcher = SystemLauncher::new().with_interrupt(Arc::clone(&interrupt));
     // Without `timeout` the stage limit lasts only while this process does. One line says so before the first session.
-    if matches!(choice, HarnessChoice::KiroCli) && !launcher.guards_limit() {
+    if matches!(
+        choice,
+        HarnessChoice::KiroCli | HarnessChoice::KiroCliAcp | HarnessChoice::ClaudeAcp
+    ) && !launcher.guards_limit()
+    {
         let _ = writeln!(err, "warning: {NO_TIMEOUT_WARNING}");
     }
     let started = match start(
@@ -690,6 +724,10 @@ fn run_workflow(
             let note = Box::new(move |line: &str| {
                 let _ = writeln!(std::io::stderr(), "{prefix} {line}");
             });
+            let test_limits = (
+                acp_test_limit(ACP_TEST_LIMIT_ENV),
+                acp_test_limit(ACP_TEST_GRACE_ENV),
+            );
             match &choice {
                 HarnessChoice::Claude => Box::new(ClaudeHarness::new(
                     &mut launcher,
@@ -700,7 +738,33 @@ fn run_workflow(
                     &cwd,
                     note,
                 )),
-                _ => Box::new(KiroHarness::new(
+                HarnessChoice::KiroCliAcp => Box::new(
+                    AcpHarness::new(
+                        &launcher,
+                        &kiro_catalog,
+                        AcpKind::KiroCli,
+                        kiro_program
+                            .as_deref()
+                            .expect("checked above: kiro-cli was found"),
+                        &cwd,
+                        note,
+                    )
+                    .with_test_limits(test_limits.0, test_limits.1),
+                ),
+                HarnessChoice::ClaudeAcp => Box::new(
+                    AcpHarness::new(
+                        &launcher,
+                        &claude_catalog,
+                        AcpKind::Claude,
+                        claude_acp_program
+                            .as_deref()
+                            .expect("checked above: claude-agent-acp was found"),
+                        &cwd,
+                        note,
+                    )
+                    .with_test_limits(test_limits.0, test_limits.1),
+                ),
+                HarnessChoice::KiroCli | HarnessChoice::Fake { .. } => Box::new(KiroHarness::new(
                     &mut launcher,
                     &kiro_catalog,
                     kiro_program
@@ -763,6 +827,22 @@ fn deadline_note(group: &ProcessGroup) -> String {
     group.deadline_ms.map_or_else(String::new, |ms| {
         format!(" (its time limit ends at {})", format_timestamp(ms))
     })
+}
+
+/// Environment variables that shorten the time limit of an ACP stage and the wait after `session/cancel`, in
+/// milliseconds. The limit is 30 minutes and the wait is 10 seconds, so a test of the time limit sets these. They can
+/// only make the limits shorter, and they are read in debug builds only: a release build ignores them.
+const ACP_TEST_LIMIT_ENV: &str = "KONDUCTOR_ACP_TEST_LIMIT_MS";
+const ACP_TEST_GRACE_ENV: &str = "KONDUCTOR_ACP_TEST_GRACE_MS";
+
+#[cfg(debug_assertions)]
+fn acp_test_limit(name: &str) -> Option<u64> {
+    std::env::var(name).ok()?.trim().parse().ok()
+}
+
+#[cfg(not(debug_assertions))]
+fn acp_test_limit(_name: &str) -> Option<u64> {
+    None
 }
 
 /// `stage plan: passed`, or `stage plan: blocked (RESULT_MISSING)`.

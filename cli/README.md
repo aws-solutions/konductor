@@ -907,6 +907,8 @@ rather than re-implementing any validation.
 | `cli_version`       | Machine-wide, runs exactly once even under `--all`. Compares the running `konductor` binary's own version against the latest published GitHub release. `warn` severity only when stale - never `failed`, never affects `doctor`'s own exit code. |
 | `kiro_cli_version`  | Machine-wide, runs exactly once even under `--all`. Runs `kiro-cli --version` (stopped after 5 seconds) and compares it with the lowest version that `flow run` was checked on. `warn` when the version is lower or cannot be read, `info` when `kiro-cli` is not on `PATH`. Never `failed`, never affects `doctor`'s own exit code. It uses no network, so `--no-version-check` does not skip it. |
 | `claude_version`    | The same check for Claude Code: machine-wide, once even under `--all`, runs `claude --version` (stopped after 5 seconds) and compares the first three numbers with the lowest version that `flow run` was checked on. `warn` when it is lower or cannot be read, `info` when `claude` is not on `PATH`, never `failed`, never affects `doctor`'s exit code, and `--no-version-check` does not skip it. |
+| `kiro_cli_acp_version` | The check of the Kiro CLI ACP adapter, `kiro-cli acp`. It reads the version of `kiro-cli` (the adapter is a subcommand of it) and compares it with the lowest version that `flow run --harness kiro-cli-acp` was checked on, 3.5.0. Machine-wide, once even under `--all`. `warn` when the version is lower or cannot be read, `info` when `kiro-cli` is not on `PATH`, never `failed`, never affects `doctor`'s exit code, and `--no-version-check` does not skip it. |
+| `claude_agent_acp_version` | The same check for the Claude Code ACP adapter. It runs `claude-agent-acp --version` (stopped after 5 seconds) and compares it with the lowest version that `flow run --harness claude-acp` was checked on, 0.108.1. `warn` when it is lower or cannot be read, `info` when `claude-agent-acp` is not on `PATH`, never `failed`, never affects `doctor`'s exit code. |
 | `content_version`   | Per-target, runs once per tracked target under `--all`. Compares that target's recorded content version (`agent_version` in `install-info.json`) against the latest published release. Fully independent of `cli_version` - no shared check name, summary line, or comparison logic. |
 
 A few forward-looking checks (`gitignore`, `provider_model_access`, `role_allowlists`)
@@ -951,7 +953,8 @@ latest available version. Independent of telemetry: this call carries no UUID an
 unaffected by `--no-telemetry`, `telemetry.enabled` in config, or `KONDUCTOR_TELEMETRY=off` - gated only by this flag. A version-check fetch failure (network error, etc.) never
 fails `doctor` itself; it degrades to an `info`-level result explaining the fetch could
 not complete.
-It does not skip `kiro_cli_version`, which makes no network call.
+It does not skip the runner rows, `kiro_cli_version`, `claude_version`, `kiro_cli_acp_version` and
+`claude_agent_acp_version`, which make no network call.
 
 ### Checking every tracked install with `--all`
 
@@ -1079,7 +1082,7 @@ stdout instead:
 ```bash
 konductor flow check <name> [--json]
 konductor flow show <name> [--json]
-konductor flow run <name> [--harness <kiro-cli|claude|fake>] [--fake-script <path>] [--goal "..."] [--trust <hash>] [--json]
+konductor flow run <name> [--harness <kiro-cli|claude|kiro-cli-acp|claude-acp|fake>] [--fake-script <path>] [--goal "..."] [--trust <hash>] [--json]
 konductor flow trust <name> [--yes]
 konductor flow trust --revoke <name>
 ```
@@ -1132,10 +1135,12 @@ directory or anything bigger is treated as not there, and a link is never follow
   `fake` harness that line ends with ` (harness: fake, no agent ran)`. With `--json` it prints only the run state,
   which names the harness.
 
-  `--harness` takes `kiro-cli`, `claude` or `fake`. Without it, `flow run` uses the one runner harness that
-  `~/.konductor/installs` records as installed, whatever the install's target: `kiro-cli-v2` and `kiro-v3` mean
-  `kiro-cli`, and `claude` means `claude`. With both installed, or neither, `--harness` is required and leaving it out
-  is a usage error (exit `64`). `fake` is for tests (see [the `fake` harness](#the-fake-harness-test-only)) and is never a default: it runs no agent and replays the reply, exit status and
+  `--harness` takes `kiro-cli`, `claude`, `kiro-cli-acp`, `claude-acp` or `fake`. Without it, `flow run` uses the one
+  runner harness that `~/.konductor/installs` records as installed, whatever the install's target: `kiro-cli-v2` and
+  `kiro-v3` mean `kiro-cli`, and `claude` means `claude`. With both installed, or neither, `--harness` is required and
+  leaving it out is a usage error (exit `64`). The two ACP harnesses are never a default either, and an adapter that is
+  on `PATH` does not count as an installed runner harness. `fake` is for tests (see [the `fake`
+  harness](#the-fake-harness-test-only)) and is never a default: it runs no agent and replays the reply, exit status and
   duration that a JSON script gives for each stage. The script is named by `--fake-script <path>` or by
   `KONDUCTOR_FAKE_SCRIPT`, and the flag wins. Without one, `--harness fake` is a usage error. `--fake-script` is left
   out of `--help` because it is for tests. The script format is described in
@@ -1197,6 +1202,67 @@ directory or anything bigger is treated as not there, and a link is never follow
   `flow run` exits `64` before the first stage, in the same way as on `kiro-cli`, and a Kiro agent file of the same name
   does not count. The catalog finds the agent by its `name`, as Claude Code does (see Trust below).
 
+  `kiro-cli-acp` and `claude-acp` run each stage through an ACP adapter, a program that speaks the Agent Client
+  Protocol, version 1, with newline-delimited JSON on its standard input and output. The runner starts one adapter for
+  each stage, in the project root and in its own process group, starts a session, sends the stage prompt, and reads the
+  agent's message text from the updates. It keeps the last 1 MiB of that text and reads the `KONDUCTOR_RESULT` line from
+  it as for the other harnesses. Reasoning and every other update are dropped. The engine installs no adapter:
+
+  - `kiro-cli-acp` runs `kiro-cli acp`, so it needs `kiro-cli` on `PATH` (3.5.0 or later) and a signed-in Kiro CLI. A V2
+    agent file gets `--agent <id> --agent-engine v2`, and a V3 file gets `--agent-engine v3` and runs as the session
+    mode named by the agent.
+  - `claude-acp` runs `claude-agent-acp`, so it needs that program on `PATH` (0.108.1 or later; the npm package is
+    `@agentclientprotocol/claude-agent-acp`) and a signed-in Claude Code. It runs agents that are defined in the
+    project: the adapter is told to read project settings only, so an agent in your home folder is a usage error (exit
+    `64`) before the first stage. The runner sets the permission mode `default` before the first prompt, and a session
+    that does not confirm it fails the stage. The settings file of the project, `.claude/settings.json`, is part of the
+    tool configuration that the trust hash covers, and a rule in it can still approve a tool without a request, as it
+    can on `claude`.
+
+  The agent file is the one source of allow rules that the runner uses. When the adapter asks to use a tool
+  (`session/request_permission`), the runner allows it, once, only if a rule of the agent file names that tool: the
+  `allowedTools` or `permissions.rules` of a Kiro file, or an item of the `tools` of a Claude file. It picks the option
+  by its kind and never one that lasts beyond the request. Any other request is refused, and the stage is `blocked` with
+  `SESSION_FAILED`, the tool and the agent file whose rules decided it in the line on stderr, and the run `halted`. Kiro
+  sends a request only when its own policy did not allow the tool, and the runner then answers from the agent file
+  alone. The rules that Kiro holds in its own stores, and what a user chose to always allow there, are applied by Kiro
+  without a request, and they were not verified: a tool that one of them allows can run although the agent file does not
+  list it. A session that does not run as the agent the stage names fails the stage, and there is no default agent to
+  fall back to. The agent file is read before the adapter starts and again when the stage ends, and a stage during which
+  the adapter rewrote it fails, with a line that names the file and says whether it is gone or its content differs. A
+  link to an agent file counts as that file, and its target is what is hashed. A rule that the runner cannot read as a
+  plain tool name, such as a Kiro rule that is scoped to some commands, allows nothing. So does a tool name that starts
+  with `-`, as on `claude`: it could be read as a flag, and no real tool starts with one. A rule that ends in `_*`,
+  `/*`, `:*` or `.*`, such as `mcp__server__*`, allows the tools whose names start with what comes before the `*`, and a
+  `*` anywhere else allows nothing. The `claude` harness hands such rules to Claude Code, which reads them itself, and
+  the ACP runner has no other matcher to follow. At the time limit the runner sends `session/cancel`, waits 10 seconds,
+  then ends the adapter's process group as for the CLI harnesses. Only that limit makes a stage `blocked` with
+  `TIMEOUT`: any other end of an adapter is `SESSION_FAILED`, even an exit status of 124 or 137, which `timeout` uses.
+  Like a CLI session, the adapter starts under `timeout` (or `gtimeout`) where there is one, with a limit set beyond the
+  stage limit, the 10 second wait and the grace period, so a limit still ends the group if the owner is killed. Without
+  `timeout` the limit lasts only while `flow run` does, and the warning about it is printed for the ACP harnesses too.
+  The agent's message text is kept to its last 1 MiB, as the stage result is read from that end. An adapter is looked
+  for in the absolute folders of `PATH` only, as `kiro-cli` and `claude` are. One that is not there is a usage error
+  (exit `64`) before the first stage, as a missing `kiro-cli` or `claude` is, and there is no fallback to the CLI
+  harness. An adapter that serves ACP version 2 only is refused with a message that names the version. A failed stage
+  also shows the last 4 KiB of the adapter's standard error under the failure line, cut to printable text, as on the CLI
+  harnesses. When the adapter wrote more than 4 KiB, the note says that only the end is shown. A future `flow view` will
+  not accept the ACP harness names. For example:
+
+  ```bash
+  konductor flow run hello-plan --harness kiro-cli-acp --goal "Create a file named hello.txt that contains hello."
+  # stage plan: passed
+  # stage implement: passed
+  # run 20261118-2223-nmwo1: passed
+  ```
+
+  Some Kiro CLI builds rewrite a writable agent file when a session starts: they add an MCP server, tools and allow
+  rules to it. The 3.5.0 build this step was checked on does this, for `kiro-cli chat` too. On such a build every
+  `kiro-cli-acp` stage fails with the message "the agent file `<path>` of `<id>` changed while the stage ran", because
+  the stage ran with permissions that were not the ones you confirmed. The runner detects the rewrite after the stage.
+  It cannot prevent it or undo what the stage did. A read-only agent file in a read-only `.kiro/agents` folder
+  (`chmod 444` on the files and `chmod 555` on the folder) stops the rewrite, and the run then passes.
+
   The run state is `.konductor/runs/<run-id>/state.json` under the project root, replaced whole at each change. While a
   session runs the state also holds `session_group`, its process group and the start time of that group's leader, and
   the next state write after the session ends removes it. `flow run` makes sure `.konductor/.gitignore` has the line
@@ -1205,8 +1271,8 @@ directory or anything bigger is treated as not there, and a link is never follow
   its start time (UTC, to the second) and the run id, and a second `flow run` exits `75` with a message that names that
   PID. The lock ends when its process ends, however it ends, so a run that such a process left `running` reads as
   `halted` on the next start. A session has its own process group, so a Ctrl-C in the terminal, a SIGTERM or a SIGHUP
-  reaches the owner and not the session. On `kiro-cli` and on `claude`, the owner handles SIGINT, SIGQUIT (Ctrl-\), SIGTERM and SIGHUP while the run is
-  active: it prints one line that it is stopping the session, sends the terminate signal to the session's whole group, waits 10
+  reaches the owner and not the session. On `kiro-cli`, on `claude` and on the two ACP harnesses, the owner handles SIGINT, SIGQUIT (Ctrl-\), SIGTERM and SIGHUP while the run is
+  active: it prints one line that it is stopping the session, sends the terminate signal to the session's whole group (on an ACP harness, with no `session/cancel` first), waits 10
   seconds, kills what is left, marks the stage `blocked` with `SESSION_FAILED`, writes the run as `halted` and exits `1`,
   the same code as any halted run. There is no separate interrupted status. A second signal while the session is being
   ended is ignored. A signal
@@ -1680,8 +1746,8 @@ like any other usage error.
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
   - `flow check` and `flow show` reading workflow files through the `workflow-engine/` crates
-  - `flow run` running a workflow on `kiro-cli` (Kiro CLI V2 and V3), on `claude` (Claude Code), or on the `fake`
-    harness, which is for tests,
+  - `flow run` running a workflow on `kiro-cli` (Kiro CLI V2 and V3), on `claude` (Claude Code), through the ACP
+    adapters of those two (`kiro-cli-acp` and `claude-acp`), or on the `fake` harness, which is for tests,
     with its run state in `.konductor/runs/` and one run at a time per workspace
   - `verify-run` checking a SOP session file against its gate boundaries and
     reporting one exit code, including exit code 2 for an unresolved gating finding

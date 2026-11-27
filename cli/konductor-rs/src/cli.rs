@@ -617,11 +617,13 @@ pub enum FlowAction {
         /// the workflow's default goal is used.
         #[arg(long)]
         goal: Option<String>,
-        /// The program that runs each stage: `kiro-cli`, `claude` or `fake`
-        /// (`fake` is for tests). Without it the one runner harness that
-        /// `konductor install` recorded is used (`kiro-cli-v2` and
-        /// `kiro-v3` mean `kiro-cli`). With both installed, or neither, it
-        /// is required.
+        /// The program that runs each stage: `kiro-cli`, `claude`,
+        /// `kiro-cli-acp`, `claude-acp` or `fake` (`fake` is for tests). The
+        /// two ACP values run the stage in an ACP adapter (`kiro-cli acp` or
+        /// `claude-agent-acp`) and are never chosen without the flag. Without
+        /// it the one runner harness that `konductor install` recorded is
+        /// used (`kiro-cli-v2` and `kiro-v3` mean `kiro-cli`). With both
+        /// installed, or neither, it is required.
         #[arg(long)]
         harness: Option<String>,
         /// The script the `fake` harness replays. `KONDUCTOR_FAKE_SCRIPT`
