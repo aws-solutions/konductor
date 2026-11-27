@@ -74,5 +74,31 @@
     "source": "original",
     "note": "prompt-fix step 0 control task SP3 (reports/konductor-prompt-fixes-2026-11-27.md Part C row 7), written by hand by the mate prompt-fix worker: two tickets that both edit src/format.js and CHANGELOG.md, so the right plan is solo; needs the non-Claude recheck in review.recheck before a counted STANDARD run (DEBT D-296)"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 17.9,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-27"
+    },
+    "decision": "keep",
+    "date": "2026-11-27"
+  }
 }

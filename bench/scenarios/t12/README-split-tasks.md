@@ -15,6 +15,8 @@ expected plan of each is pre-registered in `bench/scenarios/konductor/prompt-fix
 Pattern key for the quality pack's `mod-pattern-missing` (bench/docs/quality-pack.md); `t12-split-shared-file` has
 none, because no pattern is clearly right there. Each fixture is a git repository (`dotgit`, built by
 `build-git-fixture.js`, which leaves the answer key out of the history). `solutions/<id>/` is the reference
-overlay; `answers/<id>/lazy/` does one part only (one helper, one step, one ticket). There is no `alt` or `shallow`
-answer yet, and the three were written by hand by a Claude worker, so each waits for a non-Claude recheck before a
-counted STANDARD run (DEBT D-296).
+overlay; `answers/<id>/lazy/` does one part only (one helper, one step, one ticket); `answers/<id>/alt/` is a second
+correct answer written another way; `answers/<id>/shallow/` names the right parts without doing the work (naive
+code with tests that only check it runs, or the tickets' tests over unchanged code). The dry run on 2026-11-27 scored
+alt 100 and shallow 33.3, 18.8 and 17.9. The three were written by hand by a Claude worker, so each waits for a
+non-Claude recheck before a counted STANDARD run (DEBT D-296).

@@ -90,5 +90,35 @@
     "source": "original",
     "note": "prompt-fix step 0 split-part task SP1 (reports/konductor-prompt-fixes-2026-11-27.md Part C row 13), written by hand by the mate prompt-fix worker; three independent parts on disjoint files; needs the non-Claude recheck in review.recheck before a counted STANDARD run (DEBT D-296)"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.3,
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.3,
+      "lazy": 38.1,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-27"
+    },
+    "decision": "keep",
+    "date": "2026-11-27"
+  }
 }
