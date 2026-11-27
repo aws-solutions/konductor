@@ -7,8 +7,8 @@ describe('agentInitials', () => {
     ['k-developer', 'DE'],
     ['k-quality-assurance', 'QA'],
     ['custom-agent', 'CA'],
-    ['x', 'X'],
-    ['', '?'],
+    ['x', 'XX'],
+    ['', '??'],
   ])('turns %j into %s', (agent, initials) => {
     expect(agentInitials(agent)).toBe(initials);
   });

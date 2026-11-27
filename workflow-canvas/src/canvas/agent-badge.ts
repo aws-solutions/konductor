@@ -14,7 +14,9 @@ export function agentInitials(agentId: string): string {
     const second = words[1] ?? '';
     return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase();
   }
-  return (words[0]?.slice(0, 2) || '?').toUpperCase();
+  const word = words[0] ?? '?';
+  const initials = word.length === 1 ? word.repeat(2) : word.slice(0, 2);
+  return initials.toUpperCase();
 }
 
 /** A stable palette index derived from the full agent id. */

@@ -23,8 +23,7 @@ type FlowNode<N extends { type: string; data: Record<string, unknown> }> = Node<
   N['type']
 >;
 
-// The dot on the top edge where run order arrives. `canvas.css` shows it
-// while the node is hovered, focused or selected.
+// The always-visible dot where run order enters the top edge.
 function SequenceIn() {
   return (
     <Handle
