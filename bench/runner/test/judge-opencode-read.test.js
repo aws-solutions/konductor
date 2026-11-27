@@ -131,9 +131,21 @@ test('the judge command\'s caller resolves --isolate for the read view; when iso
   } finally { s.cleanup(); }
 });
 
+// Under real isolation only the call's own scratch root is writable; the test dir under /tmp is read-only (full-suite
+// run 2026-11-27: mkdir <test dir>/calls failed, ENOENT). So that test turns the fake's call log off (dir: null).
+test('a read call runs when the fake keeps no call log (dir: null), as it must under real isolation', async () => {
+  const s = setup({ mode: 'readall', dir: null });
+  try {
+    const r = await s.mk()({ model: 'glm-5', prompt: PROMPT, readCopy: COPY });
+    assert.equal(r.error, undefined, r.error);
+    assert.equal(r.readTrace.tools.filter((t) => t.tool === 'read').length, 2);
+    assert.equal(fs.existsSync(path.join(s.root, 'calls')), false, 'no call log was written');
+  } finally { s.cleanup(); }
+});
+
 const realMode = require('../../runner/lib/isolate.js').workingMode();
 test('a read call under real OS isolation runs and reads its copy', { skip: realMode ? false : 'this host refuses user namespaces (DEBT D-6)' }, async () => {
-  const s = setup({ mode: 'readall' });
+  const s = setup({ mode: 'readall', dir: null });
   try {
     const r = await s.mk({ isolation: { mode: realMode, hide: [] }, isolate: undefined })({ model: 'glm-5', prompt: PROMPT, readCopy: COPY });
     assert.equal(r.error, undefined, r.error);

@@ -412,3 +412,28 @@ test('inside the namespace a writable dir outside scratch takes writes and its s
     for (const d of [scratch, extra, other]) fs.rmSync(d, { recursive: true, force: true });
   }
 });
+
+// The mount plan, not a real namespace (it runs where unshare is refused): with TMPDIR=/tmp, a test dir under /tmp that
+// is not the scratch root is read-only in the namespace, so a command cannot make files there (a stub that logs its calls
+// beside its test dir failed this way in the full-suite run of 2026-11-27: the log dir, ENOENT from mkdir -p on a read-only mount).
+for (const tmpdir of ['/tmp', undefined]) {
+  test(`mount plan with TMPDIR=${tmpdir || 'unset'}: only the scratch root is writable under /tmp; a sibling test dir is read-only`, () => {
+    const saved = process.env.TMPDIR;
+    if (tmpdir) process.env.TMPDIR = tmpdir; else delete process.env.TMPDIR;
+    try {
+      const testDir = mkScratch('benchtest-', '/tmp');
+      const scratch = path.join(testDir, 'jdg-oc-x');
+      fs.mkdirSync(scratch);
+      const { script } = makeIsolation({ mode: 'unshare', scratchRoot: scratch });
+      const lines = script.split('\n');
+      const tmpReal = fs.realpathSync('/tmp');
+      const roTmp = lines.indexOf(`ro '${tmpReal}'`);
+      const rwScratch = lines.findIndex((l) => /^mount --bind .*remount,rw,bind/.test(l) && l.includes(`'${fs.realpathSync(scratch)}'`));
+      assert.ok(roTmp >= 0, '/tmp is made read-only');
+      assert.ok(rwScratch > roTmp, 'the scratch root is made writable after /tmp went read-only');
+      const rw = lines.filter((l) => /remount,rw,bind/.test(l));
+      assert.equal(rw.length, 1, 'no other directory is made writable');
+      assert.ok(!lines.some((l) => l.includes(`'${fs.realpathSync(testDir)}'`) && !l.includes(fs.realpathSync(scratch))), 'the test dir itself has no mount of its own, so it stays read-only');
+    } finally { if (saved === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = saved; }
+  });
+}

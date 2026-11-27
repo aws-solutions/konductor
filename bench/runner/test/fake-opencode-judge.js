@@ -3,7 +3,7 @@
 
 // Builds a stand-in `opencode` for the judge backend (a node script). It answers `--version`, `run` (the prompt arrives on
 // stdin, the reply is a JSON event stream) and `db` (one session row per run, kept in the run's own XDG data dir).
-// Every `run` is recorded in <dir>/call-N.json. Behavior per call comes from fake-opencode-judge.config.json next to the script:
+// Every `run` is recorded in <dir>/call-N.json (`dir: null` records nothing: a call under real OS isolation cannot write outside its scratch root). Behavior per call comes from fake-opencode-judge.config.json next to the script:
 // `mode` for all calls, or `modes[i]` for call i + 1. Modes: good, prose, crash, throttle, auth, sleep, tool, empty, wrongmodel, leak, nodb, twosteps,
 // and the read modes below (readall, readhalf, readout, readbash, readglobout), which end with the good reply.
 // `compaction: {messages, parts}` is what the compaction query of `db` returns; `dbFails` makes every `db` call fail.
@@ -39,15 +39,17 @@ function listTree(root, rel = '') {
   }
   return out;
 }
-fs.mkdirSync(cfg.dir, { recursive: true });
 let n = 1;
-for (;; n++) { try { fs.closeSync(fs.openSync(path.join(cfg.dir, 'call-' + n + '.json'), 'wx')); break; } catch { /* taken */ } }
+if (cfg.dir) {
+  fs.mkdirSync(cfg.dir, { recursive: true });
+  for (;; n++) { try { fs.closeSync(fs.openSync(path.join(cfg.dir, 'call-' + n + '.json'), 'wx')); break; } catch { /* taken */ } }
+}
 const modelArg = args[args.indexOf('-m') + 1] || '';
 const modelId = modelArg.replace(/^amazon-bedrock\\//, '');
 const cfgText = fs.readFileSync(path.join(process.env.XDG_CONFIG_HOME, 'opencode', 'opencode.json'), 'utf8');
 const credFile = process.env.AWS_SHARED_CREDENTIALS_FILE || '';
 const mode = (cfg.modes || [])[n - 1] || cfg.mode || 'good';
-fs.writeFileSync(path.join(cfg.dir, 'call-' + n + '.json'), JSON.stringify({
+if (cfg.dir) fs.writeFileSync(path.join(cfg.dir, 'call-' + n + '.json'), JSON.stringify({
   n, mode, args, cwd: process.cwd(), home: process.env.HOME, env: process.env, prompt, config: cfgText,
   credFile, credHeaders: fs.existsSync(credFile) ? fs.readFileSync(credFile, 'utf8').split('\\n').filter((l) => l.startsWith('[')) : null,
   homeEntries: fs.readdirSync(process.env.HOME).sort(),

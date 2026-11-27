@@ -104,7 +104,9 @@ is the docs owner's page and points here.
 | `run-reruns-2.sh` | Second rerun batch of the pilot waves. |
 | `run-reruns.sh` | Reruns of the pilot waves whose keys changed. |
 | `run-standard-claude.sh` | STANDARD Claude Code step with this host's paths. |
+| `run-carddemo-next.sh` | The next two paid CardDemo steps in one command: refresh launchers, wait for load under 4, the non-Claude recheck, then batchday step 1. Paid. |
 | `run-standard-judge.sh` | STANDARD judge pass with this host's paths. |
+| `run-standard-quality-pack.sh` | Quality-dimensions judge pass over every judged STANDARD v2 unit, then the report with the pack. Paid (USD cap); `--plan` is free. |
 | `run-standard-v1.sh` | STANDARD run with this host's paths. |
 | `run-tonight.sh` | First unattended command of one night (2026-11-21). |
 | `run-wave0-fix.sh` | Finishes wave 0 after budget-skipped runs. |
@@ -125,6 +127,7 @@ is the docs owner's page and points here.
 | `test-lite-v2-fill.sh` | Test of the LITE v2 budget and fill rules. Free. |
 | `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
+| `test-run-standard-quality-pack.sh` | Stub test of `run-standard-quality-pack.sh`. Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
