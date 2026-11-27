@@ -1460,6 +1460,27 @@
         "sha256": { "type": "string" }
       }
     },
+    "planCall": {
+      "type": ["object", "null"],
+      "description": "runner/lib/plan-call.js: the Plan, Plan changed, Skills and Review gate lines of the root reply, the writer spawns (orch.makerSpawns) and the scores against bench/scenarios/konductor/prompt-fix/expect.json. Only on a pre-registered task or a run that wrote a Plan line.",
+      "required": ["planLine", "plan", "planChanged", "skillsLine", "reviewGateLine", "unresolved", "writerSpawns", "planRight", "actionRight", "reviewRight"],
+      "properties": {
+        "planLine": { "type": ["string", "null"] },
+        "plan": { "type": ["string", "null"], "enum": ["solo", "team", null] },
+        "planChanged": { "type": "array", "items": { "type": "string" } },
+        "skillsLine": { "type": ["string", "null"] },
+        "reviewGateLine": { "type": ["string", "null"] },
+        "unresolved": { "type": "boolean" },
+        "writerSpawns": { "type": ["integer", "null"], "minimum": 0 },
+        "planRight": { "type": ["boolean", "null"] },
+        "actionRight": { "type": ["boolean", "null"] },
+        "reviewRight": { "type": ["boolean", "null"] }
+      }
+    },
+    "planLine": { "type": ["string", "null"], "description": "planCall.planLine, at the top level for tables." },
+    "planRight": { "type": ["boolean", "null"], "description": "planCall.planRight, at the top level for tables." },
+    "writerSpawns": { "type": ["integer", "null"], "minimum": 0, "description": "planCall.writerSpawns, at the top level for tables." },
+    "reviewGateLine": { "type": ["string", "null"], "description": "planCall.reviewGateLine, at the top level for tables." },
     "comparable": {
       "type": "boolean"
     },

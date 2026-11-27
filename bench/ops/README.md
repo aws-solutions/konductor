@@ -101,6 +101,7 @@ is the docs owner's page and points here.
 | `run-pilot-rerun.sh` | Keep-or-prune pilot step 3 again after pilot 1: controls only (cap 1,800), then `--unit` (cap 3,375). Paid. |
 | `run-pilot-v2-rerun.sh` | Keep-or-prune pilot rerun on baseline v2 with the FW-36 role line on both unit arms; needs the v2 sign-off and the Fable review mark (or `--skip-fable-review`). Paid (cap 3,240, `UNIT_CAP`); `--plan` is free. |
 | `run-pilot-v2-rewrite.sh` | Keep-or-prune pilot baseline v2: the 5 BAD tasks written again (deepseek-3.2 writes, glm-5 reviews), the other 10 copied byte for byte. Paid (cap 120, at most 4 calls); `--dry-run` is free. |
+| `run-prompt-fix-arms.sh` | Konductor prompt-fix study, three arms (vanilla, konductor-adaptive, konductor-coordinator): `--plan` builds and verifies the adaptive arm and prints the forecast (free); `smoke`, `A`, `B` are the paid steps with their caps, the per-run credit check and the smoke gate. Paid. |
 | `run-reruns-2.sh` | Second rerun batch of the pilot waves. |
 | `run-reruns.sh` | Reruns of the pilot waves whose keys changed. |
 | `run-standard-claude.sh` | STANDARD Claude Code step with this host's paths. |
@@ -128,6 +129,7 @@ is the docs owner's page and points here.
 | `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
 | `test-run-standard-quality-pack.sh` | Stub test of `run-standard-quality-pack.sh`. Free. |
+| `test-run-prompt-fix-arms.sh` | Stub test of `run-prompt-fix-arms.sh` with a fake bench.js: plan, smoke gate, coordinator config, run limit, resume, cap. Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
@@ -201,3 +203,14 @@ Run from a checkout in the owner's own terminal, no launcher. Steps, flags and t
 | `Dockerfile` | Amazon Linux 2023 with Node 22, Python 3.12 and cedarpy 4.12.2, and the owner's uid; nothing private in it. |
 | `quiet-host.sh print\|build\|start\|login\|check\|wave N\|shell\|stop` | The container: own network, no published port, not privileged; mounts the checkout, the counted set, the normal tasks, the wave dir and the pinned kiro-cli. `check` is free: the sandbox probe and `plant-host-check`. |
 | `test-quiet-host.sh` | Test of `quiet-host.sh` with a stub docker (refusals; no port, host network or privileged mode; the mounts; `check` and `wave`). Free. |
+
+## Konductor prompt-fix arms (`bench/ops/prompt-fixes/`)
+
+Used by `workspace/run-prompt-fix-arms.sh`; all free. The spec is `reports/konductor-prompt-fixes-2026-11-27.md` in the
+owner workspace; konductor's own source is never edited, the arm carries the text.
+
+| File | What it does |
+| --- | --- |
+| `edits.js` | The text edits of Fixes 1 to 9 against konductor c042c7ba, in order, and the files the arm replaces or adds. |
+| `build-candidates.js --repo R --out DIR` | Applies the edits (each `before` must be found exactly once), writes the files under DIR and prints the `cap variant` ops. |
+| `study.js cells\|forecast\|spent\|may-start\|gate` | The study's steps, caps and per-run limits, the credit forecast, the spend check before each run and the smoke gate. |

@@ -84,3 +84,6 @@ prove that the workers ran at the same time, or that a separate agent rather tha
 carry no reliable trace of either. cmux is not installed on the bench host or in its sandbox, so in
 `t12-cmux-parallel-merge` an agent cannot open cmux workspaces; the task runs and is scored the same way, but the
 cmux routing it targets cannot be exercised here (DEBT row).
+
+The three split-part tasks of the prompt-fix study (`t12-split-three-modules`, `t12-split-four-jobs`,
+`t12-split-shared-file`) are described in [README-split-tasks.md](README-split-tasks.md).

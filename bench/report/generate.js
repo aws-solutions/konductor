@@ -118,6 +118,8 @@ function writeOutputs({ dir, name, blocks, charts, title, format, json }) {
 
 function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir, profile = null, phases = null, qualityPack = null, allowStalePack = false }) {
   enrichOrch(run);
+  const { dropNeedsAgent, exclusionNote } = require('./exclude.js');
+  const excluded = dropNeedsAgent(run, tasks);
   const a = analyze({ run, tasks, baseline, scoringFile, qualityPack, allowStalePack });
   const sens = quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack, primary: a, allowStalePack });
   const d = detailOf(detail);
@@ -125,6 +127,7 @@ function generateRunReport({ run, tasks, baseline, out, detail, format, scoringF
   const doc = buildRunDocument({ run, tasks, report: a.report, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, ctx: a.ctx, weights: a.weights, detail: d, profile: profile ? { profile, check } : null, docPhases: phases, quote: a.quote, sens });
   const staleNote = require('./packscore.js').staleNote(a.packStale, qualityPack);
   if (staleNote) doc.blocks.unshift(require('./doc.js').note(staleNote));
+  if (excluded.length) doc.blocks.unshift(require('./doc.js').note(exclusionNote(excluded)));
   let quality = null;
   if (qualityPack) {
     // Opt-in: without --criteria-pack nothing below runs and the outputs are unchanged.
@@ -133,7 +136,7 @@ function generateRunReport({ run, tasks, baseline, out, detail, format, scoringF
     quality = summarizeQuality({ groups: armIds.map((id) => ({ id, label: id, run, arm: id })), tasks, pack: qualityPack, scoredWeight: a.weights.pack ?? null });
     doc.blocks.push(...qualityBlocks(quality));
   }
-  const json = { ...a.report, detail: d, quoteRule: a.quote, quoteSensitivity: sens, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), ...(a.packStale.length ? { packStale: a.packStale } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), reviewCompliance: reviewCompliance(run, tasks), costSplit: costSplit(run), contextPerArm: contextPerArm(run), promptFloor: promptFloor(run, a.base), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
+  const json = { ...a.report, ...(excluded.length ? { excludedTasks: excluded } : {}), detail: d, quoteRule: a.quote, quoteSensitivity: sens, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), ...(a.packStale.length ? { packStale: a.packStale } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), reviewCompliance: reviewCompliance(run, tasks), costSplit: costSplit(run), contextPerArm: contextPerArm(run), promptFloor: promptFloor(run, a.base), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
   const { dir, name } = outPaths(out, defaultDir);
   const { renderMarkdown } = require('./render.js');
   const written = writeOutputs({ dir, name, blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json });

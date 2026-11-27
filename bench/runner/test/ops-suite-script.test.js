@@ -36,6 +36,14 @@ test('run-standard-quality-pack.sh: the stub cases pass (no bench stops, plan pa
   assert.match(r.stdout, /ALL PASS/);
 });
 
+test('run-prompt-fix-arms.sh: the stub cases pass (plan runs nothing, smoke gate, coordinator config, run limit, resume, cap)', { timeout: 120000 }, () => {
+  const env = { ...process.env };
+  for (const k of ['S', 'R', 'CACHE', 'BENCH_JS', 'ADAPTIVE_ARM', 'STUB_PLAN', 'STUB_CREDITS', 'KONDUCTOR_OPS']) delete env[k];
+  const r = spawnSync('bash', [path.join(__dirname, '..', '..', 'ops', 'workspace', 'test-run-prompt-fix-arms.sh')], { encoding: 'utf8', env, timeout: 115000 });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /ALL PASS/);
+});
+
 test('debt-paid/run.sh and its job wrappers: every stub case passes (plans, spend guard, cap, busy refusal, families)', { timeout: 300000 }, (t) => {
   const fs = require('node:fs');
   const os = require('node:os');

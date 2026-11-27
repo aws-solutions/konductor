@@ -8,7 +8,7 @@
 # Stops at the first failure. Owner terminal only (paid steps 3 and 4).
 set -euo pipefail
 
-WS=/local/home/nihitkas/.kiro/crew/workspace-member-mate
+WS=${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}
 OPS=$WS/worktrees/ops
 WAIT_MIN=${WAIT_MIN:-45}
 say() { printf '[%s] %s\n' "$(date -u +%H:%M)" "$*"; }

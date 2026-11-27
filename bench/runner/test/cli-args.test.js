@@ -231,3 +231,12 @@ test('parseArgs: booleans never take a value, -h is a help flag, and --help wins
   assert.equal(parseArgs(['--help']).help, true);
   assert.deepEqual(parseArgs(['--seed', '-1']), { _: [], seed: '-1' });
 });
+
+test('a repeated cap variant list flag keeps every value, comma-joined (DEBT D-294: the last one used to win silently)', () => {
+  const { parseArgs } = require('../bench.js');
+  const o = parseArgs(['cap', 'variant', '--replace', 'context:a=/f1', '--replace', 'agent:b=/f2,context:c=/f3', '--add', 'context:d=/f4', '--to-agent', 'x', '--to-agent', 'y']);
+  assert.equal(o.replace, 'context:a=/f1,agent:b=/f2,context:c=/f3');
+  assert.equal(o.add, 'context:d=/f4');
+  assert.equal(o['to-agent'], 'x,y');
+  assert.equal(parseArgs(['--seed', '1', '--seed', '2']).seed, '2', 'other flags are unchanged');
+});

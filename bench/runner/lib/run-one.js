@@ -196,6 +196,14 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
     } catch {
       acc.meta.flags.push('orchMetricsFailed');
     }
+    // The prompt-fix plan call (Plan, Skills and Review gate lines, writer spawns) needs the spawn split above.
+    if (acc.orch) {
+      try {
+        acc.planCall = require('./plan-call.js').planCallOfRunDir(outDir, task.id, acc.orch);
+      } catch {
+        acc.meta.flags.push('planCallFailed');
+      }
+    }
   }
   const checkHome = path.join(runRoot, 'check-home');
   fs.mkdirSync(path.join(checkHome, 'tmp'), { recursive: true });
@@ -607,7 +615,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       plantRun?.scoreInto(meta, { agg: acc.agg, exec, outDir });
       noteFinalize(meta, harness, outDir, ctx);
       plantRun?.rescoreAfterScrub(meta);
-      result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
+      result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, planCall: acc.planCall ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
     }
   }
 

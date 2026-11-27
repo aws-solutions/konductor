@@ -1,0 +1,94 @@
+{
+  "registered": "2026-11-27",
+  "source": "reports/konductor-prompt-fixes-2026-11-27.md Part C, 'Tasks and what each expects'. Written before any run of the prompt-fix arms; the owner script records this file's sha256 in its frozen plan.",
+  "rules": {
+    "plan": "solo: the right Plan line says solo and no writer spawn runs; team: the line says team and 2 or more writer spawns run; proceed: scored on 'did not stop and finished', not on the word",
+    "review": "always: a reviewer spawn must run; exempt-or-one: a Review gate line naming an exemption, or one reviewer; not-needed: no reviewer is required (a checker skill may run)"
+  },
+  "tasks": {
+    "t1-bug-date-range": {
+      "row": 1,
+      "plan": "solo",
+      "review": "exempt-or-one",
+      "why": "3 small bugs in 2 files"
+    },
+    "t8-bug-retry-storm": {
+      "row": 2,
+      "plan": "solo",
+      "review": "exempt-or-one",
+      "why": "one bug with tests"
+    },
+    "t9-impl-cart-summary": {
+      "row": 3,
+      "plan": "solo",
+      "review": "always",
+      "why": "about 100 lines in 4 files; pricing data"
+    },
+    "t4-threat-model-webhooks": {
+      "row": 4,
+      "plan": "solo",
+      "review": "always",
+      "why": "one document; a threat model always gets the gate review"
+    },
+    "t2-dr-rate-limits": {
+      "row": 5,
+      "plan": "solo",
+      "review": "not-needed",
+      "why": "a design review"
+    },
+    "t6-req-data-export": {
+      "row": 6,
+      "plan": "solo",
+      "review": "not-needed",
+      "why": "one requirements document; its checker skill"
+    },
+    "t12-split-shared-file": {
+      "row": 7,
+      "plan": "solo",
+      "review": "always",
+      "why": "control: two changes that both edit src/format.js and CHANGELOG.md"
+    },
+    "probe-e2e-explicit-yes": {
+      "row": 8,
+      "plan": "proceed",
+      "review": "not-needed",
+      "why": "SOP stop test: the request says go ahead"
+    },
+    "t12-cmux-parallel-merge": {
+      "row": 9,
+      "plan": "proceed",
+      "review": "always",
+      "why": "cmux is missing: a Plan changed line, then finish"
+    },
+    "t12-mux-parallel-merge": {
+      "row": 10,
+      "plan": "team",
+      "review": "always",
+      "why": "3 tickets"
+    },
+    "t12-delegated-worker-fix": {
+      "row": 11,
+      "plan": "team",
+      "review": "always",
+      "why": "the user asks for a worker per bug"
+    },
+    "t12-parallel-backlog": {
+      "row": 12,
+      "plan": "team",
+      "review": "always",
+      "why": "3 packages in disjoint directories, no git"
+    },
+    "t12-split-three-modules": {
+      "row": 13,
+      "plan": "team",
+      "review": "always",
+      "why": "three independent modules, each with a test"
+    },
+    "t12-split-four-jobs": {
+      "row": 14,
+      "plan": "team",
+      "review": "always",
+      "why": "four independent small jobs"
+    }
+  }
+}

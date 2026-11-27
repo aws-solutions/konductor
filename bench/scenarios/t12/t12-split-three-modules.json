@@ -1,0 +1,84 @@
+{
+  "id": "t12-split-three-modules",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "implementation",
+  "phases2": [
+    "testing"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "textkit has three helpers that are still stubs: src/slugify.js, src/roman.js and src/word-stats.js. Each one has its own spec in docs/specs/ (slugify.md, roman.md and word-stats.md), and the three do not depend on each other. Please implement all three exactly as their specs say, and add tests for each helper under test/ (one test file per helper). node --test test/*.test.js must pass at the end. Keep the exported names and src/index.js as they are, do not add dependencies, and do not change the specs. Leave the finished work on main in the working tree; you do not need to commit it.",
+  "fixture": "t12-split-three-modules",
+  "hidden": "t12-split-three-modules",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden/*.test.js",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "for m in slugify roman word-stats; do grep -lq \"src/$m\" test/*.test.js || exit 1; done",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/specs",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/index.js",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests-follow-the-specs",
+      "weight": 1,
+      "criterion": "The new tests check the rules each spec states, not only that the code runs. Fail: a helper has no test, or its tests only call it without checking a value. Partial: each helper has a test that checks values, but at least one spec rule with an error case (TypeError, RangeError or SyntaxError) is not tested for any helper. Pass: each helper's tests check its spec's examples and at least one of its error cases. (code cannot check this because which spec rule a test covers is a reading of the test)"
+    }
+  ],
+  "targetSkills": [
+    "delegation-protocol",
+    "task-decomposition"
+  ],
+  "targetSop": null,
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-27",
+    "source": "original",
+    "note": "prompt-fix step 0 split-part task SP1 (reports/konductor-prompt-fixes-2026-11-27.md Part C row 13), written by hand by the mate prompt-fix worker; three independent parts on disjoint files; needs the non-Claude recheck in review.recheck before a counted STANDARD run (DEBT D-296)"
+  },
+  "lockedAt": null
+}

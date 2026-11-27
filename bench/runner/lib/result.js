@@ -56,6 +56,7 @@ function streamFields(agg, orch = null) {
  * usage: USD runtimes only (costUnit usd), {tokens, costUsd, modelCalls, sessions} summed over the parent and all subagent sessions.
  * skills: {extraction, info} from the harness (see skills.js), or null.
  * orch: spawns, depth, review flow and phase documents (see orch-metrics.js), or null.
+ * planCall: the Plan, Skills and Review gate lines and writer spawns (see plan-call.js), or null.
  * conv: the autonomy conversation (see autonomy.newConversation), for tasks with an autonomy block.
  * meta: runner-side facts {agentStarted, flags, infraError, runError, modelNormalized, rewrittenAgents, mcpSha256,
  *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal, plant (the scored plant field of a plant run)}.
@@ -69,7 +70,7 @@ function serviceCancelled(r) {
 }
 const CANCELLED_MSG = 'the model service cancelled the turn (stopReason cancelled, no error text)';
 
-function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, checks, transcript, env, meta = {}, conv = null }) {
+function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, planCall = null, checks, transcript, env, meta = {}, conv = null }) {
   const runtime = arm.runtime ?? DEFAULT_RUNTIME;
   const usd = costUnitOf(runtime) === 'usd';
   const flags = [...(meta.flags || [])];
@@ -200,6 +201,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     // Only on a forced arm's runs, so every other result keeps exactly the fields it always had.
     ...(forcedLoadResult(arm, task) ? { forcedLoad: forcedLoadResult(arm, task) } : {}),
     armConfig: arm.armConfig ?? null,
+    // Only on a pre-registered prompt-fix task or a run that wrote a Plan line (plan-call.js).
+    ...require('./plan-call.js').planCallFields(planCall, task.id),
     ...(meta.claudeCode ? { claudeCode: meta.claudeCode } : {}),
     ...(meta.unscrubbed?.length ? { unscrubbedFiles: meta.unscrubbed } : {}),
     ...(meta.tamperedFiles?.length ? { tamperedFiles: meta.tamperedFiles } : {}),

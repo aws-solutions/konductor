@@ -479,6 +479,8 @@ An unknown flag is an error (exit 2) and nothing runs. --help and -h print this 
 
 // Flags that may be given more than once; a repeated one becomes an array.
 const REPEATABLE_FLAGS = new Set(['root', 'cell', 'ref']);
+// Comma-list flags of cap variant: a repeated one keeps every value, comma-joined, as the parser reads one list (D-294).
+const LIST_FLAGS = new Set(['drop', 'replace', 'add', 'overlay', 'to-agent']);
 
 function parseArgs(argv) {
   const opts = { _: [] };
@@ -491,6 +493,7 @@ function parseArgs(argv) {
     const next = argv[i + 1];
     if (next === undefined || next.startsWith('--') || next === '-h') opts[key] = true;
     else if (REPEATABLE_FLAGS.has(key) && opts[key] !== undefined) { opts[key] = [].concat(opts[key], next); i++; }
+    else if (LIST_FLAGS.has(key) && typeof opts[key] === 'string') { opts[key] = `${opts[key]},${next}`; i++; }
     else { opts[key] = next; i++; }
   }
   return opts;

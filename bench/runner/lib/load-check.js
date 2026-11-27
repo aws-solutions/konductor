@@ -10,6 +10,7 @@
 // shortcut: a file written by a shell command (`cat > f`, `sed -i`) is not seen as a write, so firstWriteAt can be
 // late on a run that writes only through the shell; upgrade when such runs show up in the load-check table.
 const { streamsOf } = require('./harness/streams.js');
+const { fairMustLoad } = require('./load-fairness.js');
 
 const lower = (s) => String(s).toLowerCase();
 /** The name a unit is matched by: lower case, without a kind prefix (`skill:`) or the `sop-` wrapper prefix. */
@@ -59,7 +60,7 @@ function loadCheckOf({ order, extraction, task, arm, isSop = () => false }) {
   const before = (u) => order.firstWriteAt === null || u.firstAt < order.firstWriteAt;
   const t = task?.targets ?? {};
   const fromTask = Array.isArray(task?.loadCheck?.mustLoad);
-  const mustLoad = (fromTask ? task.loadCheck.mustLoad : [...(t.targetSkills ?? []), t.targetSop].filter(Boolean)).map(unitKey);
+  const mustLoad = fairMustLoad(task?.id, (fromTask ? task.loadCheck.mustLoad : [...(t.targetSkills ?? []), t.targetSop].filter(Boolean)).map(unitKey));
   const mustNotLoad = (task?.loadCheck?.mustNotLoad ?? []).map(unitKey);
   const loaded = [...units.values()].map((u) => ({ ...u, beforeFirstWrite: before(u) }));
   const must = mustLoad.map((unit) => { const u = units.get(unit); return { unit, loaded: Boolean(u), beforeFirstWrite: u ? before(u) : false }; });

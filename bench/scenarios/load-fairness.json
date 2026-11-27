@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-27",
+  "source": "reports/konductor-prompt-fixes-2026-11-27.md Part B (owner decisions D1 and D2, 2026-11-27)",
+  "why": "Made after STANDARD v2 results were seen. konductor's own rules decide these units: k-direct-work.md:3 loads backend-development only on a Lambda or DynamoDB stack, and k-direct-work.md:3 and :21 send an SOP konductor does not declare to the specialist that declares it (k-architect declares k-existing-design-review). Kept outside the task files so the tasks' versions and non-Claude rechecks stay valid.",
+  "metByAgent": {
+    "k-existing-design-review": "k-architect"
+  },
+  "stackSkills": {
+    "backend-development": ["t4-iam-ci-deploy-role-twin"]
+  },
+  "needsAgent": {
+    "t12-cmux-parallel-merge": "konductor-cmux-orchestrator"
+  }
+}

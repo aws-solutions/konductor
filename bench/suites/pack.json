@@ -66,6 +66,9 @@
     "t12-sdlc-contact-import",
     "t12-sop-route-choice",
     "t12-spec-rate-limits",
+    "t12-split-four-jobs",
+    "t12-split-shared-file",
+    "t12-split-three-modules",
     "t13-doc-agents-onboarding",
     "t13-doc-api-reference-drift",
     "t13-log-auth-credential-stuffing",
@@ -214,8 +217,8 @@
   ],
   "listHashes": {
     "lite": "2fc6018c16cd263157c2fa86cffac714d0a768b29825fecbff90c85497d30ad2",
-    "standard": "87e411a138debc08155cf94df65440a1645a0dec3e8b9fee0b6284343e726610",
-    "full": "1a7aab4270651a157470b0a9312635694f1d8efd48c30b5aaf7fedcca6115454"
+    "standard": "c801c97b59aabfefe906bf527ac541c0741382072a517ee213978f0807696931",
+    "full": "61a86435d963d1ba6190e3cf0cb9c8f03bfbabd2a40af3d44eeed842a193e5f1"
   },
   "levels": {
     "probe-coverage-no-yes": ["full"],
@@ -267,6 +270,9 @@
     "t12-sdlc-contact-import": ["standard","full"],
     "t12-sop-route-choice": ["full"],
     "t12-spec-rate-limits": ["full"],
+    "t12-split-four-jobs": ["full"],
+    "t12-split-shared-file": ["standard","full"],
+    "t12-split-three-modules": ["full"],
     "t13-doc-agents-onboarding": ["full"],
     "t13-doc-api-reference-drift": ["standard","full"],
     "t13-log-auth-credential-stuffing": ["standard","full"],

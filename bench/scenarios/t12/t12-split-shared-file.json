@@ -1,0 +1,68 @@
+{
+  "id": "t12-split-shared-file",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "implementation",
+  "phases2": [
+    "testing"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Two tickets are ready for invoice-fmt: docs/tickets/FMT-7.md (accounting style for negative amounts) and docs/tickets/FMT-9.md (long dates on printed invoices). Please do both. Each ticket says what done means, including its test and its CHANGELOG.md line. node --test test/*.test.js must pass at the end, the existing calls must keep giving the same text, and no dependencies may be added. Leave the finished work on main in the working tree; you do not need to commit it.",
+  "fixture": "t12-split-shared-file",
+  "hidden": "t12-split-shared-file",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden/*.test.js",
+      "min": 4,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "grep -q accounting test/*.test.js && grep -q long test/*.test.js && node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/tickets",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "one-coherent-change",
+      "weight": 1,
+      "criterion": "The two tickets land as one coherent edit of the shared file and changelog. Fail: one ticket's change is lost or overwritten by the other (a missing option, a missing changelog line), or the changelog has duplicate or conflicting Unreleased sections. Partial: both changes are present, but the changelog lines do not say what changed, or the new options are not mentioned anywhere a caller would look. Pass: both options work side by side in src/format.js, each changelog line names its ticket and the new option, and the old behaviour is untouched. (code cannot check this because whether a changelog line says what changed is a judgement)"
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-27",
+    "source": "original",
+    "note": "prompt-fix step 0 control task SP3 (reports/konductor-prompt-fixes-2026-11-27.md Part C row 7), written by hand by the mate prompt-fix worker: two tickets that both edit src/format.js and CHANGELOG.md, so the right plan is solo; needs the non-Claude recheck in review.recheck before a counted STANDARD run (DEBT D-296)"
+  },
+  "lockedAt": null
+}

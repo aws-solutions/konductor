@@ -1,0 +1,85 @@
+{
+  "id": "t12-split-four-jobs",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "implementation",
+  "phases2": [
+    "testing"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "We are porting the nightly card batch from the legacy job stream, one step per module. Four steps are written up and ready to port: docs/jobs/interest.md, statement.md, dormant.md and late-fee.md. Each has a stub under src/jobs/ with the same name, and the four steps share no code and no files. Port all four so each run() does exactly what its doc says, and add tests for every step under test/. node --test test/*.test.js must pass when you are done. Money stays in integer cents, no dependencies, and the docs stay as they are. Leave the finished work on main in the working tree; you do not need to commit it.",
+  "fixture": "t12-split-four-jobs",
+  "hidden": "t12-split-four-jobs",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden/*.test.js",
+      "min": 16,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "for j in interest statement dormant late-fee; do grep -lq \"jobs/$j\" test/*.test.js || exit 1; done",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/jobs",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\\\"(dependencies|devDependencies)\\\"\\s*:",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "edge-rules-tested",
+      "weight": 1,
+      "criterion": "The new tests pin the edge rules the docs state, which a port most often gets wrong. Fail: a step has no test, or the tests check only one happy-path value per step. Partial: every step has a test, but none of the window edges (dormant at exactly 90 days, late fee at exactly 30 days) or the half-up cent rounding is tested. Pass: the tests check at least one window edge and the rounding rule, and every step has a test of its doc's example. (code cannot check this because which rule a test pins is a reading of the test)"
+    }
+  ],
+  "targetSkills": [
+    "delegation-protocol",
+    "task-decomposition"
+  ],
+  "targetSop": null,
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-27",
+    "source": "original",
+    "note": "prompt-fix step 0 split-part task SP2 (reports/konductor-prompt-fixes-2026-11-27.md Part C row 14), written by hand by the mate prompt-fix worker: four independent CardDemo-style batch steps of about 40 lines each on disjoint files; needs the non-Claude recheck in review.recheck before a counted STANDARD run (DEBT D-296)"
+  },
+  "lockedAt": null
+}
