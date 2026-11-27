@@ -1,7 +1,7 @@
 {
   "id": "t9-bug-tabs-focus",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "bugfix",
   "role": "frontend",
   "questions": "allowed",
@@ -114,6 +114,12 @@
         "note": "All hidden tests are derivable from the request and existing documentation. The request specifies the repair should be in 'shared behavior' and both sections and toolbar should benefit - this correctly guides to the roving.js module. Tests use the same API (reconcileRoving) exposed by the module."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt pass (2026-11-27, claude): regress-kit limits, DEBT D-281",
+    "log": "HAND-EDITS.md",
+    "version": 2
   },
   "pilot": {
     "scores": {},

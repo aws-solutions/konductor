@@ -87,3 +87,14 @@ Added `severity-calibration` (weight 2), `real-versus-awkward` (weight 1) and `r
 fixture change; gates stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck:
 pending (`handEdited.version` 4).
 The v4 hash also covers the dead-check drop that LITE fixes 8-9 landed in place (53cc33ad) under the same number.
+
+## t9-browser-tab-regression v3 and t9-bug-tabs-focus v2: a hanging agent suite no longer voids the hidden suite (2026-11-27, mate debt pass, claude; DEBT D-281)
+
+The same cause as t8-bug-retry-storm v4 (D-280). An agent's own test that never ends on the original code kept the regress proof running to its 60 s limit, which is also the whole `tests` check limit, so the check read "hidden suite did not parse" and lost every behaviour test that passed. No t9 run has shown it yet.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t9-browser-tab-regression | 2026-11-27 | `regress-kit/config.json`: cmd `node --test --test-timeout=5000 test/*.test.js` (was without the timeout), `timeoutSec` 20 (was 60) | a hang on the original code is a failing suite, so the proof counts it as caught and every other hidden test still counts |
+| t9-bug-tabs-focus | 2026-11-27 | `regress-kit/config.json`: cmd `node --test --test-timeout=5000 test/` (was without the timeout), `timeoutSec` 20 (was 60) | the same |
+
+Test: `bench/scenarios/t9/test/regress-hang.test.js` failed before (0/17 and 0/16, "unparsed: timed out") and passes after. Prompt, key, checks and fixtures unchanged. Free gates unchanged: reference 100, stub 16.8, lazy 16.8, alt 100, alt-hashchange 100, alt-window 100; and reference 100, stub 17.9, lazy 17.9, alt 100. Non-Claude recheck: pending (DEBT D-284).

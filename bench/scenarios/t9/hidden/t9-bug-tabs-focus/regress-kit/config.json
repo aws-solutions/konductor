@@ -1,1 +1,1 @@
-{ "cmd": "node --test test/", "timeoutSec": 60 }
+{ "cmd": "node --test --test-timeout=5000 test/", "timeoutSec": 20 }

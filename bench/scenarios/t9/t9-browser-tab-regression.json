@@ -1,7 +1,7 @@
 {
   "id": "t9-browser-tab-regression",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "bugfix",
   "role": "frontend",
   "questions": "allowed",
@@ -127,6 +127,12 @@
         }
       ]
     }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt pass (2026-11-27, claude): regress-kit limits, DEBT D-281",
+    "log": "HAND-EDITS.md",
+    "version": 3
   },
   "pilot": {
     "scores": {},

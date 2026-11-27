@@ -780,8 +780,8 @@
       "sha256": "6837f5ae64bc0987cd99c748b49c3dbbec969fa4f053370f2328712c7c06b47f"
     },
     "t8-bug-retry-storm": {
-      "version": 3,
-      "sha256": "2d3e2073194186e4782cece76bb2e43cdb83dc053d32282a07c1295c2ab205bd",
+      "version": 4,
+      "sha256": "4297c9b61769c3a1cbabb267805aee1959ae8db6afaf17de39fc85645381285a",
       "legacyRecheckVersion": 3
     },
     "t8-dec-deploy-strategy": {
@@ -872,13 +872,13 @@
       "sha256": "e42ddb3714a2a797fd75a66949ae39b3617b6e112e70488ac337328163f21509"
     },
     "t9-browser-tab-regression": {
-      "version": 2,
-      "sha256": "5df979504db66579725a7ad0ca23a43ea4468ead384998b9b7c1241504febec0",
+      "version": 3,
+      "sha256": "13f4a81307db90e69b6802d5d5dc6de5a776013b258cbc50aabc0b570415525a",
       "legacyRecheckVersion": 2
     },
     "t9-bug-tabs-focus": {
-      "version": 1,
-      "sha256": "871ece08c7818e652ba281180fc4d3aa561985f2357353ce0f7d8509477c2bef"
+      "version": 2,
+      "sha256": "e52de0dcfa84ebe9d1a505676b27a679b1549d5800492e5f784ba7ff10247add"
     },
     "t9-e2e-approved-checkout": {
       "version": 1,
