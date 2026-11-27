@@ -28,6 +28,14 @@ test('run-overnight.sh: the stub cases pass (step order, stop at a failing step,
   assert.match(r.stdout, /all cases pass/);
 });
 
+test('run-standard-quality-pack.sh: the stub cases pass (no bench stops, plan passes --plan, unjudged unit left out, no credentials stops)', { timeout: 60000 }, () => {
+  const env = { ...process.env };
+  for (const k of ['STANDARD_DIR', 'CAP_USD', 'AWS_PROFILE_NAME']) delete env[k];
+  const r = spawnSync('bash', [path.join(__dirname, '..', '..', 'ops', 'workspace', 'test-run-standard-quality-pack.sh')], { encoding: 'utf8', env, timeout: 55000 });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /ALL PASS/);
+});
+
 test('debt-paid/run.sh and its job wrappers: every stub case passes (plans, spend guard, cap, busy refusal, families)', { timeout: 300000 }, (t) => {
   const fs = require('node:fs');
   const os = require('node:os');
