@@ -2629,6 +2629,52 @@ mod tests {
         assert!(err.contains("Claude Code alias"), "{err}");
     }
 
+    /// Every shipped agent spec is rendered the way `install --harness claude` writes it, and the `model:` line of the
+    /// result must be `claude_model_id` of the spec's model. The dotted spec value turns into the dashed form, so a
+    /// test that hand-writes the dashed form, such as the engine's Claude conformance suite, names where it comes from.
+    #[test]
+    fn every_shipped_agent_gets_the_converted_model_in_its_claude_file() {
+        let agents = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../agents");
+        let mut seen = 0;
+        for entry in fs::read_dir(&agents).expect("the agents folder") {
+            let path = entry.unwrap().path();
+            let is_spec = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.ends_with(".agent-spec.json"));
+            if !is_spec {
+                continue;
+            }
+            let spec = crate::cli::synth::parser::parse_agent_spec_file(&path).unwrap();
+            let Some(claude) = spec.client_config.claude_cli.as_ref() else {
+                continue;
+            };
+            let packaged: HashSet<&str> = claude.skills.iter().map(String::as_str).collect();
+            let rendered = render_agent_md(
+                &spec.name,
+                &spec.config,
+                claude,
+                &[],
+                &[],
+                AgentSkills {
+                    packaged: &packaged,
+                    declared: &[],
+                },
+                &BTreeMap::new(),
+            )
+            .unwrap();
+            let expected = format!("\nmodel: {}\n", claude_model_id(&spec.config.model));
+            assert!(
+                rendered.contains(&expected),
+                "{}: expected `{}` in the rendered file",
+                spec.name,
+                expected.trim()
+            );
+            seen += 1;
+        }
+        assert!(seen >= 2, "found only {seen} shipped Claude agents");
+    }
+
     #[test]
     fn claude_model_id_maps_auto_to_inherit() {
         assert_eq!(claude_model_id("auto"), "inherit");

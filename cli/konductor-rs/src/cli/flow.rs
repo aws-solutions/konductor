@@ -22,11 +22,11 @@
 // `library/<name>` names a shipped workflow, and none exist yet.
 //
 // Harness: `--harness` takes `kiro-cli`, `claude` or `fake`. Without it the one runner harness that the install index
-// records is used (`flow_harness.rs` reads the index). `claude` is a usage error until step 1f-2. A stage whose agent
-// Kiro CLI cannot see is a usage error (exit 64) before the first stage and before the trust question.
+// records is used (`flow_harness.rs` reads the index). A stage whose agent the harness cannot see is a usage error (exit
+// 64) before the first stage and before the trust question.
 //
-// Interrupts: on Kiro CLI, SIGINT, SIGTERM and SIGHUP end the running session's process group through the launcher and
-// halt the run (`flow_interrupt.rs`). The command exits 1 like any halted run.
+// Interrupts: on Kiro CLI and on Claude Code, SIGINT, SIGTERM and SIGHUP end the running session's process group
+// through the launcher and halt the run (`flow_interrupt.rs`). The command exits 1 like any halted run.
 //
 // Trust: a project workflow, and any workflow in a repository that has tool configuration files, runs only after
 // the user confirmed its trust hash. The hash is made from the bytes the loader parsed (`workflow_core::trust`). The
@@ -42,13 +42,15 @@ use std::sync::Arc;
 
 use workflow_adapters::process::current_owner;
 use workflow_adapters::{
-    config_folders, find_program, resolve_harness, scan_repo_config, FakeHarness, FileAgentCatalog,
-    FileRunLock, FileRunStore, FileTrustStore, Found, HarnessChoice, InstalledFiles, KiroHarness,
-    Located, Lookup, Scope, Script, SimulatedClock, Skip, Skipped, StdTerminal, SystemLauncher,
-    FAKE_SCRIPT_ENV, NO_TIMEOUT_WARNING,
+    config_folders, find_program, resolve_harness, scan_repo_config, ClaudeHarness, FakeHarness,
+    FileAgentCatalog, FileRunLock, FileRunStore, FileTrustStore, Found, HarnessChoice,
+    InstalledFiles, KiroHarness, Located, Lookup, Scope, Script, SimulatedClock, Skip, Skipped,
+    StdTerminal, SystemLauncher, FAKE_SCRIPT_ENV, NO_TIMEOUT_WARNING,
 };
 use workflow_core::json::Json;
-use workflow_core::ports::{Harness, ProcessGroup, RunLock, Terminal, TrustStore};
+use workflow_core::ports::{
+    AgentCatalog, Harness, ProcessGroup, RunLock, Runner, Terminal, TrustStore,
+};
 use workflow_core::run::{Run, RunStatus, StageState, StageStatus};
 use workflow_core::runner::{execute, prepare, start, GuardedHarness, StartError, SweepResult};
 use workflow_core::time::format_timestamp;
@@ -58,7 +60,7 @@ use workflow_core::trust::{
 };
 use workflow_core::{check_text, parse_reference, Checked, Reference, ReferenceError};
 
-use crate::cli::flow_harness::{check_kiro_agents, installed_runners};
+use crate::cli::flow_harness::{check_claude_agents, check_kiro_agents, installed_runners};
 use crate::cli::flow_interrupt;
 use crate::cli::output::{self, status, ColorMode};
 use crate::cli::FlowAction;
@@ -513,6 +515,9 @@ fn run_workflow(
     let kiro_catalog = FileAgentCatalog::new(context.project_root, context.home);
     let kiro_program =
         find_program(&["kiro-cli"], None).and_then(|path| path.to_str().map(str::to_string));
+    let claude_program =
+        find_program(&["claude"], None).and_then(|path| path.to_str().map(str::to_string));
+    let claude_catalog = claude_catalog(context);
     let script = match &choice {
         HarnessChoice::Fake { script } => match Script::load(script) {
             Ok(script) => Some(script),
@@ -523,7 +528,7 @@ fn run_workflow(
         },
         // A stage whose agent the harness cannot see fails before the first stage, and before the trust question: the
         // user has to change the install or the folder, so nothing is shown that cannot run.
-        HarnessChoice::KiroCli => {
+        HarnessChoice::KiroCli | HarnessChoice::Claude => {
             // A session starts in the project root, which a path that is not UTF-8 cannot be given to the launcher as.
             if context.project_root.to_str().is_none() {
                 return usage_error(
@@ -533,18 +538,29 @@ fn run_workflow(
                     err,
                 );
             }
-            if let Err(message) = check_kiro_agents(
-                &prepared.workflow.stages,
-                &kiro_catalog,
-                context.project_root,
-                context.home,
-            ) {
+            let stages = &prepared.workflow.stages;
+            let visible = if choice == HarnessChoice::Claude {
+                check_claude_agents(stages, &claude_catalog, context.project_root, context.home)
+            } else {
+                check_kiro_agents(stages, &kiro_catalog, context.project_root, context.home)
+            };
+            if let Err(message) = visible {
                 return usage_error(&message, context, out, err);
             }
-            // `kiro-cli` is looked for in the absolute folders of `PATH` only, as `timeout` is. A relative or empty entry
+            // The program is looked for in the absolute folders of `PATH` only, as `timeout` is. A relative or empty entry
             // (`PATH=/usr/bin:` or `:.`) would let a file in the repository stand in for it, and the trust hash covers
             // tool configuration files, not programs.
-            if kiro_program.is_none() {
+            if choice == HarnessChoice::Claude && claude_program.is_none() {
+                return usage_error(
+                    "`claude` was not found in an absolute folder of `PATH`. A relative or empty `PATH` entry is not \
+                     searched, so a file in the project cannot stand in for it. Install Claude Code or fix `PATH`, then \
+                     run the workflow again.",
+                    context,
+                    out,
+                    err,
+                );
+            }
+            if choice == HarnessChoice::KiroCli && kiro_program.is_none() {
                 return usage_error(
                     "`kiro-cli` was not found in an absolute folder of `PATH`. A relative or empty `PATH` entry is not \
                      searched, so a file in the project cannot stand in for it. Install Kiro CLI or fix `PATH`, then run \
@@ -561,8 +577,20 @@ fn run_workflow(
     let catalog = match &choice {
         HarnessChoice::Fake { .. } => agent_catalog(context),
         HarnessChoice::KiroCli => kiro_catalog.clone(),
+        HarnessChoice::Claude => claude_catalog.clone(),
     };
-    let assessment = assess(context, &checked, &found, &catalog);
+    let mut assessment = assess(context, &checked, &found, &catalog);
+    if choice == HarnessChoice::Claude {
+        // The summary above is the Claude catalog. The search from the current folder is compared as well, because
+        // the hash scan starts there, so a file nearer to it is never left unshown.
+        add_claude_mismatches(
+            &mut assessment.ambiguous_agents,
+            &checked,
+            context,
+            &agent_catalog(context),
+            context.cwd,
+        );
+    }
     let subject = Subject {
         name: &name,
         checked: &checked,
@@ -580,10 +608,10 @@ fn run_workflow(
     let mut lock = FileRunLock::new(context.project_root);
     let owner = current_owner();
     let clock = Rc::new(SimulatedClock::default());
-    // From here on a Ctrl-C, SIGTERM or SIGHUP does not end this process by itself on Kiro CLI: it ends the session's
+    // From here on a Ctrl-C, SIGTERM or SIGHUP does not end this process by itself on a real harness: it ends the session's
     // group through the launcher and halts the run. The fake harness starts no process, so it keeps the default.
     let interrupt = Arc::new(AtomicBool::new(false));
-    if matches!(choice, HarnessChoice::KiroCli) {
+    if matches!(choice, HarnessChoice::KiroCli | HarnessChoice::Claude) {
         if let Err(error) = flow_interrupt::watch(&interrupt) {
             let message =
                 format!("Interrupts cannot be handled, so the run was not started: {error}");
@@ -662,15 +690,26 @@ fn run_workflow(
             let note = Box::new(move |line: &str| {
                 let _ = writeln!(std::io::stderr(), "{prefix} {line}");
             });
-            Box::new(KiroHarness::new(
-                &mut launcher,
-                &kiro_catalog,
-                kiro_program
-                    .as_deref()
-                    .expect("checked above: kiro-cli was found"),
-                &cwd,
-                note,
-            ))
+            match &choice {
+                HarnessChoice::Claude => Box::new(ClaudeHarness::new(
+                    &mut launcher,
+                    &claude_catalog,
+                    claude_program
+                        .as_deref()
+                        .expect("checked above: claude was found"),
+                    &cwd,
+                    note,
+                )),
+                _ => Box::new(KiroHarness::new(
+                    &mut launcher,
+                    &kiro_catalog,
+                    kiro_program
+                        .as_deref()
+                        .expect("checked above: kiro-cli was found"),
+                    &cwd,
+                    note,
+                )),
+            }
         }
     };
     // The confirmation covers what was on disk when it was given. The runner reads the tool configuration files again
@@ -1063,15 +1102,102 @@ fn agent_catalog(context: &Context) -> FileAgentCatalog {
         .with_folders_above(folders.get(1..).unwrap_or_default())
 }
 
+/// The catalog of a run on Claude Code, which starts its session in the project root: the project root, the folders
+/// above it up to the git top folder (the nearest definition wins), then the home folder.
+fn claude_catalog(context: &Context) -> FileAgentCatalog {
+    FileAgentCatalog::new(context.project_root, context.home).with_folders_above(
+        config_folders(context.project_root, context.home)
+            .get(1..)
+            .unwrap_or_default(),
+    )
+}
+
+/// Marks as ambiguous each agent of the workflow for which the search that built the summary (`summary`, whose first
+/// folder is `summary_base`) and the search Claude Code makes from the project root find different files, so the file the
+/// user confirms is the file that runs. Files are compared by their resolved path and not by the label a catalog shows,
+/// which is relative for the first folder searched and absolute for a folder above it. Where the two searches pick the
+/// same file, nothing is added.
+fn add_claude_mismatches(
+    ambiguous: &mut Vec<AmbiguousAgent>,
+    checked: &Checked,
+    context: &Context,
+    summary: &FileAgentCatalog,
+    summary_base: &Path,
+) {
+    let Some(workflow) = checked.workflow.as_ref() else {
+        return;
+    };
+    let claude = claude_catalog(context);
+    let pick = |catalog: &FileAgentCatalog, agent: &str| {
+        catalog
+            .definitions(agent)
+            .into_iter()
+            .find(|d| d.runner == Runner::Claude)
+    };
+    let mut seen: Vec<&str> = Vec::new();
+    for stage in &workflow.stages {
+        let agent = stage.agent.as_str();
+        if seen.contains(&agent) {
+            continue;
+        }
+        seen.push(agent);
+        let shown = pick(summary, agent);
+        let runs = pick(&claude, agent);
+        let same_file = match (&shown, &runs) {
+            (None, None) => true,
+            (Some(a), Some(b)) => {
+                !a.ambiguous
+                    && !b.ambiguous
+                    && kiro_file_path(summary_base, context.home, &a.file)
+                        == kiro_file_path(context.project_root, context.home, &b.file)
+            }
+            _ => false,
+        };
+        if same_file {
+            continue;
+        }
+        let name = |d: &Option<workflow_core::ports::AgentDefinition>, base: &Path| {
+            d.as_ref().map_or_else(
+                || "no file".to_string(),
+                |d| {
+                    let path = kiro_file_path(base, context.home, &d.file);
+                    format!(
+                        "`{}`",
+                        workflow_core::trust::plain(&short_path(context, &path))
+                    )
+                },
+            )
+        };
+        ambiguous.push(AmbiguousAgent {
+            agent: agent.to_string(),
+            reason: format!(
+                "Claude Code file {}, summary file {}",
+                name(&runs, context.project_root),
+                name(&shown, summary_base)
+            ),
+        });
+    }
+}
+
 /// The catalog for `flow trust`, which has no `--harness`: the one a `flow run` without it would use. When that is not
 /// the Kiro catalog (no index, only `claude`, both runners, or neither), it is the search from the current folder. That
 /// search shows the nearest file of each agent, which can be another file than the one Kiro CLI runs, and a run with
-/// `--harness kiro-cli` needs no install record, so [`add_kiro_mismatches`] compares the two for every agent in all of
-/// those cases.
+/// `--harness kiro-cli` or `--harness claude` needs no install record, so [`add_kiro_mismatches`] and
+/// [`add_claude_mismatches`] compare it with the catalog of each run for every agent, whatever the index says.
 fn trust_catalog(context: &Context) -> FileAgentCatalog {
     match resolve_harness(None, installed_runners(context.home), None, None) {
         Ok(HarnessChoice::KiroCli) => FileAgentCatalog::new(context.project_root, context.home),
+        Ok(HarnessChoice::Claude) => claude_catalog(context),
         _ => agent_catalog(context),
+    }
+}
+
+/// The folder that the labels of [`trust_catalog`] are below: its first folder searched, which is the project root for
+/// the Kiro and the Claude catalog and the working folder for the search from the current folder.
+fn trust_base<'a>(context: &'a Context) -> &'a Path {
+    match resolve_harness(None, installed_runners(context.home), None, None) {
+        Ok(HarnessChoice::KiroCli | HarnessChoice::Claude) => context.project_root,
+        _ => context.cwd,
     }
 }
 
@@ -1121,7 +1247,9 @@ fn add_kiro_mismatches(context: &Context, checked: &Checked, ambiguous: &mut Vec
         return;
     }
     use workflow_core::ports::{AgentCatalog, Runner};
-    let nearest = agent_catalog(context);
+    // The catalog the summary was built from, and the label base of its first folder.
+    let nearest = trust_catalog(context);
+    let nearest_base = trust_base(context);
     let kiro = FileAgentCatalog::new(context.project_root, context.home);
     let mut seen: Vec<&str> = Vec::new();
     for stage in &workflow.stages {
@@ -1146,7 +1274,7 @@ fn add_kiro_mismatches(context: &Context, checked: &Checked, ambiguous: &mut Vec
             ([one], Some(root)) => {
                 !unclear(one)
                     && !unclear(&root.definition)
-                    && kiro_file_path(context.cwd, context.home, &one.file)
+                    && kiro_file_path(nearest_base, context.home, &one.file)
                         == kiro_file_path(context.project_root, context.home, &root.definition.file)
             }
             _ => false,
@@ -1165,7 +1293,7 @@ fn add_kiro_mismatches(context: &Context, checked: &Checked, ambiguous: &mut Vec
             from_cwd
                 .iter()
                 .map(|d| {
-                    let path = kiro_file_path(context.cwd, context.home, &d.file);
+                    let path = kiro_file_path(nearest_base, context.home, &d.file);
                     format!(
                         "`{}`",
                         workflow_core::trust::plain(&short_path(context, &path))
@@ -1549,6 +1677,20 @@ fn trust_workflow(
     }
     let mut assessment = assess(context, &checked, &found, &trust_catalog(context));
     add_kiro_mismatches(context, &checked, &mut assessment.ambiguous_agents);
+    // A later `flow run --harness claude` needs no install record either, so the summary is compared with the Claude
+    // search unless the summary was built from it.
+    if !matches!(
+        resolve_harness(None, installed_runners(context.home), None, None),
+        Ok(HarnessChoice::Claude)
+    ) {
+        add_claude_mismatches(
+            &mut assessment.ambiguous_agents,
+            &checked,
+            context,
+            &trust_catalog(context),
+            trust_base(context),
+        );
+    }
     let subject = Subject {
         name: &name,
         checked: &checked,
@@ -2534,6 +2676,7 @@ mod tests {
         ];
         for (index_label, strategies) in indexes {
             let only_kiro = strategies == ["kiro-cli-v2"];
+            let only_claude = strategies == ["claude"];
             for scenario in ["below", "above", "same-from-below", "same-from-root"] {
                 let scratch = Scratch::new("trust-class");
                 fs::create_dir_all(scratch.0.join(".git")).unwrap();
@@ -2599,7 +2742,10 @@ mod tests {
                 let store_written = FileTrustStore::new(Some(&scratch.1))
                     .path()
                     .is_some_and(|path| path.exists());
-                if differ && !only_kiro {
+                // With only Claude installed the summary is built from the Claude search, which starts at the project
+                // root, so a file in a folder below it is not shown and the Kiro file that runs is.
+                let summary_is_kiros = only_kiro || (only_claude && scenario == "below");
+                if differ && !summary_is_kiros {
                     // Refused, both files named, nothing recorded, no summary shown.
                     assert_eq!(code, EXIT_NOT_TRUSTED, "{row}: {text}");
                     assert!(text.contains(nearest_label), "{row}: {text}");
@@ -2609,12 +2755,150 @@ mod tests {
                 } else {
                     // The searches agree, or the catalog is the Kiro one: the summary shows the file that runs.
                     assert_eq!(code, 0, "{row}: {text}");
-                    let runs = if only_kiro { kiro_text } else { nearest_text };
+                    let runs = if summary_is_kiros {
+                        kiro_text
+                    } else {
+                        nearest_text
+                    };
                     assert!(
                         shown.contains(&format!("runs without asking: {runs}")),
                         "{row}: {shown}"
                     );
                     assert!(store_written, "{row}: no record was made");
+                }
+            }
+        }
+    }
+
+    /// Writes the Claude agent file `k-architect.md` below `base` with the one tool `tools`.
+    fn write_claude_agent(base: &Path, tools: &str) {
+        let dir = base.join(".claude/agents");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("k-architect.md"),
+            format!("---\nname: k-architect\ndescription: x\ntools: {tools}\n---\nBody.\n"),
+        )
+        .unwrap();
+    }
+
+    /// The class, for Claude: the file that the trust summary shows can differ from the file that a later `flow run
+    /// --harness claude` reads while a trust record is made, or a harmless layout is refused. `flow run --harness
+    /// claude` needs no install record, and the trust hash is the same whichever catalog built the summary. `flow
+    /// trust` has no `--harness`, and it looks for no program, so the PATH does not matter here (the matching walk of
+    /// `flow run`, with a stub `claude` in an absolute folder, is in `tests/flow_claude_e2e.rs`).
+    ///
+    /// | install index                                  | `flow trust` catalog                    |
+    /// | ---------------------------------------------- | --------------------------------------- |
+    /// | none, only claude, only kiro, both, another    | Kiro (only kiro), Claude (only claude), else the search from the current folder |
+    ///
+    /// | place                   | cwd      | project root | agent files                  | the run reads | record? |
+    /// | ----------------------- | -------- | ------------ | ---------------------------- | ------------- | ------- |
+    /// | project root            | root     | root         | root (Bash)                  | Bash          | yes     |
+    /// | below, only at the root | root/pkg | root         | root (Bash)                  | Bash          | yes     |
+    /// | below, one that shadows | root/pkg | root         | root (Bash), root/pkg (Read) | Bash          | no      |
+    /// | above the project root  | root/app | root/app     | root (Bash), none below      | Bash          | yes, except only kiro |
+    /// | home only               | root     | root         | home (Grep)                  | Grep          | yes     |
+    ///
+    /// Whatever the row: a record is made only when the summary shows the file the run reads, and a layout where one
+    /// file serves both searches is never refused.
+    #[test]
+    fn flow_trust_never_records_a_file_that_a_claude_run_would_not_read_whatever_the_install_index_says(
+    ) {
+        let indexes: [(&str, &[&str]); 5] = [
+            ("no index", &[]),
+            ("only claude", &["claude"]),
+            ("only kiro", &["kiro-cli-v2"]),
+            ("both", &["kiro-cli-v2", "claude"]),
+            ("a strategy of neither", &["something-else"]),
+        ];
+        for (index_label, strategies) in indexes {
+            let only_kiro = strategies == ["kiro-cli-v2"];
+            for place in ["root", "below-same", "below-shadow", "above", "home"] {
+                let scratch = Scratch::new("trust-claude-class");
+                fs::create_dir_all(scratch.0.join(".git")).unwrap();
+                install_runners(&scratch, strategies);
+                let (cwd, project, shadow_tool, must_record) = match place {
+                    "root" => {
+                        scratch.write("plan.yml", VALID);
+                        write_claude_agent(&scratch.0, "Bash");
+                        (scratch.0.clone(), scratch.0.clone(), None, true)
+                    }
+                    "below-same" => {
+                        scratch.write("plan.yml", VALID);
+                        write_claude_agent(&scratch.0, "Bash");
+                        (scratch.0.join("pkg"), scratch.0.clone(), None, true)
+                    }
+                    "below-shadow" => {
+                        scratch.write("plan.yml", VALID);
+                        write_claude_agent(&scratch.0, "Bash");
+                        write_claude_agent(&scratch.0.join("pkg"), "Read");
+                        (
+                            scratch.0.join("pkg"),
+                            scratch.0.clone(),
+                            Some("Read"),
+                            false,
+                        )
+                    }
+                    "above" => {
+                        let app = scratch.0.join("app");
+                        fs::create_dir_all(app.join(".konductor/workflows")).unwrap();
+                        fs::write(app.join(".konductor/workflows/plan.yml"), VALID).unwrap();
+                        write_claude_agent(&scratch.0, "Bash");
+                        (app.clone(), app, None, !only_kiro)
+                    }
+                    _ => {
+                        scratch.write("plan.yml", VALID);
+                        write_claude_agent(&scratch.1, "Grep");
+                        (scratch.0.clone(), scratch.0.clone(), None, true)
+                    }
+                };
+                fs::create_dir_all(&cwd).unwrap();
+                let row = format!("{index_label} / {place}");
+                // The file a `flow run --harness claude` reads: the project root search, whatever the folder it
+                // started in.
+                let run_context = Context {
+                    cwd: &project,
+                    project_root: &project,
+                    home: Some(&scratch.1),
+                    json: false,
+                    color: ColorMode::disabled(),
+                };
+                let run_tool = {
+                    use workflow_core::ports::{AgentCatalog, AgentTools, Runner};
+                    match claude_catalog(&run_context)
+                        .definitions("k-architect")
+                        .into_iter()
+                        .find(|d| d.runner == Runner::Claude)
+                        .map(|d| d.tools)
+                    {
+                        Some(AgentTools::Listed(tools)) => {
+                            tools.first().cloned().unwrap_or_default()
+                        }
+                        other => panic!("{row}: the run reads {other:?}"),
+                    }
+                };
+                let (code, shown, text) = trust_from(&scratch, &cwd, &project);
+                let recorded = FileTrustStore::new(Some(&scratch.1))
+                    .path()
+                    .is_some_and(|path| path.exists());
+                if must_record {
+                    assert_eq!(code, 0, "{row}: {text}");
+                }
+                if recorded {
+                    // The summary shows the file the run reads, and not the file that only the other search finds.
+                    assert!(
+                        shown.contains(&run_tool),
+                        "{row}: {run_tool} not in {shown}"
+                    );
+                    if let Some(other) = shadow_tool {
+                        assert!(!shown.contains(other), "{row}: {other} shown: {shown}");
+                    }
+                } else {
+                    assert_ne!(code, 0, "{row}: {text}");
+                    assert!(
+                        shown.is_empty(),
+                        "{row}: a summary was shown for a refused record"
+                    );
                 }
             }
         }

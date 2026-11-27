@@ -42,7 +42,7 @@ pub fn kiro_args(agent: &str, engine: KiroEngine, prompt: &str) -> Vec<String> {
 
 /// `line` followed by the tail of the session's standard error, each of its lines indented and cut to printable text.
 /// The tail starts wherever the 4 KiB cut fell, so its first line can be partial.
-fn with_stderr(line: String, errors: &str) -> String {
+pub(crate) fn with_stderr(line: String, errors: &str) -> String {
     let shown: Vec<String> = errors
         .lines()
         .map(|l| plain(l.trim_end()))

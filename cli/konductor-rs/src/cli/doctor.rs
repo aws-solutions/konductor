@@ -2280,7 +2280,7 @@ fn check_container_runtime_with_path(path_var: Option<std::ffi::OsString>) -> Ch
 }
 
 /// One runner tool that `flow run` starts, and the lowest version of it that Konductor's runner checks pass on (spec:
-/// "Versions"). A later step adds a row for each runner tool it supports.
+/// "Versions"). There is one row for each runner tool: Kiro CLI and Claude Code.
 struct RunnerTool {
     /// The name of the check in the report.
     check: &'static str,
@@ -2290,11 +2290,18 @@ struct RunnerTool {
     minimum: &'static str,
 }
 
-const RUNNER_TOOLS: &[RunnerTool] = &[RunnerTool {
-    check: "kiro_cli_version",
-    program: "kiro-cli",
-    minimum: "3.3.0",
-}];
+const RUNNER_TOOLS: &[RunnerTool] = &[
+    RunnerTool {
+        check: "kiro_cli_version",
+        program: "kiro-cli",
+        minimum: "3.3.0",
+    },
+    RunnerTool {
+        check: "claude_version",
+        program: "claude",
+        minimum: "2.1.323",
+    },
+];
 
 /// How long `<tool> --version` may run before the check gives up on it. `check_container_runtime` never runs a
 /// candidate because a runtime's CLI can hang waiting on a daemon, and a tool's `--version` can hang too, so the wait
@@ -6971,6 +6978,9 @@ mod runner_tool_tests {
             assert!(parse_tool_version(tool.minimum).is_some(), "{}", tool.check);
         }
         assert!(RUNNER_TOOLS.iter().any(|t| t.program == "kiro-cli"));
+        assert!(RUNNER_TOOLS
+            .iter()
+            .any(|t| t.program == "claude" && t.check == "claude_version"));
     }
 
     #[test]

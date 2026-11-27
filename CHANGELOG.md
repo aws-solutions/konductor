@@ -51,8 +51,9 @@ reference.
   warns once and the limit lasts only while the owner does. A session left running by an owner that was killed with
   SIGKILL is ended by the next run if its limit has not ended it. A failed session shows the last 4 KiB of its standard
   error on the terminal, never in the run state. `konductor doctor` checks the version of `kiro-cli` against the lowest
-  version that was tested and warns when it is lower. `claude` is a usage error until a later
-  release. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts the
+  version that was tested and warns when it is lower. `--harness claude` runs each stage in a headless Claude Code
+  session (`claude -p --output-format json --agent <id>`) with an `--allowedTools` rule for each tool in the agent's
+  `tools`, and `konductor doctor` checks the version of `claude` the same way. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts the
   run with exit 1, and the run state is kept in `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is
   active per workspace, and a second one exits 75.
 - `konductor flow trust <name>` shows what a workflow will run and records that you trust it, and `--revoke` removes the
