@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_NAME",
+      "column": 12,
+      "end_column": 23,
+      "end_line": 8,
+      "file": "invalid-agent-id.yml",
+      "line": 8,
+      "path": "stages.write.agent",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

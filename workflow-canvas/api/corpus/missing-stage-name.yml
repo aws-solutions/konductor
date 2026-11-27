@@ -1,0 +1,7 @@
+format: konductor/1
+name: missing-stage-name
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - agent: k-developer

@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "YAML_UNSUPPORTED",
+      "column": 3,
+      "end_column": 5,
+      "end_line": 5,
+      "file": "yaml-merge-key.yml",
+      "line": 5,
+      "path": "intent",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

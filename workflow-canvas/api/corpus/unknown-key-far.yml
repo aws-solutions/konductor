@@ -1,0 +1,9 @@
+format: konductor/1
+name: unknown-key-far
+version: 0.1.0
+owner: me
+intent:
+  outcome: Say hello
+stages:
+  - name: write
+    agent: k-developer

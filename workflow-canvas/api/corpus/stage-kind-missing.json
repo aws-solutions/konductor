@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "STAGE_KIND_MISSING",
+      "column": 5,
+      "end_column": 1,
+      "end_line": 8,
+      "file": "stage-kind-missing.yml",
+      "line": 7,
+      "path": "stages.write",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

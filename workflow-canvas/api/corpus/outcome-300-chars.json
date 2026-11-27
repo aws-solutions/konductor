@@ -1,0 +1,23 @@
+{
+  "diagnostics": [],
+  "errors": 0,
+  "view": {
+    "format": "konductor/1",
+    "intent": {
+      "outcome": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "name": "outcome-300-chars",
+    "stages": [
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "write",
+        "range": {
+          "end_line": 8,
+          "line": 7
+        }
+      }
+    ],
+    "version": "0.1.0"
+  }
+}

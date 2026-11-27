@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "WRONG_TYPE",
+      "column": 13,
+      "end_column": 17,
+      "end_line": 9,
+      "file": "wrong-type-prompt.yml",
+      "line": 9,
+      "path": "stages.write.prompt",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "NOT_SUPPORTED_BY_THIS_BUILD",
+      "column": 1,
+      "end_column": 8,
+      "end_line": 4,
+      "file": "later-key-top.yml",
+      "line": 4,
+      "path": "targets",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

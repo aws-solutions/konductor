@@ -1,0 +1,24 @@
+{
+  "diagnostics": [],
+  "errors": 0,
+  "view": {
+    "format": "konductor/1",
+    "intent": {
+      "outcome": "Braces that are not references"
+    },
+    "name": "valid-brace-text",
+    "stages": [
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "only",
+        "prompt": "Use {braces} and {a.b.c} and { a.b } as plain text.",
+        "range": {
+          "end_line": 9,
+          "line": 7
+        }
+      }
+    ],
+    "version": "0.1.0"
+  }
+}

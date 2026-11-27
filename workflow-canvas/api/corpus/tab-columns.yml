@@ -1,0 +1,7 @@
+format: konductor/1
+name: tab-columns
+version: 0.1.0
+intent: {outcome: "a	b", owner: me}
+stages:
+  - name: write
+    agent: k-developer

@@ -24,6 +24,7 @@ pub mod source;
 pub mod source_map;
 pub mod time;
 pub mod trust;
+pub mod view;
 pub mod yaml;
 
 pub use check::{check_text, Checked};

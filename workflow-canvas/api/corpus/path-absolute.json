@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 13,
+      "end_column": 24,
+      "end_line": 8,
+      "file": "path-absolute.yml",
+      "line": 8,
+      "path": "intent.accept[0].file",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

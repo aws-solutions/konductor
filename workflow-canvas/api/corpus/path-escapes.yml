@@ -1,0 +1,11 @@
+format: konductor/1
+name: path-escapes
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - id: a
+      file: ../x
+stages:
+  - name: write
+    agent: k-developer

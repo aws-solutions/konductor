@@ -1,0 +1,8 @@
+format: konductor/1
+name: invalid-version-leading-zero
+version: 01.2.3
+intent:
+  outcome: Say hello
+stages:
+  - name: write
+    agent: k-developer

@@ -1,0 +1,28 @@
+{
+  "diagnostics": [],
+  "errors": 0,
+  "view": {
+    "format": "konductor/1",
+    "intent": {
+      "outcome": "Say hello"
+    },
+    "name": "param-slice-2",
+    "params": {
+      "topic": {
+        "default": "x"
+      }
+    },
+    "stages": [
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "write",
+        "range": {
+          "end_line": 11,
+          "line": 10
+        }
+      }
+    ],
+    "version": "0.1.0"
+  }
+}

@@ -1,0 +1,7 @@
+format: konductor/1
+name: intent-string
+version: 0.1.0
+intent: Say hello
+stages:
+  - name: write
+    agent: k-developer

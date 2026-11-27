@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "DUPLICATE_KEY",
+      "column": 1,
+      "end_column": 7,
+      "end_line": 6,
+      "file": "duplicate-key.yml",
+      "line": 6,
+      "path": "intent",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

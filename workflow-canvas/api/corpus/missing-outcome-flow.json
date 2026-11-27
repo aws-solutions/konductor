@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "MISSING_KEY",
+      "column": 75,
+      "end_column": 87,
+      "end_line": 1,
+      "file": "missing-outcome-flow.yml",
+      "line": 1,
+      "path": "intent",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

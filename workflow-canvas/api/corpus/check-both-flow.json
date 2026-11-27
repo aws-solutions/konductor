@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 100,
+      "end_column": 130,
+      "end_line": 1,
+      "file": "check-both-flow.yml",
+      "line": 1,
+      "path": "intent.accept[0]",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

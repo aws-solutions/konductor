@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "MISSING_KEY",
+      "column": 1,
+      "end_column": 125,
+      "end_line": 1,
+      "file": "missing-version-flow.yml",
+      "line": 1,
+      "path": "",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}
