@@ -636,6 +636,29 @@ pub enum FlowAction {
         #[arg(long)]
         trust: Option<String>,
     },
+    /// Start the workflow canvas on a workflow, on the loopback address, and
+    /// print the launch address on one line. The address holds a one-time
+    /// code that works for 60 seconds. No browser is opened. A workflow that
+    /// needs confirmation is shown and asked about first, when there is a
+    /// terminal. The page comes from `KONDUCTOR_CANVAS_DIR`, or from `dist/`
+    /// next to this program. Ctrl+C ends the server and any live session
+    /// (exit 0). Exit 64 for a usage error, 74 when the page folder is
+    /// missing or the port cannot be bound.
+    View {
+        /// The workflow name, which is its file name without `.yml`.
+        name: String,
+        /// The program that runs each stage of a run started from the
+        /// canvas: `kiro-cli`, `claude` or `fake` (`fake` is for tests).
+        /// Without it the one runner harness that `konductor install`
+        /// recorded is used. With both installed, or neither, it is required.
+        #[arg(long)]
+        harness: Option<String>,
+        /// The script the `fake` harness replays. `KONDUCTOR_FAKE_SCRIPT`
+        /// names one too; this flag wins. Hidden from `--help` because it
+        /// is for tests.
+        #[arg(long = "fake-script", hide = true)]
+        fake_script: Option<std::path::PathBuf>,
+    },
     /// Show what a workflow will run and record that you trust it, or remove
     /// that record. A project workflow, and any workflow in a repository
     /// that has tool configuration files, runs only after this. Exit 77
@@ -1132,13 +1155,13 @@ mod tests {
     }
 
     #[test]
-    fn flow_names_only_the_check_show_run_and_trust_actions() {
+    fn flow_names_only_the_check_show_run_view_and_trust_actions() {
         let command = Cli::command();
         let flow = command
             .find_subcommand(Commands::FLOW)
             .expect("flow command");
         let names: Vec<&str> = flow.get_subcommands().map(|c| c.get_name()).collect();
-        assert_eq!(names, ["check", "show", "run", "trust"]);
+        assert_eq!(names, ["check", "show", "run", "view", "trust"]);
     }
 
     #[test]
@@ -1192,6 +1215,28 @@ mod tests {
         assert_eq!(parse(&["a"]), (Some("a".into()), false, None));
         assert_eq!(parse(&["a", "--yes"]), (Some("a".into()), true, None));
         assert_eq!(parse(&["--revoke", "a"]), (None, false, Some("a".into())));
+    }
+
+    #[test]
+    fn parses_flow_view_with_and_without_a_harness() {
+        let parse = |args: &[&str]| {
+            let mut argv = vec!["konductor", Commands::FLOW, "view"];
+            argv.extend_from_slice(args);
+            Cli::try_parse_from(argv).map(|cli| match cli.command {
+                Some(Commands::Flow {
+                    action: FlowAction::View { name, harness, .. },
+                }) => (name, harness),
+                other => panic!("expected Flow view, got {other:?}"),
+            })
+        };
+        assert_eq!(parse(&["a"]).unwrap(), ("a".into(), None));
+        assert_eq!(
+            parse(&["a", "--harness", "claude"]).unwrap(),
+            ("a".into(), Some("claude".into()))
+        );
+        // A name is required, and a goal is not a `view` input.
+        assert!(parse(&[]).is_err());
+        assert!(parse(&["a", "--goal", "x"]).is_err());
     }
 
     #[test]

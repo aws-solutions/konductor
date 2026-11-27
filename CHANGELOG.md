@@ -86,7 +86,12 @@ reference.
   A `tools` value that continues on an indented line is shown as unreadable, and an item `*` is shown as every tool.
   The summary names the file of each agent, the keys such as `hooks` and `mcpServers` that a
   Claude agent file sets (by name only), and `tools: unreadable` with the reason for a list it cannot read.
-- `workflow-canvas/api/corpus/` holds workflow files and their diagnostics that the stub and the Rust loader both check.
+- `konductor flow view <name>` starts the canvas server in Rust on the loopback address and prints a launch address.
+  The page that `workflow-canvas/` builds talks to it instead of the stub: the server checks and saves the workflow
+  file, starts a real run on the harness, and answers `trust_required` with the command to run in a terminal. A save
+  that changes the bytes leaves the trust record, so the next run needs `flow trust` again. `KONDUCTOR_CANVAS_DIR`
+  names the folder of the built page. `workflow-canvas/api/corpus/` holds workflow files and their diagnostics that
+  the stub and the Rust loader both check.
 
 ### Changed
 

@@ -48,6 +48,21 @@ impl FileRunStore {
         Ok(FileRunStore { runs })
     }
 
+    /// The store of a project that already has `.konductor/runs/`, or `None` if it has none. Nothing is made, so a
+    /// reader does not leave a folder behind in a project that never ran anything.
+    pub fn existing(project_root: &Path) -> Result<Option<FileRunStore>, PortError> {
+        let runs = project_root.join(RUNS_DIR);
+        match fs::symlink_metadata(&runs) {
+            Ok(meta) if meta.is_dir() => Ok(Some(FileRunStore { runs })),
+            Ok(_) => Err(PortError(format!(
+                "{} is not a folder (a link is not followed)",
+                runs.display()
+            ))),
+            Err(e) if e.kind() == ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(io_error("could not read", &runs, e)),
+        }
+    }
+
     /// `<project root>/.konductor/runs`.
     pub fn runs_dir(&self) -> &Path {
         &self.runs
