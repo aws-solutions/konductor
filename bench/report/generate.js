@@ -119,7 +119,7 @@ function writeOutputs({ dir, name, blocks, charts, title, format, json }) {
 function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir, profile = null, phases = null, qualityPack = null, allowStalePack = false }) {
   enrichOrch(run);
   const { dropNeedsAgent, exclusionNote } = require('./exclude.js');
-  const excluded = dropNeedsAgent(run, tasks);
+  const excluded = dropNeedsAgent(run);
   const a = analyze({ run, tasks, baseline, scoringFile, qualityPack, allowStalePack });
   const sens = quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack, primary: a, allowStalePack });
   const d = detailOf(detail);

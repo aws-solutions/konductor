@@ -13,6 +13,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadRun, readJson } = require('./load.js');
+const { dropNeedsAgent, exclusionNote } = require('./exclude.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze } = require('./generate.js');
 const { computeScores, qualityOfRun, loadScoring, MIN_N } = require('./scores.js');
@@ -266,8 +267,10 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   const inputs = [];
   const skippedDirs = [];
+  const excluded = [];
   for (const d of dirs) {
     const run = loadRun(d);
+    excluded.push(...dropNeedsAgent(run));
     if (!run.runs.some((r) => r.armId === baseline)) {
       skippedDirs.push({ dir: run.dir, reason: `no run of the baseline arm "${baseline}" (arms present: ${[...new Set(run.runs.map((r) => r.armId))].join(', ')})` });
       continue;
@@ -388,6 +391,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
   for (const a of arms) byId.set(a.armId, [...(byId.get(a.armId) || []), a.label]);
   for (const [id, ls] of byId) if (ls.length > 1) notes.push(`${id} appears at ${ls.length} commits: ${ls.join(', ')}. They are separate arms and are never merged.`);
   for (const s of skippedDirs) notes.push(`${s.dir} was left out: ${s.reason}.`);
+  if (excluded.length) notes.push(exclusionNote(excluded));
   if (comparisons > 1) notes.push(`${comparisons} arms are compared with the baseline, so each quality interval is widened to the Bonferroni level of ${levelText(1 - 0.05 / comparisons)} (0.05 divided by ${comparisons}) to keep the chance of any false call near 5%. An arm that cleared 95% alone can need more cells here.`);
   if (arms.some((a) => a.failedAsZero)) notes.push('A run that failed or timed out with nothing to score counts as quality 0. Infra errors and model mismatches are left out of quality and listed, and a side with more than a fifth of its runs in that state gets no call.');
 

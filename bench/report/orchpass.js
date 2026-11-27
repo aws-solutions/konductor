@@ -16,6 +16,7 @@
 
 const path = require('node:path');
 const { loadRun } = require('./load.js');
+const { dropNeedsAgent, exclusionNote } = require('./exclude.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze, outPaths, writeOutputs, formatOf } = require('./generate.js');
 const { computeScores, loadScoring, MIN_N } = require('./scores.js');
@@ -273,8 +274,10 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
   const skippedDirs = [];
   const quotes = [];
   let unit = 'credits';
+  const excluded = [];
   for (const d of dirs) {
     const run = loadRun(d);
+    excluded.push(...dropNeedsAgent(run));
     if (!run.runs.some((r) => r.armId === baseline)) {
       skippedDirs.push({ dir: run.dir, reason: `no run of the baseline arm "${baseline}" (arms present: ${[...new Set(run.runs.map((r) => r.armId))].join(', ')})` });
       continue;
@@ -323,6 +326,7 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
     for (const { c, x } of hits.filter((h) => h.x.aaRepeatOf)) notes.push(`--test-arms names ${name}, which is an A/A repeat of ${x.aaRepeatOf} in ${c.key}. A repeat measures drift and gets no call. Name ${x.aaRepeatOf} to get one.`);
   }
   for (const s of skippedDirs) notes.push(`${s.dir} was left out: ${s.reason}.`);
+  if (excluded.length) notes.push(exclusionNote(excluded));
   if (comparisons > 1) notes.push(`${comparisons} test arms are compared with vanilla in this report, so each quality interval is widened to the Bonferroni level of ${levelText(1 - 0.05 / comparisons)} (0.05 divided by ${comparisons}).`);
   if (cells.some((c) => c.arms.some((a) => a.failedAsZero))) notes.push('A run that failed or timed out with nothing to score counts as quality 0, and its cost counts. Infra errors and model mismatches are left out of quality and listed, and a side with more than a fifth of its runs in that state gets no call.');
   const costNoun = cells.length && cells.every((c) => isUsdRuntime(c.harness)) ? 'USD at list price' : 'credits';

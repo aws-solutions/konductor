@@ -1442,6 +1442,7 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
 `report.html` (one file: inline CSS and SVG, no script, no external resource, prints), `report.json` and `charts/*.svg` (linked from the markdown, so it renders on GitHub).
 `contrast` names them `contrast.md`, `contrast.html` and `contrast.json`; `cap prune-report` writes `prune-report.md`, `prune-report.html` and `prune-report.json`, plus `charts/` (also with `--format md`).
 `--run DIR,DIR` merges several run directories read-only (a taken replicate number moves to the next free one) and needs `--out`; `contrast --out DIR` keeps the run directory unwritten.
+A task named in `needsAgent` of `bench/scenarios/load-fairness.json` (t12-cmux-parallel-merge needs konductor-cmux-orchestrator) leaves the run report, `--verdict platform` and `--verdict orchestrator-pass` for every arm when none of its runs started in that agent; each page says so in a note (`report/exclude.js`).
 - quick: scorecard, three flags, one headline table (quality, reliability, autonomy, cost ratio), the cost-vs-quality scatter, the per-task dot plot.
 - full: everything in quick, then scores with their components, cost bars with CIs (overall and per class), dot plots, forest plots against the base with the A/A noise band,
   the judge heatmap and pairwise bars, autonomy, skill load, contamination, spend by phase, run durations, provenance, commands to reproduce, and the existing text tables unchanged.
