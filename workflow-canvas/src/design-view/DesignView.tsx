@@ -233,6 +233,9 @@ export function DesignView({
   const [sent, setSent] = useState<string>();
   const sentText = submittedText ?? sent;
   const history = useEditHistory(savedText);
+  const paramCounts = useRef(
+    new Map<string, number>([[savedText, state.draft.params.length]]),
+  );
   const draft = useYamlDraft({
     initialText: savedText,
     name: state.saved.name,
@@ -262,8 +265,9 @@ export function DesignView({
   useEffect(() => {
     if (held.current === loaded) return;
     held.current = loaded;
+    paramCounts.current = new Map([[savedText, state.draft.params.length]]);
     reset(savedText);
-  }, [loaded, savedText, reset]);
+  }, [loaded, savedText, reset, state.draft.params.length]);
   // The draft opens its text unchecked, so the keys of a stage are read from
   // a check of the file as it was loaded, and where each stage of the draft
   // came from in that same file is read beside it.
@@ -290,9 +294,10 @@ export function DesignView({
   // can write, so undo always lands on one.
   useEffect(() => {
     if (written !== undefined) {
+      paramCounts.current.set(written, state.draft.params.length);
       record(written, rawText === undefined ? 'stages' : 'text');
     }
-  }, [rawText, record, written]);
+  }, [rawText, record, state.draft.params.length, written]);
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
@@ -318,10 +323,13 @@ export function DesignView({
   // of this draft only while no stage was added, deleted or moved since.
   const ofNow = answer?.view ? answer : undefined;
   const checked = ofNow ?? draft.lastGood ?? opened.answer;
+  const shownParamCount =
+    paramCounts.current.get(history.text) ?? state.draft.params.length;
   const spec = useMemo(
     () => ({
       name: state.saved.view.name,
       intent: state.saved.view.intent,
+      paramCount: shownParamCount,
       stages: state.draft.stages.map((stage) => {
         const from = state.bases.indexOf(stage.id);
         const source = from < 0 ? undefined : state.saved.view.stages[from];
@@ -336,13 +344,14 @@ export function DesignView({
         };
       }),
     }),
-    [state.bases, state.draft.stages, state.saved.view],
+    [state.bases, state.draft.stages, state.saved.view, shownParamCount],
   );
   const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
   const { select } = editor;
   // Counts the times a stage has been chosen in the drawing, so the side
   // column opens its keys each time, as the drawing says it will.
   const [opens, setOpens] = useState(0);
+  const [paramOpens, setParamOpens] = useState(0);
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const selection = useMemo<CanvasSelection>(
     () => ({
@@ -355,6 +364,7 @@ export function DesignView({
         select(stage.id);
         setOpens((count) => count + 1);
       },
+      onParams: () => setParamOpens((count) => count + 1),
     }),
     [state.selectedId, state.draft.stages, select],
   );
@@ -557,6 +567,13 @@ export function DesignView({
           stage={stage}
           agents={agents}
           openProperties={opens}
+          openParams={paramOpens}
+          params={state.draft.params}
+          paramsDisabled={frozen !== undefined || refusal !== undefined}
+          paramsDisabledReason={frozen ?? refusal}
+          onParamChange={(id, change) => editor.setParam(id, change)}
+          onParamAdd={editor.addParam}
+          onParamRemove={editor.removeParam}
           onStageChange={({ values: next }) => {
             if (!picked) return;
             const name = next.name ?? '';

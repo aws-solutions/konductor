@@ -210,8 +210,20 @@
   margin-top: 8px;
   color: var(--wf-intent-text);
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wf-intent-params-position {
+  position: absolute !important;
+  right: 14px !important;
+  bottom: 10px !important;
+  z-index: 2;
+  pointer-events: all !important;
+}
+
+.wf-intent-params-control {
+  pointer-events: all !important;
 }
 
 /* The card is one SVG (see nodes.tsx); this file only gives it colours. */

@@ -10,7 +10,12 @@ import {
   type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useMemo, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useMemo,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import type { CanvasGraph } from '../graph';
 import './canvas.css';
 import { READ_ONLY_ARIA_LABELS, SELECTABLE_ARIA_LABELS } from './aria-labels';
@@ -44,6 +49,8 @@ export interface CanvasSelection {
    * Enter or Space, also when it is the selected one already.
    */
   onSelect(nodeId: string): void;
+  /** Opens the workflow parameter editor from the intent card. */
+  onParams?(): void;
 }
 
 /**
@@ -62,9 +69,23 @@ export function WorkflowCanvas({
 }) {
   const selectedId = selection?.selectedId;
   const onSelect = selection?.onSelect;
+  const onParams = selection?.onParams;
   const nodes = useMemo(
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
     [graph.nodes, onSelect, selectedId],
+  );
+  const onClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const target = event.target;
+      if (
+        onParams &&
+        target instanceof HTMLElement &&
+        target.closest('[data-intent-params="true"]')
+      ) {
+        onParams();
+      }
+    },
+    [onParams],
   );
   // The nodes carry React Flow's `nokey` class (see markSelectable), so it
   // leaves their keys alone: Escape no longer drops focus, and a key is not
@@ -95,6 +116,7 @@ export function WorkflowCanvas({
       role="region"
       aria-label="Workflow graph"
       style={{ height: CANVAS_HEIGHT }}
+      onClick={onClick}
       onKeyDown={onKeyDown}
     >
       <ReactFlow
