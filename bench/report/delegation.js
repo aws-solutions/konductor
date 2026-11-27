@@ -124,11 +124,13 @@ function costSplit(run, spec = loadMetricsSpec()) {
     const es = executed(run).filter((e) => e.armId === arm);
     const sp = es.map((e) => ({ e, s: splitOf(e, spec) }));
     const num = (v) => (fin(v) ? v : 0);
+    // The charged figure, as in Spend: a censored run has no credits but a charged lower bound.
+    const cost = (e) => num(e.result.creditsCharged ?? e.result.credits);
     return {
       arm, runs: es.length, withSubs: sp.filter((x) => x.s.subs).length,
       turnMs: sum(es.map((e) => num(e.result.turnDurationMs))), subMs: sum(sp.map((x) => x.s.subMs)), reviewerSubMs: sum(sp.map((x) => x.s.reviewerSubMs)),
       mainCalls: sum(es.map((e) => num(e.result.toolCalls))), subCalls: sum(sp.map((x) => x.s.subCalls)),
-      credits: sum(es.map((e) => num(e.result.credits))), creditsWithSubs: sum(sp.filter((x) => x.s.subs).map((x) => num(x.e.result.credits))),
+      credits: sum(es.map(cost)), creditsWithSubs: sum(sp.filter((x) => x.s.subs).map((x) => cost(x.e))),
     };
   });
 }
@@ -244,7 +246,7 @@ function costSplitBlocks(rows) {
   if (!rows.length) return [];
   return [
     D.h(2, 'Main session and sub-executions'),
-    D.table(['arm', 'runs', 'runs with sub-executions', 'turn time (min, sum)', 'in sub-executions', 'in reviewer sub-executions', 'main-session tool calls', 'sub-execution tool calls', 'credits (sum)', 'credits of runs with sub-executions'],
+    D.table(['arm', 'runs', 'runs with sub-executions', 'turn time (min, sum)', 'in sub-executions', 'in reviewer sub-executions', 'main-session tool calls', 'sub-execution tool calls', 'credits charged (sum)', 'credits charged in runs with sub-executions'],
       rows.map((r) => [r.arm, r.runs, r.withSubs, minutes(r.turnMs), pct(r.subMs, r.turnMs), pct(r.reviewerSubMs, r.turnMs), r.mainCalls, r.subCalls, r.credits.toFixed(1), r.creditsWithSubs.toFixed(1)])),
     D.note('Sub-execution time is the union of each spawn transcript\'s first-to-last timestamp (session/*/sub-executions/*.jsonl), so parallel spawns count once; the main agent mostly waits meanwhile. Reviewer sub-executions are the spawns classed as reviews (see Orchestration). kiro-cli meters credits once per turn, not per spawn, so credits cannot be split; the last column is the whole cost of the runs that spawned.'),
   ];

@@ -11,6 +11,8 @@ const { orchMetricsOfRunDir, ORCH_VERSION } = require('../runner/lib/orch-metric
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : 'n/a');
+const total = (xs) => xs.reduce((a, b) => a + b, 0);
+const withSum = (m, n) => (fin(m) ? `${m.toFixed(1)} (${n})` : 'n/a');
 
 /**
  * Fills result.orch from the run directory when it is missing or older than ORCH_VERSION. Sets entry.orchSource to
@@ -48,7 +50,8 @@ function summarize(run, { phases = null } = {}) {
     const totals = have.map((e) => phaseTotals(e.result.orch, phases)).filter(Boolean);
     return {
       arm, runs: entries.length, withData: have.length,
-      spawns: mean(get('spawns')), makerSpawns: mean(get('makerSpawns')), reviewerSpawns: mean(get('reviewerSpawns')), maxDepth: get('maxSpawnDepth').length ? Math.max(...get('maxSpawnDepth')) : null,
+      spawns: mean(get('spawns')), makerSpawns: mean(get('makerSpawns')), reviewerSpawns: mean(get('reviewerSpawns')),
+      makerSpawnsSum: total(get('makerSpawns')), reviewerSpawnsSum: total(get('reviewerSpawns')), maxDepth: get('maxSpawnDepth').length ? Math.max(...get('maxSpawnDepth')) : null,
       reviewRounds: mean(get('reviewRounds')), reworksAfterPass: mean(get('reworksAfterPass')),
       phaseDocsPresent: totals.length ? mean(totals.map((t) => (t.total ? t.present / t.total : 0))) : null,
       phaseDocsComplete: totals.length ? mean(totals.map((t) => Number(t.complete))) : null,
@@ -62,8 +65,8 @@ function orchBlocks(run, { phases = null } = {}) {
   const sums = summarize(run, { phases });
   if (!sums.some((s) => s.withData)) return [];
   const showDocs = Boolean(phases);
-  const head = ['arm', 'runs', 'with data', 'maker spawns (mean)', 'reviewer spawns (mean)', 'max spawn depth', 'reworks after a pass (mean)', ...(showDocs ? ['phase documents present (mean)', 'every document present'] : [])];
-  const rows = sums.map((s) => [s.arm, s.runs, s.withData, f(s.makerSpawns), f(s.reviewerSpawns), fin(s.maxDepth) ? s.maxDepth : 'n/a', f(s.reworksAfterPass), ...(showDocs ? [fin(s.phaseDocsPresent) ? `${(s.phaseDocsPresent * 100).toFixed(0)}%` : 'n/a', fin(s.phaseDocsComplete) ? `${(s.phaseDocsComplete * 100).toFixed(0)}%` : 'n/a'] : [])]);
+  const head = ['arm', 'runs', 'with data', 'maker spawns (mean, sum)', 'reviewer spawns (mean, sum)', 'max spawn depth', 'reworks after a pass (mean)', ...(showDocs ? ['phase documents present (mean)', 'every document present'] : [])];
+  const rows = sums.map((s) => [s.arm, s.runs, s.withData, withSum(s.makerSpawns, s.makerSpawnsSum), withSum(s.reviewerSpawns, s.reviewerSpawnsSum), fin(s.maxDepth) ? s.maxDepth : 'n/a', f(s.reworksAfterPass), ...(showDocs ? [fin(s.phaseDocsPresent) ? `${(s.phaseDocsPresent * 100).toFixed(0)}%` : 'n/a', fin(s.phaseDocsComplete) ? `${(s.phaseDocsComplete * 100).toFixed(0)}%` : 'n/a'] : [])]);
   const backfilled = sums.reduce((n, s) => n + s.backfilled, 0);
   return [
     D.h(2, 'Orchestration'),

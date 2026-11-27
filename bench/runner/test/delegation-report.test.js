@@ -110,7 +110,7 @@ test('sub-executions are read as time spans and tool calls; overlapping spans co
 test('the cost split gives each arm main-session and sub-execution time and calls, with the reviewer share', () => {
   const runs = [
     { arm: 'a', rep: 1, events: [v3call('c1', 's1', 'Review the change'), v3call('c2', 's2', 'Implement the change')], over: { turnDurationMs: 30000, toolCalls: 6, credits: 9 } },
-    { arm: 'a', rep: 2, over: { turnDurationMs: 10000, toolCalls: 4, credits: 3 } },
+    { arm: 'a', rep: 2, over: { turnDurationMs: 10000, toolCalls: 4, credits: null, creditsCharged: 3 } },
     { arm: 'b', rep: 1, over: { turnDurationMs: 8000, toolCalls: 5, credits: 2 } },
   ];
   const s = setup(runs);

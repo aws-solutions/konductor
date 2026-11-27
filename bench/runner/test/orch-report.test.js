@@ -133,10 +133,10 @@ test('the run report block splits spawns into maker and reviewer spawns, so a re
     orch.enrichOrch(run);
     const blocks = orch.orchBlocks(run, { phases: ['design'] });
     const table = blocks.find((b) => b.t === 'table');
-    assert.deepEqual(table.head.slice(0, 5), ['arm', 'runs', 'with data', 'maker spawns (mean)', 'reviewer spawns (mean)']);
+    assert.deepEqual(table.head.slice(0, 5), ['arm', 'runs', 'with data', 'maker spawns (mean, sum)', 'reviewer spawns (mean, sum)']);
     assert.ok(!table.head.some((h) => /^spawns|review rounds/.test(h)), 'no column counts the reviews a second time');
     const row = table.rows.find((r) => r[0] === 'a');
-    assert.deepEqual(row.slice(3, 5), ['3.0', '2.0'], 'build and two fixes are maker spawns; two reviews are reviewer spawns');
+    assert.deepEqual(row.slice(3, 5), ['3.0 (3)', '2.0 (2)'], 'build and two fixes are maker spawns; two reviews are reviewer spawns; the sum follows the mean');
     assert.ok(row.includes('1.0'), 'mean reworks after a pass');
     assert.match(JSON.stringify(blocks), /heuristic/);
   } finally { s.done(); }
@@ -188,7 +188,7 @@ test('the written run report and contrast carry the orchestration figures', () =
     const r = generateRunReport({ run, tasks, baseline: 'base', out, detail: 'full', format: 'both', defaultDir: s.runDir, phases: ['design'] });
     const md = fs.readFileSync(path.join(out, 'report.md'), 'utf8');
     assert.match(md, /## Orchestration/);
-    assert.match(md, /\| head \| 3 \| 3 \| 2\.0 \| 1\.0 \| 1 \| 1\.0 \|/);
+    assert.match(md, /\| head \| 3 \| 3 \| 2\.0 \(6\) \| 1\.0 \(3\) \| 1 \| 1\.0 \|/);
     assert.match(md, /phase documents present/);
     assert.equal(r.json.orchestration.find((x) => x.arm === 'head').spawns, 3);
     assert.match(fs.readFileSync(path.join(out, 'report.html'), 'utf8'), /Orchestration/);
