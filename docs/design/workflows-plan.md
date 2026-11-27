@@ -357,7 +357,9 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   blocked, and a stage that creates or modifies it passes. Playwright: add a param, add an output name and path, run.
 - **Demo:** you can have a `plan` stage declare `design: DESIGN.md` and an `implement` stage told to read
   `{plan.design}`, which renders as `DESIGN.md`, with the run blocked if the file is missing.
-- **Already in the PoC:** nothing. The stub's `RunRequest` carries `params.goal` only (verified).
+- **Already in the PoC:** stage outcome validation, transport through the contract, stub and client, and read-only
+  display in Properties. Outcome editing, the planned params and outputs work, and the engine's `Stage outcome:` prompt
+  line are not built yet.
 
 ## Slice 3: Checks and command stages
 
