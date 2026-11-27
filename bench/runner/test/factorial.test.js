@@ -11,6 +11,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench, makeRun, addTask } = require('./helpers.js');
 const { loadTasks } = require('../lib/tasks.js');
+const { ORCH_VERSION } = require('../lib/orch-metrics.js');
 const { taskRevision } = require('../../judge/revision.js');
 const { buildFactorial, renderFactorial, factorialCharts, canonicalModel } = require('../../report/factorial.js');
 const { toMarkdown } = require('../../report/doc.js');
@@ -41,7 +42,7 @@ function cell(root, bench, name, o) {
       const base = cc
         ? { harness: 'claude-code', credits: null, kiroCliVersion: null, harnessVersion: '2.1.316', model: model ?? 'us.anthropic.claude-sonnet-5-5', costUsd: cost(task, rep), costCensored: false, sessionModel: 'claude-sonnet-5-5', claudeCode: { canonicalModel: 'claude-sonnet-5-5', modelsSeen: ['claude-sonnet-5-5'], spawned: spawns } }
         : { credits: cost(task, rep), model: model ?? 'claude-sonnet-5.5', sessionModel: model ?? 'claude-sonnet-5.5', subagentCalls: spawns, agentEngine: 'v3' };
-      specs.push({ arm, task, rep, status: st, commitSha: sha, orch: { spawns }, ...base, ...extra(task, rep), ...(st === 'timeout' ? { checks: [{ type: 'file_exists', path: 'a.txt', passed: false }] } : {}) });
+      specs.push({ arm, task, rep, status: st, commitSha: sha, orch: { version: ORCH_VERSION, spawns }, ...base, ...extra(task, rep), ...(st === 'timeout' ? { checks: [{ type: 'file_exists', path: 'a.txt', passed: false }] } : {}) });
     }
   }
   const dir = path.join(root, name);
