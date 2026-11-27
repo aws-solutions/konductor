@@ -82,6 +82,7 @@ test('the written run report and its json carry the review compliance of a requi
     assert.match(md, /## Main session and sub-executions/);
     assert.equal(r.json.costSplit.find((x) => x.arm === 'head').runs, 2);
     assert.ok(Array.isArray(r.json.contextPerArm), 'context per arm is in the json even when no run reported context');
+    assert.ok(Array.isArray(r.json.promptFloor));
   } finally { s.done(); }
 });
 
@@ -152,5 +153,27 @@ test('context per arm is the median over runs with a report, and the block shows
     const md = JSON.stringify(dl.contextBlocks(rows));
     assert.match(md, /Context per arm/);
     assert.match(md, /20000/);
+  } finally { s.done(); }
+});
+
+// ---- prompt-size floor ----
+test('the prompt-size floor per arm: always-loaded files, tool specs and the agent prompt, and the extra over the base arm', () => {
+  const items = [{ name: '~/.kiro/context/k-core-rules.md', tokens: 3000, matched: true }, { name: 'AGENTS.md', tokens: 0, matched: false }];
+  const runs = [
+    { arm: 'base', rep: 1, events: [ctxEv(1, BD(0, 7000, 3000))] },
+    { arm: 'head', rep: 1, events: [ctxEv(2, BD(3000, 7400, 3000, items))] },
+  ];
+  const s = setup(runs);
+  try {
+    write(path.join(s.dirOf(runs[1]), 'installed-agent.json'), JSON.stringify({ name: 'konductor', prompt: 'x'.repeat(400) }));
+    const rows = dl.promptFloor(loadRun(s.runDir), 'base');
+    const head = rows.find((r) => r.arm === 'head');
+    assert.deepEqual({ files: head.files, ctx: head.contextFiles, tools: head.tools, chars: head.agentPromptChars, floor: head.floorTokens, extra: head.extraTokens },
+      { files: [{ name: '~/.kiro/context/k-core-rules.md', tokens: 3000 }], ctx: 3000, tools: 7400, chars: 400, floor: 10500, extra: 3500 });
+    const base = rows.find((r) => r.arm === 'base');
+    assert.deepEqual({ chars: base.agentPromptChars, floor: base.floorTokens, extra: base.extraTokens }, { chars: null, floor: 7000, extra: 0 });
+    const md = JSON.stringify(dl.floorBlocks(rows, 'base'));
+    assert.match(md, /Prompt-size floor/);
+    assert.match(md, /k-core-rules\.md \(3000\)/);
   } finally { s.done(); }
 });

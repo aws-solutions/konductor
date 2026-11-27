@@ -9,6 +9,8 @@
 // metered per turn, not per spawn, so the split is in time and calls; credits are only shown per run.
 // Context per arm: the main session's context_usage reports in stream.jsonl (about one per model call): the fixed
 // context of the first breakdown (context files, tool specs, prompts) and the mean and peak share of the window.
+// Prompt-size floor: what an arm sends on every model call before any work, the always-loaded context files and tool
+// specs of that breakdown plus the agent prompt of installed-agent.json, which the breakdown does not count.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -160,20 +162,66 @@ function contextOf(runDir) {
   }
   if (!pcts.length) return null;
   const fixedTokens = first ? Object.keys(first).reduce((n, key) => n + tokensOf(first, key), 0) : null;
+  const files = (first?.contextFiles?.items || []).filter((i) => i.matched && i.tokens > 0).map((i) => ({ name: i.name, tokens: i.tokens }));
   return {
-    fixedTokens, contextFiles: first ? tokensOf(first, 'contextFiles') : null, tools: first ? tokensOf(first, 'tools') : null, prompts: first ? tokensOf(first, 'yourPrompts') : null,
+    files, fixedTokens, contextFiles: first ? tokensOf(first, 'contextFiles') : null, tools: first ? tokensOf(first, 'tools') : null, prompts: first ? tokensOf(first, 'yourPrompts') : null,
     updates: pcts.length, meanPct: sum(pcts) / pcts.length, peakPct: Math.max(...pcts),
     windowTokens: fixedTokens && firstPct > 0 ? Math.round(fixedTokens / (firstPct / 100)) : null,
   };
 }
 
+/** contextOf of a run entry, read once and kept on the entry. */
+function cachedContext(e) {
+  if (e.delegationContext === undefined) e.delegationContext = contextOf(e.dir);
+  return e.delegationContext;
+}
+
 /** Per arm: runs with a context report, and the median over them of each contextOf field. */
 function contextPerArm(run) {
   return armsOf(run).map((arm) => {
-    const cs = executed(run).filter((e) => e.armId === arm).map((e) => { if (e.delegationContext === undefined) e.delegationContext = contextOf(e.dir); return e.delegationContext; }).filter(Boolean);
+    const cs = executed(run).filter((e) => e.armId === arm).map(cachedContext).filter(Boolean);
     const med = (k) => median(cs.map((c) => c[k]));
     return { arm, withData: cs.length, fixedTokens: med('fixedTokens'), contextFiles: med('contextFiles'), tools: med('tools'), prompts: med('prompts'), updates: med('updates'), meanPct: med('meanPct'), peakPct: med('peakPct'), windowTokens: med('windowTokens') };
   });
+}
+
+const CHARS_PER_TOKEN = 4;
+const num0 = (v) => (fin(v) ? v : 0);
+
+/** The agent prompt's length in characters from installed-agent.json, or null (vanilla, or a prompt kept in a file). */
+function agentPromptChars(runDir) {
+  try {
+    const prompt = readJson(path.join(runDir, 'installed-agent.json')).prompt;
+    return typeof prompt === 'string' && !prompt.startsWith('file://') ? prompt.length : null;
+  } catch { return null; }
+}
+
+/**
+ * Per arm, from its first run with a context report: files (always-loaded, with tokens), contextFiles and tools
+ * tokens, agentPromptChars, floorTokens (the three summed, the prompt at CHARS_PER_TOKEN) and extraTokens over base.
+ */
+function promptFloor(run, base) {
+  const rows = armsOf(run).map((arm) => {
+    const e = executed(run).find((x) => x.armId === arm && cachedContext(x));
+    if (!e) return { arm, files: [], contextFiles: null, tools: null, agentPromptChars: null, floorTokens: null, extraTokens: null };
+    const c = e.delegationContext;
+    const chars = agentPromptChars(e.dir);
+    return { arm, files: c.files, contextFiles: c.contextFiles, tools: c.tools, agentPromptChars: chars, floorTokens: num0(c.contextFiles) + num0(c.tools) + Math.ceil(num0(chars) / CHARS_PER_TOKEN), extraTokens: null };
+  });
+  const b = rows.find((r) => r.arm === base)?.floorTokens;
+  for (const r of rows) r.extraTokens = fin(b) && fin(r.floorTokens) ? r.floorTokens - b : null;
+  return rows;
+}
+
+function floorBlocks(rows, base) {
+  if (!rows.some((r) => fin(r.floorTokens))) return [];
+  return [
+    D.h(2, 'Prompt-size floor'),
+    D.table(['arm', 'always-loaded context files (tokens)', 'tool specs (tokens)', 'agent prompt (characters)', 'floor (tokens, about)', `extra over ${base} (tokens)`],
+      rows.map((r) => [r.arm, n0(r.contextFiles), n0(r.tools), fin(r.agentPromptChars) ? r.agentPromptChars : 'built-in', n0(r.floorTokens), n0(r.extraTokens)])),
+    D.list(rows.filter((r) => r.files.length).map((r) => `${r.arm}: ${r.files.map((f) => `${f.name} (${f.tokens})`).join(', ')}`)),
+    D.note(`What each arm sends on every model call before any work: the always-loaded context files and tool specs from the first context report, plus the agent prompt from installed-agent.json at ${CHARS_PER_TOKEN} characters per token (the context breakdown does not count it). A built-in agent's prompt is not recorded, so the extra is over ${base}'s files and tools only. A trim target for the keep-or-prune work; the user's own prompt is left out.`),
+  ];
 }
 
 const n0 = (v) => (fin(v) ? String(Math.round(v)) : 'n/a');
@@ -186,7 +234,7 @@ function contextBlocks(rows) {
     D.h(2, 'Context per arm'),
     D.table(['arm', 'runs with data', 'fixed context at start (tokens)', 'context files', 'tool specs', 'prompts', 'context reports per run', 'mean share per report', 'about (tokens)', 'peak share', 'about (tokens)'],
       rows.map((r) => [r.arm, r.withData, n0(r.fixedTokens), n0(r.contextFiles), n0(r.tools), n0(r.prompts), fin(r.updates) ? r.updates.toFixed(1) : 'n/a', p1(r.meanPct), kTok(r.meanPct, r.windowTokens), p1(r.peakPct), kTok(r.peakPct, r.windowTokens)])),
-    D.note('Medians over the runs of each arm. The main session reports its context use in stream.jsonl (session_info_update, kind context_usage), about once per model call; spawns are not included. The fixed context is the first report\'s breakdown: always-loaded context files, built-in and MCP tool specs, and the prompts (the agent prompt itself is not in the breakdown). Tokens are estimates: the window is the fixed context over its first share, which kiro-cli rounds to 0.1%.'),
+    D.note('Medians over the runs of each arm. The main session reports its context use in stream.jsonl (session_info_update, kind context_usage), about once per model call; spawns are not included. The fixed context is the first report\'s breakdown: always-loaded context files, built-in and MCP tool specs, and the prompts (the agent prompt itself is not in the breakdown; see Prompt-size floor). Tokens are estimates: the window is the fixed context over its first share, which kiro-cli rounds to 0.1%.'),
   ];
 }
 
@@ -203,4 +251,4 @@ function costSplitBlocks(rows) {
 }
 
 
-module.exports = { loadReviewRules, requiredReview, reviewCompliance, complianceBlocks, subExecutions, unionMs, costSplit, costSplitBlocks, contextOf, contextPerArm, contextBlocks, RULES_FILE };
+module.exports = { loadReviewRules, requiredReview, reviewCompliance, complianceBlocks, subExecutions, unionMs, costSplit, costSplitBlocks, contextOf, contextPerArm, contextBlocks, promptFloor, floorBlocks, RULES_FILE };
