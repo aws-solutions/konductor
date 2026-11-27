@@ -788,8 +788,9 @@ The code follows the ports-and-adapters split of the graph:
 
 ## Theme
 
-The page has the look of the Konductor docs theme: its colours, fonts and
-corner radii, in a light and a dark mode.
+The page uses a warm paper palette in light mode and deep violet surfaces in
+dark mode. Both use Outfit for text, JetBrains Mono for code and small labels,
+and a violet accent.
 
 - `src/theme/tokens.ts` holds every colour, font and radius of the theme, as
   two palettes and the Cloudscape token map built from them. Nothing else
@@ -798,7 +799,8 @@ corner radii, in a light and a dark mode.
   `:root[data-theme='dark']`. A test checks that they match the palettes.
 - `src/theme/install.ts` applies the token map with `applyTheme` from
   `@cloudscape-design/components/theming` (colours, fonts and radii only,
-  with a value for each mode) and switches the mode with `applyMode` from
+  with a value for each mode), publishes the active palette as `--wf-*` CSS
+  variables, and switches the mode with `applyMode` from
   `@cloudscape-design/global-styles`. The header band and the top bar are dark
   in both modes, so their text colours are set for the band in `tokens.ts`.
   The root element gets `data-theme` (`light` or `dark`) and `color-scheme`; a
