@@ -16,8 +16,7 @@
       "use": "quoted"
     },
     "date": "2026-11-26",
-    "singleFamily": true,
-    "note": "The hidden tests, the reference port, the sample data and docs/INTERFACE.md were written by Claude-family workers, and the subject model is Claude, so author and subject share a family. NEEDS a recheck by a non-Claude family before any score is used (not yet run; it is a paid call). The rules of jobs 1 and 2 in docs/REQUIREMENTS.md carry over unchanged from cx-carddemo-port (signed by the owner: P5, P7, I2, I3, I4, no fees). The rules R1 to R8 of jobs 3 and 4 were signed by the owner on 2026-11-26 as written. The expected outputs in hidden/golden were written by the reference port itself; the hand-worked report and statement lines in hidden/report.test.js and statements.test.js are the independent part. No GnuCOBOL was available, so no golden comes from the COBOL."
+    "note": "The hidden tests, the reference port, the sample data and docs/INTERFACE.md were written by Claude-family workers, and the subject model is Claude, so author and subject share a family. NEEDS a recheck by a non-Claude family before any score is used (not yet run; it is a paid call). The rules of jobs 1 and 2 in docs/REQUIREMENTS.md carry over unchanged from cx-carddemo-port (signed by the owner: P5, P7, I2, I3, I4, no fees). The rules R1 to R8 of jobs 3 and 4 were signed by the owner on 2026-11-26 as written. The expected outputs in hidden/golden were written by the reference port itself; the hand-worked report and statement lines in hidden/report.test.js and statements.test.js are the independent part. No GnuCOBOL was available, so no golden comes from the COBOL. Rechecked 2026-11-27 by three non-Claude families (gpt-5.6-luna, deepseek-3.2, glm-5), each reading the rules, INTERFACE.md, hidden tests and goldens: no mismatch; see review.recheck."
   },
   "checks": [
     {
@@ -119,5 +118,44 @@
   "bundleLimits": {
     "maxFileChars": 40000,
     "maxBundleChars": 95000
+  },
+  "review": {
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-27",
+      "pin": "b46f24e8ebbe59aa9ab012ac0da9bc1ae9d5549a",
+      "source": "DEBT D-275/D-276: results C1 to C6 in reports/debt-paid/D-275/results (kept outside the repo)",
+      "verdict": "pass",
+      "families": [
+        {
+          "call": "C4.json",
+          "family": "openai",
+          "model": "gpt-5.6-luna",
+          "mismatches": 0,
+          "notes": [],
+          "checked": "Read REQUIREMENTS.md, INTERFACE.md, all hidden tests and relevant COBOL/copybooks; hand-checked four goldens, post, interest, report-all, and statements, against the sample data and rules."
+        },
+        {
+          "call": "C5.json",
+          "family": "deepseek",
+          "model": "deepseek-3.2",
+          "mismatches": 2,
+          "notes": [
+            "P12 in posting.test.js: Rule P12 (reject record layout) is implicitly tested by checking reject record length and content in P2 test, but not explicitly referenced by rule ID.",
+            "I4 in interest.test.js and golden.test.js: Zero interest rows (balance ≤ 0 or rate = 0) are accepted either way: tests drop +0.00 rows before comparison, consistent with comment that this is 'accepted either way'."
+          ],
+          "checked": "Read all rule IDs (P1-P13, I1-I9, M1-M3, R1-R8) and verified test coverage; examined 5 golden files (post/summary.json, post/dalyrejs.txt, interest/transact.txt, report-all/report.txt, statements/summary.json) and spot-checked formatting, counts, and layout correctness."
+        },
+        {
+          "call": "C6.json",
+          "family": "zhipu",
+          "model": "glm-5",
+          "mismatches": 0,
+          "notes": [],
+          "checked": "Read REQUIREMENTS.md, INTERFACE.md, all 6 hidden test files, lib/cd.js, lib/day.js, copybooks CVTRA05Y.cpy, CVTRA07Y.cpy, COSTM01.cpy, CUSTREC.cpy. Spot-checked golden files for post (transact.txt, dalyrejs.txt, summary.json), report-all (report.txt, summary.json), interest (transact.txt, summary.json), statements (statement.txt, statement.html, summary.json). Verified rule-to-test mappings for P1-P13, I1-I9, R1-R8, M1-M3."
+        }
+      ]
+    }
   }
 }

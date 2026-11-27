@@ -49,7 +49,7 @@ test('the processed timestamp has the form YYYY-MM-DD HH:MM:SS.ffffff and is the
   });
 });
 
-test('P2: a card that is not in the cross reference is rejected with code 100, and the reject record has the exact layout', () => {
+test('P2, P12: a card that is not in the cross reference is rejected with code 100, and the reject record has the exact layout', () => {
   const bad = tran({ id: id(1), card: '4999999999999999', amount: '12.34' });
   post(postInputs({ trans: [bad] }), (r) => {
     assert.equal(r.status, 4, r.stderr);

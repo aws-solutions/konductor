@@ -16,8 +16,7 @@
       "use": "quoted"
     },
     "date": "2026-11-25",
-    "singleFamily": true,
-    "note": "The hidden tests, the reference port and docs/INTERFACE.md were written by Claude-family workers, and the subject model is Claude, so author and subject share a family. NEEDS a recheck by a non-Claude family before any score is used (not yet run; it is a paid call). The rules in docs/REQUIREMENTS.md were signed off by the owner (P5, P7, I2, I3, I4, no fees). The owner confirmed P5 (a payment is rejected 102 when the account is already over its limit) as signed, on 2026-11-26. The expected outputs in hidden/golden were written by the reference port itself. Relaxed 2026-11-26 by owner ruling where the signed rules are silent: a +0.00 interest row, a refused CRLF sample input line, and CRLF output line ends are accepted; no test was removed (see the answer key)."
+    "note": "The hidden tests, the reference port and docs/INTERFACE.md were written by Claude-family workers, and the subject model is Claude, so author and subject share a family. NEEDS a recheck by a non-Claude family before any score is used (not yet run; it is a paid call). The rules in docs/REQUIREMENTS.md were signed off by the owner (P5, P7, I2, I3, I4, no fees). The owner confirmed P5 (a payment is rejected 102 when the account is already over its limit) as signed, on 2026-11-26. The expected outputs in hidden/golden were written by the reference port itself. Relaxed 2026-11-26 by owner ruling where the signed rules are silent: a +0.00 interest row, a refused CRLF sample input line, and CRLF output line ends are accepted; no test was removed (see the answer key). Rechecked 2026-11-27 by three non-Claude families (gpt-5.6-luna, deepseek-3.2, glm-5), each reading the rules, INTERFACE.md, hidden tests and goldens: no mismatch; see review.recheck."
   },
   "checks": [
     {
@@ -100,5 +99,41 @@
   ],
   "tiers": [
     "full"
-  ]
+  ],
+  "review": {
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-27",
+      "pin": "b46f24e8ebbe59aa9ab012ac0da9bc1ae9d5549a",
+      "source": "DEBT D-275/D-276: results C1 to C6 in reports/debt-paid/D-275/results (kept outside the repo)",
+      "verdict": "pass",
+      "families": [
+        {
+          "call": "C1.json",
+          "family": "openai",
+          "model": "gpt-5.6-luna",
+          "mismatches": 0,
+          "notes": [],
+          "checked": "Read REQUIREMENTS.md, INTERFACE.md, all hidden tests and helpers, the copybooks, and the relevant COBOL paths; worked five goldens by hand, including post and both interest runs (including the chained run)."
+        },
+        {
+          "call": "C2.json",
+          "family": "deepseek",
+          "model": "deepseek-3.2",
+          "mismatches": 0,
+          "notes": [],
+          "checked": "Read REQUIREMENTS.md, INTERFACE.md, all test files, lib/cd.js, COBOL source for P5/P7/I4 differences, checked 3 golden files (post/summary.json, interest/summary.json, post/dalyrejs.txt) and verified they match rules"
+        },
+        {
+          "call": "C3.json",
+          "family": "zhipu",
+          "model": "glm-5",
+          "mismatches": 0,
+          "notes": [],
+          "checked": "Read REQUIREMENTS.md, INTERFACE.md, all hidden test files (golden.test.js, interest.test.js, posting.test.js, input.test.js), and cd.js helper. Read COBOL source files CBTRN02C.cbl and CBACT04C.cbl. Spot-checked golden files: post/transact.txt (decoded 6 transactions for account 7, verified balance change 193.00 -> 1855.32), post/acctdata.txt (verified cycle_credit and cycle_debit updates), interest/transact.txt (verified interest calculation 2071.31 * 15% / 1200 = 25.89 truncated), chain/transact.txt (verified interest after post). Verified zoned decimal encoding/decoding matches between tests and REQUIREMENTS.md. All rule IDs (P1-P13, I1-I9, M1-M3) have corresponding tests. Tests correctly implement the document rules including the reviewed differences from COBOL (P5 netting, P7 duplicates, I4 no negative interest)."
+        }
+      ]
+    }
+  }
 }
