@@ -115,6 +115,10 @@
     background: Highlight;
     color: HighlightText;
   }
+  /* Forced colors drop box-shadow, so the current place keeps a border. */
+  .wf-places button[aria-current='page'] {
+    border-bottom: 3px solid ButtonText;
+  }
 }
 
 /* The room below keeps the last card off the bottom edge of the page, as on
