@@ -22,6 +22,16 @@ export interface Colors {
   control: string;
   text: string;
   textMuted: string;
+  /** Muted chrome that is decorative or paired with large text. */
+  textSubtle: string;
+  /** The shell's violet accent before role-specific contrast adjustments. */
+  accent: string;
+  /** Code and terminal surfaces. */
+  code: string;
+  /** Navigation rails and fixed chrome. */
+  rail: string;
+  /** The soft violet wash behind the page. */
+  pageGlow: string;
   /** Filled buttons and the selected segment. White text is set on it. */
   fill: string;
   fillHover: string;
@@ -44,7 +54,7 @@ export interface Colors {
 /** White: light-mode surfaces, text on filled buttons, hovered links on the band. */
 export const WHITE = '#ffffff';
 
-/** Light mode: the paper tones of the konductor docs theme. */
+/** Light mode: warm paper with violet accents. */
 export const LIGHT: Colors = {
   bg: '#f5f3ee',
   field: WHITE,
@@ -55,6 +65,12 @@ export const LIGHT: Colors = {
   control: '#7a7490',
   text: '#16131f',
   textMuted: '#56516a',
+  textSubtle: '#8a8398',
+  accent: '#6236f0',
+  code: '#14111c',
+  rail: '#fbf9f5',
+  pageGlow:
+    'radial-gradient(90% 60% at 70% -10%, rgba(98, 54, 240, 0.1), transparent 55%)',
   fill: '#6236f0',
   fillHover: '#5128db',
   fillActive: '#4f26c9',
@@ -71,7 +87,7 @@ export const LIGHT: Colors = {
   infoBg: '#efebff',
 };
 
-/** Dark mode: the night tones of the konductor docs theme. */
+/** Dark mode: deep violet surfaces with lavender accents. */
 export const DARK: Colors = {
   bg: '#0b0a12',
   field: '#100e1a',
@@ -82,6 +98,12 @@ export const DARK: Colors = {
   control: '#8f86ad',
   text: '#f5f3ee',
   textMuted: '#9c93b8',
+  textSubtle: '#6f6788',
+  accent: '#7c5cff',
+  code: '#0d0b15',
+  rail: '#141026',
+  pageGlow:
+    'radial-gradient(90% 60% at 70% -10%, rgba(124, 92, 255, 0.16), transparent 55%)',
   fill: '#6b4bef',
   fillHover: '#5b3bdb',
   fillActive: '#4f2fc8',
@@ -125,7 +147,7 @@ export function colorsOf(mode: ThemeMode): Colors {
  * of the view switch reach their contrast (4.5:1 and 3:1) on `background`.
  */
 export const BAND = {
-  background: '#141026',
+  background: DARK.rail,
   text: '#f5f3ee',
   textMuted: '#c9c2e0',
   link: '#c4b2ff',
@@ -139,10 +161,10 @@ export const BAND = {
 
 /** The font of the page text. Self-hosted by `fonts.ts`. */
 export const FONT_TEXT =
-  "Outfit, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+  "Outfit, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 /** The font of code and small labels. Self-hosted by `fonts.ts`. */
 export const FONT_CODE =
-  "'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace";
+  "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
 /** The corner radius of cards and panels, of controls, and of small parts. */
 export const RADIUS = { card: '12px', control: '10px', small: '8px' } as const;
