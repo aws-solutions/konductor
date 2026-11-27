@@ -1,5 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { StageKeys } from '../../api/types';
+import type { ParamView, StageKeys } from '../../api/types';
+
+/** A parameter declaration being edited. */
+export interface DraftParam {
+  readonly id: string;
+  readonly isGoal: boolean;
+  readonly sourceIndex?: number;
+  readonly name: string;
+  readonly description: string;
+  readonly default: string;
+  readonly required: boolean;
+}
 
 /** A stage being edited. The `id` stays when the stage is renamed. */
 export interface DraftStage {
@@ -14,11 +25,13 @@ export interface DraftStage {
   prompt: string;
 }
 
-/** The stages of the workflow as edited, in run order. */
+/** The editable workflow declaration. */
 export interface Draft {
   stages: readonly DraftStage[];
+  params: readonly DraftParam[];
   /** The number that the next new stage takes for its `id`. */
   nextId: number;
+  nextParamId: number;
 }
 
 /** The most stages a workflow may have, as the API allows. */
@@ -41,14 +54,43 @@ function idOf(number: number): string {
 export function draftOf(
   stages: readonly StageKeys[],
   prompts: readonly string[] = [],
+  params: Readonly<Record<string, ParamView>> = {},
 ): Draft {
+  const declarations = Object.entries(params);
+  let nextParamId = 1;
+  const draftParams: DraftParam[] = declarations.map(
+    ([name, param], sourceIndex) => {
+      const isGoal = name === 'goal';
+      return {
+        id: isGoal ? 'p-goal' : `p${nextParamId++}`,
+        isGoal,
+        sourceIndex,
+        name,
+        description: param.description ?? '',
+        default: param.default ?? '',
+        required: param.required ?? false,
+      };
+    },
+  );
+  if (!draftParams.some((param) => param.isGoal)) {
+    draftParams.unshift({
+      id: 'p-goal',
+      isGoal: true,
+      name: 'goal',
+      description: '',
+      default: '',
+      required: false,
+    });
+  }
   return {
     stages: stages.map((stage, index) => ({
       ...stage,
       id: idOf(index + 1),
       prompt: prompts[index] ?? '',
     })),
+    params: draftParams,
     nextId: stages.length + 1,
+    nextParamId,
   };
 }
 
@@ -60,6 +102,14 @@ export function stagesOf(draft: Draft): StageKeys[] {
 /** The ids of the stages of a draft, in order. */
 export function idsOf(draft: Draft): string[] {
   return draft.stages.map((stage) => stage.id);
+}
+
+/** The ids of source-backed params in their original order. */
+export function sourceParamIds(draft: Draft): string[] {
+  return draft.params
+    .filter((param) => param.sourceIndex !== undefined)
+    .sort((left, right) => left.sourceIndex! - right.sourceIndex!)
+    .map((param) => param.id);
 }
 
 /** Whether two lists have the same stages, in the same order. */
@@ -103,7 +153,11 @@ export function addStage(draft: Draft): Draft {
     agent: DEFAULT_AGENT,
     prompt: '',
   };
-  return { stages: [...draft.stages, stage], nextId: draft.nextId + 1 };
+  return {
+    ...draft,
+    stages: [...draft.stages, stage],
+    nextId: draft.nextId + 1,
+  };
 }
 
 function change(
@@ -132,6 +186,58 @@ export function setAgent(draft: Draft, id: string, agent: string): Draft {
 /** Gives the stage the prompt as typed; the writer and the check judge it. */
 export function setPrompt(draft: Draft, id: string, prompt: string): Draft {
   return change(draft, id, { prompt });
+}
+
+/** Gives a parameter field the value as typed. */
+export function setParam(
+  draft: Draft,
+  id: string,
+  change: Partial<
+    Pick<DraftParam, 'name' | 'description' | 'default' | 'required'>
+  >,
+): Draft {
+  return {
+    ...draft,
+    params: draft.params.map((param) => {
+      if (param.id !== id) return param;
+      if (!param.isGoal) return { ...param, ...change };
+      const goalChange = { ...change };
+      delete goalChange.name;
+      return { ...param, ...goalChange };
+    }),
+  };
+}
+
+/** Adds a string parameter with the first free `param_N` name. */
+export function addParam(draft: Draft): Draft {
+  const names = new Set(draft.params.map((param) => param.name));
+  let number = 1;
+  while (names.has(`param_${number}`)) number += 1;
+  return {
+    ...draft,
+    params: [
+      ...draft.params,
+      {
+        id: `p${draft.nextParamId}`,
+        isGoal: false,
+        name: `param_${number}`,
+        description: '',
+        default: '',
+        required: false,
+      },
+    ],
+    nextParamId: draft.nextParamId + 1,
+  };
+}
+
+/** Removes a parameter other than the protected goal row. */
+export function removeParam(draft: Draft, id: string): Draft {
+  const param = draft.params.find((candidate) => candidate.id === id);
+  if (!param || param.isGoal) return draft;
+  return {
+    ...draft,
+    params: draft.params.filter((candidate) => candidate.id !== id),
+  };
 }
 
 /** Deletes the stage; the last one stays, and an unknown id changes nothing. */

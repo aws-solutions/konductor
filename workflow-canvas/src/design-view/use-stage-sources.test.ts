@@ -32,7 +32,12 @@ interface Editing {
 // the test names one.
 function draftOf({ stages, nextId }: Editing): Draft {
   const highest = Math.max(0, ...stages.map((one) => Number(one.id.slice(1))));
-  return { stages, nextId: nextId ?? highest + 1 };
+  return {
+    stages,
+    params: [],
+    nextId: nextId ?? highest + 1,
+    nextParamId: 1,
+  };
 }
 
 const editing = (first: Editing) =>

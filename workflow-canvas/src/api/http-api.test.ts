@@ -217,7 +217,7 @@ describe('createHttpApi', () => {
     });
   });
 
-  it('reads the goal param of the view, and leaves out what is not a string', async () => {
+  it('reads every declared param and rejects wrong optional field types', async () => {
     const withParams = (goal: unknown) =>
       reply({
         ...DOCUMENT_BODY,
@@ -233,11 +233,20 @@ describe('createHttpApi', () => {
           withParams({ description: 'Say it.', default: 'Do it' }),
         ).api.getWorkflow('t')
       ).view?.params,
-    ).toEqual({ goal: { description: 'Say it.', default: 'Do it' } });
-    expect(
-      (await apiFor(withParams({ default: 7 })).api.getWorkflow('t')).view
-        ?.params,
-    ).toEqual({ goal: {} });
+    ).toEqual({
+      goal: { description: 'Say it.', default: 'Do it' },
+      other: { default: 'x' },
+    });
+    for (const bad of [
+      { type: 7 },
+      { description: false },
+      { default: 7 },
+      { required: 'yes' },
+    ]) {
+      await expect(
+        apiFor(withParams(bad)).api.getWorkflow('t'),
+      ).rejects.toBeInstanceOf(ApiError);
+    }
     expect(
       (
         await apiFor(

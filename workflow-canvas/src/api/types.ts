@@ -47,18 +47,23 @@ export interface StageView {
 /** The keys of a stage that the editor reads and writes. */
 export type StageKeys = Pick<StageView, 'name' | 'agent'>;
 
-/** The `goal` param of a workflow file: what the file says about the goal. */
-export interface GoalParamView {
+/** One parameter declaration in a workflow file. */
+export interface ParamView {
+  type?: string;
   description?: string;
   default?: string;
+  required?: boolean;
 }
+
+/** The `goal` parameter uses description and default only. */
+export type GoalParamView = Pick<ParamView, 'description' | 'default'>;
 
 /** The parsed workflow, ready to draw. */
 export interface WorkflowView {
   name: string;
   intent: { outcome: string };
-  /** The params of the file. The page reads the goal only. */
-  params?: { goal?: GoalParamView };
+  /** The params of the file, in declaration order. */
+  params?: Record<string, ParamView>;
   stages: StageView[];
 }
 

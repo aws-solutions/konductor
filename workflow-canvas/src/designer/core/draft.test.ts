@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import {
+  addParam,
   addStage,
   canAddStage,
   canRemoveStage,
@@ -8,10 +9,12 @@ import {
   draftOf,
   MAX_STAGES,
   neighbourOf,
+  removeParam,
   removeStage,
   renameStage,
   sameStages,
   setAgent,
+  setParam,
   setPrompt,
   stagesOf,
 } from './draft';
@@ -27,6 +30,38 @@ describe('draftOf and stagesOf', () => {
 
     expect(draft.stages.map((stage) => stage.id)).toEqual(['s1', 's2']);
     expect(stagesOf(draft)).toEqual(TWO);
+  });
+});
+
+describe('parameter rows', () => {
+  it('synthesizes one protected goal row when the view omits params', () => {
+    const [goal] = draftOf(TWO).params;
+
+    expect(goal).toMatchObject({
+      id: 'p-goal',
+      isGoal: true,
+      name: 'goal',
+    });
+  });
+
+  it('protects only the stable goal row, not another row typed as goal', () => {
+    let draft = addParam(draftOf(TWO));
+    const added = draft.params.at(-1)!;
+    draft = setParam(draft, added.id, { name: 'goal' });
+
+    expect(draft.params.at(-1)?.name).toBe('goal');
+    expect(removeParam(draft, added.id).params).toHaveLength(1);
+    expect(setParam(draft, 'p-goal', { name: 'other' }).params[0]?.name).toBe(
+      'goal',
+    );
+    expect(removeParam(draft, 'p-goal')).toBe(draft);
+  });
+
+  it('adds the first free contract-valid param_N name', () => {
+    let draft = draftOf(TWO, [], { param_1: {}, param_3: {} });
+    draft = addParam(draft);
+
+    expect(draft.params.at(-1)?.name).toBe('param_2');
   });
 });
 
