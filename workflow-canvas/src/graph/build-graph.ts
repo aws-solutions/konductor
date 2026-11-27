@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { NODE_HEIGHT, stackDown } from './layout';
+import { NODE_HEIGHT, NODE_WIDTH, stackDown } from './layout';
 import { withStopMarks } from './stop-marks';
 import {
   SEQUENCE_IN,
@@ -31,6 +31,7 @@ function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
     id: INTENT_ID,
     ariaLabel: `Intent: ${spec.intent.outcome}`,
     type: 'intent',
+    width: NODE_WIDTH.intent,
     height: NODE_HEIGHT.intent,
     data: { outcome: spec.intent.outcome },
   };
@@ -53,6 +54,20 @@ function placeOf(stages: readonly StageSpec[], index: number) {
   return shared ? { at: index + 1, of: stages.length } : undefined;
 }
 
+function descriptionOf(
+  stage: StageSpec,
+): Pick<StageGraphNode['data'], 'description' | 'descriptionTitle'> {
+  if (stage.outcome !== undefined) {
+    return {
+      description: stage.outcome,
+      descriptionTitle: stage.outcome,
+    };
+  }
+  if (stage.prompt_file !== undefined || stage.prompt === undefined) return {};
+  const description = stage.prompt.split(/\r\n|\r|\n/, 1)[0]?.trim();
+  return description ? { description, descriptionTitle: stage.prompt } : {};
+}
+
 function stageNode(
   stage: StageSpec,
   harness: string,
@@ -62,8 +77,14 @@ function stageNode(
     id: stageNodeId(stage.id ?? stage.name),
     ariaLabel: stageLabel(stage, harness, place),
     type: 'stage',
+    width: NODE_WIDTH.stage,
     height: NODE_HEIGHT.stage,
-    data: { name: stage.name, agent: stage.agent, harness },
+    data: {
+      name: stage.name,
+      agent: stage.agent,
+      harness,
+      ...descriptionOf(stage),
+    },
   };
 }
 

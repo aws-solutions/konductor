@@ -25,10 +25,17 @@ test('draws the workflow of the API on the Design view', async ({ canvas }) => {
 test('shows the intent, then each stage with its agent and harness, then where the run ends', async ({
   canvas,
 }) => {
+  await expect(canvas.node('node-intent')).toContainText('INTENT');
   await expect(canvas.node('node-intent')).toContainText(
     'Add a greeting to the README',
   );
+  await expect(
+    canvas.node('node-stage-draft').locator('.wf-agent-badge'),
+  ).toHaveText('DE');
   await expect(canvas.node('node-stage-draft')).toContainText('draft');
+  await expect(canvas.node('node-stage-draft')).toContainText(
+    'Add the greeting to README.md',
+  );
   await expect(canvas.node('node-stage-draft')).toContainText(
     'k-developer · kiro-cli',
   );
@@ -36,6 +43,9 @@ test('shows the intent, then each stage with its agent and harness, then where t
   await expect(canvas.node('node-stage-review')).toContainText(
     'k-quality-assurance · kiro-cli',
   );
+  await expect(
+    canvas.node('node-stage-draft').locator('.wf-node-body'),
+  ).toHaveCSS('stroke', 'rgb(98, 54, 240)');
   await expect(canvas.stopMark).toHaveAccessibleName(
     'The run ends after review',
   );
@@ -88,24 +98,15 @@ test('centres each dot on the edge of its card, in line with the card under it',
   }
 });
 
-test('hides the dots at rest and shows them on hover, focus and select', async ({
-  canvas,
-}) => {
+test('keeps the green run-order dots visible', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
-  const review = 'node-stage-review';
 
-  // The first stage is selected when the page opens.
-  await expect(canvas.outPort('node-stage-draft')).toHaveCSS('opacity', '1');
-  await expect(canvas.inPort(review)).toHaveCSS('opacity', '0');
-
-  await canvas.node(review).hover();
-  await expect(canvas.inPort(review)).toHaveCSS('opacity', '1');
-
-  await canvas.page.mouse.move(0, 0);
-  await expect(canvas.inPort(review)).toHaveCSS('opacity', '0');
-  await canvas.tab('Design').focus();
-  await canvas.tabToNextNode();
-  await expect(canvas.outPort('node-intent')).toHaveCSS('opacity', '1');
+  for (const id of ['node-stage-draft', 'node-stage-review'] as const) {
+    await expect(canvas.inPort(id)).toHaveCSS('opacity', '1');
+  }
+  for (const id of ['node-intent', 'node-stage-draft'] as const) {
+    await expect(canvas.outPort(id)).toHaveCSS('opacity', '1');
+  }
 });
 
 test('starts each link at an out dot and ends it at the next in dot', async ({

@@ -10,6 +10,9 @@ export interface StageSpec {
   id?: string;
   name: string;
   agent: string;
+  outcome?: string;
+  prompt?: string;
+  prompt_file?: string;
 }
 
 /** The part of a workflow that can be drawn. The API view satisfies it. */
@@ -44,6 +47,10 @@ export type StageGraphNode = Placed & {
     name: string;
     agent: string;
     harness: string;
+    /** The result this stage should produce, or its first prompt line. */
+    description?: string;
+    /** The full description, before the card cuts it to one line. */
+    descriptionTitle?: string;
     /** No stage follows this one, so the run ends here, at a stop mark. */
     endsRun?: true;
     /** What that stop mark shows; left out while the run may still reach it. */
@@ -53,8 +60,8 @@ export type StageGraphNode = Placed & {
 
 export type GraphNode = IntentGraphNode | StageGraphNode;
 
-/** A node that has its content and height but is not placed yet. */
-export type Unplaced<N extends GraphNode> = Omit<N, 'position' | 'width'>;
+/** A node that has its content and size but is not placed yet. */
+export type Unplaced<N extends GraphNode> = Omit<N, 'position'>;
 
 /** Any kind of node, not placed yet. */
 export type UnplacedNode = Unplaced<IntentGraphNode> | Unplaced<StageGraphNode>;

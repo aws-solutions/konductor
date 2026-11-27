@@ -39,6 +39,8 @@ export interface StageView {
   kind: StageKind;
   agent: string;
   outcome?: string;
+  prompt?: string;
+  prompt_file?: string;
   range: LineRange;
 }
 

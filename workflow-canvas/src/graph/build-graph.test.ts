@@ -61,6 +61,67 @@ describe('buildGraph', () => {
     ]);
   });
 
+  it('uses the stage outcome as its description', () => {
+    const graph = buildGraph(
+      {
+        ...HELLO,
+        stages: [
+          {
+            name: 'draft',
+            agent: 'k-developer',
+            outcome: 'A greeting in README.md',
+            prompt: 'Write the greeting.',
+          },
+        ],
+      },
+      'kiro-cli',
+    );
+
+    expect(graph.nodes[1]?.data).toMatchObject({
+      description: 'A greeting in README.md',
+      descriptionTitle: 'A greeting in README.md',
+    });
+  });
+
+  it('falls back to the first prompt line and keeps the full prompt as its title', () => {
+    const graph = buildGraph(
+      {
+        ...HELLO,
+        stages: [
+          {
+            name: 'draft',
+            agent: 'k-developer',
+            prompt: 'Write the greeting.\nKeep it short.',
+          },
+        ],
+      },
+      'kiro-cli',
+    );
+
+    expect(graph.nodes[1]?.data).toMatchObject({
+      description: 'Write the greeting.',
+      descriptionTitle: 'Write the greeting.\nKeep it short.',
+    });
+  });
+
+  it('shows no prompt text when the stage reads a prompt file', () => {
+    const graph = buildGraph(
+      {
+        ...HELLO,
+        stages: [
+          {
+            name: 'draft',
+            agent: 'k-developer',
+            prompt_file: 'draft.md',
+          },
+        ],
+      },
+      'kiro-cli',
+    );
+
+    expect(graph.nodes[1]?.data).not.toHaveProperty('description');
+  });
+
   it.each(['claude', 'fake', 'future-harness'])(
     'shows the harness %s as it is, in the node and its name',
     (harness) => {
@@ -132,10 +193,10 @@ describe('buildGraph', () => {
     const { nodes } = buildGraph(HELLO, 'kiro-cli');
 
     expect(nodes.map((node) => node.position)).toEqual([
-      { x: -NODE_WIDTH / 2, y: 0 },
-      { x: -NODE_WIDTH / 2, y: NODE_HEIGHT.intent + NODE_GAP },
+      { x: -NODE_WIDTH.intent / 2, y: 0 },
+      { x: -NODE_WIDTH.stage / 2, y: NODE_HEIGHT.intent + NODE_GAP },
       {
-        x: -NODE_WIDTH / 2,
+        x: -NODE_WIDTH.stage / 2,
         y: NODE_HEIGHT.intent + NODE_HEIGHT.stage + 2 * NODE_GAP,
       },
     ]);
@@ -145,9 +206,9 @@ describe('buildGraph', () => {
     const { nodes } = buildGraph(HELLO, 'kiro-cli');
 
     expect(nodes.map((node) => [node.width, node.height])).toEqual([
-      [NODE_WIDTH, NODE_HEIGHT.intent],
-      [NODE_WIDTH, NODE_HEIGHT.stage],
-      [NODE_WIDTH, NODE_HEIGHT.stage],
+      [NODE_WIDTH.intent, NODE_HEIGHT.intent],
+      [NODE_WIDTH.stage, NODE_HEIGHT.stage],
+      [NODE_WIDTH.stage, NODE_HEIGHT.stage],
     ]);
   });
 

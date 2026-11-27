@@ -4,7 +4,7 @@ import { RADIUS } from '../theme/tokens';
 /** The width of the line around a node, in pixels. */
 export const BORDER_WIDTH = 2;
 /** The corner radius of a card. */
-export const CARD_RADIUS = parseFloat(RADIUS.control);
+export const CARD_RADIUS = parseFloat(RADIUS.card);
 /** The corner radius of each kind of node. */
 export const NODE_RADIUS = {
   intent: CARD_RADIUS,

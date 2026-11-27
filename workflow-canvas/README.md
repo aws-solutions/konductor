@@ -6,9 +6,10 @@ of the agent package or the CLI.
 
 The top bar has Library and Canvas places. Canvas has Design and Run views,
 picked with a switch in the page header. The Design view loads the workflow
-from the API and draws it: the intent and each stage in list order (name,
-agent and harness), joined by run-order edges, with a mark under the last
-stage where the run ends. Beside the drawing it shows the text of the file and
+from the API and draws it: the intent and each stage in list order. A stage
+card shows its name, agent and harness, plus its outcome or first prompt line.
+Run-order edges join the cards, and a mark under the last stage says where the
+run ends. Beside the drawing it shows the text of the file and
 the keys of the stage that is picked. You can pick the agent of
 a stage, rename it, edit its prompt, add a stage, delete one and save the file.
 A save changes only the values it edits and keeps every other key of the file. It shows a
@@ -823,12 +824,15 @@ and a violet accent.
   and Run switch. Beside it are the saved, unsaved or running state, the flow
   check, and Save on Design. The switch is a tab list drawn as segments: Tab
   reaches the selected one, and the arrow keys, Home and End select another.
-- Nodes are cards with the corner radius of the theme. The run-order ports
-  are small dots, 10 pixels across, in the middle of the top edge (in) and the
-  bottom edge (out). They show while a node is hovered, has the keyboard focus
-  or is selected, and are hidden otherwise. A link runs from the bottom edge of
-  one card to the top edge of the next, and the last stage carries the mark
-  that says where the run ends, whose colours are checked in both modes. `src/canvas/card-shape.ts` holds the
+- The intent is a wider purple card. Each stage is a card with a deterministic
+  two-letter agent tile, its name, `agent · harness`, and one line for the stage
+  outcome or the first prompt line. A stage with `prompt_file` and no outcome
+  shows no prompt text. The card's `title` keeps the full source text.
+- Run-order ports are green dots, 10 pixels across, in the middle of the top
+  edge (in) and the bottom edge (out). A link runs from the bottom edge of one
+  card to the top edge of the next. The selected stage has a purple ring, and
+  the last stage keeps the mark that says where the run ends.
+  `src/canvas/card-shape.ts` holds the
   card outline, the focus ring sizes and the dot size. The keyboard focus ring
   follows the rounded outline of the card.
 

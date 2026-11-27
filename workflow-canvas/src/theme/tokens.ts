@@ -120,6 +120,18 @@ export const DARK: Colors = {
   infoBg: '#1f1a44',
 };
 
+/** Stable background colours for agent initial tiles. */
+export const AGENT_BADGES = [
+  '#3659c9',
+  '#7239a8',
+  '#0b7a52',
+  '#955600',
+  '#006f96',
+  '#596579',
+  '#a82f61',
+  '#806000',
+] as const;
+
 /** The colours that only the canvas uses, for one mode. */
 export interface CanvasColors {
   dots: string;
