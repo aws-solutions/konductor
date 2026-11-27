@@ -1,7 +1,7 @@
 ---
 name: claude-teams-behavior
-description: Claude Code Agent Teams patterns for the orchestrator. Loaded only in Claude Code sessions via claudeCli.skills. Provides hub-and-spoke contract, decision rules for SendMessage, background agent spawning, and agent name resolution.
-version: 1.1.0
+description: 'Use when orchestrating on Claude Code with SendMessage, background agents or parallel specialists, or naming a write agent''s worktree. Agent Teams patterns; loaded only in Claude Code.'
+version: 1.2.1
 tags: [skill, claude-code, agent-teams, orchestration]
 ---
 
@@ -19,32 +19,9 @@ You (the orchestrator) are the sole hub. The rules below are MANDATORY:
 
 This constraint keeps multi-agent behavior portable across runtimes. This skill and Claude's `SendMessage`/`Agent()` tools are scoped to Claude Code only (via `claudeCli.skills` / `claudeCli.tools`); the same specialists also run as Kiro CLI subagents, which are one-shot with no peer-messaging channel — the orchestrator spawns a specialist, it runs to completion in isolation, and returns its result. Peer-to-peer coordination therefore cannot be relied on cross-runtime, so all coordination flows through the orchestrator. This also matches the documented orchestrator-only dispatch design: native dispatch belongs solely to the orchestrator, and nested subagent spawning is unsupported in both runtimes.
 
-## Tool Usage: Glob and Grep
+## Tool Usage: Direct Work
 
-Your system prompt instructs you to delegate shell commands (`Bash`) to specialist agents. However, `Glob` and `Grep` are **built-in tools, not shell commands**. You have them in your tool list and should use them directly for lightweight file discovery and pattern matching:
-
-- **`Glob`** — find files by pattern (e.g., `**/*.json`). Use instead of delegating `find` or `ls`.
-- **`Grep`** — search file contents by regex. Use instead of delegating `grep` or `Bash(grep ...)`.
-
-Use `Glob`/`Grep` directly when:
-
-- You need to locate a file or check if a pattern exists (quick lookup)
-- You are within your 3-file read budget
-
-Delegate to a subagent when:
-
-- The search is part of a larger implementation task
-- You need to read/modify many files based on search results
-
-## Tool Usage: `git worktree list` (narrow Bash exception)
-
-The Bash-delegation rule above is otherwise unconditional for shell commands.
-`git worktree list` is one narrow, explicit exception: run it directly via
-your `Bash` tool to check existing worktree state before dispatching a write
-agent (see Worktree Scoping below). This exception covers only that one
-read-only listing command, plus reading `.wt-ledger.json` with your file-read
-tool — it does not cover `git worktree add`, `git worktree remove`, or any
-other git/Bash command, which stay delegated to the write agent.
+What you do yourself is defined once, in your Direct Work rules: the context file your orchestrator loads (`k-direct-work.md` for `konductor`, `k-orchestrator-routing-rules.md` for the mux and cmux orchestrators and for `konductor` in coordinator mode). Under `k-direct-work.md` you read, write and run commands yourself, and commit when the user asks. Under `k-orchestrator-routing-rules.md` you use `Read`, `Glob`, and `Grep` for files and search, and `Bash` only for the read-only commands its Orchestrator Direct Work table lists. Either way, before dispatching a write agent, read `.wt-ledger.json` and run `git worktree list` (see Worktree Scoping below). Once you hand a write to an agent, `git worktree add`, `git worktree remove`, and every other state-changing command for that work stay with the write agent.
 
 ## Worktree Scoping
 
@@ -52,13 +29,10 @@ other git/Bash command, which stay delegated to the write agent.
 the orchestrator's own working directory. Working-tree isolation is
 established by prompt, not by parameter.
 
-**The rule: every write-agent dispatch prompt must explicitly name the
-exact target — never let the agent infer or default.** A silent default is
-the actual collision mechanism: two agents (from the same task or from
-different tasks) can each independently default into the same location and
-step on each other, even when neither dispatch looked "concurrent" from the
-orchestrator's own point of view. The named target is one of three
-legitimate forms:
+The rule itself lives in `delegation-protocol` (Parallel Execution): every
+write-agent dispatch prompt names its exact target, because a silent default
+is what lets two agents collide in one tree. On Claude Code the named target
+is one of three forms:
 
 1. A new dedicated worktree — `wt-<id>` on branch `wt-<id>` (worktree and
    branch share one flat name), for the agent to create.
@@ -71,13 +45,11 @@ legitimate forms:
 decision at all — they share the primary working tree by default, and the
 dispatch prompt does not need to name a target.
 
-**Before dispatch (orchestrator — read-only):** using the narrow exception
+**Before dispatch (orchestrator, a read):** using the direct reads
 above, check current worktree state (`.wt-ledger.json` and `git worktree
 list` — treat `git worktree list` as ground truth over the ledger, which can
 go stale) and decide which of the three forms applies for this task. This is
-a read plus a naming decision, not a mutation — it needs no exception to the
-orchestrator's zero-mutation rule, and the `git worktree list` call itself is
-covered by the narrow Bash exception above.
+a read plus a naming decision, not a mutation, so it changes no state.
 
 **State the decision in the dispatch prompt:**
 
@@ -113,7 +85,7 @@ after the fact:
 - The pre-commit hook (husky/lint-staged, or the equivalent for this
   project) runs inside the tree the agent actually committed from — edits
   made outside the named target simply will not surface in that commit.
-- The CR diff at review time shows exactly which files changed; a human
+- The PR diff at review time shows exactly which files changed; a human
   reviewer catches any file that should not have been touched before merge.
 
 **Sequential handoff** is the reuse case above, not a special case — a
@@ -123,8 +95,8 @@ second write agent continuing the same task gets the same named target
 **Concurrent collaboration on one target is not supported, by design** —
 that is the exact collision this mechanism exists to prevent, whether the
 target is a worktree or the shared tree. A maker/checker pair never shares a
-target; a checker gets its own separate read-only checkout (e.g.
-`CrCheckout`), never the maker's tree. Only sequential reuse of a named
+target; a checker gets its own separate read-only checkout, never the
+maker's tree. Only sequential reuse of a named
 target is legitimate; two write agents on the same target at the same time
 is always wrong.
 

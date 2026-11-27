@@ -1,7 +1,7 @@
 ---
 name: threat-modeling
-description: Generates AWS service threat models using STRIDE methodology. Use after system design to identify security risks and mitigations. Produces a complete threat model with architecture analysis, threat identification, and security controls.
-version: 1.0.0
+description: Generates AWS service threat models using STRIDE methodology. Use when asked for a threat model or STRIDE analysis, the security risks of a design, or prep for a security review. Covers architecture analysis, threats, and security controls.
+version: 1.1.0
 tags: [skill, threat-modeling, security, stride, aws, architecture]
 ---
 
@@ -9,7 +9,7 @@ tags: [skill, threat-modeling, security, stride, aws, architecture]
 
 ## Overview
 
-Generates threat models through a 10-step workflow: gathers architecture documentation, applies STRIDE methodology, maps security controls to threats, and produces a complete threat model document.
+Generates threat models through a 9-step workflow: gathers architecture documentation, applies STRIDE methodology, maps security controls to threats, and produces a complete threat model document.
 
 ## Usage
 
@@ -25,36 +25,31 @@ Use this skill when:
 
 Analyzes threats across six categories: Spoofing (identity), Tampering (data integrity), Repudiation (audit trails), Information Disclosure (data leaks), Denial of Service (availability), and Elevation of Privilege (authorization bypass). Each component in the architecture is evaluated against all six categories.
 
-## Execution
+## Workflow
 
-When this skill is activated, use the following as your full instruction set for generating the threat model. Apply the Quality Gate at the end before presenting output to the user.
+Apply the Quality Gate before presenting output.
 
----
+1. **Clarify Scope** - Define threat model boundaries with user
+2. **Gather Design Documents** - Collect and analyze architecture documentation
+3. **Collect Service Information** - Document service functionality and security context
+4. **Analyze Template** - Use the Threat Model Template below, plus any reference models
+5. **Create Introduction** - Build project background and scope documentation
+6. **Document Architecture** - Detail system design and components
+7. **Identify Threats** - Systematic threat analysis using STRIDE methodology
+8. **Define Mitigations** - Map security controls to identified threats
+9. **Generate Final Document** - Compile complete threat model
 
-# AWS Threat Model Generator
+## Working Without Questions
 
-## Purpose
+If the user says not to ask questions, or nobody is there to answer, skip every "confirm with user" step and the closing "Fix these issues?" prompt. Make the smallest reasonable assumption instead, and record each one in the document's assumptions table with what changes if it is wrong. A reviewer can then check the assumptions in one place instead of hunting for them in the prose.
 
-This steering document provides guidance for generating AWS service threat models following security documentation standards. It integrates the official AWS threat model template structure with systematic threat identification processes.
+## Change-Only Threat Models
 
-## Core Workflow
+When the request covers a change to an existing design, model only what the change adds or alters: new routes, new trust boundaries, and existing components whose behavior changes. Continue the threat and mitigation numbering from where the user says to start. Cite controls from the base design only when that design documents them.
 
-The threat modeling process follows a 10-step workflow designed for efficient context management and comprehensive security analysis:
+## Context Management
 
-1. **Verify Dependencies** - Check required tools availability
-2. **Clarify Scope** - Define threat model boundaries with user
-3. **Gather Design Documents** - Collect and analyze architecture documentation
-4. **Collect Service Information** - Document service functionality and security context
-5. **Analyze Template** - Process AWS threat model template and reference models
-6. **Create Introduction** - Build project background and scope documentation
-7. **Document Architecture** - Detail system design and components
-8. **Identify Threats** - Systematic threat analysis using STRIDE methodology
-9. **Define Mitigations** - Map security controls to identified threats
-10. **Generate Final Document** - Compile complete threat model
-
-## Context Management Strategy
-
-**Critical**: This process involves analyzing large documents and templates. Use phased processing with immediate summarization and context clearing between phases to maintain efficiency.
+The design documents and reference models can be large. Process at most 2-3 large documents per batch, reference models included. Summarize each document as you read it and work from the summaries. Build the final document section by section. If context runs short, continue with the information you have and list what was left out.
 
 ## Required Parameters
 
@@ -64,7 +59,7 @@ The threat modeling process follows a 10-step workflow designed for efficient co
 - **threat_model_scope** (required): Specific scope boundaries (may be narrower than full service)
 - **design_document_urls** (optional): Architecture documents, design specs, security reviews
 - **existing_threat_models** (optional): Related threat model references
-- **template_url** (optional): AWS Threat Model Template URL (defaults to standard template)
+- **template_url** (optional): a team threat model template to use instead of the Threat Model Template below
 
 ### Collection Guidelines
 
@@ -80,18 +75,14 @@ The threat modeling process follows a 10-step workflow designed for efficient co
 
 - **Document-Driven Analysis**: Base all threat assessments solely on components explicitly documented in design materials
 - **No Component Hallucination**: Never assume or infer the existence of security controls, services, or architecture components not clearly specified
-- **Validation-First Approach**: When components or security implementations are unclear, ask clarifying questions rather than making assumptions
+- **Validation-First Approach**: When components or security implementations are unclear, ask clarifying questions rather than making assumptions (see Working Without Questions when you cannot ask)
 - **Scope Adherence**: Limit threat analysis to documented architecture within the defined scope boundaries
 - **Evidence-Based Threats**: Only identify threats that apply to the actual documented implementation, not theoretical possibilities
 - **User Confirmation**: Validate understanding of architecture components and security controls with the user before proceeding with threat analysis
 
 ## Implementation Steps
 
-### Step 1: Verify Dependencies
-
-Check required tools and file-write access. Inform user of missing tools and confirm whether to proceed.
-
-### Step 2: Clarify Threat Model Scope
+### Step 1: Clarify Threat Model Scope
 
 Define clear scope boundaries with user:
 
@@ -101,21 +92,19 @@ Define clear scope boundaries with user:
 - Consider threat model objective (launch, compliance, security review)
 - Suggest appropriate scope boundaries based on common practices
 
-### Step 3: Gather and Analyze Design Documents
+### Step 2: Gather and Analyze Design Documents
 
-Process design documents using phased context management:
+Process design documents in batches, following Context Management above:
 
 **Document Processing**:
 
 - Categorize documents by type (architecture, API specs, security reviews)
-- Process in batches of 2-3 documents maximum
-- Extract scope-relevant information using appropriate tools
-- Immediately summarize and clear raw content after processing
+- Extract scope-relevant information
 - Identify gaps and inconsistencies between documents
 - Ask clarifying questions for ambiguous information
 - Consolidate summaries into unified architecture view
 
-### Step 4: Gather Service Information
+### Step 3: Gather Service Information
 
 Collect essential service information within defined scope:
 
@@ -127,18 +116,16 @@ Collect essential service information within defined scope:
 - Deployment model (internal, external, multi-tenant)
 - Confirm understanding of critical security aspects
 
-### Step 5: Analyze Template and Reference Models
+### Step 4: Analyze Template and Reference Models
 
-Process AWS Threat Model Template and reference models:
+Use the Threat Model Template below unless the user gave a `template_url`:
 
-- Retrieve template from your architecture or design documentation
-- Extract required sections and structure
-- Process reference models in batches (max 2 per batch)
-- Immediately summarize and clear raw content
+- Extract required sections and structure from the template
+- Process reference models in batches, following Context Management above
 - Identify applicable patterns and approaches
 - Consolidate template guidance for threat model generation
 
-### Step 6: Create Introduction Section
+### Step 5: Create Introduction Section
 
 Build comprehensive introduction with user:
 
@@ -149,7 +136,7 @@ Build comprehensive introduction with user:
 - Key assumptions with potential mitigations
 - Administrative information (AppSec reviews, team info, documentation references)
 
-### Step 7: Document System Architecture
+### Step 6: Document System Architecture
 
 Document architecture focusing on defined scope:
 
@@ -160,38 +147,40 @@ Document architecture focusing on defined scope:
 - Asset inventory (new/existing assets, usage, data classifications, security considerations)
 - Clear indication of out-of-scope components
 
-### Step 8: Identify Threats
+### Step 7: Identify Threats
 
 Systematic threat identification using STRIDE methodology:
 
 - Identify threat actors (external and internal)
+- Trace every credential, token, and secret through the flow: where it is created, sent, stored, logged, and forwarded. Leaks usually happen in URLs, headers, logs, and emails, not in the primary store
 - Analyze security anti-patterns within scope
-- Create STRIDE-based threat categorization with priority levels
+- Create STRIDE-based threat categorization, rating each threat's likelihood and impact and deriving its priority from both
 - Use consistent threat numbering (T-001, T-002, etc.)
 - Focus on in-scope assets and components
 - Suggest 10-15 potential threats for consideration
 - Confirm threat assessment with user
 
-### Step 9: Define Mitigations
+### Step 8: Define Mitigations
 
 Document comprehensive mitigations for identified threats:
 
 - Baseline Security Controls (BSCs) implementation
 - System-specific mitigations with threat mapping
-- Implementation status and verification evidence
-- Security testing strategy (test cases, coverage, types)
+- Implementation status for each mitigation: Implemented (the design documents it), Partial, Not implemented, or Unknown. Do not mark something Implemented because it is a common default
+- State each mitigation as a concrete change to this design (which component, which setting or API), not "consider X"
+- Security testing strategy as a table: test ID, type, the concrete input or action, expected result, and the threat IDs it covers
 - Consistent mitigation numbering (M-001, M-002, etc.)
 - Ensure each threat has at least one mitigation
 - Confirm mitigation strategies with user
 
-### Step 10: Generate Final Document
+### Step 9: Generate Final Document
 
 Compile complete threat model document:
 
 - Organize all sections according to template structure
 - Ensure all required sections are complete
 - Create appendices for terminology, references, etc.
-- Review document for completeness using quality checklist
+- Review document for completeness against the Quality Gate
 - Validate final document accuracy with user
 - Offer to save document to file and suggest review process
 
@@ -200,15 +189,16 @@ Compile complete threat model document:
 - Main document contains STRIDE threats and system-specific mitigations
 - Clear separation maintained between core analysis and supplementary guidance
 
-## AWS Threat Model Template Structure
+## Threat Model Template
 
-Standard template sections for final document:
+Default sections for the final document:
 
 ### Introduction
 
 - Project Background and Service Overview
 - Scope (In-Scope and Out-of-Scope components)
-- Security Tenets and Key Assumptions
+- Security Tenets
+- Assumptions table: each assumption, what changes if it is wrong, and the threats it affects
 - Administrative Information (AppSec reviews, team info, documentation)
 
 ### System Architecture
@@ -219,14 +209,22 @@ Standard template sections for final document:
 
 ### Threat Analysis
 
+- Trust Boundaries and Data Flows
 - Threat Actors and Security Anti-Patterns
-- STRIDE-Based Threat Categorization table
+- STRIDE coverage matrix: each in-scope component against the six categories, with the threat IDs in each cell or "none found"
+- Threat table: ID, STRIDE category, component, description, likelihood, impact, priority, and mitigation IDs on the same row
 
 ### Mitigations
 
 - Baseline Security Controls (BSCs)
 - System-Specific Mitigations table
-- Security Testing Strategy
+- Security Testing Strategy table
+
+### Residual Risk and Open Decisions
+
+- Risks that remain after the mitigations, and decisions the owners must make or accept
+- A launch recommendation: which mitigations must ship first
+- The Quality Gate results for this document
 
 ### Appendix
 
@@ -237,7 +235,7 @@ Standard template sections for final document:
 
 ### Common Issues and Solutions
 
-**Template Access**: Consult your architecture or design documentation, use alternative access methods, proceed with embedded template knowledge
+**Template Access**: If a `template_url` can't be read, tell the user and use the Threat Model Template above
 
 **Scope Definition**: Start with specific features, consider data flows and trust boundaries, focus on highest risk components
 
@@ -246,40 +244,6 @@ Standard template sections for final document:
 **Threat Identification**: Review STRIDE methodology, consider components separately, reference similar service models
 
 **Mitigation Mapping**: Start with highest priority threats, use AWS standard controls, look for patterns in reference models
-
-## Context Management Best Practices
-
-### Phased Processing Workflow
-
-**Phase 1 (Setup)**: Minimal context - parameter collection and tool verification
-**Phase 2 (Information Gathering)**: High context managed through batching - document processing and template analysis
-**Phase 3 (Content Creation)**: Medium context - introduction, architecture, threats, mitigations
-**Phase 4 (Integration)**: Medium context - final assembly
-
-### Key Optimization Rules
-
-- Never retain raw document content - always summarize immediately
-- Batch processing limits - maximum 2-3 large documents per batch
-- Smart looping - process one item at a time with immediate clearing
-- Incremental building - construct final document in phases
-- Strategic clearing - remove intermediate artifacts between phases
-- Graceful degradation - continue with available information if context limits reached
-
-## Quality Checklist
-
-Final validation requirements:
-
-- [ ] Required parameters collected and validated
-- [ ] Scope clearly defined and consistently applied
-- [ ] All template sections complete
-- [ ] Threats properly categorized using STRIDE methodology
-- [ ] Each threat has corresponding mitigation
-- [ ] Mitigations mapped with implementation status
-- [ ] Professional security documentation standards followed
-- [ ] User validated final document accuracy
-- [ ] Assumptions and limitations clearly documented
-
----
 
 ## Quality Gate
 
@@ -292,12 +256,15 @@ Final validation requirements:
 
 **IMPORTANT (should fix):**
 
+- Threats lack likelihood and impact ratings
 - STRIDE categories not fully covered for each component
 - Security testing strategy not included
+- A threat has no mitigation
+- Scope, assumptions, or limitations not documented
 
 **SUGGESTION:**
 
-- Could add threat likelihood and impact scoring
+- Mitigations lack implementation status
 - Could reference specific AWS security services for each mitigation
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". Skip the question when `scope_confirmed` is true or the user asked for no questions. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

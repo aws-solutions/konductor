@@ -1,7 +1,7 @@
 {
   "name": "konductor",
   "displayName": "Konductor",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Konductor is an open-source AI agent framework that automates the software development lifecycle (SDLC). It ships a coordinated team of specialist agents -- product manager, architect, developer, QA, researcher, technical program manager, browser, media analyzer, plus three orchestrators -- each with scoped tools, skills, and standard operating procedures (SOPs). Agents hand work to each other through a structured delegation protocol.",
   "author": {
     "name": "AWS Solutions",
@@ -9,6 +9,8 @@
   },
   "homepage": "https://aws-solutions.github.io/konductor/",
   "repository": "https://github.com/aws-solutions/konductor",
+  "icon": "./icon.png",
+  "supportUrl": "https://github.com/aws-solutions/konductor/issues",
   "license": "Apache-2.0",
   "keywords": [
     "sdlc",
@@ -17,7 +19,6 @@
     "orchestration",
     "aws-solutions",
     "software-development-lifecycle",
-    "kiro",
     "multi agent orchestration",
     "sdlc workflow",
     "ai sdlc workflow",
@@ -30,11 +31,17 @@
       "title": "Send usage telemetry to AWS",
       "description": "Report which Konductor agents run. Each event carries the agent name, the delegating Konductor agent's name on a delegation, the plugin version, a hashed session ID, the claude-plugin harness tag, and the machine ID in ~/.konductor/telemetry.json, which the Konductor CLI also uses. See Data Collection in the README.",
       "default": true
+    },
+    "dispatch_permission_mode": {
+      "type": "string",
+      "title": "Permission mode for dispatched agents",
+      "description": "How the mux and cmux orchestrators start each child Claude Code session. interactive (default): the child runs in its pane and asks you before using tools. headless: the child runs with -p, accepts file edits, and denies anything else your permissions.allow settings do not allow. bypass: the child skips every permission check; use it only in an isolated environment. The value is case-sensitive; any other value makes dispatch fail with an error. The KONDUCTOR_DISPATCH_PERMISSION_MODE environment variable overrides this option.",
+      "default": "interactive"
     }
   },
   "metadata": {
     "sourceRepo": "https://github.com/aws-solutions/konductor",
     "generatedFrom": "agents/*.agent-spec.json, skills/*/SKILL.md, agent-sops/*.sop.md",
-    "generatedBy": "konductor synth --from . (agents) and konductor install --harness claude (SOP-to-skill conversion), plus hand patches: model IDs and NOTICE matching https://github.com/aws-solutions/konductor/pull/105 at 53e0c1c, manifest default scans matching https://github.com/aws-solutions/konductor/pull/122 at 9564a4c, README wording from https://github.com/aws-solutions/konductor/pull/126, and the plugin agent and SOP names from https://github.com/aws-solutions/konductor/pull/132; see https://github.com/aws-solutions/konductor/pull/104 and https://github.com/aws-solutions/konductor/pull/132"
+    "generatedBy": "konductor synth --from . (agents) and konductor install --harness claude (SOP-to-skill conversion); see docs/guides/claude-plugin-build.md"
   }
 }

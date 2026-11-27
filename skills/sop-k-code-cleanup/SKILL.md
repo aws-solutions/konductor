@@ -2,7 +2,6 @@
 name: "sop-k-code-cleanup"
 description: "This SOP removes AI-generated slop from code before CR submission. It diffs the current branch against main/mainline, identifies unnecessary artifacts, cleans them, and runs review skills on the result."
 arguments: [source_dir, branch, output_file]
-disable-model-invocation: true
 ---
 
 <agent-sop name="k-code-cleanup"><content>

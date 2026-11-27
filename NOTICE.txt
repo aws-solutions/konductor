@@ -15,7 +15,6 @@ THIRD PARTY COMPONENTS
 
 This software includes third party software subject to the following copyrights:
 
-addr2line under the Apache-2.0 OR MIT license.
 adler2 under the 0BSD OR MIT OR Apache-2.0 license.
 android_system_properties under the MIT OR Apache-2.0 license.
 anstream under the MIT OR Apache-2.0 license.
@@ -24,7 +23,6 @@ anstyle-parse under the MIT OR Apache-2.0 license.
 anstyle-query under the MIT OR Apache-2.0 license.
 anstyle-wincon under the MIT OR Apache-2.0 license.
 autocfg under the Apache-2.0 OR MIT license.
-backtrace under the MIT OR Apache-2.0 license.
 base64 under the MIT OR Apache-2.0 license.
 bitflags under the MIT OR Apache-2.0 license.
 block-buffer under the MIT OR Apache-2.0 license.
@@ -38,10 +36,14 @@ clap_builder under the MIT OR Apache-2.0 license.
 clap_derive under the MIT OR Apache-2.0 license.
 clap_lex under the MIT OR Apache-2.0 license.
 colorchoice under the MIT OR Apache-2.0 license.
+const-oid under the Apache-2.0 OR MIT license.
 core-foundation-sys under the MIT OR Apache-2.0 license.
 cpufeatures under the MIT OR Apache-2.0 license.
 crc32fast under the MIT OR Apache-2.0 license.
 crypto-common under the MIT OR Apache-2.0 license.
+darling under the MIT license.
+darling_core under the MIT license.
+darling_macro under the MIT license.
 digest under the MIT OR Apache-2.0 license.
 displaydoc under the MIT OR Apache-2.0 license.
 dyn-clone under the MIT OR Apache-2.0 license.
@@ -50,6 +52,7 @@ errno under the MIT OR Apache-2.0 license.
 filetime under the MIT/Apache-2.0 license.
 find-msvc-tools under the MIT OR Apache-2.0 license.
 flate2 under the MIT OR Apache-2.0 license.
+foldhash under the Zlib license.
 form_urlencoded under the MIT OR Apache-2.0 license.
 fs2 under the MIT/Apache-2.0 license.
 futures under the MIT OR Apache-2.0 license.
@@ -61,11 +64,10 @@ futures-macro under the MIT OR Apache-2.0 license.
 futures-sink under the MIT OR Apache-2.0 license.
 futures-task under the MIT OR Apache-2.0 license.
 futures-util under the MIT OR Apache-2.0 license.
-generic-array under the MIT license.
 getrandom under the MIT OR Apache-2.0 license.
-gimli under the MIT OR Apache-2.0 license.
 hashbrown under the MIT OR Apache-2.0 license.
 heck under the MIT OR Apache-2.0 license.
+hybrid-array under the MIT OR Apache-2.0 license.
 iana-time-zone under the MIT OR Apache-2.0 license.
 iana-time-zone-haiku under the MIT OR Apache-2.0 license.
 icu_collections under the Unicode-3.0 license.
@@ -75,6 +77,7 @@ icu_normalizer_data under the Unicode-3.0 license.
 icu_properties under the Unicode-3.0 license.
 icu_properties_data under the Unicode-3.0 license.
 icu_provider under the Unicode-3.0 license.
+ident_case under the MIT/Apache-2.0 license.
 idna under the MIT OR Apache-2.0 license.
 idna_adapter under the Apache-2.0 OR MIT license.
 indexmap under the Apache-2.0 OR MIT license.
@@ -89,20 +92,21 @@ memchr under the Unlicense OR MIT license.
 miniz_oxide under the MIT OR Zlib OR Apache-2.0 license.
 mio under the MIT license.
 num-traits under the MIT OR Apache-2.0 license.
-object under the Apache-2.0 OR MIT license.
 once_cell under the MIT OR Apache-2.0 license.
 once_cell_polyfill under the MIT OR Apache-2.0 license.
 owo-colors under the MIT license.
-paste under the MIT OR Apache-2.0 license.
+pastey under the MIT OR Apache-2.0 license.
 percent-encoding under the MIT OR Apache-2.0 license.
 pin-project-lite under the Apache-2.0 OR MIT license.
 potential_utf under the Unicode-3.0 license.
 proc-macro2 under the MIT OR Apache-2.0 license.
 quote under the MIT OR Apache-2.0 license.
+r-efi under the MIT OR Apache-2.0 OR LGPL-2.1-or-later license.
+ref-cast under the MIT OR Apache-2.0 license.
+ref-cast-impl under the MIT OR Apache-2.0 license.
 ring under the Apache-2.0 AND ISC license.
-rmcp under the MIT/Apache-2.0 license.
-rmcp-macros under the MIT/Apache-2.0 license.
-rustc-demangle under the MIT/Apache-2.0 license.
+rmcp under the Apache-2.0 license.
+rmcp-macros under the Apache-2.0 license.
 rustix under the Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT license.
 rustls under the Apache-2.0 OR ISC OR MIT license.
 rustls-pki-types under the MIT OR Apache-2.0 license.
@@ -123,6 +127,7 @@ signal-hook-registry under the MIT OR Apache-2.0 license.
 simd-adler32 under the MIT license.
 slab under the MIT license.
 smallvec under the MIT OR Apache-2.0 license.
+socket2 under the MIT OR Apache-2.0 license.
 stable_deref_trait under the MIT OR Apache-2.0 license.
 strsim under the MIT license.
 subtle under the BSD-3-Clause license.
@@ -135,7 +140,6 @@ thiserror under the MIT OR Apache-2.0 license.
 thiserror-impl under the MIT OR Apache-2.0 license.
 tinystr under the Unicode-3.0 license.
 tinyvec under the Zlib OR Apache-2.0 OR MIT license.
-tinyvec_macros under the MIT OR Apache-2.0 OR Zlib license.
 tokio under the MIT license.
 tokio-macros under the MIT license.
 tokio-util under the MIT license.
@@ -143,15 +147,18 @@ tracing under the MIT license.
 tracing-attributes under the MIT license.
 tracing-core under the MIT license.
 typenum under the MIT OR Apache-2.0 license.
+unicode-general-category under the Apache-2.0 license.
 unicode-ident under the (MIT OR Apache-2.0) AND Unicode-3.0 license.
-unicode-normalization under the MIT OR Apache-2.0 license.
+unicode-normalization under the (MIT OR Apache-2.0) AND Unicode-3.0 license.
+unicode-width under the MIT OR Apache-2.0 license.
 unsafe-libyaml under the MIT license.
 untrusted under the ISC license.
 ureq under the MIT OR Apache-2.0 license.
 url under the MIT OR Apache-2.0 license.
 utf8_iter under the Apache-2.0 OR MIT license.
 utf8parse under the Apache-2.0 OR MIT license.
-version_check under the MIT/Apache-2.0 license.
+utf_types under the Apache-2.0 OR MIT license.
+uuid under the Apache-2.0 OR MIT license.
 wasi under the Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT license.
 wasm-bindgen under the MIT OR Apache-2.0 license.
 wasm-bindgen-macro under the MIT OR Apache-2.0 license.
@@ -187,6 +194,7 @@ zeroize under the Apache-2.0 OR MIT license.
 zerotrie under the Unicode-3.0 license.
 zerovec under the Unicode-3.0 license.
 zerovec-derive under the Unicode-3.0 license.
+zlib-rs under the Zlib license.
 zmij under the MIT license.
 
 **********************
@@ -199,6 +207,7 @@ BSD-3-Clause - https://spdx.org/licenses/BSD-3-Clause.html
 BSL-1.0 - https://spdx.org/licenses/BSL-1.0.html
 CDLA-Permissive-2.0 - https://spdx.org/licenses/CDLA-Permissive-2.0.html
 ISC - https://spdx.org/licenses/ISC.html
+LGPL-2.1-or-later - https://spdx.org/licenses/LGPL-2.1-or-later.html
 LLVM-exception - https://spdx.org/licenses/LLVM-exception.html
 MIT - https://spdx.org/licenses/MIT.html
 Unicode-3.0 - https://spdx.org/licenses/Unicode-3.0.html

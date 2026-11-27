@@ -1,8 +1,7 @@
 ---
 name: "sop-k-existing-design-review"
-description: "This SOP guides a structured review of all design artifacts before handoff to implementation. It collects system design, threat model, API specs, data models, security policies, and architecture diagrams, then runs a principal-engineer-level evaluation across 10 dimensions using the design-evaluation skill."
+description: "Reviews a finished set of design artifacts (system design, threat model, API specs, data models, diagrams) across 10 dimensions with design-evaluation before implementation."
 arguments: [design_dir, output_file, dry_run]
-disable-model-invocation: true
 ---
 
 <agent-sop name="k-existing-design-review"><content>
@@ -11,6 +10,8 @@ disable-model-invocation: true
 > **Not for authoring new design documents.** This SOP reviews a completed set of design artifacts (system design, threat model, API specs, data models, security policies, diagrams) for readiness before implementation begins. To author a new design document from scratch, use [`k-design-doc-creation.sop.md`](k-design-doc-creation.sop.md) instead.
 
 ## Overview
+
+Reviews a finished set of design artifacts (system design, threat model, API specs, data models, diagrams) across 10 dimensions with design-evaluation before implementation.
 
 This SOP guides a structured review of all design artifacts before handoff to implementation. It collects system design, threat model, API specs, data models, security policies, and architecture diagrams, then runs a principal-engineer-level evaluation across 10 dimensions using the design-evaluation skill.
 
@@ -45,13 +46,13 @@ Scan the design directory and identify which artifacts are present.
   - `security-policy*.md` or `iam-policies.md` — security policies
   - `*.drawio.xml` or `architecture-diagram*` — architecture diagrams
 - You MUST report which artifacts were found and which are missing
-- You SHOULD warn if critical artifacts (system design, threat model) are missing
-- You MUST NOT proceed to evaluation if system-design.md is missing
+- If threat-model.md is missing, You MUST warn that the review still runs but cannot end READY FOR IMPLEMENTATION
+- You MUST NOT proceed to evaluation if system-design.md is missing. This differs from `design-evaluation`, which lists missing artifacts and scores what is present, because every dimension this SOP scores is judged against the system design
 
 **Expected Output:**
 
 - List of found artifacts with file paths
-- List of missing artifacts with severity (critical/optional)
+- List of missing artifacts (required/optional)
 
 ### 2. Confirm Scope with User
 
@@ -85,23 +86,13 @@ Apply the design-evaluation skill to evaluate all artifacts across 10 dimensions
 **Constraints:**
 
 - You MUST use the `design-evaluation` skill for this step
-- You MUST evaluate across all 10 dimensions:
-  1. Template adherence and completeness
-  2. Scalability and performance
-  3. Security and threat coverage
-  4. Maintainability and code quality
-  5. Resilience and fault tolerance
-  6. Testability
-  7. Operational readiness
-  8. Cost optimization
-  9. API design quality
-  10. Data model quality
-- You MUST assign a numeric score of 1–5 for each dimension; a dimension scoring below 3 MUST be flagged for revision
+- You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
+- You MUST assign a numeric score of 1-5 for each of the 8 scored dimensions; a dimension scoring below 3 MUST be flagged for revision. High-level assessment (#2) and actionable recommendations (#10) are unscored report sections
 - You MUST identify CRITICAL issues (block implementation) vs IMPORTANT issues (should fix) vs SUGGESTIONS
 
 **Expected Output:**
 
-- Scores for all 10 dimensions
+- Scores for the 8 scored dimensions, plus the high-level assessment and actionable recommendations
 - List of CRITICAL, IMPORTANT, and SUGGESTION findings
 
 ### 5. Generate Review Report
@@ -121,8 +112,14 @@ Write the consolidated review report to the output file.
   ## Executive Summary
   [2-3 sentences: overall readiness, critical blockers]
 
+  ## Not Provided
+  [Missing artifacts; not findings, no severity]
+
+  ## High-Level Assessment
+  [Strengths, weaknesses, overall soundness; unscored]
+
   ## Dimension Scores
-  [Table: dimension | score | key finding]
+  [Table of the 8 scored dimensions: dimension | score | key finding]
 
   ## Critical Issues (Must Fix Before Implementation)
   [Numbered list with specific file/section references]
@@ -133,8 +130,11 @@ Write the consolidated review report to the output file.
   ## Suggestions
   [Numbered list]
 
+  ## Actionable Recommendations
+  [Concrete steps; unscored]
+
   ## Recommendation
-  [READY FOR IMPLEMENTATION / NOT READY — reason]
+  [READY FOR IMPLEMENTATION / NOT READY: reason. A missing threat model gives NOT READY: threat model not provided]
   ```
 
 - You MUST NOT print the full report content in your response — the file itself is sufficient
@@ -152,7 +152,8 @@ Summarize findings and recommend next steps.
 **Constraints:**
 
 - You MUST state clearly: READY FOR IMPLEMENTATION or NOT READY
-- If NOT READY, you MUST list the critical issues that must be resolved
+- If threat-model.md was not provided, the recommendation MUST be NOT READY: threat model not provided. The threat model stays under Not Provided with no severity
+- If NOT READY, you MUST list the critical issues that must be resolved, and the missing threat model if that is a reason
 - You SHOULD offer to help fix critical issues using the appropriate architect skills
 - You MAY offer to re-run the review after fixes are applied
 
@@ -188,12 +189,18 @@ Recommendation: READY FOR IMPLEMENTATION
 ```
 Artifacts found:
 ✅ system-design.md
-⚠️ threat-model.md (MISSING — critical, recommended before review)
+⚠️ threat-model.md (not provided)
 ✅ smithy-model/
 ✅ dynamodb-table-design.md
 
-Proceeding with review. Note: the Security and threat coverage dimension will be limited.
-Consider generating a threat model first using the k-architect agent with the threat-modeling skill.
+Proceeding with review. Without a threat model the Security dimension is capped at 3 and the
+review cannot end READY FOR IMPLEMENTATION.
+
+Design review complete. Report saved to design-review-report.md
+
+Recommendation: NOT READY: threat model not provided
+
+Generate a threat model using the k-architect agent with the threat-modeling skill, then re-run the review.
 ```
 
 ### Example 3: Dry Run
@@ -228,7 +235,7 @@ No report generated (dry_run=true).
 
 ### Issue: Evaluation produces too many findings
 
-**Solution:** Focus on CRITICAL issues first. IMPORTANT and SUGGESTION items can be addressed iteratively. A design with only IMPORTANT issues is still ready for implementation.
+**Solution:** Focus on CRITICAL issues first. IMPORTANT and SUGGESTION items can be addressed iteratively. A design with only IMPORTANT issues is still ready for implementation, as long as a threat model was provided.
 
 ### Issue: Report file write fails
 
