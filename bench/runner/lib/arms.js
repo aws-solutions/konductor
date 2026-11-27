@@ -30,9 +30,9 @@ const PLANT_ONLY = `plant arms run on ${plantRuntimeNames.slice(0, -1).join(', '
 // The plant-only runtime (descriptor `plant.only`): every arm under its prefix is a plant arm. Today Strands.
 const PLANT_ONLY_RUNTIME = DESCRIPTORS.find((d) => d.plant?.only);
 const STRANDS_PREFIX = PLANT_ONLY_RUNTIME.armPrefix;
-const STRANDS_PLANT_ONLY = 'Strands arms are plant arms only (st-plant-policy, st-plant-allowall, st-plant-policy-hooked, st-plant-allowall-hooked)';
 /** Every plant arm id a result can carry: the plain ids under each plant runtime's prefix, and the hooked ids under `st-`. */
 const PLANT_ARM_IDS = Object.freeze(PLANT_RUNTIMES.flatMap((d) => [...Object.keys(PLANT_ARMS), ...(d.plant.hooked ? Object.keys(HOOKED_PLANT_ARMS) : [])].map((a) => `${d.armPrefix}${a}`)));
+const STRANDS_PLANT_ONLY = `${PLANT_ONLY_RUNTIME.proseName} arms are plant arms only (${PLANT_ARM_IDS.filter((id) => id.startsWith(STRANDS_PREFIX)).join(', ')})`;
 const isPlantArmId = (armId) => PLANT_ARM_IDS.includes(armId);
 
 /**
