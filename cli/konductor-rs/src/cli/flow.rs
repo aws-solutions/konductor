@@ -21,6 +21,13 @@
 // before it searches for `.konductor/`. `flow check` and `flow show` still use the current directory as in 1c.
 // `library/<name>` names a shipped workflow, and none exist yet.
 //
+// Harness: `--harness` takes `kiro-cli`, `claude` or `fake`. Without it the one runner harness that the install index
+// records is used (`flow_harness.rs` reads the index). `claude` is a usage error until step 1f-2. A stage whose agent
+// Kiro CLI cannot see is a usage error (exit 64) before the first stage and before the trust question.
+//
+// Interrupts: on Kiro CLI, SIGINT, SIGTERM and SIGHUP end the running session's process group through the launcher and
+// halt the run (`flow_interrupt.rs`). The command exits 1 like any halted run.
+//
 // Trust: a project workflow, and any workflow in a repository that has tool configuration files, runs only after
 // the user confirmed its trust hash. The hash is made from the bytes the loader parsed (`workflow_core::trust`). The
 // record is `~/.konductor/trust.json`.
@@ -30,23 +37,29 @@ use std::ffi::OsString;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 use workflow_adapters::process::current_owner;
 use workflow_adapters::{
-    choose_harness, config_folders, scan_repo_config, FakeHarness, FileAgentCatalog, FileRunLock,
-    FileRunStore, FileTrustStore, Found, HarnessChoice, InstalledFiles, Located, Lookup, Scope,
-    Script, SimulatedClock, Skip, Skipped, StdTerminal, FAKE_SCRIPT_ENV,
+    config_folders, find_program, resolve_harness, scan_repo_config, FakeHarness, FileAgentCatalog,
+    FileRunLock, FileRunStore, FileTrustStore, Found, HarnessChoice, InstalledFiles, KiroHarness,
+    Located, Lookup, Scope, Script, SimulatedClock, Skip, Skipped, StdTerminal, SystemLauncher,
+    FAKE_SCRIPT_ENV, NO_TIMEOUT_WARNING,
 };
 use workflow_core::json::Json;
-use workflow_core::ports::{RunLock, Terminal, TrustStore};
+use workflow_core::ports::{Harness, ProcessGroup, RunLock, Terminal, TrustStore};
 use workflow_core::run::{Run, RunStatus, StageState, StageStatus};
-use workflow_core::runner::{execute, prepare, start, GuardedHarness, StartError};
+use workflow_core::runner::{execute, prepare, start, GuardedHarness, StartError, SweepResult};
+use workflow_core::time::format_timestamp;
 use workflow_core::trust::{
     ambiguous_agents, decide, needs_trust, render_summary, AmbiguousAgent, ConfigFile,
     SummaryInput, TrustInputs, UnreadableConfig, Verdict,
 };
 use workflow_core::{check_text, parse_reference, Checked, Reference, ReferenceError};
 
+use crate::cli::flow_harness::{check_kiro_agents, installed_runners};
+use crate::cli::flow_interrupt;
 use crate::cli::output::{self, status, ColorMode};
 use crate::cli::FlowAction;
 
@@ -96,7 +109,8 @@ struct Context<'a> {
 /// The inputs of `flow run` besides the name.
 struct RunArgs {
     goal: Option<String>,
-    harness: String,
+    /// `--harness`. Without it the install index picks the runner harness.
+    harness: Option<String>,
     fake_script: Option<PathBuf>,
     /// The value of `KONDUCTOR_FAKE_SCRIPT`.
     fake_script_env: Option<OsString>,
@@ -443,7 +457,7 @@ fn run(
     };
     match command {
         Command::Check => {
-            let assessment = assess(context, &checked, &found);
+            let assessment = assess(context, &checked, &found, &agent_catalog(context));
             print_check(
                 &checked,
                 &found.scope,
@@ -469,8 +483,10 @@ fn run_workflow(
     out: &mut dyn Write,
     err: &mut dyn Write,
 ) -> u8 {
-    let choice = match choose_harness(
-        &args.harness,
+    // The install index is read here and the engine gets the answer: which runner harnesses are installed.
+    let choice = match resolve_harness(
+        args.harness.as_deref(),
+        installed_runners(context.home),
         args.fake_script.as_deref(),
         args.fake_script_env.as_deref(),
     ) {
@@ -491,16 +507,62 @@ fn run_workflow(
         Ok(prepared) => prepared,
         Err(error) => return usage_error(&error.message(), context, out, err),
     };
-    let HarnessChoice::Fake { script } = &choice;
-    let script = match Script::load(script) {
-        Ok(script) => script,
-        Err(why) => {
-            let message = format!("The fake script cannot be used: {why}.");
-            return usage_error(&message, context, out, err);
+    // Kiro CLI starts in the project root and finds an agent there, then in the home folder, and nowhere else. This one
+    // catalog checks the agents, builds the trust summary and the ambiguity check, and is the one the harness runs
+    // from, so the file the user is shown is the file that runs.
+    let kiro_catalog = FileAgentCatalog::new(context.project_root, context.home);
+    let kiro_program =
+        find_program(&["kiro-cli"], None).and_then(|path| path.to_str().map(str::to_string));
+    let script = match &choice {
+        HarnessChoice::Fake { script } => match Script::load(script) {
+            Ok(script) => Some(script),
+            Err(why) => {
+                let message = format!("The fake script cannot be used: {why}.");
+                return usage_error(&message, context, out, err);
+            }
+        },
+        // A stage whose agent the harness cannot see fails before the first stage, and before the trust question: the
+        // user has to change the install or the folder, so nothing is shown that cannot run.
+        HarnessChoice::KiroCli => {
+            // A session starts in the project root, which a path that is not UTF-8 cannot be given to the launcher as.
+            if context.project_root.to_str().is_none() {
+                return usage_error(
+                    "The project root is not valid UTF-8, so a session cannot start in it.",
+                    context,
+                    out,
+                    err,
+                );
+            }
+            if let Err(message) = check_kiro_agents(
+                &prepared.workflow.stages,
+                &kiro_catalog,
+                context.project_root,
+                context.home,
+            ) {
+                return usage_error(&message, context, out, err);
+            }
+            // `kiro-cli` is looked for in the absolute folders of `PATH` only, as `timeout` is. A relative or empty entry
+            // (`PATH=/usr/bin:` or `:.`) would let a file in the repository stand in for it, and the trust hash covers
+            // tool configuration files, not programs.
+            if kiro_program.is_none() {
+                return usage_error(
+                    "`kiro-cli` was not found in an absolute folder of `PATH`. A relative or empty `PATH` entry is not \
+                     searched, so a file in the project cannot stand in for it. Install Kiro CLI or fix `PATH`, then run \
+                     the workflow again.",
+                    context,
+                    out,
+                    err,
+                );
+            }
+            None
         }
     };
 
-    let assessment = assess(context, &checked, &found);
+    let catalog = match &choice {
+        HarnessChoice::Fake { .. } => agent_catalog(context),
+        HarnessChoice::KiroCli => kiro_catalog.clone(),
+    };
+    let assessment = assess(context, &checked, &found, &catalog);
     let subject = Subject {
         name: &name,
         checked: &checked,
@@ -518,6 +580,21 @@ fn run_workflow(
     let mut lock = FileRunLock::new(context.project_root);
     let owner = current_owner();
     let clock = Rc::new(SimulatedClock::default());
+    // From here on a Ctrl-C, SIGTERM or SIGHUP does not end this process by itself on Kiro CLI: it ends the session's
+    // group through the launcher and halts the run. The fake harness starts no process, so it keeps the default.
+    let interrupt = Arc::new(AtomicBool::new(false));
+    if matches!(choice, HarnessChoice::KiroCli) {
+        if let Err(error) = flow_interrupt::watch(&interrupt) {
+            let message =
+                format!("Interrupts cannot be handled, so the run was not started: {error}");
+            return runtime_error(&message, context, out, err);
+        }
+    }
+    let mut launcher = SystemLauncher::new().with_interrupt(Arc::clone(&interrupt));
+    // Without `timeout` the stage limit lasts only while this process does. One line says so before the first session.
+    if matches!(choice, HarnessChoice::KiroCli) && !launcher.guards_limit() {
+        let _ = writeln!(err, "warning: {NO_TIMEOUT_WARNING}");
+    }
     let started = match start(
         &prepared,
         choice.name(),
@@ -525,10 +602,35 @@ fn run_workflow(
         &mut store,
         &mut lock,
         &*clock,
+        &mut launcher,
     ) {
         Ok(started) => started,
         Err(error) => return refused(&error, &lock, context, out, err),
     };
+    for swept in &started.swept {
+        match &swept.result {
+            SweepResult::Ended if !context.json => {
+                let _ = writeln!(
+                    err,
+                    "note: Run {} left a session running in process group {}{}. It was ended.",
+                    swept.run_id,
+                    swept.group.pgid,
+                    deadline_note(&swept.group)
+                );
+            }
+            // Shown under `--json` too, since a session may still be running.
+            SweepResult::Failed(why) => {
+                let _ = writeln!(
+                    err,
+                    "warning: Run {} left a session running in process group {}{}, and it could not be ended: {why}",
+                    swept.run_id,
+                    swept.group.pgid,
+                    deadline_note(&swept.group)
+                );
+            }
+            _ => {}
+        }
+    }
     if !context.json {
         for ended in &started.recovered {
             let _ = writeln!(
@@ -550,7 +652,27 @@ fn run_workflow(
         );
     }
     let mut run = started.run;
-    let mut fake = FakeHarness::new(script, Rc::clone(&clock));
+    let mut inner: Box<dyn Harness + '_> = match script {
+        Some(script) => Box::new(FakeHarness::new(script, Rc::clone(&clock))),
+        None => {
+            // Checked above, so nothing is replaced.
+            let cwd = context.project_root.to_string_lossy();
+            let prefix = output::error_prefix(context.color, "konductor flow:");
+            // One line on standard error when a session does not end well. It is not part of the run state.
+            let note = Box::new(move |line: &str| {
+                let _ = writeln!(std::io::stderr(), "{prefix} {line}");
+            });
+            Box::new(KiroHarness::new(
+                &mut launcher,
+                &kiro_catalog,
+                kiro_program
+                    .as_deref()
+                    .expect("checked above: kiro-cli was found"),
+                &cwd,
+                note,
+            ))
+        }
+    };
     // The confirmation covers what was on disk when it was given. The runner reads the tool configuration files again
     // before each session, so an edit made while the summary was on screen, or by an earlier stage, does not run under
     // the old confirmation. A file that can no longer be read in full counts as a change. The gate has refused a run
@@ -565,7 +687,7 @@ fn run_workflow(
             &confirmed,
         )
     };
-    let mut harness = GuardedHarness::new(&mut fake, &unchanged);
+    let mut harness = GuardedHarness::new(&mut *inner, &unchanged);
     let json = context.json;
     let mut report = |stage: &StageState| {
         if !json {
@@ -581,10 +703,10 @@ fn run_workflow(
         &mut report,
     );
     lock.release();
-    if let Some(stage) = harness.refused_stage() {
+    if let Some(stage) = harness.refused_stage().map(str::to_string) {
         let prefix = output::error_prefix(context.color, "konductor flow:");
         let found = harness.refused_cause().unwrap_or_default();
-        let message = halt_message(assessment.needed, stage, found, &name);
+        let message = halt_message(assessment.needed, &stage, found, &name);
         let _ = writeln!(err, "{prefix} {message}");
     }
     if let Err(error) = executed {
@@ -595,6 +717,13 @@ fn run_workflow(
         RunStatus::Passed => 0,
         _ => EXIT_HALTED,
     }
+}
+
+/// ` (its time limit ends at 2026-11-05T12:30:00Z)` for a group recorded with a deadline, and nothing for an older one.
+fn deadline_note(group: &ProcessGroup) -> String {
+    group.deadline_ms.map_or_else(String::new, |ms| {
+        format!(" (its time limit ends at {})", format_timestamp(ms))
+    })
 }
 
 /// `stage plan: passed`, or `stage plan: blocked (RESULT_MISSING)`.
@@ -846,6 +975,8 @@ struct Assessment {
     /// The agents of the workflow whose id does not lead to one definition. The harness may use a file the summary
     /// would not describe, so the run and the trust record are refused. The trust hash is still made.
     ambiguous_agents: Vec<AmbiguousAgent>,
+    /// The catalog that the ambiguity check and the summary read: the one the chosen harness runs from.
+    catalog: FileAgentCatalog,
 }
 
 /// The repo tool configuration files as they are now, or every entry that cannot be read in full.
@@ -924,19 +1055,156 @@ fn halt_message(needed: bool, stage: &str, found: &str, name: &str) -> String {
     )
 }
 
-/// The agent catalog as the harness would search: the project root, the folders above it up to the git root, then the
-/// home folder.
+/// The agent catalog of the fake harness and of `flow check`: the working folder, the folders above it up to the git
+/// root, then the home folder. Kiro CLI does not search that way, so a run on it uses a catalog of its own.
 fn agent_catalog(context: &Context) -> FileAgentCatalog {
     let folders = config_folders(context.cwd, context.home);
     FileAgentCatalog::new(context.cwd, context.home)
         .with_folders_above(folders.get(1..).unwrap_or_default())
 }
 
-fn assess(context: &Context, checked: &Checked, found: &Found) -> Assessment {
+/// The catalog for `flow trust`, which has no `--harness`: the one a `flow run` without it would use. When that is not
+/// the Kiro catalog (no index, only `claude`, both runners, or neither), it is the search from the current folder. That
+/// search shows the nearest file of each agent, which can be another file than the one Kiro CLI runs, and a run with
+/// `--harness kiro-cli` needs no install record, so [`add_kiro_mismatches`] compares the two for every agent in all of
+/// those cases.
+fn trust_catalog(context: &Context) -> FileAgentCatalog {
+    match resolve_harness(None, installed_runners(context.home), None, None) {
+        Ok(HarnessChoice::KiroCli) => FileAgentCatalog::new(context.project_root, context.home),
+        _ => agent_catalog(context),
+    }
+}
+
+/// The path of the Kiro agent file that `definition` shows, so two searches that label it differently can be compared.
+/// `base` is the folder that an unlabelled path is below.
+fn kiro_file_path(base: &Path, home: Option<&Path>, file: &str) -> PathBuf {
+    let joined = match (file.strip_prefix("~/"), home) {
+        (Some(rest), Some(home)) => home.join(rest),
+        _ => base.join(file),
+    };
+    // A folder reached through a link has two spellings, so the paths are compared in their resolved form.
+    std::fs::canonicalize(&joined).unwrap_or(joined)
+}
+
+/// `path` as a message shows it: below the project root it is relative to it, below the home folder it starts with `~/`.
+fn short_path(context: &Context, path: &Path) -> String {
+    let resolved =
+        |folder: &Path| std::fs::canonicalize(folder).unwrap_or_else(|_| folder.to_path_buf());
+    if let Ok(rest) = path.strip_prefix(resolved(context.project_root)) {
+        return rest.display().to_string();
+    }
+    if let Some(rest) = context
+        .home
+        .and_then(|home| path.strip_prefix(resolved(home)).ok())
+    {
+        return format!("~/{}", rest.display());
+    }
+    path.display().to_string()
+}
+
+/// For `flow trust` whenever [`trust_catalog`] is not the Kiro catalog, whatever the install index says: a later
+/// `flow run --harness kiro-cli` needs no record of a Kiro install, and it runs the file that Kiro CLI finds, which looks
+/// only in the project root and the home folder, while the summary was built from the search from the current folder.
+/// The trust hash is the same whichever catalog built the summary, so the record would cover the run of a file that the
+/// summary did not show. For each agent of the workflow, the file of the one search must be the file of the other. When
+/// they differ, or either side is ambiguous, the trust record is refused. The check is the one
+/// `FileAgentCatalog::kiro_agent` gives the run, so the two cannot drift apart.
+fn add_kiro_mismatches(context: &Context, checked: &Checked, ambiguous: &mut Vec<AmbiguousAgent>) {
+    let resolved_to_kiro = matches!(
+        resolve_harness(None, installed_runners(context.home), None, None),
+        Ok(HarnessChoice::KiroCli)
+    );
+    let Some(workflow) = checked.workflow.as_ref() else {
+        return;
+    };
+    if resolved_to_kiro {
+        return;
+    }
+    use workflow_core::ports::{AgentCatalog, Runner};
+    let nearest = agent_catalog(context);
+    let kiro = FileAgentCatalog::new(context.project_root, context.home);
+    let mut seen: Vec<&str> = Vec::new();
+    for stage in &workflow.stages {
+        let agent = stage.agent.as_str();
+        if seen.contains(&agent) {
+            continue;
+        }
+        seen.push(agent);
+        let from_cwd: Vec<_> = nearest
+            .definitions(agent)
+            .into_iter()
+            .filter(|d| d.runner == Runner::KiroCli)
+            .collect();
+        let from_root = kiro.kiro_agent(agent);
+        if from_cwd.is_empty() && from_root.is_none() {
+            continue;
+        }
+        // A file with unknown tools is not a mismatch when both searches pick it: the summary then says the tools are
+        // unreadable, and that is the file that runs. An ambiguous agent may be another file, so it is refused.
+        let unclear = |d: &workflow_core::ports::AgentDefinition| d.ambiguous;
+        let same_file = match (from_cwd.as_slice(), &from_root) {
+            ([one], Some(root)) => {
+                !unclear(one)
+                    && !unclear(&root.definition)
+                    && kiro_file_path(context.cwd, context.home, &one.file)
+                        == kiro_file_path(context.project_root, context.home, &root.definition.file)
+            }
+            _ => false,
+        };
+        if same_file {
+            continue;
+        }
+        let shown = |files: Vec<String>| {
+            if files.is_empty() {
+                "no file".to_string()
+            } else {
+                files.join(", ")
+            }
+        };
+        let cwd_files = shown(
+            from_cwd
+                .iter()
+                .map(|d| {
+                    let path = kiro_file_path(context.cwd, context.home, &d.file);
+                    format!(
+                        "`{}`",
+                        workflow_core::trust::plain(&short_path(context, &path))
+                    )
+                })
+                .collect(),
+        );
+        let root_files = shown(
+            from_root
+                .iter()
+                .map(|a| {
+                    let path =
+                        kiro_file_path(context.project_root, context.home, &a.definition.file);
+                    format!(
+                        "`{}`",
+                        workflow_core::trust::plain(&short_path(context, &path))
+                    )
+                })
+                .collect(),
+        );
+        ambiguous.push(AmbiguousAgent {
+            agent: agent.to_string(),
+            // The Kiro file comes first: it is below the project root or the home folder, so it is short, and the
+            // nearest file may be a long path that the refusal text cuts at its end.
+            reason: format!("Kiro CLI file {root_files}, nearest file {cwd_files}"),
+        });
+    }
+}
+
+fn assess(
+    context: &Context,
+    checked: &Checked,
+    found: &Found,
+    catalog: &FileAgentCatalog,
+) -> Assessment {
     let ambiguous_agents = checked
         .workflow
         .as_ref()
-        .map(|workflow| ambiguous_agents(workflow, &agent_catalog(context)))
+        .map(|workflow| ambiguous_agents(workflow, catalog))
         .unwrap_or_default();
     let installed = installed_files(context.project_root, context.home);
     match scan_config(context, &installed) {
@@ -947,6 +1215,7 @@ fn assess(context: &Context, checked: &Checked, found: &Found) -> Assessment {
             config,
             installed,
             ambiguous_agents,
+            catalog: catalog.clone(),
         },
         // Nothing can be hashed, and the repo has tool configuration, so the gate must refuse.
         Err(unreadable) => Assessment {
@@ -956,6 +1225,7 @@ fn assess(context: &Context, checked: &Checked, found: &Found) -> Assessment {
             config: Vec::new(),
             installed,
             ambiguous_agents,
+            catalog: catalog.clone(),
         },
     }
 }
@@ -1027,7 +1297,7 @@ fn display_path(name: &str, scope: Scope) -> String {
     }
 }
 
-fn summary_text(context: &Context, subject: &Subject) -> Option<String> {
+fn summary_text(subject: &Subject) -> Option<String> {
     let Subject {
         name,
         checked,
@@ -1035,7 +1305,6 @@ fn summary_text(context: &Context, subject: &Subject) -> Option<String> {
         assessment,
     } = *subject;
     let workflow = checked.workflow.as_ref()?;
-    let catalog = agent_catalog(context);
     Some(render_summary(&SummaryInput {
         name,
         path: &display_path(name, found.scope),
@@ -1043,7 +1312,7 @@ fn summary_text(context: &Context, subject: &Subject) -> Option<String> {
         workflow,
         inputs: &checked.trust_inputs,
         config: &assessment.config,
-        catalog: &catalog,
+        catalog: &assessment.catalog,
     }))
 }
 
@@ -1228,7 +1497,7 @@ fn gate(
             if let Err(error) = ports.store.can_record() {
                 return Err(record_error(&error.0, context, out, err));
             }
-            let Some(summary) = summary_text(context, subject) else {
+            let Some(summary) = summary_text(subject) else {
                 return Err(runtime_error(
                     "The workflow cannot be summarised.",
                     context,
@@ -1278,7 +1547,8 @@ fn trust_workflow(
         print_show(&checked, found.scope, &[], context.json, out, err);
         return EXIT_WORKFLOW_ERRORS;
     }
-    let assessment = assess(context, &checked, &found);
+    let mut assessment = assess(context, &checked, &found, &trust_catalog(context));
+    add_kiro_mismatches(context, &checked, &mut assessment.ambiguous_agents);
     let subject = Subject {
         name: &name,
         checked: &checked,
@@ -1318,7 +1588,7 @@ fn trust_workflow(
             );
             return refuse_without_terminal(&message, context, out, err);
         }
-        let Some(summary) = summary_text(context, &subject) else {
+        let Some(summary) = summary_text(&subject) else {
             return runtime_error("The workflow cannot be summarised.", context, out, err);
         };
         if !confirmed(ports, &summary, hash) {
@@ -1402,6 +1672,21 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
     use workflow_core::ports::{Session, SessionEnd, SessionOutcome};
+
+    #[test]
+    fn a_swept_group_names_its_deadline_only_when_the_record_has_one() {
+        let mut group = ProcessGroup {
+            pgid: 42,
+            started: "x".to_string(),
+            deadline_ms: None,
+        };
+        assert_eq!(deadline_note(&group), "");
+        group.deadline_ms = Some(1_793_881_800_000);
+        assert_eq!(
+            deadline_note(&group),
+            " (its time limit ends at 2026-11-05T12:30:00Z)"
+        );
+    }
 
     const VALID: &str = "format: konductor/1\nversion: 0.1.0\nintent:\n  outcome: Do it.\nstages:\n  - name: plan\n    agent: k-architect\n";
 
@@ -1765,7 +2050,7 @@ mod tests {
         fs::write(&script, PASSING).unwrap();
         let args = RunArgs {
             goal: Some("Do it.".into()),
-            harness: "fake".into(),
+            harness: Some("fake".into()),
             fake_script: Some(script),
             fake_script_env: None,
             trust: offered.map(str::to_string),
@@ -1990,6 +2275,349 @@ mod tests {
             "{shown}"
         );
         assert!(!shown.contains("shell"), "{shown}");
+    }
+
+    /// Serializes the tests that change `PATH`, which is process-wide.
+    static PATH_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// An absolute folder with an executable `kiro-cli` stub, put first on `PATH` while this value lives. The run looks
+    /// the program up before the trust question, and a machine without Kiro CLI (a CI runner) has none. The stub is
+    /// never run: these tests stop at the question.
+    struct KiroOnPath {
+        _guard: std::sync::MutexGuard<'static, ()>,
+        old: Option<std::ffi::OsString>,
+        dir: PathBuf,
+    }
+
+    impl KiroOnPath {
+        fn new() -> KiroOnPath {
+            use std::os::unix::fs::PermissionsExt;
+            let guard = PATH_LOCK
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let dir = std::env::temp_dir().join(format!(
+                "konductor-kiro-stub-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            fs::create_dir_all(&dir).unwrap();
+            let stub = dir.join("kiro-cli");
+            fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
+            fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+            let old = std::env::var_os("PATH");
+            let mut folders = vec![dir.clone()];
+            folders.extend(std::env::split_paths(&old.clone().unwrap_or_default()));
+            std::env::set_var("PATH", std::env::join_paths(folders).unwrap());
+            KiroOnPath {
+                _guard: guard,
+                old,
+                dir,
+            }
+        }
+    }
+
+    impl Drop for KiroOnPath {
+        fn drop(&mut self) {
+            match &self.old {
+                Some(old) => std::env::set_var("PATH", old),
+                None => std::env::remove_var("PATH"),
+            }
+            let _ = fs::remove_dir_all(&self.dir);
+        }
+    }
+
+    /// Runs `plan` on `harness` from `cwd`, with `project` as the project root, and the user saying no. Returns what
+    /// the summary showed.
+    fn summary_on(scratch: &Scratch, harness: &str, cwd: &Path, project: &Path) -> String {
+        let _kiro = (harness == "kiro-cli").then(KiroOnPath::new);
+        let script = scratch.0.join("script.json");
+        fs::write(&script, PASSING).unwrap();
+        let args = RunArgs {
+            goal: Some("Do it.".into()),
+            harness: Some(harness.into()),
+            fake_script: Some(script),
+            fake_script_env: None,
+            trust: None,
+        };
+        let mut terminal = Scripted::new(true, &[false]);
+        let mut store = FileTrustStore::new(Some(&scratch.1));
+        let mut ports = TrustPorts {
+            store: &mut store,
+            terminal: &mut terminal,
+        };
+        let context = Context {
+            cwd,
+            project_root: project,
+            home: Some(&scratch.1),
+            json: false,
+            color: ColorMode::disabled(),
+        };
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let code = run_workflow(&context, "plan", &args, &mut ports, &mut out, &mut err);
+        assert_eq!(code, EXIT_NOT_TRUSTED, "{}", String::from_utf8_lossy(&err));
+        let shown = terminal.shown.remove(0);
+        // Only the agents part: the list of files the hash covers names every agent file of the repository.
+        let end = shown.find("Run checks").unwrap();
+        shown[..end].to_string()
+    }
+
+    fn write_agent(base: &Path, tools: &str) {
+        let dir = base.join(".kiro/agents");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("k-architect.json"),
+            // Kiro identifies an agent by the `name` in its JSON, so the file has one.
+            format!(r#"{{"name": "k-architect", "allowedTools": ["{tools}"]}}"#),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn on_kiro_a_file_in_a_folder_below_the_project_root_does_not_shadow_the_root_file() {
+        let scratch = Scratch::new("trust-kiro-pkg");
+        scratch.write("plan.yml", VALID);
+        fs::create_dir_all(scratch.0.join(".git")).unwrap();
+        let pkg = scratch.0.join("pkg");
+        write_agent(&pkg, "shell");
+        write_agent(&scratch.0, "fs_read");
+        let shown = summary_on(&scratch, "kiro-cli", &pkg, &scratch.0);
+        assert!(
+            shown.contains("kiro-cli (project): runs without asking: fs_read"),
+            "{shown}"
+        );
+        assert!(
+            shown.contains("file: .kiro/agents/k-architect.json"),
+            "{shown}"
+        );
+        assert!(
+            !shown.contains("shell") && !shown.contains("pkg"),
+            "{shown}"
+        );
+        // The fake harness keeps the search of the folders above the working folder.
+        let fake = summary_on(&scratch, "fake", &pkg, &scratch.0);
+        assert!(fake.contains("runs without asking: shell"), "{fake}");
+    }
+
+    #[test]
+    fn on_kiro_the_summary_names_the_home_file_when_the_only_other_file_is_above_the_project_root()
+    {
+        let scratch = Scratch::new("trust-kiro-above");
+        let app = scratch.0.join("app");
+        fs::create_dir_all(app.join(".konductor/workflows")).unwrap();
+        fs::write(app.join(".konductor/workflows/plan.yml"), VALID).unwrap();
+        fs::create_dir_all(scratch.0.join(".git")).unwrap();
+        write_agent(&scratch.0, "shell");
+        write_agent(&scratch.1, "fs_read");
+        let shown = summary_on(&scratch, "kiro-cli", &app, &app);
+        assert!(
+            shown.contains("kiro-cli (home folder): runs without asking: fs_read"),
+            "{shown}"
+        );
+        assert!(
+            shown.contains("file: ~/.kiro/agents/k-architect.json"),
+            "{shown}"
+        );
+        assert!(!shown.contains("shell"), "{shown}");
+        let fake = summary_on(&scratch, "fake", &app, &app);
+        assert!(fake.contains("runs without asking: shell"), "{fake}");
+    }
+
+    /// Records an install of the runners named by `strategies` in the install index (no index when it is empty).
+    fn install_runners(scratch: &Scratch, strategies: &[&str]) {
+        use crate::cli::install::index::{write_index_at_home, IndexEntry, IndexEntryStatus};
+        if strategies.is_empty() {
+            return;
+        }
+        write_index_at_home(
+            Some(&scratch.1),
+            IndexEntry {
+                target_dir: scratch.1.join("target").to_str().unwrap().to_string(),
+                strategies: strategies.iter().map(|s| (*s).to_string()).collect(),
+                installed_at: "2026-01-01T00:00:00Z".into(),
+                status: IndexEntryStatus::Complete,
+            },
+        )
+        .unwrap();
+    }
+
+    /// Records an install of both runners, so `flow trust` cannot tell which harness a later `flow run` uses.
+    fn install_both_runners(scratch: &Scratch) {
+        install_runners(scratch, &["kiro-cli-v2", "claude"]);
+    }
+
+    /// `flow trust plan` from `cwd` with `project` as the project root, the user saying yes. Returns the exit code, what
+    /// the summary showed and the text on standard error.
+    fn trust_from(scratch: &Scratch, cwd: &Path, project: &Path) -> (u8, String, String) {
+        let mut terminal = Scripted::new(true, &[true]);
+        let mut store = FileTrustStore::new(Some(&scratch.1));
+        let mut ports = TrustPorts {
+            store: &mut store,
+            terminal: &mut terminal,
+        };
+        let context = Context {
+            cwd,
+            project_root: project,
+            home: Some(&scratch.1),
+            json: false,
+            color: ColorMode::disabled(),
+        };
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let code = trust_workflow(&context, "plan", false, &mut ports, &mut out, &mut err);
+        let shown = terminal.shown.first().cloned().unwrap_or_default();
+        let text = String::from_utf8_lossy(&err).into_owned() + &String::from_utf8_lossy(&out);
+        (code, shown, text)
+    }
+
+    #[test]
+    fn flow_trust_with_both_runners_installed_refuses_when_the_nearest_file_is_not_the_one_kiro_runs(
+    ) {
+        let scratch = Scratch::new("trust-kiro-mismatch");
+        scratch.write("plan.yml", VALID);
+        fs::create_dir_all(scratch.0.join(".git")).unwrap();
+        install_both_runners(&scratch);
+        let pkg = scratch.0.join("pkg");
+        write_agent(&pkg, "fs_read");
+        write_agent(&scratch.0, "shell");
+        let (code, shown, text) = trust_from(&scratch, &pkg, &scratch.0);
+        assert_eq!(code, EXIT_NOT_TRUSTED, "{text}");
+        assert!(
+            shown.is_empty(),
+            "no summary is shown for a record that could cover another file: {shown}"
+        );
+        // Both files are named, each below the project root.
+        assert!(
+            text.contains("`pkg/.kiro/agents/k-architect.json`"),
+            "{text}"
+        );
+        assert!(text.contains("`.kiro/agents/k-architect.json`"), "{text}");
+        // Nothing was recorded, so a later run asks.
+        assert!(!FileTrustStore::new(Some(&scratch.1))
+            .path()
+            .is_some_and(|path| path.exists()));
+    }
+
+    #[test]
+    fn flow_trust_with_both_runners_installed_still_works_when_both_searches_pick_the_same_file() {
+        let scratch = Scratch::new("trust-kiro-same");
+        scratch.write("plan.yml", VALID);
+        fs::create_dir_all(scratch.0.join(".git")).unwrap();
+        install_both_runners(&scratch);
+        let pkg = scratch.0.join("pkg");
+        fs::create_dir_all(&pkg).unwrap();
+        // Only the project root has the agent, so the search from `pkg` and Kiro's own search pick the same file.
+        write_agent(&scratch.0, "fs_read");
+        let (code, shown, text) = trust_from(&scratch, &pkg, &scratch.0);
+        assert_eq!(code, 0, "{text}");
+        assert!(shown.contains("fs_read"), "{shown}");
+    }
+
+    /// The class: the file that the trust summary shows can differ from the file that a later `flow run --harness
+    /// kiro-cli` reads, and the trust record is made anyway, because the hash is the same whichever catalog built the
+    /// summary. This walks every input that picks the catalog of `flow trust` (the install index) against the places
+    /// where the two searches can part (a folder below the project root; a folder above it plus the home folder). `flow
+    /// trust` has no `--harness`, and it does not look for `kiro-cli`, so the PATH does not matter here. `flow run`
+    /// with `--harness kiro-cli` always uses the Kiro catalog. Where the catalog of `flow trust` is the Kiro one (only
+    /// Kiro installed) the two cannot part, and the summary shows the run's file.
+    #[test]
+    fn flow_trust_never_records_a_file_that_a_kiro_run_would_not_read_whatever_the_install_index_says(
+    ) {
+        // (label, strategies in the install index)
+        let indexes: [(&str, &[&str]); 5] = [
+            ("no index", &[]),
+            ("only claude", &["claude"]),
+            ("only kiro", &["kiro-cli-v2"]),
+            ("both", &["kiro-cli-v2", "claude"]),
+            ("a strategy of neither", &["something-else"]),
+        ];
+        for (index_label, strategies) in indexes {
+            let only_kiro = strategies == ["kiro-cli-v2"];
+            for scenario in ["below", "above", "same-from-below", "same-from-root"] {
+                let scratch = Scratch::new("trust-class");
+                fs::create_dir_all(scratch.0.join(".git")).unwrap();
+                install_runners(&scratch, strategies);
+                let (cwd, project, differ, nearest_text, kiro_text, nearest_label, kiro_label) =
+                    match scenario {
+                        // A file in `pkg` beats the one in the project root for the search from `pkg`, not for Kiro.
+                        "below" => {
+                            scratch.write("plan.yml", VALID);
+                            let pkg = scratch.0.join("pkg");
+                            write_agent(&pkg, "fs_read");
+                            write_agent(&scratch.0, "shell");
+                            (
+                                pkg,
+                                scratch.0.clone(),
+                                true,
+                                "fs_read",
+                                "shell",
+                                "nearest file `pkg/.kiro/agents/k-architect.json`",
+                                "Kiro CLI file `.kiro/agents/k-architect.json`",
+                            )
+                        }
+                        // A file above the project root beats the home file for the search, not for Kiro.
+                        "above" => {
+                            let app = scratch.0.join("app");
+                            fs::create_dir_all(app.join(".konductor/workflows")).unwrap();
+                            fs::write(app.join(".konductor/workflows/plan.yml"), VALID).unwrap();
+                            write_agent(&scratch.0, "shell");
+                            write_agent(&scratch.1, "fs_read");
+                            (
+                                app.clone(),
+                                app,
+                                true,
+                                "shell",
+                                "fs_read",
+                                "nearest file `/",
+                                "Kiro CLI file `~/.kiro/agents/k-architect.json`",
+                            )
+                        }
+                        "same-from-below" => {
+                            scratch.write("plan.yml", VALID);
+                            let pkg = scratch.0.join("pkg");
+                            fs::create_dir_all(&pkg).unwrap();
+                            write_agent(&scratch.0, "fs_read");
+                            (pkg, scratch.0.clone(), false, "fs_read", "fs_read", "", "")
+                        }
+                        _ => {
+                            scratch.write("plan.yml", VALID);
+                            write_agent(&scratch.0, "fs_read");
+                            (
+                                scratch.0.clone(),
+                                scratch.0.clone(),
+                                false,
+                                "fs_read",
+                                "fs_read",
+                                "",
+                                "",
+                            )
+                        }
+                    };
+                let row = format!("{index_label} / {scenario}");
+                let (code, shown, text) = trust_from(&scratch, &cwd, &project);
+                let store_written = FileTrustStore::new(Some(&scratch.1))
+                    .path()
+                    .is_some_and(|path| path.exists());
+                if differ && !only_kiro {
+                    // Refused, both files named, nothing recorded, no summary shown.
+                    assert_eq!(code, EXIT_NOT_TRUSTED, "{row}: {text}");
+                    assert!(text.contains(nearest_label), "{row}: {text}");
+                    assert!(text.contains(kiro_label), "{row}: {text}");
+                    assert!(!store_written, "{row}: a record was made");
+                    assert!(shown.is_empty(), "{row}: {shown}");
+                } else {
+                    // The searches agree, or the catalog is the Kiro one: the summary shows the file that runs.
+                    assert_eq!(code, 0, "{row}: {text}");
+                    let runs = if only_kiro { kiro_text } else { nearest_text };
+                    assert!(
+                        shown.contains(&format!("runs without asking: {runs}")),
+                        "{row}: {shown}"
+                    );
+                    assert!(store_written, "{row}: no record was made");
+                }
+            }
+        }
     }
 
     #[test]
@@ -2732,7 +3360,7 @@ mod tests {
         fs::write(&script, PASSING).unwrap();
         let args = RunArgs {
             goal: Some("Do it.".into()),
-            harness: "fake".into(),
+            harness: Some("fake".into()),
             fake_script: Some(script),
             fake_script_env: None,
             trust: None,
@@ -2792,7 +3420,7 @@ mod tests {
         fs::write(&script, PASSING).unwrap();
         let args = RunArgs {
             goal: Some("Do it.".into()),
-            harness: "fake".into(),
+            harness: Some("fake".into()),
             fake_script: Some(script),
             fake_script_env: None,
             trust: None,

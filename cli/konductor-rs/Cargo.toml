@@ -191,6 +191,14 @@ textwrap = { version = "=0.16.4", default-features = false, features = ["termina
 workflow-core = { path = "../../workflow-engine/core" }
 workflow-adapters = { path = "../../workflow-engine/adapters" }
 
+# Sets a flag when `flow run` gets SIGINT, SIGTERM or SIGHUP (src/cli/flow_interrupt.rs), so the owner can end the
+# session's process group before it exits. The session leads its own group, so a Ctrl-C or a `kill` of the owner
+# does not reach it. The crate's safe `flag` module is all that is used, which keeps `unsafe` out of this repository's
+# code. License: MIT OR Apache-2.0. Exact-pinned per repo convention. No default features: the channel and iterator
+# modules are not needed. It pulls in `signal-hook-registry`, which the `mcp/` graph already has.
+[target.'cfg(unix)'.dependencies]
+signal-hook = { version = "=0.4.6", default-features = false }
+
 [dev-dependencies]
 # Loopback HTTPS sink standing in for the real telemetry endpoint in
 # this crate's own integration tests -- see shared/telemetry-test-sink's
