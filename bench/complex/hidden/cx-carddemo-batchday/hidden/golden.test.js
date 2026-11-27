@@ -4,7 +4,8 @@
 // The four jobs on the sample files (data/ of the fixture), compared byte for byte with saved outputs (timestamps masked).
 // The inputs in golden/in are copies of data/. The outputs in golden/ were written by the reference port; to write them
 // again from a workspace that holds it: CARDDEMO_GOLDEN_WRITE=1 node --test hidden/golden.test.js
-// One thing the signed rules leave open is accepted either way: an interest row of +0.00 (see cd.dropZeroInterest).
+// Two things the signed rules leave open are accepted either way: an interest row of +0.00 (see cd.dropZeroInterest)
+// and the filler of a tcatbal.txt row kept from the input (see cd.blankKeptFiller).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,6 +31,7 @@ function compare(r, dir, names, { interest = false, ...maskOptions } = {}) {
   for (const name of names) {
     let text = r.read(name);
     if (name === 'transact.txt') text = cd.maskStamps(text, maskOptions);
+    if (name === 'tcatbal.txt' && !WRITE) text = cd.blankKeptFiller(text, read('in', name));
     if (name === 'transact.txt' && interest && !WRITE) ({ text, dropped } = cd.dropZeroInterest(text, { cards: CARDS, date: DATE }));
     if (name === 'summary.json') {
       const summary = JSON.parse(text);

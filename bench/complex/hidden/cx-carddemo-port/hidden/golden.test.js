@@ -6,7 +6,8 @@
 // to write them again from a workspace that holds it: CARDDEMO_GOLDEN_WRITE=1 node --test hidden/golden.test.js
 // Two things the signed rules leave open are accepted either way: the sample tcatbal.txt ends its lines with CRLF
 // (a port may read it or refuse it; a refusal is checked, then the run is repeated on LF lines), and an interest row
-// of +0.00 (see cd.dropZeroInterest).
+// of +0.00 (see cd.dropZeroInterest). So is the filler of a tcatbal.txt row kept from the input
+// (see cd.blankKeptFiller).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,6 +46,7 @@ function compare(r, dir, names, { interest = false, ...maskOptions } = {}) {
   for (const name of names) {
     let text = r.read(name);
     if (name === 'transact.txt') text = cd.maskStamps(text, maskOptions);
+    if (name === 'tcatbal.txt' && !WRITE) text = cd.blankKeptFiller(text, read('in', name));
     if (name === 'transact.txt' && interest && !WRITE) ({ text, dropped } = cd.dropZeroInterest(text, { cards: CARDS, date: DATE }));
     if (name === 'summary.json') {
       const summary = JSON.parse(text);

@@ -137,6 +137,17 @@ function dropZeroInterest(text, { cards, date }) {
   return { text: lines(kept), dropped: rows.length - kept.length };
 }
 
+/**
+ * Category balance rows `text` with the filler (the last 22 of 50 characters) blanked on each row whose filler is the
+ * filler of the `input` row with the same key (account, type, category). The rules do not say what a kept row's
+ * filler holds: the COBOL REWRITE keeps the bytes it read, the reference port writes blanks, so both are accepted.
+ * Any other filler, and every other byte, still counts. `input` may use CRLF and may drop trailing blanks.
+ */
+function blankKeptFiller(text, input) {
+  const kept = new Map(input.split(/\r?\n/).filter(Boolean).map((l) => [l.slice(0, 17), l.padEnd(50).slice(28)]));
+  return text.split('\n').map((row) => (row.length === 50 && kept.get(row.slice(0, 17)) === row.slice(28) ? row.slice(0, 28).padEnd(50) : row)).join('\n');
+}
+
 /** Lowest card number per account id from cross reference `text` (I5). */
 function lowestCards(text) {
   const cards = {};
@@ -169,4 +180,4 @@ function assertRefused(assert, r) {
   return r;
 }
 
-module.exports = { ROOT, STAMP, MASKED_STAMP, zoned, account, xref, catbal, disc, tran, reject, TEXT, lines, splice, maskStamps, dropZeroInterest, lowestCards, run, POST_FILES, INTEREST_FILES, postInputs, interestInputs, assertRefused };
+module.exports = { ROOT, STAMP, MASKED_STAMP, zoned, account, xref, catbal, disc, tran, reject, TEXT, lines, splice, maskStamps, dropZeroInterest, blankKeptFiller, lowestCards, run, POST_FILES, INTEREST_FILES, postInputs, interestInputs, assertRefused };
