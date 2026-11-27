@@ -15,6 +15,17 @@ const { mkScratch } = require('./scratch.js');
 
 const BENCH = path.join(__dirname, '..', '..');
 
+/** Empties `extraTasks` in every suite file of the copy, so the validator checks no extra task directory (D-289). */
+function dropSuiteExtraDirs(suitesDir) {
+  for (const f of fs.readdirSync(suitesDir).filter((n) => n.endsWith('.json') && !n.endsWith('.manifest.json'))) {
+    const file = path.join(suitesDir, f);
+    const suite = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (suite.extraTasks === undefined) continue;
+    suite.extraTasks = [];
+    fs.writeFileSync(file, JSON.stringify(suite));
+  }
+}
+
 function validateCopy(keep, mutate) {
   const root = mkScratch('val-');
   fs.cpSync(BENCH, path.join(root, 'bench'), { recursive: true, filter: (p) => path.basename(p) !== 'results' });
@@ -22,6 +33,7 @@ function validateCopy(keep, mutate) {
   for (const f of fs.readdirSync(tasks)) if (f.endsWith('.json') && f !== `${keep}.json`) fs.rmSync(path.join(tasks, f));
   const fixtures = path.join(root, 'bench/fixtures');
   for (const f of fs.readdirSync(fixtures)) if (!f.startsWith('auto-')) fs.rmSync(path.join(fixtures, f), { recursive: true, force: true });
+  dropSuiteExtraDirs(path.join(root, 'bench/suites'));
   mutate(path.join(root, 'bench'));
   const childTmp = path.join(root, 'tmp');
   fs.mkdirSync(childTmp);
@@ -59,6 +71,9 @@ test('the validator accepts the shipped autonomy tasks and rejects broken eviden
   ]);
   assert.deepEqual(ok.out.split('\n').filter((l) => /^error: (?!suites\/).*autonomy/.test(l)), []);
   assert.match(ok.out, /autonomy autonomy-gateway-throttle: reference 7\/7 intended \+ 6\/6 invariants/);
+  // Each copy validates its autonomy task alone. A suite's extraTasks dirs (bench/complex and the rest) take minutes
+  // per copy and drove the host load to 20+ with four copies at once (D-289).
+  for (const r of [ok, noWrongGuess, withSentence, oneClarificationDropped]) assert.doesNotMatch(r.out, /extra dir\(s\)/);
   assert.match(noWrongGuess.out, /error: autonomy-format-bytes: partial "two-decimals" passes every intended test/);
   assert.match(withSentence.out, /error: autonomy-league-table\.json: the prompt must not contain the no-questions sentence/);
   assert.match(oneClarificationDropped.out, /error: autonomy-storage-cleanup\.json: clarification "tmp" matches none of the example questions/);
