@@ -4,10 +4,16 @@
 // Delegation sections of the run report, read from what each run left on disk.
 // Review compliance: on tasks whose konductor rules require a review (profiles/review-required.json), did the run
 // make a reviewer spawn. Needs result.orch, so call report/orch.js enrichOrch first.
+// Cost split: how much of each arm's turn time and tool calls ran in sub-executions (kiro-cli v3 keeps one transcript
+// per spawn, session/<sid>/sub-executions/<subtask id>.jsonl) and how much of that was reviewer spawns. Credits are
+// metered per turn, not per spawn, so the split is in time and calls; credits are only shown per run.
 
+const fs = require('node:fs');
 const path = require('node:path');
 const D = require('./doc.js');
 const { readJson } = require('../runner/lib/util.js');
+const { parseStream } = require('../runner/lib/stream.js');
+const { spawnTree, kindOf, loadMetricsSpec } = require('../runner/lib/orch-metrics.js');
 
 const RULES_FILE = path.join(__dirname, '..', 'profiles', 'review-required.json');
 
@@ -55,4 +61,85 @@ function complianceBlocks(rows, rules = loadReviewRules()) {
   ];
 }
 
-module.exports = { loadReviewRules, requiredReview, reviewCompliance, complianceBlocks, RULES_FILE };
+const fin = (v) => typeof v === 'number' && Number.isFinite(v);
+const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+const listDir = (dir) => { try { return fs.readdirSync(dir).sort(); } catch { return []; } };
+
+/** Every sub-execution transcript of a run directory: [{ id, startMs, endMs, toolCalls }], spans from the first to the last timestamp. */
+function subExecutions(runDir) {
+  const out = [];
+  for (const sid of listDir(path.join(runDir, 'session'))) {
+    const dir = path.join(runDir, 'session', sid, 'sub-executions');
+    for (const f of listDir(dir).filter((x) => x.endsWith('.jsonl'))) {
+      let startMs = Infinity;
+      let endMs = -Infinity;
+      let toolCalls = 0;
+      for (const line of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
+        let rec;
+        try { rec = JSON.parse(line); } catch { continue; }
+        const t = Date.parse(rec.timestamp);
+        if (fin(t)) { startMs = Math.min(startMs, t); endMs = Math.max(endMs, t); }
+        if (rec.payload?.type === 'tool_call') toolCalls++;
+      }
+      if (fin(startMs) && fin(endMs)) out.push({ id: f.replace(/\.jsonl$/, ''), startMs, endMs, toolCalls });
+    }
+  }
+  return out;
+}
+
+/** Milliseconds covered by the union of [startMs, endMs] spans, so parallel spawns are not counted twice. */
+function unionMs(spans) {
+  let total = 0;
+  let end = -Infinity;
+  for (const s of [...spans].sort((a, b) => a.startMs - b.startMs)) {
+    if (s.startMs > end) { total += s.endMs - s.startMs; end = s.endMs; } else if (s.endMs > end) { total += s.endMs - end; end = s.endMs; }
+  }
+  return total;
+}
+
+/** subtask id -> 'review' | 'fix' | 'other', from the run's stream (v3 spawn calls carry the sub-execution id). */
+function kindsBySubtask(runDir, spec) {
+  const file = path.join(runDir, 'stream.jsonl');
+  if (!fs.existsSync(file)) return new Map();
+  const { events } = parseStream(fs.readFileSync(file, 'utf8'));
+  return new Map(spawnTree(events).calls.filter((c) => c.subtaskId).map((c) => [c.subtaskId, kindOf(c, spec)]));
+}
+
+/** The split of one run, cached on the entry: { subMs, reviewerSubMs, subCalls, subs }. */
+function splitOf(e, spec) {
+  if (e.delegationSplit) return e.delegationSplit;
+  const subs = subExecutions(e.dir);
+  const kinds = subs.length ? kindsBySubtask(e.dir, spec) : new Map();
+  e.delegationSplit = { subs: subs.length, subMs: unionMs(subs), reviewerSubMs: unionMs(subs.filter((x) => kinds.get(x.id) === 'review')), subCalls: sum(subs.map((x) => x.toolCalls)) };
+  return e.delegationSplit;
+}
+
+/** Per arm: runs, runs with sub-executions, turn time, sub-execution and reviewer time (ms), tool calls on each side, credits. */
+function costSplit(run, spec = loadMetricsSpec()) {
+  return armsOf(run).map((arm) => {
+    const es = executed(run).filter((e) => e.armId === arm);
+    const sp = es.map((e) => ({ e, s: splitOf(e, spec) }));
+    const num = (v) => (fin(v) ? v : 0);
+    return {
+      arm, runs: es.length, withSubs: sp.filter((x) => x.s.subs).length,
+      turnMs: sum(es.map((e) => num(e.result.turnDurationMs))), subMs: sum(sp.map((x) => x.s.subMs)), reviewerSubMs: sum(sp.map((x) => x.s.reviewerSubMs)),
+      mainCalls: sum(es.map((e) => num(e.result.toolCalls))), subCalls: sum(sp.map((x) => x.s.subCalls)),
+      credits: sum(es.map((e) => num(e.result.credits))), creditsWithSubs: sum(sp.filter((x) => x.s.subs).map((x) => num(x.e.result.credits))),
+    };
+  });
+}
+
+const minutes = (ms) => (ms / 60000).toFixed(1);
+
+function costSplitBlocks(rows) {
+  if (!rows.length) return [];
+  return [
+    D.h(2, 'Main session and sub-executions'),
+    D.table(['arm', 'runs', 'runs with sub-executions', 'turn time (min, sum)', 'in sub-executions', 'in reviewer sub-executions', 'main-session tool calls', 'sub-execution tool calls', 'credits (sum)', 'credits of runs with sub-executions'],
+      rows.map((r) => [r.arm, r.runs, r.withSubs, minutes(r.turnMs), pct(r.subMs, r.turnMs), pct(r.reviewerSubMs, r.turnMs), r.mainCalls, r.subCalls, r.credits.toFixed(1), r.creditsWithSubs.toFixed(1)])),
+    D.note('Sub-execution time is the union of each spawn transcript\'s first-to-last timestamp (session/*/sub-executions/*.jsonl), so parallel spawns count once; the main agent mostly waits meanwhile. Reviewer sub-executions are the spawns classed as reviews (see Orchestration). kiro-cli meters credits once per turn, not per spawn, so credits cannot be split; the last column is the whole cost of the runs that spawned.'),
+  ];
+}
+
+
+module.exports = { loadReviewRules, requiredReview, reviewCompliance, complianceBlocks, subExecutions, unionMs, costSplit, costSplitBlocks, RULES_FILE };

@@ -79,5 +79,47 @@ test('the written run report and its json carry the review compliance of a requi
     assert.match(md, /## Review compliance/);
     assert.match(md, /\| head \| 2 \| 1 \| 50% \| t1#2 \|/);
     assert.deepEqual(r.json.reviewCompliance.find((x) => x.arm === 'head').missing, ['t1#2']);
+    assert.match(md, /## Main session and sub-executions/);
+    assert.equal(r.json.costSplit.find((x) => x.arm === 'head').runs, 2);
+  } finally { s.done(); }
+});
+
+// ---- cost split: main session vs sub-executions ----
+const sub = (dir, id, startSec, endSec, calls) => {
+  const at = (s) => new Date(Date.UTC(2026, 10, 25, 16, 0, s)).toISOString();
+  const lines = [{ timestamp: at(startSec), payload: { type: 'assistant', content: 'start' } }];
+  for (let i = 0; i < calls; i++) lines.push({ timestamp: at(startSec + 1), payload: { type: 'tool_call', toolCallId: `${id}-${i}` } }, { timestamp: at(startSec + 1), payload: { type: 'tool_result', toolCallId: `${id}-${i}` } });
+  lines.push({ timestamp: at(endSec), payload: { type: 'assistant', content: 'end' } });
+  write(path.join(dir, 'session', 'sess_x', 'sub-executions', `${id}.jsonl`), lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+};
+
+test('sub-executions are read as time spans and tool calls; overlapping spans count once', () => {
+  const dir = tmp();
+  try {
+    sub(dir, 's1', 0, 10, 2);
+    sub(dir, 's2', 5, 20, 1);
+    const subs = dl.subExecutions(dir);
+    assert.deepEqual(subs.map((x) => [x.id, x.endMs - x.startMs, x.toolCalls]), [['s1', 10000, 2], ['s2', 15000, 1]]);
+    assert.equal(dl.unionMs(subs), 20000);
+    assert.deepEqual(dl.subExecutions(path.join(dir, 'none')), []);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the cost split gives each arm main-session and sub-execution time and calls, with the reviewer share', () => {
+  const runs = [
+    { arm: 'a', rep: 1, events: [v3call('c1', 's1', 'Review the change'), v3call('c2', 's2', 'Implement the change')], over: { turnDurationMs: 30000, toolCalls: 6, credits: 9 } },
+    { arm: 'a', rep: 2, over: { turnDurationMs: 10000, toolCalls: 4, credits: 3 } },
+    { arm: 'b', rep: 1, over: { turnDurationMs: 8000, toolCalls: 5, credits: 2 } },
+  ];
+  const s = setup(runs);
+  try {
+    sub(s.dirOf(runs[0]), 's1', 0, 10, 2);
+    sub(s.dirOf(runs[0]), 's2', 5, 20, 1);
+    const rows = dl.costSplit(loadRun(s.runDir));
+    assert.deepEqual(rows.find((r) => r.arm === 'a'), { arm: 'a', runs: 2, withSubs: 1, turnMs: 40000, subMs: 20000, reviewerSubMs: 10000, mainCalls: 10, subCalls: 3, credits: 12, creditsWithSubs: 9 });
+    assert.equal(rows.find((r) => r.arm === 'b').subMs, 0);
+    const md = JSON.stringify(dl.costSplitBlocks(rows));
+    assert.match(md, /Main session and sub-executions/);
+    assert.match(md, /50%/, 'sub-executions took half of arm a\'s turn time');
   } finally { s.done(); }
 });
