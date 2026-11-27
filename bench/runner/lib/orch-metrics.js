@@ -15,6 +15,9 @@ const PHASES_FILE = path.join(PROFILES, 'phase-documents.json');
 
 const { readJson } = require('./util.js');
 
+// Bump when a field is added or a rule changes, so report/orch.js recomputes older stored records from the run directory.
+const ORCH_VERSION = 2;
+
 function compile(list, name, file) {
   if (!Array.isArray(list)) throw new Error(`${file}: "${name}" must be a list of patterns`);
   return list.map((p) => {
@@ -97,7 +100,7 @@ function spawnTree(events) {
       const input = u.rawInput && typeof u.rawInput === 'object' ? { ...u.rawInput } : {};
       const v3 = isV3Call(u);
       const caller = v3 && subtask ? (lastActor && !returned.has(lastActor) ? lastActor : root) : sid ?? root;
-      const call = { id, caller, input, targets: subagentTargets(input, { nameIsAgent: v3 }), claimed: 0, closed: false, status: null, output: '' };
+      const call = { id, caller, input, targets: subagentTargets(input, { nameIsAgent: v3 }), claimed: 0, closed: false, status: null, output: '', subtaskId: v3 ? kiro?.agentSubtaskId ?? null : null };
       if (v3 && subtask && kiro.agentSubtaskId && !depth.has(kiro.agentSubtaskId)) depth.set(kiro.agentSubtaskId, (depth.get(caller) ?? 0) + 1);
       byId.set(id, call);
       calls.push(call);
@@ -172,8 +175,10 @@ function verdictOf(call, spec) {
 }
 
 /**
- * reviewRounds: review spawns. reworksAfterPass: fix spawns issued while the latest review before them had passed.
- * An unreadable verdict is never read as a pass.
+ * reviewRounds: review calls. reworksAfterPass: fix spawns issued while the latest review before them had passed.
+ * reviewerSpawns: the stages of review calls; makerSpawns: every other stage (build work, fixes included), so the two
+ * add up to tree.spawns. A spawn is classed by its brief (kindOf), never by its agent: konductor sends reviews to
+ * k-developer, which also builds. An unreadable verdict is never read as a pass.
  */
 function reviewFlow(events, spec = loadMetricsSpec(), tree = spawnTree(events)) {
   const verdicts = [];
@@ -181,13 +186,15 @@ function reviewFlow(events, spec = loadMetricsSpec(), tree = spawnTree(events)) 
   let last = null;
   let fixSpawns = 0;
   let reworksAfterPass = 0;
+  let reviewerSpawns = 0;
   for (const call of tree.calls) {
     const kind = kindOf(call, spec);
     sequence.push(kind);
+    if (kind === 'review') reviewerSpawns += call.targets.length;
     if (kind === 'review') { last = verdictOf(call, spec); verdicts.push(last); }
     if (kind === 'fix') { fixSpawns++; if (last === 'pass') reworksAfterPass++; }
   }
-  return { reviewRounds: verdicts.length, verdicts, fixSpawns, reworksAfterPass, sequence };
+  return { reviewRounds: verdicts.length, verdicts, fixSpawns, reworksAfterPass, sequence, reviewerSpawns, makerSpawns: tree.spawns - reviewerSpawns };
 }
 
 // ---- phase documents ----
@@ -256,6 +263,7 @@ function phaseDocuments(workspaceDir, docs = loadPhaseDocs(), { phases = null } 
 function orchMetrics({ events, workspaceDir = null, spec = loadMetricsSpec(), docs = loadPhaseDocs(), phases = null, tree = spawnTree(events) }) {
   const flow = reviewFlow(events, spec, tree);
   return {
+    version: ORCH_VERSION, makerSpawns: flow.makerSpawns, reviewerSpawns: flow.reviewerSpawns,
     spawns: tree.spawns, spawnCalls: tree.spawnCalls, maxSpawnDepth: tree.maxSpawnDepth, childSessions: tree.childSessions,
     reviewRounds: flow.reviewRounds, reviewVerdicts: flow.verdicts, fixSpawns: flow.fixSpawns, reworksAfterPass: flow.reworksAfterPass,
     phaseDocs: workspaceDir ? phaseDocuments(workspaceDir, docs, { phases }) : null,
@@ -270,4 +278,4 @@ function orchMetricsOfRunDir(runDir, opts = {}) {
   return orchMetrics({ events, workspaceDir: path.join(runDir, 'workspace'), ...opts });
 }
 
-module.exports = { loadMetricsSpec, loadPhaseDocs, spawnTree, reviewFlow, phaseDocuments, orchMetrics, orchMetricsOfRunDir, kindOf, verdictOf, METRICS_FILE, PHASES_FILE };
+module.exports = { loadMetricsSpec, loadPhaseDocs, spawnTree, reviewFlow, phaseDocuments, orchMetrics, orchMetricsOfRunDir, kindOf, verdictOf, METRICS_FILE, PHASES_FILE, ORCH_VERSION };

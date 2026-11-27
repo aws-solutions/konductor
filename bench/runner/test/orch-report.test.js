@@ -14,6 +14,7 @@ const { loadTasks } = require('../lib/tasks.js');
 const { loadRun } = require('../../report/load.js');
 const { contrastRun, renderContrast } = require('../../report/contrast.js');
 const orch = require('../../report/orch.js');
+const orchMetrics = require('../lib/orch-metrics.js');
 const { validateResult } = require('../lib/result.js');
 const { generateRunReport, generateContrast } = require('../../report/generate.js');
 
@@ -44,10 +45,23 @@ const REVIEW_PASS = { task: 'Review the change', out: 'Verdict: PASS' };
 const FIX = { task: 'Fix the review findings', out: 'done' };
 const BUILD = { task: 'Implement it', out: 'done' };
 
+test('enrichOrch recomputes a stored orch record of an older version from the run directory', () => {
+  const s = setup({ a: [[BUILD, REVIEW_PASS]] });
+  try {
+    const file = path.join(s.runDir, 'a/t1/1/result.json');
+    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), orch: { spawns: 99, reviewRounds: 9, phaseDocs: null } }));
+    const run = loadRun(s.runDir);
+    orch.enrichOrch(run);
+    const e = run.runs[0];
+    assert.deepEqual({ spawns: e.result.orch.spawns, maker: e.result.orch.makerSpawns, reviewer: e.result.orch.reviewerSpawns }, { spawns: 2, maker: 1, reviewer: 1 });
+    assert.equal(e.orchSource, 'backfilled');
+  } finally { s.done(); }
+});
+
 test('enrichOrch computes orch from the run directory when result.json has none, and keeps a stored one', () => {
   const s = setup({ a: [[BUILD, REVIEW_PASS, FIX]], b: [[]] });
   try {
-    const stored = { spawns: 99, spawnCalls: 99, maxSpawnDepth: 9, reviewRounds: 9, reworksAfterPass: 9, phaseDocs: null };
+    const stored = { version: orchMetrics.ORCH_VERSION, spawns: 99, spawnCalls: 99, maxSpawnDepth: 9, reviewRounds: 9, reworksAfterPass: 9, phaseDocs: null };
     const bFile = path.join(s.runDir, 'b/t1/1/result.json');
     fs.writeFileSync(bFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(bFile, 'utf8')), orch: stored }));
     const run = loadRun(s.runDir);
@@ -112,17 +126,17 @@ test('phase-document rows appear only when phases are asked for, and count a mis
   } finally { s.done(); }
 });
 
-test('the run report block lists spawns, depth, review rounds, reworks and phase documents per arm', () => {
+test('the run report block splits spawns into maker and reviewer spawns, so a review is counted once', () => {
   const s = setup({ a: [[BUILD, REVIEW_FAIL, FIX, REVIEW_PASS, FIX]], b: [[BUILD]] });
   try {
     const run = loadRun(s.runDir);
     orch.enrichOrch(run);
     const blocks = orch.orchBlocks(run, { phases: ['design'] });
     const table = blocks.find((b) => b.t === 'table');
-    assert.deepEqual(table.head.slice(0, 2), ['arm', 'runs']);
+    assert.deepEqual(table.head.slice(0, 5), ['arm', 'runs', 'with data', 'maker spawns (mean)', 'reviewer spawns (mean)']);
+    assert.ok(!table.head.some((h) => /^spawns|review rounds/.test(h)), 'no column counts the reviews a second time');
     const row = table.rows.find((r) => r[0] === 'a');
-    assert.ok(row.includes('5.0'), 'mean spawns');
-    assert.ok(row.includes('2.0'), 'mean review rounds');
+    assert.deepEqual(row.slice(3, 5), ['3.0', '2.0'], 'build and two fixes are maker spawns; two reviews are reviewer spawns');
     assert.ok(row.includes('1.0'), 'mean reworks after a pass');
     assert.match(JSON.stringify(blocks), /heuristic/);
   } finally { s.done(); }
@@ -174,7 +188,7 @@ test('the written run report and contrast carry the orchestration figures', () =
     const r = generateRunReport({ run, tasks, baseline: 'base', out, detail: 'full', format: 'both', defaultDir: s.runDir, phases: ['design'] });
     const md = fs.readFileSync(path.join(out, 'report.md'), 'utf8');
     assert.match(md, /## Orchestration/);
-    assert.match(md, /\| head \| 3 \| 3 \| 3\.0 \| 1 \| 1\.0 \| 1\.0 \|/);
+    assert.match(md, /\| head \| 3 \| 3 \| 2\.0 \| 1\.0 \| 1 \| 1\.0 \|/);
     assert.match(md, /phase documents present/);
     assert.equal(r.json.orchestration.find((x) => x.arm === 'head').spawns, 3);
     assert.match(fs.readFileSync(path.join(out, 'report.html'), 'utf8'), /Orchestration/);

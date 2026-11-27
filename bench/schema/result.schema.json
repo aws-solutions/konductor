@@ -170,7 +170,7 @@
         "object",
         "null"
       ],
-      "description": "Spawns, spawn depth, review rounds, reworks after a pass and phase documents read from the stream and the workspace (runner/lib/orch-metrics.js)."
+      "description": "Spawns (split into makerSpawns and reviewerSpawns), spawn depth, review rounds, reworks after a pass and phase documents read from the stream and the workspace (runner/lib/orch-metrics.js). version is ORCH_VERSION there; report recomputes an older record from the run directory."
     },
     "claudeCode": {
       "type": [

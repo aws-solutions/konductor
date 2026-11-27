@@ -94,6 +94,17 @@ test('a review that finds a problem, a fix, and a passing re-review: 2 rounds, n
   assert.equal(f.reworksAfterPass, 0);
 });
 
+test('maker and reviewer spawns split the spawns: a fix is build work, a review is not, and the agent name does not decide', () => {
+  const f = flow([
+    { role: 'k-developer', task: 'Implement the hold service', out: 'done' },
+    { role: 'k-developer', task: 'Review the diff of the hold service', out: 'Verdict: FAIL. 1 IMPORTANT: missing lock' },
+    { role: 'k-developer', task: 'Fix the IMPORTANT finding in the lock handling', out: 'Fixed.' },
+    { role: 'k-architect', task: 'Re-review the lock handling', out: 'Verdict: PASS' },
+  ]);
+  assert.equal(f.makerSpawns, 2);
+  assert.equal(f.reviewerSpawns, 2);
+});
+
 test('a fix brief that follows a passing review is a rework after a pass', () => {
   const f = flow([
     { role: 'k-architect', task: 'Review the design doc', out: 'Verdict: PASS. No critical or important findings.' },
@@ -256,6 +267,20 @@ test('orchMetricsOfRunDir reads stream.jsonl and workspace/ of a run directory',
     assert.equal(m.phaseDocs.phases.design.complete, true);
     assert.equal(om.orchMetricsOfRunDir(path.join(dir, 'missing')), null);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the orch record carries its version, and maker plus reviewer spawns add up to the spawns', () => {
+  const two = { stages: [{ name: 'a', role: 'k-developer', prompt_template: 'TASK: Review the diff' }, { name: 'b', role: 'k-architect', prompt_template: 'TASK: Review the design' }] };
+  const m = om.orchMetrics({ events: [child('root'), call('root', 'c1', brief('k-developer', 'Build it')), call('root', 'c2', two), child('s1'), child('s2'), child('s3')] });
+  assert.equal(m.version, om.ORCH_VERSION);
+  assert.equal(m.spawns, 3);
+  assert.deepEqual({ maker: m.makerSpawns, reviewer: m.reviewerSpawns }, { maker: 1, reviewer: 2 });
+});
+
+test('a v3 spawn keeps the sub-execution id it ran under', () => {
+  const v3 = { type: 'sessionUpdate', data: { sessionId: 'root', update: { sessionUpdate: 'tool_call', toolCallId: 'invoke_subagent_x', title: 'Sub-agent: k-developer', rawInput: { name: 'k-developer', prompt: 'TASK: Review it' }, _meta: { kiro: { kind: 'agent-subtask', agentSubtaskId: 'sub-1' } } } } };
+  const r = om.spawnTree([child('root'), v3]);
+  assert.equal(r.calls[0].subtaskId, 'sub-1');
 });
 
 test('a stream with a malformed line still counts the good lines', () => {
