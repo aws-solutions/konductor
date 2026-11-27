@@ -67,8 +67,23 @@ function stageNames(text: string): string[] {
   );
 }
 
+/**
+ * The goal that the run of another program has: the default goal of the
+ * workflow, or its outcome when it has none, as the stub's `busy` run has.
+ */
+function goalOfOther(text: string): string {
+  const unquoted = (value: string) => value.replace(/^'(.*)'$/, '$1');
+  const given = /^ {4}default: (.*)$/m.exec(text)?.[1];
+  if (given !== undefined) return unquoted(given);
+  return unquoted(/^ {2}outcome: (.*)$/m.exec(text)?.[1] ?? '');
+}
+
 /** A process that holds the workspace lock, and the run it says it runs. */
-function holdWorkspace(project: string, stages: string[]): ChildProcess {
+function holdWorkspace(
+  project: string,
+  stages: string[],
+  text: string,
+): ChildProcess {
   const runs = join(project, '.konductor/runs');
   mkdirSync(join(runs, BUSY_RUN_ID), { recursive: true });
   const owner = { pid: 1, started: '2026-10-24T04:12:05Z' };
@@ -76,6 +91,7 @@ function holdWorkspace(project: string, stages: string[]): ChildProcess {
     run_id: BUSY_RUN_ID,
     workflow: 'busy',
     harness: 'fake',
+    goal: goalOfOther(text),
     status: 'running',
     started_at: '2026-10-24T04:12:05Z',
     finished_at: null,
@@ -170,7 +186,9 @@ export async function startRealServer(
       // A workflow with errors cannot be trusted, and its tests do not run.
     }
   }
-  const holder = behavior.busy ? holdWorkspace(project, stages) : undefined;
+  const holder = behavior.busy
+    ? holdWorkspace(project, stages, text)
+    : undefined;
   const child = spawn(bin, ['flow', 'view', root, '--harness', harness], {
     cwd: project,
     env,

@@ -325,6 +325,7 @@ fn begin(
         run_id: run_id.clone(),
         workflow: workflow.name.clone(),
         harness: harness.to_string(),
+        goal: prepared.goal.clone(),
         status: RunStatus::Running,
         started_at: whole_second(now),
         finished_at: None,

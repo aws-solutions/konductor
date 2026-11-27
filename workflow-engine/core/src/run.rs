@@ -82,6 +82,9 @@ pub struct Run {
     pub run_id: String,
     pub workflow: String,
     pub harness: String,
+    /// The goal the run started with: the one the caller gave, or the workflow's default. It is empty for a document
+    /// from before the goal was recorded, and for a workflow whose default goal is empty.
+    pub goal: String,
     pub status: RunStatus,
     /// Milliseconds since the Unix epoch, to the whole second, as the document keeps it.
     pub started_at: u64,
@@ -127,6 +130,7 @@ impl Run {
         root.insert("run_id", Json::str(&self.run_id));
         root.insert("workflow", Json::str(&self.workflow));
         root.insert("harness", Json::str(&self.harness));
+        root.insert("goal", Json::str(&self.goal));
         root.insert("status", Json::str(self.status.as_str()));
         root.insert("started_at", Json::str(&format_timestamp(self.started_at)));
         root.insert(
@@ -244,6 +248,11 @@ impl Run {
             run_id,
             workflow: root.get("workflow")?.as_str()?.to_string(),
             harness: root.get("harness")?.as_str()?.to_string(),
+            // A document from before the goal was recorded has none.
+            goal: match root.get("goal") {
+                None => String::new(),
+                Some(goal) => goal.as_str()?.to_string(),
+            },
             status,
             started_at: parse_timestamp(root.get("started_at")?.as_str()?)?,
             finished_at,

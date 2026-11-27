@@ -33,6 +33,7 @@ use workflow_core::ports::{
 };
 use workflow_core::run::{Run, RunStatus, StageState, StageStatus};
 use workflow_core::runner::{execute, prepare, start};
+use workflow_core::time::parse_timestamp;
 use workflow_core::trust::{decide, sha256_hex, Verdict};
 
 const CODE: &str = "test-launch-code";
@@ -241,6 +242,7 @@ fn fixture_with(hold: Option<PathBuf>, live: Option<Live>) -> Fixture {
         scope: Scope::Project,
         project_root: project.path().to_path_buf(),
         harness: "fake".to_string(),
+        konductor_version: "1.2.3-test".to_string(),
         page_dir: page.path().to_path_buf(),
         launch_code: CODE.to_string(),
         entry: entry.clone(),
@@ -738,11 +740,10 @@ fn the_server_listens_on_the_loopback_address_only() {
 // ---------------------------------------------------------------------------------------------------------------
 // Session
 
-/// The session reply has these four fields and no list of capabilities yet. The stub suite skips the operations that
-/// this server does not serve (`listAgents`, `getRunEvents`, `listRuns`), each with its reason. When the server gains
-/// capabilities, this test changes with them, so the list and the served operations cannot drift apart.
+/// The session reply has the fields of the contract's `SessionResponse` and no other. A field that a later contract
+/// adds is added here with the code that fills it.
 #[test]
-fn the_session_reply_holds_only_the_fields_the_server_has() {
+fn the_session_reply_holds_only_the_fields_the_contract_names() {
     let _serial = one_at_a_time();
     let f = fixture(None);
     let body = format!("{{\"code\":\"{CODE}\"}}");
@@ -751,7 +752,18 @@ fn the_session_reply_holds_only_the_fields_the_server_has() {
         panic!("the session reply is not an object");
     };
     let names: Vec<&str> = fields.keys().map(String::as_str).collect();
-    assert_eq!(names, ["api_version", "harness", "root", "token"]);
+    assert_eq!(
+        names,
+        [
+            "api_version",
+            "capabilities",
+            "harness",
+            "konductor_version",
+            "limits",
+            "root",
+            "token"
+        ]
+    );
 }
 
 #[test]
@@ -784,6 +796,200 @@ fn the_launch_code_works_once_and_a_wrong_one_does_not() {
         .code(),
         "bad_request"
     );
+}
+
+/// The session of a fresh server, and a fixture that holds its token.
+fn session_of(f: &mut Fixture) -> Json {
+    let session = call(
+        f,
+        "POST",
+        "/api/session",
+        Some(&format!("{{\"code\":\"{CODE}\"}}")),
+    );
+    assert_eq!(session.status, 200, "{}", session.body);
+    let json = session.json();
+    f.token = json.get("token").and_then(Json::as_str).map(str::to_string);
+    json
+}
+
+#[test]
+fn the_session_says_which_server_it_is_what_it_serves_and_its_limits() {
+    let _serial = one_at_a_time();
+    let mut f = fixture(None);
+    let json = session_of(&mut f);
+    assert_eq!(
+        json.get("konductor_version").and_then(Json::as_str),
+        Some("1.2.3-test")
+    );
+    let limits = json.get("limits").expect("limits");
+    let limit = |key: &str| limits.get(key).and_then(Json::as_u64);
+    assert_eq!(limit("text_bytes"), Some(262_144));
+    assert_eq!(limit("stages"), Some(40));
+    assert_eq!(limit("outcome_chars"), Some(300));
+    assert_eq!(limit("prompt_chars"), Some(32_768));
+    assert_eq!(limit("goal_chars"), Some(2048));
+}
+
+/// What the server answers on each operation of the contract that it serves, with the method and path.
+const SERVED: [(&str, &str, &str); 8] = [
+    ("createSession", "POST", "/api/session"),
+    ("getWorkflow", "GET", "/api/workflow"),
+    ("saveWorkflow", "PUT", "/api/workflow"),
+    ("checkWorkflow", "POST", "/api/validate"),
+    ("startRun", "POST", "/api/run"),
+    ("getRun", "GET", "/api/runs/20261024-0412-a7b3c"),
+    ("listAgents", "GET", "/api/agents"),
+    ("listRuns", "GET", "/api/runs"),
+];
+
+#[test]
+fn the_capabilities_are_the_operations_that_the_server_answers_and_no_others() {
+    let _serial = one_at_a_time();
+    let mut f = fixture(None);
+    let json = session_of(&mut f);
+    let mut listed: Vec<&str> = json
+        .get("capabilities")
+        .and_then(Json::as_array)
+        .expect("capabilities")
+        .iter()
+        .map(|id| id.as_str().expect("an operationId"))
+        .collect();
+    listed.sort_unstable();
+    let mut served: Vec<&str> = SERVED.iter().map(|(id, _, _)| *id).collect();
+    served.sort_unstable();
+    assert_eq!(listed, served);
+    for (id, method, path) in SERVED {
+        let answer = call(&f, method, path, Some("{}"));
+        // A run id that no run has is a 404 `not_found` of the operation itself, as is the reply to no body.
+        assert_ne!(answer.status, 405, "{id} takes {method}");
+        assert_ne!(answer.status, 401, "{id} is behind the token it was given");
+    }
+    // An operation that is not listed is not answered.
+    assert_eq!(
+        call(&f, "GET", "/api/runs/20261024-0412-a7b3c/events", None).code(),
+        "not_found"
+    );
+}
+
+/// The agents of the contract's example for `listAgents`, as `(id, summary)`. The contract file is the one that the
+/// Designer and the stub are checked against, so a list that matches it matches them.
+fn contract_agents() -> Vec<(String, String)> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../workflow-canvas/api/openapi.yaml");
+    let text = fs::read_to_string(path).expect("the contract is in the repository");
+    let after = text
+        .split("operationId: listAgents")
+        .nth(1)
+        .expect("the contract has listAgents");
+    let example = after
+        .split("example:\n")
+        .nth(1)
+        .and_then(|rest| rest.split("'401':").next())
+        .expect("listAgents has an example");
+    let mut agents = Vec::new();
+    let mut id = None;
+    for line in example.lines().map(str::trim) {
+        if let Some(found) = line.strip_prefix("- id: ") {
+            id = Some(found.to_string());
+        } else if let (Some(summary), Some(id)) = (line.strip_prefix("summary: "), id.take()) {
+            agents.push((id, summary.to_string()));
+        }
+    }
+    agents
+}
+
+#[test]
+fn listagents_gives_the_agents_of_the_contract_example() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let json = call(&f, "GET", "/api/agents", None).json();
+    let text = |agent: &Json, key: &str| agent.get(key).and_then(Json::as_str).unwrap().to_string();
+    let got: Vec<(String, String)> = json
+        .get("agents")
+        .and_then(Json::as_array)
+        .expect("agents")
+        .iter()
+        .map(|agent| (text(agent, "id"), text(agent, "summary")))
+        .collect();
+    let want = contract_agents();
+    assert_eq!(want.len(), 8, "the example was read: {want:?}");
+    assert_eq!(got, want);
+}
+
+#[test]
+fn listagents_gives_the_specialist_agents_in_the_order_of_their_ids() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let reply = call(&f, "GET", "/api/agents", None);
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.header("x-konductor-api"), Some("1"));
+    let json = reply.json();
+    let agents = json.get("agents").and_then(Json::as_array).expect("agents");
+    let ids: Vec<&str> = agents
+        .iter()
+        .map(|agent| agent.get("id").and_then(Json::as_str).unwrap())
+        .collect();
+    assert_eq!(
+        ids,
+        [
+            "k-architect",
+            "k-browser",
+            "k-developer",
+            "k-media-analyzer",
+            "k-product-manager",
+            "k-quality-assurance",
+            "k-researcher",
+            "k-tpm"
+        ]
+    );
+    let mut sorted = ids.clone();
+    sorted.sort_unstable();
+    assert_eq!(ids, sorted, "in the order of the ids");
+    for agent in agents {
+        let id = agent.get("id").and_then(Json::as_str).unwrap();
+        let summary = agent.get("summary").and_then(Json::as_str).unwrap();
+        assert!(workflow_core::rules::is_name(id), "{id} is a name");
+        assert!(
+            (1..=120).contains(&summary.chars().count()),
+            "{id} has a line of 1 to 120 characters"
+        );
+    }
+    // An orchestrator is not an agent that a stage can name.
+    assert!(!ids
+        .iter()
+        .any(|id| id.contains("orchestrator") || *id == "konductor"));
+}
+
+/// A list that needs the token, its own Host and a GET, as every other call does.
+fn assert_list_is_guarded(f: &Fixture, path: &str) {
+    let no_token = |n: &str, v: String| if n == "Authorization" { None } else { Some(v) };
+    let bad_host = |n: &str, v: String| {
+        if n == "Host" {
+            Some("evil.example".to_string())
+        } else {
+            Some(v)
+        }
+    };
+    assert_eq!(
+        call_with(f, "GET", path, None, &no_token).code(),
+        "unauthorized",
+        "{path}"
+    );
+    assert_eq!(
+        call_with(f, "GET", path, None, &bad_host).code(),
+        "forbidden_host",
+        "{path}"
+    );
+    let post = call(f, "POST", path, Some("{}"));
+    assert_eq!(post.code(), "method_not_allowed", "{path}");
+    assert_eq!(post.header("allow"), Some("GET"), "{path}");
+}
+
+#[test]
+fn the_lists_take_the_token_and_a_get_like_every_other_call() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    assert_list_is_guarded(&f, "/api/agents");
+    assert_list_is_guarded(&f, "/api/runs");
 }
 
 #[test]
@@ -846,6 +1052,95 @@ fn getworkflow_returns_the_text_the_hash_and_the_view() {
         call(&f, "GET", "/api/workflow?name=hello&name=hello", None).code(),
         "bad_name"
     );
+}
+
+/// The keys of the `agent` kind in the answer, as `(key, type, required)`.
+fn agent_fields(json: &Json) -> Vec<(String, String, bool)> {
+    json.get("stage_fields")
+        .and_then(|fields| fields.get("agent"))
+        .and_then(Json::as_array)
+        .expect("stage_fields has the agent kind")
+        .iter()
+        .map(|field| {
+            (
+                field.get("key").and_then(Json::as_str).unwrap().to_string(),
+                field
+                    .get("type")
+                    .and_then(Json::as_str)
+                    .unwrap()
+                    .to_string(),
+                field.get("required") == Some(&Json::Bool(true)),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn getworkflow_says_which_keys_of_a_stage_a_client_may_edit_and_what_each_takes() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let json = call(&f, "GET", "/api/workflow", None).json();
+    let want = [
+        ("name", "name", true),
+        ("agent", "name", true),
+        ("prompt", "text", false),
+        ("prompt_file", "path", false),
+    ]
+    .map(|(key, kind, required)| (key.to_string(), kind.to_string(), required));
+    assert_eq!(agent_fields(&json), want);
+    let fields = json
+        .get("stage_fields")
+        .and_then(|f| f.get("agent"))
+        .and_then(Json::as_array)
+        .unwrap();
+    let by_key = |key: &str| {
+        fields
+            .iter()
+            .find(|f| f.get("key").and_then(Json::as_str) == Some(key))
+            .unwrap()
+    };
+    // The limits are the ones the checker enforces.
+    let prompt = by_key("prompt");
+    assert_eq!(prompt.get("min_length").and_then(Json::as_u64), Some(1));
+    assert_eq!(
+        prompt.get("max_length").and_then(Json::as_u64),
+        Some(32_768)
+    );
+    assert_eq!(
+        prompt.get("excludes"),
+        Some(&Json::Array(vec![Json::str("prompt_file")]))
+    );
+    assert_eq!(
+        by_key("prompt_file").get("excludes"),
+        Some(&Json::Array(vec![Json::str("prompt")]))
+    );
+    let name = by_key("name");
+    assert_eq!(name.get("max_length").and_then(Json::as_u64), Some(64));
+    assert_eq!(
+        name.get("reserved"),
+        Some(&Json::Array(
+            ["start", "end", "run", "halt"].map(Json::str).to_vec()
+        ))
+    );
+    assert_eq!(
+        name.get("pattern").and_then(Json::as_str),
+        Some("^[a-z0-9][a-z0-9-]{0,63}$")
+    );
+}
+
+#[test]
+fn getworkflow_has_the_stage_fields_when_the_view_is_null() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let broken = HELLO.replace("version: 0.1.0", "version: '1.1'");
+    fs::write(
+        f.project.path().join(".konductor/workflows/hello.yml"),
+        broken,
+    )
+    .unwrap();
+    let json = call(&f, "GET", "/api/workflow", None).json();
+    assert_eq!(json.get("view"), Some(&Json::Null));
+    assert_eq!(agent_fields(&json).len(), 4);
 }
 
 #[test]
@@ -1329,6 +1624,7 @@ fn dead_run(project: &Path) -> String {
         run_id: run_id.clone(),
         workflow: "hello".to_string(),
         harness: "fake".to_string(),
+        goal: "Say hello".to_string(),
         status: RunStatus::Running,
         started_at: 1_700_000_000_000,
         finished_at: None,
@@ -1355,6 +1651,381 @@ fn dead_run(project: &Path) -> String {
     };
     store.write_state(&run_id, &run.to_text()).unwrap();
     run_id
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// listRuns
+
+/// Writes the state of a run of `workflow` that started at `started` (a UTC time), with the id `id`, whose owner is
+/// gone, so a run that says `running` reads as halted.
+fn write_run(
+    project: &Path,
+    id: &str,
+    workflow: &str,
+    goal: &str,
+    started: &str,
+    status: RunStatus,
+) {
+    let mut store = FileRunStore::open(project).unwrap();
+    fs::create_dir(store.runs_dir().join(id)).unwrap();
+    let finished = status != RunStatus::Running;
+    let run = Run {
+        run_id: id.to_string(),
+        workflow: workflow.to_string(),
+        harness: "fake".to_string(),
+        goal: goal.to_string(),
+        status,
+        started_at: parse_timestamp(started).unwrap(),
+        finished_at: finished.then(|| parse_timestamp(started).unwrap()),
+        exit_code: finished.then_some(0),
+        stages: vec![StageState {
+            name: "write".to_string(),
+            status: if finished {
+                StageStatus::Passed
+            } else {
+                StageStatus::Running
+            },
+            reported_outputs: Vec::new(),
+        }],
+        checks: BTreeMap::new(),
+        owner: Owner {
+            pid: 4_000_000,
+            started: "2026-01-01T00:00:00Z".to_string(),
+        },
+        session_group: None,
+    };
+    store.write_state(id, &run.to_text()).unwrap();
+}
+
+fn rows_of(reply: &Reply) -> Vec<Json> {
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    reply
+        .json()
+        .get("runs")
+        .and_then(Json::as_array)
+        .expect("runs")
+        .to_vec()
+}
+
+fn field(row: &Json, key: &str) -> String {
+    row.get(key).and_then(Json::as_str).unwrap().to_string()
+}
+
+#[test]
+fn listruns_is_empty_before_the_first_run_and_leaves_no_folder_behind() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    assert!(rows_of(&call(&f, "GET", "/api/runs", None)).is_empty());
+    assert!(!f.project.path().join(".konductor/runs").exists());
+}
+
+#[test]
+fn listruns_gives_the_runs_of_the_root_newest_first_each_with_its_goal() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "Add a greeting",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0430-bbbbb",
+        "hello",
+        "Add a changelog line",
+        "2026-10-24T04:30:11Z",
+        RunStatus::Halted,
+    );
+    write_run(
+        project,
+        "20261024-0501-ccccc",
+        "other",
+        "Not mine",
+        "2026-10-24T05:01:00Z",
+        RunStatus::Passed,
+    );
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    let got: Vec<(String, String, String, String)> = rows
+        .iter()
+        .map(|r| {
+            (
+                field(r, "run_id"),
+                field(r, "started_at"),
+                field(r, "status"),
+                field(r, "goal"),
+            )
+        })
+        .collect();
+    let want = [
+        (
+            "20261024-0430-bbbbb",
+            "2026-10-24T04:30:11Z",
+            "halted",
+            "Add a changelog line",
+        ),
+        (
+            "20261024-0412-aaaaa",
+            "2026-10-24T04:12:05Z",
+            "passed",
+            "Add a greeting",
+        ),
+    ]
+    .map(|(a, b, c, d)| (a.to_string(), b.to_string(), c.to_string(), d.to_string()));
+    assert_eq!(got, want, "a run of another workflow is not listed");
+    assert!(rows
+        .iter()
+        .all(|r| r.get("goal_truncated") == Some(&Json::Bool(false))));
+    // The listed run can be read, and the one that is not listed can be read too.
+    assert_eq!(
+        call(&f, "GET", "/api/runs/20261024-0430-bbbbb", None).status,
+        200
+    );
+    assert_eq!(
+        call(&f, "GET", "/api/runs/20261024-0501-ccccc", None).status,
+        200
+    );
+}
+
+#[test]
+fn listruns_returns_at_most_limit_runs_and_refuses_a_limit_that_is_not_valid() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "One",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0430-bbbbb",
+        "hello",
+        "Two",
+        "2026-10-24T04:30:11Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0431-ccccc",
+        "hello",
+        "Three",
+        "2026-10-24T04:31:00Z",
+        RunStatus::Passed,
+    );
+    let goals = |query: &str| -> Vec<String> {
+        rows_of(&call(&f, "GET", &format!("/api/runs{query}"), None))
+            .iter()
+            .map(|r| field(r, "goal"))
+            .collect()
+    };
+    assert_eq!(goals("?limit=1"), ["Three"]);
+    assert_eq!(goals("?limit=2"), ["Three", "Two"]);
+    assert_eq!(goals("?limit=200").len(), 3);
+    assert_eq!(goals("").len(), 3);
+    for query in [
+        "?limit=0",
+        "?limit=201",
+        "?limit=all",
+        "?limit=",
+        "?limit=-1",
+        "?limit=%2B1",
+        "?limit=01",
+        "?limit=1.0",
+        "?limit=99999999999999999999",
+        "?limit=1&limit=1",
+    ] {
+        let reply = call(&f, "GET", &format!("/api/runs{query}"), None);
+        assert_eq!(
+            (reply.status, reply.code().as_str()),
+            (400, "bad_request"),
+            "{query}"
+        );
+    }
+}
+
+#[test]
+fn listruns_orders_the_runs_of_one_second_by_when_they_started() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    // Made in this order, which is the order they started in. Their ids say nothing about it.
+    let made = [
+        "20261024-0412-bbbbb",
+        "20261024-0412-aaaaa",
+        "20261024-0412-ccccc",
+    ];
+    for id in made {
+        write_run(
+            project,
+            id,
+            "hello",
+            id,
+            "2026-10-24T04:12:05Z",
+            RunStatus::Passed,
+        );
+        // The file system stamps a folder with a clock that ticks every few milliseconds.
+        std::thread::sleep(Duration::from_millis(30));
+    }
+    write_run(
+        project,
+        "20261024-0412-ddddd",
+        "hello",
+        "later",
+        "2026-10-24T04:12:06Z",
+        RunStatus::Passed,
+    );
+    let ids = |query: &str| -> Vec<String> {
+        rows_of(&call(&f, "GET", &format!("/api/runs{query}"), None))
+            .iter()
+            .map(|r| field(r, "run_id"))
+            .collect()
+    };
+    // A file system that keeps no creation time leaves the order of the ids.
+    let has_creation_time = fs::metadata(project.join(".konductor/runs/20261024-0412-bbbbb"))
+        .and_then(|meta| meta.created())
+        .is_ok();
+    let want_one_second = if has_creation_time {
+        made.iter().rev().copied().collect::<Vec<_>>()
+    } else {
+        vec![
+            "20261024-0412-ccccc",
+            "20261024-0412-bbbbb",
+            "20261024-0412-aaaaa",
+        ]
+    };
+    let mut want = vec!["20261024-0412-ddddd"];
+    want.extend(want_one_second.iter().copied());
+    assert_eq!(ids(""), want);
+    // With a limit, a second that is cut in the middle still keeps the newest of its runs.
+    assert_eq!(ids("?limit=2"), want[..2]);
+}
+
+#[test]
+fn listruns_cuts_a_goal_over_the_limit_at_a_character_and_keeps_one_at_the_limit_whole() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    let at_limit = "😀".repeat(2048);
+    let over = "é".repeat(2049);
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        &at_limit,
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    write_run(
+        project,
+        "20261024-0413-bbbbb",
+        "hello",
+        &over,
+        "2026-10-24T04:13:05Z",
+        RunStatus::Passed,
+    );
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(field(&rows[0], "goal"), "é".repeat(2048));
+    assert_eq!(rows[0].get("goal_truncated"), Some(&Json::Bool(true)));
+    assert_eq!(field(&rows[1], "goal"), at_limit);
+    assert_eq!(rows[1].get("goal_truncated"), Some(&Json::Bool(false)));
+}
+
+#[test]
+fn listruns_lists_a_run_from_before_goals_were_kept_with_an_empty_goal() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "gone",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    let state = project.join(".konductor/runs/20261024-0412-aaaaa/state.json");
+    let text = fs::read_to_string(&state)
+        .unwrap()
+        .replace("  \"goal\": \"gone\",\n", "");
+    assert!(!text.contains("goal"));
+    fs::write(&state, text).unwrap();
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(field(&rows[0], "goal"), "");
+    assert_eq!(rows[0].get("goal_truncated"), Some(&Json::Bool(false)));
+}
+
+#[test]
+fn listruns_skips_a_run_folder_that_has_no_readable_state() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let project = f.project.path();
+    write_run(
+        project,
+        "20261024-0412-aaaaa",
+        "hello",
+        "Fine",
+        "2026-10-24T04:12:05Z",
+        RunStatus::Passed,
+    );
+    fs::create_dir(project.join(".konductor/runs/20261024-0413-bbbbb")).unwrap();
+    fs::create_dir(project.join(".konductor/runs/20261024-0414-ccccc")).unwrap();
+    fs::write(
+        project.join(".konductor/runs/20261024-0414-ccccc/state.json"),
+        "not json",
+    )
+    .unwrap();
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(rows.len(), 1);
+    assert_eq!(field(&rows[0], "run_id"), "20261024-0412-aaaaa");
+}
+
+#[test]
+fn listruns_reads_a_run_whose_owner_is_gone_as_halted_like_getrun() {
+    let _serial = one_at_a_time();
+    let f = signed_in();
+    let run_id = dead_run(f.project.path());
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(rows.len(), 1);
+    assert_eq!(field(&rows[0], "run_id"), run_id);
+    assert_eq!(field(&rows[0], "status"), "halted");
+    assert_eq!(field(&rows[0], "goal"), "Say hello");
+}
+
+#[test]
+fn listruns_shows_the_run_that_is_active_as_running_and_a_run_started_by_the_api_with_its_goal() {
+    let _serial = one_at_a_time();
+    let dir = TempDir::new("canvas-list-live");
+    let fifo = dir.path().join("hold");
+    assert!(Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .unwrap()
+        .success());
+    let f = signed_in_with(Some(fifo.clone()));
+    trust(&f);
+    let started = call(
+        &f,
+        "POST",
+        "/api/run",
+        Some("{\"params\":{\"goal\":\"Say it twice\"}}"),
+    );
+    assert_eq!(started.status, 202, "{}", started.body);
+    let run_id = field(&started.json(), "run_id");
+    let rows = rows_of(&call(&f, "GET", "/api/runs", None));
+    assert_eq!(rows.len(), 1);
+    assert_eq!(field(&rows[0], "run_id"), run_id);
+    assert_eq!(field(&rows[0], "status"), "running");
+    assert_eq!(field(&rows[0], "goal"), "Say it twice");
+    // Let the run end, so the server can stop.
+    fs::write(&fifo, "go").unwrap();
+    wait_for_status(&f, &run_id, "passed");
 }
 
 #[test]

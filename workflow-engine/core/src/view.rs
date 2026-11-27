@@ -8,7 +8,9 @@
 use crate::check::Checked;
 use crate::diagnostic::Diagnostic;
 use crate::json::Json;
+use crate::limits::MAX_PROMPT_CHARS;
 use crate::model::Workflow;
+use crate::rules::{NAME_PATTERN, RESERVED_STAGE_NAMES};
 use crate::source_map::SourceMap;
 use crate::yaml::{load, Map, Node, Seq};
 
@@ -181,6 +183,53 @@ fn next_line_start(text: &str, from: usize) -> Option<usize> {
     } else {
         at + 1
     })
+}
+
+/// The path rule of the contract's `Path`, as a regular expression that the whole value matches. It states what
+/// [`crate::rules::path_problem`] checks, so a client can test a value before it saves.
+const PATH_PATTERN: &str = r"^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$";
+
+/// The longest name, in characters, that [`NAME_PATTERN`] accepts: a first character and up to 63 more.
+const MAX_NAME_CHARS: usize = 64;
+
+fn field(key: &str, kind: &str, required: bool) -> Json {
+    let mut object = Json::object();
+    object.insert("key", Json::str(key));
+    object.insert("type", Json::str(kind));
+    object.insert("required", Json::Bool(required));
+    object
+}
+
+fn name_field(key: &str) -> Json {
+    let mut object = field(key, "name", true);
+    object.insert("max_length", Json::number(MAX_NAME_CHARS));
+    object.insert("pattern", Json::str(NAME_PATTERN));
+    object
+}
+
+fn keys(names: &[&str]) -> Json {
+    Json::Array(names.iter().map(|name| Json::str(name)).collect())
+}
+
+/// The contract's `stage_fields`: for each kind of stage, the keys a client may edit and what each takes, in the order
+/// of the table of stage keys. The first release has one kind, `agent`. The values are the limits that the checker
+/// enforces, so a client builds its form from what the engine accepts. It is the same for every text.
+pub fn stage_fields() -> Json {
+    let mut name = name_field("name");
+    name.insert("reserved", keys(&RESERVED_STAGE_NAMES));
+    let mut prompt = field("prompt", "text", false);
+    prompt.insert("min_length", Json::number(1));
+    prompt.insert("max_length", Json::number(MAX_PROMPT_CHARS));
+    prompt.insert("excludes", keys(&["prompt_file"]));
+    let mut prompt_file = field("prompt_file", "path", false);
+    prompt_file.insert("pattern", Json::str(PATH_PATTERN));
+    prompt_file.insert("excludes", keys(&["prompt"]));
+    let mut kinds = Json::object();
+    kinds.insert(
+        "agent",
+        Json::Array(vec![name, name_field("agent"), prompt, prompt_file]),
+    );
+    kinds
 }
 
 /// The diagnostics as a JSON list.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! The canvas server: the HTTP adapter that answers the six operations of `workflow-canvas/api/openapi.yaml` from the
+//! The canvas server: the HTTP adapter that answers the operations of `workflow-canvas/api/openapi.yaml` from the
 //! engine, and serves the built page.
 //!
 //! It adds no port to the core. It binds the loopback address only, whatever the caller asks, checks the `Host` and
@@ -91,6 +91,8 @@ pub struct CanvasConfig {
     pub project_root: PathBuf,
     /// The harness that runs use. The session reports it.
     pub harness: String,
+    /// The version of Konductor that serves the API, as `X.Y.Z` with an optional `-` suffix. The session reports it.
+    pub konductor_version: String,
     /// The folder of the built page.
     pub page_dir: PathBuf,
     pub launch_code: String,
@@ -271,6 +273,7 @@ mod tests {
             scope: Scope::Project,
             project_root: dir.join("project"),
             harness: "fake".to_string(),
+            konductor_version: "0.0.0-test".to_string(),
             page_dir: dir.join("page"),
             launch_code: "code".to_string(),
             entry: entry.clone(),

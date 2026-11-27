@@ -6,6 +6,9 @@ use crate::limits::MAX_FILE_BYTES;
 /// Stage names that the canvas uses as graph markers.
 pub const RESERVED_STAGE_NAMES: [&str; 4] = ["start", "end", "run", "halt"];
 
+/// The name pattern as a regular expression that the whole value matches. [`is_name`] checks the same rule.
+pub const NAME_PATTERN: &str = "^[a-z0-9][a-z0-9-]{0,63}$";
+
 /// The text of a name pattern, for messages.
 pub const NAME_RULE: &str =
     "must use lower-case letters, digits and hyphens, start with a letter or digit, and have at most 64 characters";
