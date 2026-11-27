@@ -226,9 +226,11 @@ const USAGE = `Usage:
        a cc- arm is a Claude Code arm, planned as its own run against cc-vanilla and capped by --budget-usd, which it needs since no USD figure
        is measured for the suites. --out sets the run directory (default under the temp dir); with both harnesses each run gets OUT/kiro-cli and
        OUT/claude-code)
-  node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run] [--extra-tasks DIR,DIR]
+  node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run] [--extra-tasks DIR,DIR] [--strict-env]
        (re-evaluates the current task checks against each run's saved workspace; the first results are kept
-       under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat)
+       under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat.
+       Warns when this shell's node, python3, python or pytest major.minor differs from the run's env.json;
+       --strict-env then skips every run instead)
   node bench/runner/bench.js gc [--root DIR ...] [--older-than 7d] [--kind a,b] [--keep-last N] [--protect-file FILE] [--json] [--apply]
   node bench/runner/bench.js gc --adopt DIR --kind KIND [--apply]
   node bench/runner/bench.js gc --protect add PATH | --protect list [--protect-file FILE]

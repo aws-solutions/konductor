@@ -330,7 +330,7 @@ node bench/runner/bench.js report --run $OUT                        # report.md,
 node bench/runner/bench.js run --suite pilot --profile detailed --out $OUT   # 5 replicates, an A/A arm, graded judging, a calibration sample
 node bench/runner/bench.js report --run $A,$B,$C --verdict platform --out $V  # keep, discard or not enough evidence per arm: verdict.md and .html
 node bench/runner/bench.js compare --base $OLD --head $OUT          # regression check
-node bench/runner/bench.js recheck --run $OUT [--dry-run]                    # re-apply corrected task checks to saved workspaces
+node bench/runner/bench.js recheck --run $OUT [--dry-run] [--strict-env]     # re-apply corrected task checks to saved workspaces
 node bench/runner/bench.js backfill --run $OUT [--credits] [--skills] [--write]  # repair finished runs from stream.jsonl: credits (default) and/or skill-load fields (dry run by default)
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
 bench/scripts/test.sh [--tap]                                       # the full suite: node unit tests, then the Python plant tests as TAP lines
@@ -870,6 +870,9 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   "pass" then uses the rechecked results and says so. Judge bundles never show check results, so
   cached judge calls stay valid. The saved `workspace/` leaves out `.git`, so a run of a task whose fixture
   is a git repository (a `dotgit/` dir) is skipped with that reason instead of scored without its history.
+  Checks run with this shell's interpreters. When the major.minor of `node`, `python3`, `python` or `pytest`
+  differs from the run's `env.json`, recheck prints a warning naming the tool and both versions; with
+  `--strict-env` it skips every run instead (DEBT D-291: Python 3.9 failed tests a 3.12 run had passed).
 
 ## Judging
 - Judges run as a separate headless `kiro-cli chat --no-interactive --trust-tools=` call in their own

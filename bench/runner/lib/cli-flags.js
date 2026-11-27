@@ -33,7 +33,7 @@ const FLAGS = {
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'allow-mixed-pass', 'aa', 'bench-dir'],
   contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks', 'detail', 'format', 'out', 'scoring', 'phases'],
   'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'budget-usd', 'out', 'seed', 'repo-root', 'bench-dir'],
-  recheck: ['run', 'bench-dir', 'dry-run', 'extra-tasks'],
+  recheck: ['run', 'bench-dir', 'dry-run', 'extra-tasks', 'strict-env'],
   backfill: ['run', 'write', 'credits', 'skills', 'bench-dir', 'repo-root', 'extra-tasks'],
   skills: ['run', 'bench-dir', 'repo-root', 'json', 'extra-tasks'],
   'calibrate export': ['run', 'n', 'seed', 'out', 'bench-dir', 'max-file-chars', 'max-bundle-chars', 'redact-file', 'criteria-pack', 'extra-tasks'],
@@ -95,7 +95,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenar
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
-  'cargo-online', 'allow-partial', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'allow-unisolated', 'gate-strict', 'allow-stale-pack', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
+  'cargo-online', 'allow-partial', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'allow-unisolated', 'gate-strict', 'allow-stale-pack', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help', 'strict-env',
   'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'reask-unquoted', 'fail-on-hole', 'stats', 'apply', 'remove-originals', 'rejudge', 'introspect', 'ids', 'late', 'controls-only', 'role-line', 'allow-mixed-pass', 'list',
 ]);
 

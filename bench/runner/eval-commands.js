@@ -30,7 +30,7 @@ const { loadScoring } = require('../report/scores.js');
 const { renderMarkdown } = require('../report/render.js');
 const { explainRuns } = require('../report/explain.js');
 const { buildTrace, renderMarkdown: renderTrace, locateRun } = require('./lib/trace.js');
-const { recheckAll } = require('./lib/recheck.js');
+const { recheckAll, interpreterDrift, describeDrift } = require('./lib/recheck.js');
 const { backfillAll } = require('./lib/backfill.js');
 const { backfillSkills, summarizeSkillsBackfill, renderSkillsBackfill } = require('./lib/backfill-skills.js');
 const { requirePrereg } = require('../scenarios/prereg.js');
@@ -370,7 +370,10 @@ function reportCallerStop(caller) {
 function cmdRecheck(opts) {
   const runDir = path.resolve(need(opts, 'run'));
   const dryRun = Boolean(opts['dry-run']);
-  const out = recheckAll({ runDir, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), dryRun });
+  const strictEnv = Boolean(opts['strict-env']);
+  const envDrift = interpreterDrift(runDir);
+  if (envDrift.length) console.error(`warning: ${describeDrift(envDrift)}; checks may score differently${strictEnv ? '' : ' (--strict-env skips the recheck)'}`);
+  const out = recheckAll({ runDir, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), dryRun, strictEnv, envDrift });
   const tally = (checks) => (checks ? `${checks.filter((c) => c.passed).length}/${checks.length}` : '-');
   for (const r of out) {
     const note = r.status === 'skipped' ? ` (${r.reason})` : '';

@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write, makeBench, makeRun } = require('./helpers.js');
-const { recheckRun, recheckAll, checksRevision } = require('../lib/recheck.js');
+const { recheckRun, recheckAll, checksRevision, interpreterDrift, describeDrift } = require('../lib/recheck.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { loadRun } = require('../../report/load.js');
 const { buildReport } = require('../../report/aggregate.js');
@@ -145,6 +145,31 @@ test('dry run reports the new results without writing', () => {
     assert.equal(out.status, 'rechecked');
     assert.deepEqual(out.after.map((c) => c.passed), [true, true]);
     assert.equal(sha(s.resultFile), before);
+  } finally { s.cleanup(); }
+});
+
+test('interpreterDrift names each tool whose major.minor differs from the run env.json (D-291)', () => {
+  const s = setup();
+  try {
+    assert.deepEqual(interpreterDrift(s.runDir, { python3: 'Python 3.9.25' }), [], 'no env.json: no drift');
+    write(path.join(s.runDir, 'env.json'), JSON.stringify({ interpreters: { node: 'v24.21.0', python3: 'Python 3.12.15', pytest: null } }));
+    const here = { node: 'v24.21.3', python3: 'Python 3.9.25', pytest: 'pytest 8.4.0' };
+    assert.deepEqual(interpreterDrift(s.runDir, here), [{ tool: 'python3', run: 'Python 3.12.15', here: 'Python 3.9.25' }]);
+    assert.deepEqual(interpreterDrift(s.runDir, { node: 'v24.21.0', python3: null }), [{ tool: 'python3', run: 'Python 3.12.15', here: null }]);
+    assert.match(describeDrift(interpreterDrift(s.runDir, here)), /python3: run had Python 3\.12\.15, this shell has Python 3\.9\.25/);
+  } finally { s.cleanup(); }
+});
+
+test('recheckAll with strictEnv and a drift skips every run and writes nothing', () => {
+  const s = setup();
+  try {
+    const before = fs.readFileSync(s.resultFile, 'utf8');
+    const envDrift = [{ tool: 'python3', run: 'Python 3.12.15', here: 'Python 3.9.25' }];
+    const [out] = recheckAll({ runDir: s.runDir, benchDir: s.bench, strictEnv: true, envDrift });
+    assert.equal(out.status, 'skipped');
+    assert.match(out.reason, /python3: run had Python 3\.12\.15/);
+    assert.equal(fs.readFileSync(s.resultFile, 'utf8'), before);
+    assert.equal(recheckAll({ runDir: s.runDir, benchDir: s.bench, envDrift })[0].status, 'rechecked', 'a drift alone only warns');
   } finally { s.cleanup(); }
 });
 

@@ -18,6 +18,7 @@ const real = require('./real.js');
 const { makeIsolation, workingMode } = require('./isolate.js');
 const { loadRun } = require('./load-run.js');
 const { archivedWorkspace } = require('./archive.js');
+const { interpreterVersions, versionMatches } = require('./toolchain.js');
 
 const checksRevision = (task) => crypto.createHash('sha256').update(JSON.stringify(task.checks)).digest('hex').slice(0, 12);
 
@@ -106,13 +107,35 @@ function recheckRun({ dir, task, dryRun = false, now = () => new Date().toISOStr
   return { status: 'rechecked', before: original, after };
 }
 
-function recheckAll({ runDir, benchDir = BENCH_DIR, extraDirs = [], dryRun = false, now }) {
+const majorMinor = (v) => String(v).replace(/^[^\d]*/, '').split(/[^\d]+/).filter(Boolean).slice(0, 2).join('.');
+
+/**
+ * [{ tool, run, here }] for each interpreter the run's env.json recorded whose major.minor differs from `here` (this
+ * shell's, from toolchain.interpreterVersions), or [] when the run has no env.json. A different Python can fail tests
+ * the run passed (DEBT D-291).
+ */
+function interpreterDrift(runDir, here = interpreterVersions()) {
+  let recorded;
+  try { recorded = JSON.parse(fs.readFileSync(path.join(runDir, 'env.json'), 'utf8')).interpreters; } catch { return []; }
+  return Object.entries(recorded || {})
+    .filter(([tool, v]) => v && majorMinor(v) && !versionMatches(majorMinor(v), here[tool]))
+    .map(([tool, v]) => ({ tool, run: v, here: here[tool] ?? null }));
+}
+
+const describeDrift = (drift) => drift.map((d) => `${d.tool}: run had ${d.run}, this shell has ${d.here ?? 'none'}`).join('; ');
+
+/**
+ * Rechecks every run in `runDir`. `envDrift` is interpreterDrift's answer; with `strictEnv` a non-empty one skips
+ * every run, so no result is scored on a different interpreter.
+ */
+function recheckAll({ runDir, benchDir = BENCH_DIR, extraDirs = [], dryRun = false, now, strictEnv = false, envDrift = [] }) {
   const run = loadRun(runDir);
   const tasks = loadTasks(benchDir, { extraDirs });
+  const blocked = strictEnv && envDrift.length ? `interpreter differs from the run (${describeDrift(envDrift)}); --strict-env` : null;
   return run.runs.map((r) => ({
     armId: r.armId, taskId: r.taskId, replicate: r.replicate,
-    ...recheckRun({ dir: r.dir, task: tasks.get(r.taskId), dryRun, now }),
+    ...(blocked ? { status: 'skipped', reason: blocked, before: [], after: null } : recheckRun({ dir: r.dir, task: tasks.get(r.taskId), dryRun, now })),
   }));
 }
 
-module.exports = { recheckRun, recheckAll, checksRevision };
+module.exports = { recheckRun, recheckAll, checksRevision, interpreterDrift, describeDrift };
