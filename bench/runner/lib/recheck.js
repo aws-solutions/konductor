@@ -21,12 +21,19 @@ const { archivedWorkspace } = require('./archive.js');
 
 const checksRevision = (task) => crypto.createHash('sha256').update(JSON.stringify(task.checks)).digest('hex').slice(0, 12);
 
-function skipReason(result, dir) {
+/**
+ * Why `dir` cannot be rechecked for `task`, or null. A fixture with a `dotgit/` dir runs as a git repository, and the
+ * run's snapshot leaves `.git` out (run-one.js), so checks that read the history would score the run 0.
+ */
+function skipReason(result, dir, task) {
   if (result.status === 'budget_skipped') return 'budget-skipped run';
   if (result.infraError) return 'infrastructure error';
   if (!result.checks?.length && !result.checksOriginal?.length) return 'run has no checks';
   if (!fs.existsSync(path.join(dir, 'workspace'))) {
     return archivedWorkspace(dir) ? `workspace is archived (run: node bench/runner/bench.js archive --restore ${dir})` : 'no workspace snapshot';
+  }
+  if (task.fixtureDir && fs.existsSync(path.join(task.fixtureDir, 'dotgit')) && !fs.existsSync(path.join(dir, 'workspace', '.git'))) {
+    return 'the fixture is a git repository and the snapshot has no .git, so checks that read its history cannot run';
   }
   return null;
 }
@@ -69,7 +76,7 @@ function recheckRun({ dir, task, dryRun = false, now = () => new Date().toISOStr
   if (!task) throw new Error(`no task definition for ${dir}`);
   const file = path.join(dir, 'result.json');
   const result = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const reason = skipReason(result, dir);
+  const reason = skipReason(result, dir, task);
   if (reason) return { status: 'skipped', reason, before: result.checks || [], after: null };
   const revision = checksRevision(task);
   const original = result.checksOriginal ?? result.checks;

@@ -123,6 +123,20 @@ test('runs without a workspace snapshot, without checks, or skipped by the budge
   } finally { t.cleanup(); }
 });
 
+test('a git fixture run whose snapshot has no .git is skipped, not scored 0 from a missing history', () => {
+  const s = setup();
+  try {
+    write(path.join(s.bench, 'fixtures/fx/dotgit/HEAD'), 'ref: refs/heads/main\n');
+    const before = sha(s.resultFile);
+    const [out] = recheckAll({ runDir: s.runDir, benchDir: s.bench });
+    assert.equal(out.status, 'skipped');
+    assert.match(out.reason, /no \.git/);
+    assert.equal(sha(s.resultFile), before);
+    write(path.join(s.runDir, 'vanilla/t1/1/workspace/.git/HEAD'), 'ref: refs/heads/main\n');
+    assert.equal(recheckAll({ runDir: s.runDir, benchDir: s.bench })[0].status, 'rechecked');
+  } finally { s.cleanup(); }
+});
+
 test('dry run reports the new results without writing', () => {
   const s = setup();
   try {

@@ -868,7 +868,8 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   `checksRevision`, `checksRecheckedAt`; the first results stay in `checksOriginal`. Repeating it changes
   nothing until the task's checks change. `stream.jsonl` and credit fields are never touched. The report's
   "pass" then uses the rechecked results and says so. Judge bundles never show check results, so
-  cached judge calls stay valid.
+  cached judge calls stay valid. The saved `workspace/` leaves out `.git`, so a run of a task whose fixture
+  is a git repository (a `dotgit/` dir) is skipped with that reason instead of scored without its history.
 
 ## Judging
 - Judges run as a separate headless `kiro-cli chat --no-interactive --trust-tools=` call in their own
