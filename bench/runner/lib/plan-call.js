@@ -35,10 +35,15 @@ function mainText(events) {
 const lineRe = (label) => new RegExp(`^[ \\t>*_-]*${label}:[ \\t]*(.*?)[ \\t*_]*$`, 'gim');
 const linesOf = (text, label) => [...text.matchAll(lineRe(label))].map((m) => `${label}: ${m[1]}`.trim());
 
+const PLAN_WORD = /^Plan:\s*(solo|team)\b/i;
+const planWord = (line) => PLAN_WORD.exec(line ?? '')?.[1]?.toLowerCase() ?? null;
+/** The Plan line that counts: the first that names solo or team (a `Plan: after a read-only look` placeholder may come
+ * before it), else the first Plan line, else null. */
+const firstPlanLine = (plans) => plans.find((l) => planWord(l)) ?? plans[0] ?? null;
+
 function planCall({ text, orch, expect }) {
-  const plans = linesOf(text, 'Plan');
-  const planLine = plans[0] ?? null;
-  const word = planLine ? /^Plan:\s*(solo|team)\b/i.exec(planLine)?.[1]?.toLowerCase() ?? null : null;
+  const planLine = firstPlanLine(linesOf(text, 'Plan'));
+  const word = planWord(planLine);
   const gates = linesOf(text, 'Review gate');
   const reviewGateLine = gates.at(-1) ?? null;
   const writerSpawns = orch ? orch.makerSpawns ?? 0 : null;
@@ -76,4 +81,4 @@ function planCallFields(pc, taskId) {
   return { planCall: pc, planLine: pc.planLine, planRight: pc.planRight, writerSpawns: pc.writerSpawns, reviewGateLine: pc.reviewGateLine };
 }
 
-module.exports = { mainText, planCall, planCallOfRunDir, planCallFields, linesOf, EXPECT, EXPECT_FILE };
+module.exports = { mainText, planCall, planCallOfRunDir, planCallFields, linesOf, planWord, firstPlanLine, EXPECT, EXPECT_FILE };

@@ -7,7 +7,10 @@
 # coordinator its --arm-config and every run a per-run limit; a step stops at its cap before the run that could pass it;
 # batch C refuses until the CardDemo Pattern key is signed off for its current bytes, then runs 2 reps from the git
 # copy with soft caps; the judge step stops at its USD cap and otherwise runs the read-view rubric pass and the quality
-# pack on every finished run, then the report.
+# pack on every finished run, then the report. reply-check: --plan builds nothing paid and prints the calls and caps; a
+# wrong REVIEWER is refused; the paid step runs 12 early-stopped candidate runs, freezes 15 prompts (12 new, 3 smoke),
+# makes one stub Claude call and three stub panel calls per prompt and writes the side-by-side report, leaving the
+# study's plan.json as it was; a rerun calls nothing; the run cap stops the run that could pass it.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 REPO=$(cd "$HERE/../../.." && pwd -P)
@@ -41,19 +44,41 @@ fs.appendFileSync(path.join(out, 'credit-ledger.jsonl'), `${JSON.stringify({ kin
 const plan = process.env.STUB_PLAN === 'none' ? null : (task === 't12-mux-parallel-merge' ? 'team' : 'solo');
 const r = { armId: arm, taskId: task, replicate: rep, credits, planLine: plan ? `Plan: ${plan}, because stub` : null, planCall: { plan }, writerSpawns: plan === 'team' ? 3 : 0 };
 fs.writeFileSync(path.join(out, arm, task, String(rep), 'result.json'), JSON.stringify(r));
+const ev = { type: 'sessionUpdate', data: { sessionId: 's', update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: plan ? `Plan: ${plan}, because stub\nSkills: none fit\n` : 'stub\n' } } } };
+fs.writeFileSync(path.join(out, arm, task, String(rep), 'stream.jsonl'), `${JSON.stringify(ev)}\n`);
+EOF
+
+# The reply check's reviewers: a fake kiro-cli for Claude (answers every check "met") and a stub panel module.
+cat > "$T/fake-kiro.js" <<'EOF'
+#!/usr/bin/env node
+const p = process.argv.at(-1);
+const ids = [...p.matchAll(/^(E\d): /gm)].map((m) => m[1]);
+const line = (type, data) => process.stdout.write(JSON.stringify({ type, data }) + '\n');
+line('metadata', { sessionId: 'f', meteringUsage: [{ value: 2, unit: 'credit' }] });
+line('runFinished', { status: 'success', stopReason: 'end_turn', finalText: JSON.stringify({ checks: ids.map((id) => ({ id, verdict: 'met', quote: '' })), decisionInOtherWords: 'solo' }) });
+EOF
+chmod +x "$T/fake-kiro.js"
+echo fake > "$T/auth.sqlite3"
+cat > "$T/panel.js" <<'EOF'
+'use strict';
+exports.makeCaller = () => async ({ prompt }) => {
+  const ids = [...prompt.matchAll(/^(E\d): /gm)].map((m) => m[1]);
+  return { text: JSON.stringify({ checks: ids.map((id) => ({ id, verdict: 'not-met', quote: '' })), decisionInOtherWords: 'none' }), usd: 0.001 };
+};
 EOF
 
 run() {  # run S ARGS...: the script with the stub overrides; sets code and writes $T/log
   local s=$1; shift
   code=0
-  KONDUCTOR_WS=$T/ws S=$s R=$REPO CACHE=$s/cache BENCH_JS=$T/bench.js ADAPTIVE_ARM=konductor-adaptive=dir:$T/tree \
+  KONDUCTOR_WS=$T/ws S=$s R=$REPO RC_REPO=$REPO CACHE=$s/cache BENCH_JS=$T/bench.js ADAPTIVE_ARM=konductor-adaptive=dir:$T/tree \
+    CANDIDATE_ARM=konductor-adaptive-p12=dir:$T/tree REVIEW_KIRO_BIN=$T/fake-kiro.js REVIEW_AUTH_DB=$T/auth.sqlite3 PANEL_MODULE=$T/panel.js \
     HOST_CHECK=0 GIT_CHECK=0 NO_FETCH=1 WAIT_MAX=0 HEAVY_LOCK=$T/heavy.lock LITE_LOCK=$T/lite.lock OWN_LOCK=$T/own.lock \
     STUB_CALLS=$T/calls.log bash "$T/w/run.sh" "$@" > "$T/log" 2>&1 || code=$?
 }
 calls() { local n; n=$(grep -c . "$T/calls.log" 2>/dev/null) || true; echo "${n:-0}"; }
 
-S1=$(mktemp -d /var/tmp/pfa-s1.XXXX); S2=$(mktemp -d /var/tmp/pfa-s2.XXXX); S3=$(mktemp -d /var/tmp/pfa-s3.XXXX)
-trap 'find "$T" "$S1" "$S2" "$S3" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3"' EXIT
+S1=$(mktemp -d /var/tmp/pfa-s1.XXXX); S2=$(mktemp -d /var/tmp/pfa-s2.XXXX); S3=$(mktemp -d /var/tmp/pfa-s3.XXXX); S5=$(mktemp -d /var/tmp/pfa-s5.XXXX)
+trap 'find "$T" "$S1" "$S2" "$S3" "$S5" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3" "$S5"' EXIT
 
 run "$S1" --plan
 { [ "$code" = 0 ] && grep -q 'plan only: nothing was run' "$T/log" && grep -qE '^smoke +12 ' "$T/log" && grep -qE '^A +81 ' "$T/log" && [ "$(calls)" = 0 ] \
@@ -78,6 +103,35 @@ grep -q -- '--arms konductor-coordinator=c042c7ba7520a3332f1151e3f9733f7033557e6
 run "$S1" smoke --foreground
 [ "$code" = 0 ] && [ "$(calls)" = 12 ] && ok "a rerun skips finished runs" || bad "rerun (exit $code, $(calls) calls)"
 
+# Reply check: free plan, reviewer check, paid step with stubs, rerun, and the run cap.
+: > "$T/calls.log"
+run "$S1" reply-check --plan
+{ [ "$code" = 0 ] && [ "$(calls)" = 0 ] && grep -q '^runs: 12 early-stopped runs of the candidate arm' "$T/log" && grep -q 'Claude reviewer claude-opus-5.5: 15 calls' "$T/log" \
+  && grep -q 'of the 300 cap' "$T/log" && grep -q 'panel gpt-5.6-luna, deepseek-3.2, qwen3-coder-next: 45 calls' "$T/log" && grep -q 'cap USD 0.50' "$T/log" && grep -q 'plan only' "$T/log"; } \
+  && ok "reply-check --plan prints 12 runs, 15 Claude and 45 panel calls under the caps, and runs nothing" || bad "reply-check --plan (exit $code): $(tail -4 "$T/log")"
+REVIEWER=gpt-5.6-luna run "$S1" reply-check --foreground
+[ "$code" = 1 ] && grep -q 'REVIEWER must be claude-opus-5.5 or claude-fable-5.1' "$T/log" && ok "a non-Claude REVIEWER is refused" || bad "reviewer check (exit $code)"
+plan_sha=$(sha256sum "$S1/plan.json" | cut -d' ' -f1)
+: > "$T/calls.log"
+run "$S1" reply-check --foreground
+RV=$S1/reply-check/reviews
+n_prompts=$(node -p "Object.keys(require('$S1/reply-check/prompts/manifest.json').entries).length" 2>/dev/null || echo 0)
+n_claude=$(find "$RV/claude-opus-5.5" -name '*.json' ! -name '*.stream.jsonl' 2>/dev/null | wc -l)
+n_panel=$(find "$RV/gpt-5.6-luna" "$RV/deepseek-3.2" "$RV/qwen3-coder-next" -name '*.json' 2>/dev/null | wc -l)
+{ [ "$code" = 0 ] && [ "$(calls)" = 12 ] && [ "$(grep -c -- '--arms konductor-adaptive-p12=dir:.* --max-tool-calls 8' "$T/calls.log")" = 12 ] && [ "$(grep -c -- '--run-credit-limit 6 ' "$T/calls.log")" = 12 ] \
+  && [ "$n_prompts" = 15 ] && [ "$n_claude" = 15 ] && [ "$n_panel" = 45 ] && grep -q 'Claude differs' "$S1/reply-check/report.md" \
+  && [ "$(sha256sum "$S1/plan.json" | cut -d' ' -f1)" = "$plan_sha" ]; } \
+  && ok "reply-check runs 12 early-stopped runs, then 15 Claude and 45 panel reviews, and writes the side-by-side report; the study plan is unchanged" \
+  || bad "reply-check paid (exit $code, $(calls) calls, $n_prompts prompts, $n_claude Claude, $n_panel panel): $(tail -3 "$T/log")"
+[ -f "$S1/reply-check/prompts/smoke.t12-mux-parallel-merge.r1.review-prompt.txt" ] && [ ! -e "$S1/reply-check/prompts/smoke.probe-e2e-explicit-yes.r1.review-prompt.txt" ] \
+  && ok "three smoke runs are reviewed too" || bad "smoke prompts: $(ls "$S1/reply-check/prompts" | head -3)"
+: > "$T/calls.log"
+run "$S1" reply-check --foreground
+[ "$code" = 0 ] && [ "$(calls)" = 0 ] && ok "a reply-check rerun calls nothing" || bad "reply-check rerun (exit $code, $(calls) calls)"
+STUB_CREDITS=7 run "$S5" reply-check --foreground
+{ [ "$code" = 1 ] && grep -q 'STOP: run cap: 70 spent of 72' "$T/log" && [ "$(find "$S5/reply-check/runs" -name result.json | wc -l)" = 10 ]; } \
+  && ok "the reply-check run cap stops the run that could pass 72" || bad "reply-check cap (exit $code): $(tail -2 "$T/log")"
+
 # Cap: each run reports 35 credits, so after two runs (70) a third (70 + 25 > 90) must not start.
 STUB_CREDITS=35 run "$S3" smoke --foreground
 { [ "$code" = 1 ] && grep -q 'STOP: cap: 70 spent of 90' "$T/log" && [ "$(find "$S3/runs/smoke" -name result.json | wc -l)" = 2 ]; } \
@@ -86,7 +140,7 @@ STUB_CREDITS=35 run "$S3" smoke --foreground
 # Rebook (D-297): a smoke run the old v3 estimate stopped at 26 under the limit 25, while its session measured 3.29,
 # is listed by a dry run, then moved to incomplete and booked at measured spend plus one call; the next smoke run runs it.
 S4=$(mktemp -d /var/tmp/pfa-s4.XXXX)
-trap 'find "$T" "$S1" "$S2" "$S3" "$S4" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3" "$S4"' EXIT
+trap 'find "$T" "$S1" "$S2" "$S3" "$S4" "$S5" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3" "$S4" "$S5"' EXIT
 cp "$S1/plan.json" "$S4/plan.json"
 U4=$S4/runs/smoke/t12-mux-parallel-merge/konductor-adaptive/r1
 mkdir -p "$U4/konductor-adaptive/t12-mux-parallel-merge/1/session/sess_a"

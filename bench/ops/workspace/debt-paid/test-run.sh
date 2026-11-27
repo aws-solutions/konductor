@@ -17,6 +17,9 @@
 #            passes the flag on
 #   case 11: the D-275 CardDemo recheck: its bundle holds rules, interface, hidden tests and goldens and no answer key
 #            or authorship; --go needs --cap; the cap stops the job; no Claude model
+#   case 13: the D-284 recheck: three deepseek-3.2 rechecks of the three time-limit-only versions, each bundle the task's
+#            current version; the hard cap 45 stops a call whose worst case could pass it; the wrapper takes no cap or
+#            --call-worst flag
 set -uo pipefail
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -56,7 +59,7 @@ counted() { awk '{ s += $3 } END { printf "%g", s + 0 }' "$1"; }
 bash -n "$HERE/run.sh" && ok "bash -n clean" || bad syntax
 
 # case 1
-for want in 'D-132 2 30 30' 'D-167 12 180 180' 'D-123 2 30 30' 'D-159 2 30 75' 'D-137 4 60 60' 'D-275 6 90 105'; do
+for want in 'D-132 2 30 30' 'D-167 12 180 180' 'D-123 2 30 30' 'D-159 2 30 75' 'D-137 4 60 60' 'D-275 6 90 105' 'D-284 3 45 45'; do
   read -r job n floor cap <<<"$want"
   : > "$T/calls"; run p1 "$job" --plan; rc=$?
   [ "$rc" = 0 ] && [ "$(calls)" = 0 ] && grep -q "plan: $n calls, at least $floor counted of the $cap cap" "$T/log" && [ ! -s "$T/p1/ledger" ] \
@@ -151,6 +154,27 @@ rm -rf "$T/k"; : > "$T/calls"; STUB_CREDITS=22 run k D-123 --go --call-worst 5 x
 rm -rf "$T/cx"; : > "$T/calls"; STUB_CREDITS=22 cx --go --cap 50 --call-worst 30; rc=$?
 [ "$rc" = 1 ] && [ "$(calls)" = 1 ] && grep -q 'REFUSED C2: spent 22 of the 50 cap leaves no room for its worst case 30' "$T/log" \
   && ok "D-275 wrapper passes --call-worst on: 22 + 30 passes 50" || { bad "D-275 worst: rc $rc, calls $(calls)"; tail -2 "$T/log"; }
+
+# case 13
+W4=$HERE/../run-debt-d284-recheck.sh
+d284() { ROOT="$T/d284" PIN_REPO="$PIN" PIN_CLEAN=0 KIRO="$T/kiro" HEAVY_LOCK="$T/heavy.lock" HOST_CHECK=0 JOB_LOCK="$T/job.lock" \
+  PAID_PAT=no-such-paid-job-x9 CALLS="$T/calls" bash "$W4" "$@" > "$T/log" 2>&1; }
+: > "$T/calls"; d284 --plan; rc=$?
+[ "$rc" = 0 ] && [ "$(calls)" = 0 ] && grep -q 'job D-284: .*cap 45 counted' "$T/log" && grep -q 'plan: 3 calls, at least 45 counted of the 45 cap' "$T/log" \
+  && ok "D-284 --plan: 3 calls under the 45 cap, no call" || { bad "D-284 plan: rc $rc"; tail -3 "$T/log"; }
+: > "$T/calls"; d284 --go --cap 90; rc=$?
+[ "$rc" = 64 ] && [ "$(calls)" = 0 ] && ok "D-284 takes no --cap: the 45 cap is fixed" || bad "D-284 --cap: rc $rc"
+: > "$T/calls"; d284 --go --call-worst 1; rc=$?
+[ "$rc" = 64 ] && [ "$(calls)" = 0 ] && ok "D-284 takes no --call-worst: the worst case stays 15 or more" || bad "D-284 --call-worst: rc $rc"
+: > "$T/calls"; d284 --go; rc=$?
+B4=$T/d284/calls
+[ "$rc" = 0 ] && [ "$(calls)" = 3 ] && [ "$(counted "$T/d284/ledger")" = 45 ] && [ "$(grep -c 'deepseek-3.2 recheck' "$T/calls")" = 3 ] \
+  && grep -q '"version": *4' "$B4/R1/work/tasks/t8-bug-retry-storm/task.json" && grep -q '"version": *3' "$B4/R2/work/tasks/t9-browser-tab-regression/task.json" \
+  && grep -q '"version": *2' "$B4/R3/work/tasks/t9-bug-tabs-focus/task.json" \
+  && ok "D-284: three deepseek-3.2 rechecks of the current versions, 45 counted" || { bad "D-284 go: rc $rc, calls $(calls), ledger $(cat "$T/d284/ledger" 2>/dev/null)"; tail -3 "$T/log"; }
+rm -rf "$T/d284"; : > "$T/calls"; STUB_CREDITS=20 d284 --go; rc=$?
+[ "$rc" = 1 ] && [ "$(calls)" = 2 ] && grep -q 'REFUSED R3: spent 40 of the 45 cap leaves no room for its worst case 20' "$T/log" \
+  && ok "D-284: a 20-credit call makes the next worst case 20, so the third call is refused at 40 of 45" || { bad "D-284 cap: rc $rc, calls $(calls)"; tail -2 "$T/log"; }
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

@@ -1,4 +1,4 @@
-# The paid debt jobs: the first five are rows 2 to 6 of reports/debt-paid-runs-2026-11-24.md, D-275 is the CardDemo recheck. Read by run.sh.
+# The paid debt jobs: the first five are rows 2 to 6 of reports/debt-paid-runs-2026-11-24.md, D-275 is the CardDemo recheck, D-284 the recheck of three time-limit-only versions. Read by run.sh.
 #   cap JOB COUNTED            the job's hard cap in counted credits (the table's figure)
 #   JOB NAME KIND MODEL FROM ID...
 # KIND: map (one map call; the reply is the result), write (the writer changes the bundled tasks and writes
@@ -54,3 +54,10 @@ D-275 C3 recheck glm-5 - cx-carddemo-port
 D-275 C4 recheck gpt-5.6-luna - cx-carddemo-batchday
 D-275 C5 recheck deepseek-3.2 - cx-carddemo-batchday
 D-275 C6 recheck glm-5 - cx-carddemo-batchday
+
+# D-284: the three task versions that changed only their regress-kit time limits (D-280, D-281) need a recheck of their
+# current version. deepseek-3.2 rechecked the earlier versions; no writer, so FROM is -. Owner cap: 45 (2026-11-27).
+cap D-284 45
+D-284 R1 recheck deepseek-3.2 - t8-bug-retry-storm
+D-284 R2 recheck deepseek-3.2 - t9-browser-tab-regression
+D-284 R3 recheck deepseek-3.2 - t9-bug-tabs-focus

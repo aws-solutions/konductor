@@ -27,12 +27,8 @@ if [ "$MODE" = --go ]; then
   [ "$CAP" -ge 15 ] || { echo "--cap $CAP leaves no room for one 15-credit call"; exit 64; }
 fi
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
-UPDATE_PIN=${PIN_REPO:+0}   # a PIN_REPO you set yourself (the test hook) is never moved
-export PIN_REPO=${PIN_REPO:-$KONDUCTOR_WS/worktrees/cx-recheck}
-# An older checkout of this job's own folder moves to the branch head, but only while nothing is spent and it is clean.
-if [ "${UPDATE_PIN:-1}" = 1 ] && [ -e "$PIN_REPO/.git" ] && [ ! -s "${ROOT:-$KONDUCTOR_WS/reports/debt-paid/D-275}/ledger" ] && [ -z "$(git -C "$PIN_REPO" status --porcelain)" ]; then
-  git -C "$PIN_REPO" fetch -q origin feat/bench-pilot-nk && git -C "$PIN_REPO" checkout -q --detach FETCH_HEAD
-fi
+. "$HERE/debt-paid/own-pin.sh"
+own_pin D-275 "$KONDUCTOR_WS/worktrees/cx-recheck"
 if [ -n "$CAP" ]; then
   JOBS=$(mktemp "${TMPDIR:-/var/tmp}/d275-jobs.XXXXXX") || exit 1
   trap 'rm -f -- "$JOBS"' EXIT

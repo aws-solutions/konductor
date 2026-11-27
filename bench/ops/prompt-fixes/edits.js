@@ -19,6 +19,10 @@ const DW = 'context/k-direct-work.md';
 const CORE = 'context/k-core-rules.md';
 const PROMPT = 'agents/konductor.agent-spec.json#systemPrompt';
 
+// Fix 3's Skills paragraph: its first sentence is the line; the rest says how to choose. P1 moves the rest.
+const SKILLS_HOW = 'Choose from the skill list by its trigger words and by the words of the task. Load each skill you name with `get_skill`, at most 3, before you start the work. A task that says review, check, fact-check, design, threat model, requirements or tests has a skill on this list, so look first. Skip the line only for a question or a one-line edit. Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`.';
+const SKILLS_PARAGRAPH = `\n\nBefore your first write or spawn, put one line in your reply: \`Skills: <name>, <name>\` or \`Skills: none fit\`. ${SKILLS_HOW}`;
+
 const EDITS = [
   // Fix 7, E7.1: the plan rule replaces the first four sentences of k-direct-work.md:3.
   {
@@ -134,7 +138,7 @@ const EDITS = [
   {
     fix: '3',
     file: PROMPT,
-    append: '\n\nBefore your first write or spawn, put one line in your reply: `Skills: <name>, <name>` or `Skills: none fit`. Choose from the skill list by its trigger words and by the words of the task. Load each skill you name with `get_skill`, at most 3, before you start the work. A task that says review, check, fact-check, design, threat model, requirements or tests has a skill on this list, so look first. Skip the line only for a question or a one-line edit. Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`.',
+    append: SKILLS_PARAGRAPH,
   },
   // Fix 7, E7.7: the two doc lines (not installed; konductor's own tests read them).
   {
@@ -151,6 +155,38 @@ const EDITS = [
   },
 ];
 
+// P1 and P2 of reports/adaptive-prompt-cap-check-2026-11-27.md, applied after EDITS for the reply-check candidate arm
+// (build-candidates.js --with p1p2). The frozen konductor-adaptive arm is EDITS alone.
+const REPLY_EDITS = [
+  // P1: one header rule next to the mode line, with the Skills paragraph's how-to under it.
+  {
+    fix: 'P1',
+    file: PROMPT,
+    before: '- Your first reply states your orchestration mode once, as the core rules say.',
+    after: `- Your first message starts with these lines, in this order, before any tool call: the mode line the core rules give (\`Orchestration: auto (default)\` when no hook set one), then \`Plan: solo, because <signals>\` or \`Plan: team (<agents>), because <signals>\`, then \`Skills: <name>, <name>\` or \`Skills: none fit\`. When you need a read-only look to choose, write \`Plan: after a read-only look\` there, and put the real \`Plan:\` line first in your next message, before any write or spawn.\n  ${SKILLS_HOW}`,
+  },
+  { fix: 'P1', file: PROMPT, before: SKILLS_PARAGRAPH, after: '' },
+  {
+    fix: 'P1',
+    file: DW,
+    before: 'Then write one line in your reply: `Plan: solo, because <signals>` or `Plan: team (<agents>), because <signals>`.',
+    after: 'Then write the Plan line (Communication Style).',
+  },
+  {
+    fix: 'P1',
+    file: CORE,
+    before: 'and your first reply says which in a `Plan:` line after the mode line.',
+    after: 'and your first reply says which in the Plan line (Communication Style).',
+  },
+  // P2: the self-check also runs at the moment the lines are due.
+  {
+    fix: 'P2',
+    file: PROMPT,
+    before: 'Before your final reply, and again after every 5 messages, verify:\n\n',
+    after: 'Before your first write or spawn, before your final reply, and again after every 5 messages, verify:\n\n- Are my `Plan:` and `Skills:` lines already in a message? If not, write them now, before the write or spawn.\n',
+  },
+];
+
 // The files an arm replaces or adds (cap variant ops); the docs are applied only to the test copy.
 const ARM_FILES = {
   replace: { 'context:k-direct-work': DW, 'context:k-core-rules': CORE, 'agent:konductor': 'agents/konductor.agent-spec.json' },
@@ -158,4 +194,4 @@ const ARM_FILES = {
   addTo: ['k-architect', 'k-browser', 'k-developer', 'k-media-analyzer', 'k-product-manager', 'k-quality-assurance', 'k-researcher', 'k-tpm'],
 };
 
-module.exports = { BASE, EDITS, ARM_FILES };
+module.exports = { BASE, EDITS, REPLY_EDITS, ARM_FILES };

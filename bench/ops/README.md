@@ -48,7 +48,8 @@ is the docs owner's page and points here.
 | `arm-pose-two-host.sh` | The two-host pose repeat check of DEBT D-30, one command per step. Free. |
 | `arm-signed-release-test-v2.sh` | The arm policy test and the five arm controls on a signed release, in one command. |
 | `debt-paid/bundle-complex.js` | Builds the recheck work dir of a complex task (`cx-` id): `task.json` without review or authorship, the fixture without its answer key, the hidden tests and goldens. Free. |
-| `debt-paid/jobs.txt` | The six paid debt jobs (D-132, D-167, D-123, D-159, D-137, D-275): each job's cap and its calls (name, kind, model, the writer a recheck reads, tasks). |
+| `debt-paid/jobs.txt` | The seven paid debt jobs (D-132, D-167, D-123, D-159, D-137, D-275, D-284): each job's cap and its calls (name, kind, model, the writer a recheck reads, tasks). |
+| `debt-paid/own-pin.sh` | Sourced by the D-275 and D-284 wrappers: points the job at its own checkout and moves it to the branch head while the job has spent nothing and the checkout is clean. Free. |
 | `debt-paid/prep.js` | Helpers of `debt-paid/run.sh`: each call's prompt and bundle (the map step's template, the recheck bundle, a new task's batch author prompt), its result and its real credits. Free. |
 | `debt-paid/prompts/cx-recheck.md` | The D-275 recheck prompt: hidden tests and goldens of a CardDemo task against its rules, interface and COBOL; a list of mismatches in `recheck.json`. |
 | `debt-paid/prompts/D-123-W1.md` | The D-123 writer brief: an env-free shared limiter in `t5-qa-flaky-fix`. |
@@ -75,6 +76,7 @@ is the docs owner's page and points here.
 | `run-debt-d123-limiter.sh` | D-123: gpt-5.6-luna makes `t5-qa-flaky-fix`'s shared limiter a real order bug, then a deepseek-3.2 recheck. Paid (cap 30 counted); `--plan` is free. |
 | `run-debt-d132-map.sh` | D-132: glm-5 maps the two CV-E held-out T8 tasks. Paid (cap 30 counted); `--plan` is free. |
 | `run-debt-d137-refactor.sh` | D-137: deepseek-3.2 writes the two T1 refactor tasks again from their briefs, each with a glm-5 recheck. Paid (cap 60 counted); `--plan` is free. |
+| `run-debt-d284-recheck.sh` | D-284: deepseek-3.2 rechecks the three time-limit-only versions (t8-bug-retry-storm v4, t9-browser-tab-regression v3, t9-bug-tabs-focus v2). Paid with `--go`, hard cap 45 counted (no `--cap` or `--call-worst` flag); `--plan` is free. Its own checkout `worktrees/d284-recheck` (`debt-paid/own-pin.sh`). |
 | `run-debt-d275-cx-recheck.sh` | D-275 and D-276: gpt-5.6-luna, deepseek-3.2 and glm-5 each recheck `cx-carddemo-port` and `cx-carddemo-batchday` (6 calls). Paid (plan default cap 105 counted); `--plan` is free; `--go` needs `--cap N`. |
 | `run-debt-d159-rewrite.sh` | D-159: qwen3-coder-next rewrites `t3-db-order-history` and its key, then a gpt-5.6-luna recheck. Paid (cap 75 counted); `--plan` is free. |
 | `run-debt-d167-remap.sh` | D-167: glm-5 re-maps the 12 coverage-gap stage 1 tasks from the filled catalogue. Paid (cap 180 counted); `--plan` is free. |
@@ -101,7 +103,7 @@ is the docs owner's page and points here.
 | `run-pilot-rerun.sh` | Keep-or-prune pilot step 3 again after pilot 1: controls only (cap 1,800), then `--unit` (cap 3,375). Paid. |
 | `run-pilot-v2-rerun.sh` | Keep-or-prune pilot rerun on baseline v2 with the FW-36 role line on both unit arms; needs the v2 sign-off and the Fable review mark (or `--skip-fable-review`). Paid (cap 3,240, `UNIT_CAP`); `--plan` is free. |
 | `run-pilot-v2-rewrite.sh` | Keep-or-prune pilot baseline v2: the 5 BAD tasks written again (deepseek-3.2 writes, glm-5 reviews), the other 10 copied byte for byte. Paid (cap 120, at most 4 calls); `--dry-run` is free. |
-| `run-prompt-fix-arms.sh` | Konductor prompt-fix study, three arms (vanilla, konductor-adaptive, konductor-coordinator): `--plan` builds and verifies the adaptive arm and batch C's git copy of CardDemo and prints the credit and judge forecast (free); `smoke`, `A`, `B`, `C` are the paid steps with their caps, the per-run credit check and the smoke gate; `judge` is the USD judge pass (read-view rubric, quality pack); `sign-carddemo-key --yes` records the owner's sign-off batch C needs; `rebook --yes` (free) moves the bench pin to a commit with the D-297 meter fix and un-books runs the old v3 estimate stopped under their limit. Paid. |
+| `run-prompt-fix-arms.sh` | Konductor prompt-fix study, three arms (vanilla, konductor-adaptive, konductor-coordinator): `--plan` builds and verifies the adaptive arm and batch C's git copy of CardDemo and prints the credit and judge forecast (free); `smoke`, `A`, `B`, `C` are the paid steps with their caps, the per-run credit check and the smoke gate; `judge` is the USD judge pass (read-view rubric, quality pack); `sign-carddemo-key --yes` records the owner's sign-off batch C needs; `rebook --yes` (free) moves the bench pin to a commit with the D-297 meter fix and un-books runs the old v3 estimate stopped under their limit; `reply-check --plan` (free) builds and verifies the candidate arm (fixes 1 to 9 plus P1 and P2) and prints the reply check's calls, `reply-check` (paid, caps 300 credits and USD 0.50) runs 12 early-stopped candidate runs, then the Claude reviewer (`REVIEWER`) and the non-Claude panel on 15 frozen prompts, and writes the side-by-side report in its own folder `$S/reply-check`. Paid. |
 | `run-reruns-2.sh` | Second rerun batch of the pilot waves. |
 | `run-reruns.sh` | Reruns of the pilot waves whose keys changed. |
 | `run-standard-claude.sh` | STANDARD Claude Code step with this host's paths. |
@@ -129,7 +131,7 @@ is the docs owner's page and points here.
 | `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
 | `test-run-standard-quality-pack.sh` | Stub test of `run-standard-quality-pack.sh`. Free. |
-| `test-run-prompt-fix-arms.sh` | Stub test of `run-prompt-fix-arms.sh` with a fake bench.js: plan, smoke gate, coordinator config, run limit, resume, cap, batch C sign-off and soft caps, rebook, judge cap and passes. Free. |
+| `test-run-prompt-fix-arms.sh` | Stub test of `run-prompt-fix-arms.sh` with a fake bench.js: plan, smoke gate, coordinator config, run limit, resume, cap, batch C sign-off and soft caps, rebook, judge cap and passes, and the reply check (plan, reviewer check, stub reviewers, rerun, run cap). Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
@@ -211,8 +213,9 @@ owner workspace; konductor's own source is never edited, the arm carries the tex
 
 | File | What it does |
 | --- | --- |
-| `edits.js` | The text edits of Fixes 1 to 9 against konductor c042c7ba, in order, and the files the arm replaces or adds. |
-| `build-candidates.js --repo R --out DIR` | Applies the edits (each `before` must be found exactly once), writes the files under DIR and prints the `cap variant` ops. |
+| `edits.js` | The text edits of Fixes 1 to 9 against konductor c042c7ba, in order, the reply-check edits P1 and P2 (`REPLY_EDITS`), and the files the arm replaces or adds. |
+| `build-candidates.js --repo R --out DIR [--with p1p2]` | Applies the edits (each `before` must be found exactly once), writes the files under DIR and prints the `cap variant` ops; `--with p1p2` adds P1 and P2 for the reply-check candidate arm. |
 | `study.js cells\|forecast\|spent\|usd-spent\|may-start\|judge-may-start\|gate` | The study's steps, caps and per-run limits, the credit and judge forecast, the credit and USD checks before each run and the smoke gate. |
-| `reply-check.js score\|prompts\|plan` | The reply-format diagnostic of the adaptive arm: `score --runs DIR` checks E1 to E7 (Plan line, before the first write or spawn, the expected solo or team word, Skills line, writer spawns, last line `Review gate:`, reviewer) from each run's stream with no model; `prompts` writes the one reviewer prompt per run that the Claude reviewer and the non-Claude panel both read; `plan` prints the paid call count and cost. Free; it makes no model call. |
+| `reply-check.js score\|prompts\|plan\|may-run\|review\|compare` | The reply-format diagnostic of the adaptive arm: `score --runs DIR` checks E1 to E7 (Plan line, before the first write or spawn, the expected solo or team word, Skills line, writer spawns, last line `Review gate:`, reviewer) from each run's stream with no model; `prompts` freezes the one reviewer prompt per run that the Claude reviewer and the non-Claude panel both read (with `manifest.json`); `plan` prints the paid call count and cost; `may-run` is the cap check before each early-stopped run. `review` is PAID: one Claude call (counted at max(15, real)) and one call per panel judge (USD) per prompt, each checked against its ledger first. `compare` writes both reviewers side by side, the panel majority as the verdict, every disagreement flagged. |
+| `reply-review.js` | The paid half of `reply-check.js` (`review` and `compare`, called through it): the ledger checks before each Claude and panel call, one retry of an unreadable reply, and the side-by-side report. |
 | `carddemo-git.js --bench B --out DIR` | Batch C's copy of cx-carddemo-batchday with a git-initialised fixture (no answer key in its history); hidden tests and goldens copied byte for byte and checked. |

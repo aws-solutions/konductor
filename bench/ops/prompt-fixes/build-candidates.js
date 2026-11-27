@@ -4,7 +4,9 @@
 
 // Builds the konductor-adaptive candidate files from konductor c042c7ba and the edits in edits.js. Free: reads git,
 // writes files only.
-//   node build-candidates.js --repo R --out DIR [--json]
+//   node build-candidates.js --repo R --out DIR [--json] [--with p1p2]
+// --with p1p2 adds the reply-check edits P1 and P2 (edits.js REPLY_EDITS) after fixes 1 to 9: the candidate arm of
+// reports/adaptive-prompt-cap-check-2026-11-27.md. Without it the files are the frozen konductor-adaptive arm's.
 // Writes every changed or new file under DIR at its repo path (context/..., agents/..., cli/README.md, docs/...), so DIR
 // can be a fresh directory for the arm or a checkout of c042c7ba for konductor's own tests. Prints the cap variant ops:
 // --replace ID=FILE for each changed installed file, --add for the new context file, and --to-agent.
@@ -14,7 +16,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
-const { BASE, EDITS, ARM_FILES } = require('./edits.js');
+const { BASE, EDITS, REPLY_EDITS, ARM_FILES } = require('./edits.js');
+
+// The edit sets --with may add.
+const SETS = { p1p2: REPLY_EDITS };
+const USAGE = 'usage: build-candidates.js --repo R --out DIR [--json] [--with p1p2]';
 
 const PROMPT_KEY = '#systemPrompt';
 
@@ -91,12 +97,13 @@ function main(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') opt.json = true;
-    else if ((a === '--repo' || a === '--out') && argv[i + 1]) opt[a.slice(2)] = argv[++i];
-    else { console.error('usage: build-candidates.js --repo R --out DIR [--json]'); return 64; }
+    else if ((a === '--repo' || a === '--out' || a === '--with') && argv[i + 1]) opt[a.slice(2)] = argv[++i];
+    else { console.error(USAGE); return 64; }
   }
-  if (!opt.repo || !opt.out) { console.error('usage: build-candidates.js --repo R --out DIR [--json]'); return 64; }
+  if (!opt.repo || !opt.out || (opt.with !== undefined && !SETS[opt.with])) { console.error(USAGE); return 64; }
+  const edits = opt.with ? [...EDITS, ...SETS[opt.with]] : EDITS;
   let files;
-  try { files = applyEdits(gitRead(opt.repo, BASE), EDITS); } catch (e) { console.error(`STOP: ${e.message}`); return 1; }
+  try { files = applyEdits(gitRead(opt.repo, BASE), edits); } catch (e) { console.error(`STOP: ${e.message}`); return 1; }
   const out = path.resolve(opt.out);
   const written = [];
   for (const [rel, text] of [...files].sort()) {
@@ -105,7 +112,7 @@ function main(argv) {
     fs.writeFileSync(dest, text);
     written.push({ file: rel, sha256: crypto.createHash('sha256').update(text).digest('hex') });
   }
-  const result = { base: BASE, edits: EDITS.length, written, variantArgs: variantArgs(out) };
+  const result = { base: BASE, edits: edits.length, with: opt.with ?? null, written, variantArgs: variantArgs(out) };
   if (opt.json) console.log(JSON.stringify(result, null, 2));
   else {
     for (const w of written) console.log(`wrote ${w.file} ${w.sha256.slice(0, 12)}`);

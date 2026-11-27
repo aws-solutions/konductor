@@ -25,6 +25,16 @@ test('planCall: reads the Plan, Plan changed, Skills and Review gate lines and s
   assert.equal(p.reviewRight, true);
 });
 
+test('planCall: a `Plan: after a read-only look` placeholder is skipped; the first Plan line naming solo or team counts', () => {
+  const text = 'Orchestration: auto (default)\nPlan: after a read-only look\nSkills: none fit\n...\nPlan: solo, because one file\n';
+  const p = planCall({ text, orch: { makerSpawns: 0, reviewerSpawns: 0 }, expect: { plan: 'solo', review: 'not-needed' } });
+  assert.equal(p.planLine, 'Plan: solo, because one file');
+  assert.equal(p.plan, 'solo');
+  const none = planCall({ text: 'Plan: after a read-only look\n', orch: null, expect: null });
+  assert.equal(none.planLine, 'Plan: after a read-only look', 'with no solo or team line, the first Plan line is still shown');
+  assert.equal(none.plan, null);
+});
+
 test('planCall: a solo plan with a writer spawn is right in words and wrong in action; no line is wrong', () => {
   const p = planCall({ text: 'Plan: solo, because 1 part', orch: { makerSpawns: 1, reviewerSpawns: 0 }, expect: { plan: 'solo', review: 'always' } });
   assert.equal(p.planRight, true);
