@@ -76,4 +76,4 @@ function planCallFields(pc, taskId) {
   return { planCall: pc, planLine: pc.planLine, planRight: pc.planRight, writerSpawns: pc.writerSpawns, reviewGateLine: pc.reviewGateLine };
 }
 
-module.exports = { mainText, planCall, planCallOfRunDir, planCallFields, EXPECT, EXPECT_FILE };
+module.exports = { mainText, planCall, planCallOfRunDir, planCallFields, linesOf, EXPECT, EXPECT_FILE };
