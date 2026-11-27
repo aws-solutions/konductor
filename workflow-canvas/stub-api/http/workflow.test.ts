@@ -75,13 +75,15 @@ describe('GET /api/workflow', () => {
             name: 'draft',
             kind: 'agent',
             agent: 'k-developer',
-            range: { line: 14, end_line: 15 },
+            outcome: 'Add the greeting to README.md',
+            range: { line: 14, end_line: 16 },
           },
           {
             name: 'review',
             kind: 'agent',
             agent: 'k-quality-assurance',
-            range: { line: 16, end_line: 17 },
+            outcome: 'Check that the greeting is clear and correct',
+            range: { line: 17, end_line: 19 },
           },
         ],
       },
@@ -129,7 +131,7 @@ describe('GET /api/workflow when the root has no file', () => {
 describe('GET /api/workflow for a fixture with stage keys', () => {
   const stub = useStub({ root: 'blocked' });
 
-  it('shows the prompt and the prompt_file of a stage in the view', async () => {
+  it('shows the outcome, prompt and prompt_file of a stage in the view', async () => {
     const reply = await stub().client.get(PATH);
     expectContract(reply, 'GET', PATH);
     expect((reply.body as Loaded).view?.stages).toEqual([
@@ -137,21 +139,23 @@ describe('GET /api/workflow for a fixture with stage keys', () => {
         name: 'draft',
         kind: 'agent',
         agent: 'k-developer',
+        outcome: 'Add the greeting to README.md',
         prompt: 'Write the greeting to README.md.',
-        range: { line: 14, end_line: 16 },
+        range: { line: 14, end_line: 17 },
       },
       {
         name: 'review',
         kind: 'agent',
         agent: 'k-quality-assurance',
+        outcome: 'Check that the greeting is clear and correct',
         prompt_file: 'review.md',
-        range: { line: 17, end_line: 19 },
+        range: { line: 18, end_line: 21 },
       },
       {
         name: 'wrap-up',
         kind: 'agent',
         agent: 'k-developer',
-        range: { line: 20, end_line: 21 },
+        range: { line: 22, end_line: 23 },
       },
     ]);
   });

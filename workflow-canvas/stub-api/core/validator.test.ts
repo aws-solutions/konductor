@@ -140,15 +140,17 @@ describe('a valid workflow', () => {
             name: 'draft',
             kind: 'agent',
             agent: 'k-developer',
+            outcome: 'Add the greeting to README.md',
             prompt: 'Write the greeting to README.md.',
-            range: { line: 14, end_line: 16 },
+            range: { line: 14, end_line: 17 },
           },
           {
             name: 'review',
             kind: 'agent',
             agent: 'k-quality-assurance',
+            outcome: 'Check that the greeting is clear and correct',
             prompt_file: 'review.md',
-            range: { line: 17, end_line: 19 },
+            range: { line: 18, end_line: 21 },
           },
         ],
       },
@@ -196,6 +198,31 @@ describe('a valid workflow', () => {
       'prompt: Return {severity, file, line} and the number {1.5}.',
     );
     expect(codesOf(text)).toEqual([]);
+  });
+
+  it('accepts an optional stage outcome and carries it in the view', () => {
+    const check = checkWorkflowText(
+      stageWith('outcome: A reviewed greeting', 'prompt: Write it.'),
+      'hello',
+    );
+
+    expect(check.diagnostics).toEqual([]);
+    expect(check.view?.stages[0]?.outcome).toBe('A reviewed greeting');
+  });
+
+  it.each([
+    ['an empty value', "''", 'INVALID_VALUE'],
+    ['more than 300 characters', `'${'x'.repeat(301)}'`, 'INVALID_VALUE'],
+    ['two lines', '|-\n      first\n      second', 'INVALID_VALUE'],
+    ['a non-string', '123', 'WRONG_TYPE'],
+  ])('refuses stage outcome with %s', (_, value, code) => {
+    expect(codesOf(stageWith(`outcome: ${value}`))).toEqual([
+      [code, 'stages.write.outcome', 9, 14],
+    ]);
+  });
+
+  it('accepts a 300-character stage outcome', () => {
+    expect(codesOf(stageWith(`outcome: ${'x'.repeat(300)}`))).toEqual([]);
   });
 
   it('accepts a prompt_file without reading it', () => {

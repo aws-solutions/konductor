@@ -57,6 +57,7 @@ describe('what a build reads', () => {
       'agent',
       'prompt',
       'prompt_file',
+      'outcome',
       'outputs',
       'done_when',
     ]);

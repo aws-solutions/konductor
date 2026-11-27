@@ -1185,13 +1185,19 @@ describe('workflow canvas API contract', () => {
       );
     });
 
+    it('says that version 1.14.0 adds stage outcomes', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.14\.0 only adds the optional `stages\[\]\.outcome` key and field/,
+      );
+    });
+
     it('keeps the major version of the document equal to api_version', () => {
       const session = jsonBodyOf(spec, 'POST /api/session', '200');
       const { api_version: apiVersion } = session.example as {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.13.0');
+      expect(info.version).toBe('1.14.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1321,12 +1327,13 @@ describe('workflow canvas API contract', () => {
       expect(fieldsOf('new')).toEqual(fieldsOf('existing'));
     });
 
-    it('are the keys of a stage that the first release reads and a person edits', () => {
+    it('are the keys of a stage that this version reports to a client', () => {
       expect(fieldsOf('existing').map((f) => f.key)).toEqual([
         'name',
         'agent',
         'prompt',
         'prompt_file',
+        'outcome',
       ]);
     });
 
@@ -1354,6 +1361,15 @@ describe('workflow canvas API contract', () => {
       );
       expect(byKey('prompt_file').pattern).toBe(
         spec.components.schemas['Path']!['pattern'],
+      );
+      expect(byKey('outcome').min_length).toBe(
+        stageProperty('outcome')['minLength'],
+      );
+      expect(byKey('outcome').max_length).toBe(
+        stageProperty('outcome')['maxLength'],
+      );
+      expect(byKey('outcome').pattern).toBe(
+        stageProperty('outcome')['pattern'],
       );
       for (const key of ['name', 'agent']) {
         expect(byKey(key).max_length, key).toBe(64);

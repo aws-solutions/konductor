@@ -114,6 +114,7 @@ export const STAGE_KEYS: KeyTable = {
     rule('agent', '1', true),
     rule('prompt', '1'),
     rule('prompt_file', '1'),
+    rule('outcome', '2'),
     rule('outputs', '2'),
     rule('done_when', '3a'),
     rule('run', '3b', true),

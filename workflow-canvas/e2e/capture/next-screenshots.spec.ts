@@ -311,7 +311,7 @@ test('capture the Design view with a change it cannot write in place', async ({
   await overwriteWorkflow(
     request,
     SAMPLE_TEXT.replace(
-      /  - name: review\n    agent: k-quality-assurance\n(    prompt_file: .*\n)?/,
+      /  - name: review\n    agent: k-quality-assurance\n(    outcome: .*\n)?(    prompt_file: .*\n)?/,
       '  - {name: review, agent: k-quality-assurance}\n',
     ),
   );

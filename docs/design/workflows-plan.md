@@ -337,17 +337,18 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 
 - **Why now:** the port needs params and a way to pass work between stages, and slice 1 gives stages no declared way to
   pass data, so they can only share files they happen to write.
-- **YAML keys:** `stages[].outputs` as a map of output name to path, `params.<name>` with `type: string`, `description`,
-  `default` and `required`, and template references `{run.param}` and `{stage.output}` in prompts, where
-  `{stage.output}` renders as the output's path. The escape for literal reference text arrives here
+- **YAML keys:** `stages[].outcome`, `stages[].outputs` as a map of output name to path, `params.<name>` with
+  `type: string`, `description`, `default` and `required`, and template references `{run.param}` and `{stage.output}` in
+  prompts, where `{stage.output}` renders as the output's path. The escape for literal reference text arrives here
   ([deferred](workflows-spec.md#deferred-to-a-later-slice)).
 - **Canvas:** a params panel, an outputs editor on each stage with a row per name and path, and a diagnostic on a bad
   reference.
 - **API rows:** `getWorkflow`, `saveWorkflow` and `checkWorkflow` carry the new keys. `startRun` takes the declared
   params, so the contract's `params` object widens beyond `goal`.
-- **Engine:** a template parser that runs once at load (no regex substitution), param resolution,
-  `flow run --param name=value`, the `Files this stage must write` line in `stage_prompt`, a load-time check that each
-  `{stage.output}` names a declared output, and a runner check that each declared output path exists.
+- **Engine:** accept and validate `stages[].outcome` and add its prompt line; add a template parser that runs once at
+  load (no regex substitution), param resolution, `flow run --param name=value`, the `Files this stage must write` line
+  in `stage_prompt`, a load-time check that each `{stage.output}` names a declared output, and a runner check that each
+  declared output path exists.
 - **Tests:** unit: hostile-input tests for templates, a reference to an undeclared output, a reference to a later
   stage's output (`INVALID_VALUE`), references to the same stage's and an earlier stage's outputs (accepted), `{1.5}`
   left literal, output and param names that break their patterns (`INVALID_NAME`), a reference that renders the path and

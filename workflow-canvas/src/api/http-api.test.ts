@@ -35,6 +35,14 @@ const STAGE_FIELDS_BODY = {
       max_length: 32768,
       excludes: ['prompt_file'],
     },
+    {
+      key: 'outcome',
+      type: 'text',
+      required: false,
+      min_length: 1,
+      max_length: 300,
+      pattern: '^[^\\r\\n]*$',
+    },
   ],
   later_kind: [{ key: 'ask', type: 'text', required: true }],
 };
@@ -59,6 +67,7 @@ const DOCUMENT_BODY = {
         name: 'draft',
         kind: 'agent',
         agent: 'k-developer',
+        outcome: 'A greeting in the README',
         prompt: 'Write the greeting.',
         range: { line: 7, end_line: 9 },
       },
@@ -77,6 +86,7 @@ const VIEW = {
       name: 'draft',
       kind: 'agent',
       agent: 'k-developer',
+      outcome: 'A greeting in the README',
       range: { line: 7, end_line: 9 },
     },
   ],
@@ -397,6 +407,20 @@ describe('createHttpApi', () => {
     expect(stageFields.agent[1]).not.toHaveProperty('pattern');
     expect(stageFields.agent[1]).not.toHaveProperty('reserved');
     expect(stageFields).not.toHaveProperty('later_kind');
+  });
+
+  it('refuses a stage outcome that is not a string', async () => {
+    const body = {
+      ...DOCUMENT_BODY,
+      view: {
+        ...DOCUMENT_BODY.view,
+        stages: [{ ...DOCUMENT_BODY.view.stages[0], outcome: 123 }],
+      },
+    };
+
+    await expect(
+      apiFor(reply(body)).api.getWorkflow('t'),
+    ).rejects.toBeInstanceOf(ApiError);
   });
 
   it('reads the stage fields of a workflow with no file', async () => {

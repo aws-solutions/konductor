@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.13.0
+  version: 1.14.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -74,7 +74,9 @@ info:
     optional `name` field to `POST /api/run`, so a stale page can prove that it
     still shows the session root before anything starts. Version 1.13.0 only
     adds `already_running` to the copy operation. It carries the active
-    `run_id`; no file is created and the root does not move.
+    `run_id`; no file is created and the root does not move. Version 1.14.0
+    only adds the optional `stages[].outcome` key and field, one line saying
+    what a stage should produce.
 
     **Conventions**
 
@@ -359,6 +361,7 @@ info:
     | `stages[].agent`          | yes, in an agent stage  | An agent id. It also says that the stage is an agent stage.                                   | 1     |
     | `stages[].prompt`         | no                      | Text of 1 to 32768 characters.                                                                | 1     |
     | `stages[].prompt_file`    | no                      | A path, relative to the folder of the workflow file, of a file that holds the prompt.         | 1     |
+    | `stages[].outcome`        | no                      | One line of 1 to 300 characters saying what the stage should produce.                         | 2     |
     | `stages[].outputs`        | no                      | A mapping of output names to paths.                                                           | 2     |
     | `stages[].outputs.<name>` | no                      | A path the stage must leave behind, under an output name.                                     | 2     |
     | `stages[].done_when`      | no                      | A list of check ids from `intent.accept`. It defaults to an empty list.                        | 3a    |
@@ -497,12 +500,12 @@ info:
     | `UNKNOWN_KEY`                 | the key                      | A mapping has a key that no slice plans. `suggestion` is the key of the tables above, among those this version reads, with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table if two tie, and only when that distance is at most 2. Otherwise it is left out. |
     | `DUPLICATE_KEY`               | the later key                | A key appears again in a mapping. Two keys are one key when their text is the same: the characters of the key after quotes and escapes are resolved, and before they are read as a number, boolean or null. So `1` and `'1'` are one key, but `true` and `True`, `1`, `1.0` and `0x1`, and `null` and `~` are each different keys. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
     | `MISSING_KEY`                 | the mapping                  | `format`, `version`, `intent`, `stages`, `outcome`, a check's `id`, or a stage's `name` is absent. For `format` the `suggestion` is `format: konductor/1`. |
-    | `WRONG_TYPE`                  | the value                    | A value is the wrong kind, such as `stages` that is not a list, `intent` that is neither a mapping nor a string, `params` or `outputs` that is not a mapping, a check that is not a mapping, `run` or `done_when` that is not a list, a `required` that is not a boolean, or a `name`, `agent`, `format`, `version`, `prompt`, path, param, `params.goal`, `run` entry or `done_when` entry text that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
+    | `WRONG_TYPE`                  | the value                    | A value is the wrong kind, such as `stages` that is not a list, `intent` that is neither a mapping nor a string, `params` or `outputs` that is not a mapping, a check that is not a mapping, `run` or `done_when` that is not a list, a `required` that is not a boolean, or a `name`, `agent`, `format`, `version`, `outcome`, `prompt`, path, param, `params.goal`, `run` entry or `done_when` entry text that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
     | `INVALID_NAME`                | the value, or the key        | A name, check id or agent id that is a string does not match the pattern above. A param name or an output name does not match its own pattern, reported at the key where it is written. |
     | `RESERVED_NAME`               | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`. |
     | `DUPLICATE_STAGE`             | the later stage's `name`     | A stage name is already used by an earlier stage. |
     | `NAME_MISMATCH`               | `name`                       | `name` is not the name of the file. |
-    | `INVALID_VALUE`               | the value                    | `version` is a string that is not a semantic version, such as `'1.1'` (`suggestion` is `0.1.0`). `intent.outcome` is empty, has a line break or is over 300 characters. `stages` has no entry or more than 40. A `prompt` is empty or over 32768 characters. A path breaks the path rules. A check id is used twice. A check has neither or both of `file` and `run`. A `run` check is an empty list. A `done_when` names an id that is no check of `intent.accept`. A `prompt` and a `prompt_file` are both set. A reference in a `prompt` names a param the file does not declare, an output the named stage does not declare, or a stage that runs later. A param's `default` is over 65536 characters. |
+    | `INVALID_VALUE`               | the value                    | `version` is a string that is not a semantic version, such as `'1.1'` (`suggestion` is `0.1.0`). `intent.outcome` or `stages[].outcome` is empty, has a line break or is over 300 characters. `stages` has no entry or more than 40. A `prompt` is empty or over 32768 characters. A path breaks the path rules. A check id is used twice. A check has neither or both of `file` and `run`. A `run` check is an empty list. A `done_when` names an id that is no check of `intent.accept`. A `prompt` and a `prompt_file` are both set. A reference in a `prompt` names a param the file does not declare, an output the named stage does not declare, or a stage that runs later. A param's `default` is over 65536 characters. |
     | `UNSUPPORTED_FORMAT`          | the value                    | `format` is a string other than `konductor/1`. |
     | `STAGE_KIND_MISSING`          | the stage                    | A stage has no key that names its kind. |
     | `STAGE_KIND_AMBIGUOUS`        | the stage                    | A stage has more than one key that names its kind. |
@@ -689,6 +692,12 @@ paths:
                           required: false
                           pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
                           excludes: [prompt]
+                        - key: outcome
+                          type: text
+                          required: false
+                          min_length: 1
+                          max_length: 300
+                          pattern: '^[^\r\n]*$'
                 new:
                   summary: The root, which has no file yet
                   value:
@@ -722,6 +731,12 @@ paths:
                           required: false
                           pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
                           excludes: [prompt]
+                        - key: outcome
+                          type: text
+                          required: false
+                          min_length: 1
+                          max_length: 300
+                          pattern: '^[^\r\n]*$'
         '400':
           headers:
             X-Konductor-Api:
@@ -1029,6 +1044,12 @@ paths:
                       required: false
                       pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
                       excludes: [prompt]
+                    - key: outcome
+                      type: text
+                      required: false
+                      min_length: 1
+                      max_length: 300
+                      pattern: '^[^\r\n]*$'
         '400':
           headers:
             X-Konductor-Api:
@@ -1169,6 +1190,12 @@ paths:
                       required: false
                       pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
                       excludes: [prompt]
+                    - key: outcome
+                      type: text
+                      required: false
+                      min_length: 1
+                      max_length: 300
+                      pattern: '^[^\r\n]*$'
         '400':
           headers:
             X-Konductor-Api:
@@ -2476,6 +2503,12 @@ components:
           description: What the stage does. It is left out when the file has none.
         prompt_file:
           $ref: '#/components/schemas/Path'
+        outcome:
+          type: string
+          minLength: 1
+          maxLength: 300
+          pattern: '^[^\r\n]*$'
+          description: One line saying what this stage should produce.
         outputs:
           type: object
           propertyNames:
@@ -2500,6 +2533,7 @@ components:
         - name: plan
           kind: agent
           agent: k-architect
+          outcome: A concise plan in PLAN.md
           prompt: Write a short plan for the goal to PLAN.md.
           outputs:
             plan: PLAN.md
@@ -2744,9 +2778,9 @@ components:
       type: object
       required: [agent]
       description: |
-        For each kind of stage, the keys of a stage that a client may edit, in
-        the order of the table under **Workflow text**, with what each takes.
-        A client can build the form of a stage from it. It is the same for
+        For each kind of stage, the keys of a stage that a client shows or
+        edits, in the order of the table under **Workflow text**, with what
+        each takes. A client can build the form of a stage from it. It is the same for
         every text, so it is there when `view` is `null` too. A later version
         may add kinds and keys, and a client leaves a key it does not know as
         it is in the text.
