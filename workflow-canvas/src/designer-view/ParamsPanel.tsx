@@ -32,7 +32,9 @@ export function ParamsPanel({
 }) {
   return (
     <SpaceBetween size="m">
-      <Box variant="awsui-key-label">Parameters</Box>
+      <Box className="wf-panel-section-label" variant="awsui-key-label">
+        Parameters
+      </Box>
       {params.map((param) => {
         const nameError = parameterNameError(param.name);
         return (
