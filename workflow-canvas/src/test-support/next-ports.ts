@@ -26,6 +26,8 @@ export function fakeNextPorts(over: Partial<NextPorts> = {}): NextPorts {
       Promise.resolve([{ id: 'k-developer', summary: 'Code' }]),
     ),
     listLibrary: vi.fn(() => Promise.resolve([])),
+    getLibrary: vi.fn(() => Promise.reject(new Error('No library entry.'))),
+    copyLibrary: vi.fn(() => Promise.reject(new Error('No library copy.'))),
     listRuns: vi.fn(() => Promise.resolve([])),
     startRun: vi.fn(() => Promise.resolve('20261024-0412-a7b3c')),
     readChecks: vi.fn(() => Promise.resolve({})),

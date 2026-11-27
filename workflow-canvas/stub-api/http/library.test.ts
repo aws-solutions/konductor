@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { isName } from '../core/contract.ts';
 import { SHIPPED_LIBRARY, type ShippedWorkflow } from '../core/library.ts';
+import { DEFAULT_STAGE_MS } from '../core/runs.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { useStub } from '../test-support/harness.ts';
 
@@ -280,6 +281,34 @@ describe('POST /api/library/{name}/copy', () => {
     expectError(run, 409, 'trust_required');
     expect(run.body).toMatchObject({
       fix: expect.stringContaining('konductor flow trust review-copy'),
+    });
+  });
+
+  it('moves nothing while the root has an active run', async () => {
+    const started = await stub().client.post('/api/run', {
+      name: 'hello',
+      params: { goal: 'Keep the root active' },
+    });
+    expect(started.status).toBe(202);
+    const runId = (started.body as { run_id: string }).run_id;
+
+    const refused = await stub().client.post(copyPath(READY), {
+      as: 'review-copy',
+    });
+    expectError(refused, 409, 'already_running');
+    expect(refused.body).toMatchObject({ run_id: runId });
+    expect(await stub().client.get('/api/workflow')).toMatchObject({
+      status: 200,
+      body: { name: 'hello' },
+    });
+
+    stub().clock.advance(2 * DEFAULT_STAGE_MS);
+    const copied = await stub().client.post(copyPath(READY), {
+      as: 'review-copy',
+    });
+    expect(copied).toMatchObject({
+      status: 200,
+      body: { name: 'review-copy' },
     });
   });
 

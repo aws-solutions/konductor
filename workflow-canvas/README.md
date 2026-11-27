@@ -18,17 +18,17 @@ then how far the run has got, its stages with the detail and console of the
 one picked, and the past runs of the workflow. A blocked
 stage shows its reason, and a Run of a workflow that is not trusted opens a
 dialog with the command that trusts it. The Library view lists shipped
-workflows, their readiness and what planned entries wait for. Preview and copy
-arrive in the stacked follow-up. The contract, the stub that serves it and the
-tests around both are in this folder.
+workflows, opens ready entries read-only and copies one into the workflow
+folder. The contract, the stub that serves it and the tests around both are in
+this folder.
 
 ## Layout
 
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `design-view/` edits it and `canvas/` draws it;
-  `run-view/` runs it and shows the run; `library-view/` lists shipped
-  workflows; `execution/core/` and `run-client/` do
+  `run-view/` runs it and shows the run; `library-view/` lists, previews and
+  copies shipped workflows; `execution/core/` and `run-client/` do
   no IO and follow a run through its events, a long poll the server may hold
   open for 20 seconds. A call that fails is tried again after a second,
   doubling to 16, until eight in a row have failed; a 401 ends the following
@@ -163,22 +163,37 @@ CI runs it on each pull request, and `npm test` includes it.
 
 ## The Library
 
-The **Library** view lists workflows shipped by the server. Each row shows its
-title, summary, and Ready or Planned status. Planned rows include the reason
-they are not yet available. The action buttons remain focusable while disabled
-so their tooltip explains the current limitation. Preview and **Start from**
-are enabled by the stacked follow-up. A valid empty response says that no
-shipped workflows are available. The contract allows at most 100 entries,
-120 characters per title, and 240 characters per summary or planned reason.
+The **Library** view lists workflows shipped by the server. Ready entries open
+read-only with the same Design drawing and YAML pane as a workflow file. **Start
+from** asks for a workflow name, copies the entry into the workflow folder, and
+opens the copy in Design so it can be edited, saved and run. Planned entries
+show what they are waiting for and cannot be opened or copied. A ready shipped
+source omits the top-level `name` key. The lookup id supplies its name, and the
+copy gets the name entered in **Start from** without rewriting the YAML. A valid
+empty response says that no shipped workflows are available. The contract
+allows at most 100 entries, 120 characters per title, and 240 characters per
+summary or planned reason.
 
-The page calls `GET /api/library`. The API contract and local stub also define
-`GET /api/library/{name}` and `POST /api/library/{name}/copy` for that follow-up.
-The stub serves `library/k-adversarial-pull-request-review` as ready, plus
-planned examples. A ready source omits the top-level YAML `name` key; its lookup
-id supplies the source name without rewriting the YAML. A successful copy
-moves the session root to the new project workflow, which starts untrusted. Save,
-check, and run requests name the workflow the page shows; a stale page gets 403
-`read_only_workflow`, changes nothing, and must reload.
+If a copy gets no reply, a 408, 429 or 5xx, or an unreadable 200 response,
+the page reads both `GET /api/workflow` and the selected Library source. It
+opens the requested copy only when the root has the requested name and its text
+matches the source byte for byte. An unedited copy of the same entry made by
+another tab is harmless because it has those same bytes. An edited or unrelated
+root, or either failed read, blocks editing and running until the page is
+reloaded. A non-retryable 4xx refusal is shown without a reconciliation read.
+
+**Start from** stays focusable but unavailable while a run is active. Its reason
+says that the workspace already has an active run. The server also refuses a
+copy in that state with 409 `already_running` and the active `run_id`; it creates
+no file and does not move the session root.
+
+The page calls `GET /api/library`, `GET /api/library/{name}` and
+`POST /api/library/{name}/copy`. The local stub serves the first ready entry,
+`library/k-adversarial-pull-request-review`, plus planned examples. A successful
+copy moves the session root to the new project workflow, which starts untrusted.
+Save, check, and run requests name the workflow the page shows; a stale page
+gets 403 `read_only_workflow`, changes nothing, and must reload. The Library
+runs against the stub until the workflow server implements those routes.
 
 ## Stub API
 

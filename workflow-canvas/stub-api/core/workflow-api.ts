@@ -238,6 +238,15 @@ export class WorkflowApi {
         'A workflow with this name already exists.',
       );
     }
+    this.findOtherRun();
+    const active = this.runs.activeRunId();
+    if (active) {
+      throw new ApiError(
+        'already_running',
+        'A run is already active in this workspace.',
+        { run_id: active },
+      );
+    }
     this.store.save(as, source.text, null);
     this.trustedHash = undefined;
     this.root = as;
