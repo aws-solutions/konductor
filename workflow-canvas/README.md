@@ -96,9 +96,11 @@ canvas calls. It covers these operations:
 A workflow in this version has a `format`, a `version`, an `intent` with an
 `outcome` and optional `accept` checks, optional `params`, and `stages`.
 `params.goal` declares the goal and the other params declare named run inputs.
-A stage has a `name`, an `agent`, optional `prompt` or `prompt_file`, optional
-`outputs`, and optional `done_when` check ids. A prompt can refer to a run param
-or to an output of an earlier stage. Each stage of a parsed view also has a
+A stage has a `name`, an `agent`, optional `outcome`, optional `prompt` or
+`prompt_file`, optional `outputs`, and optional `done_when` check ids. A stage
+outcome is one line of 1 to 300 characters saying what the stage should
+produce. A prompt can refer to a run param or to an output of an earlier stage.
+Each stage of a parsed view also has a
 `kind` (`agent`, the one kind in this version) and a `range`, the lines of the
 text it takes up, so a client can draw a stage and mark its lines without
 reading YAML. `GET /api/workflow` also returns `stage_fields`: for each kind of
@@ -478,6 +480,7 @@ including when the editor already holds a different raw text.
   list is part of the page (`designer/core/agents.ts`); a file that names an
   agent not on the list keeps it, shown first, and keeps it on offer when
   another agent is chosen. There is no field to type any other id yet.
+- **outcome** is shown read-only when present. It says what the stage should produce and is edited in a later step.
 - **prompt** is a text area with the count of its characters against 32768, the
   limit that the contract and the specification table give (`MAX_PROMPT_CHARS`,
   which a test compares with both). The text is shown as typed, never as HTML.

@@ -84,6 +84,8 @@ export interface Stage {
   agent: string;
   prompt?: string;
   prompt_file?: string;
+  /** One line saying what this stage should produce. */
+  outcome?: string;
   /** The files the stage must leave behind, by output name, in file order. */
   outputs?: Record<string, string>;
   /** The ids of the checks that must pass before the stage does, in file order. */

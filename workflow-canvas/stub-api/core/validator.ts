@@ -713,6 +713,9 @@ function readStage(
   const agentEntry = entries.get('agent');
   const agent = agentEntry && readName(agentEntry, [...path, 'agent'], ctx);
   const prompts = readPrompts(entries, path, ctx);
+  const outcomeEntry = entries.get('outcome');
+  const outcome =
+    outcomeEntry && readOutcome(outcomeEntry, [...path, 'outcome'], ctx);
   const outputs = readOutputs(entries.get('outputs'), path, ctx);
   const doneWhen = readDoneWhen(entries.get('done_when'), path, checkIds, ctx);
   if (!name || !agent) return undefined;
@@ -722,6 +725,7 @@ function readStage(
     kind: 'agent',
     agent,
     ...prompts,
+    ...(outcome === undefined ? {} : { outcome }),
     ...(outputs === undefined ? {} : { outputs }),
     ...(doneWhen === undefined ? {} : { done_when: doneWhen }),
     range,

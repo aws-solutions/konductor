@@ -83,6 +83,24 @@ const withText = (text: string): WorkflowDocument => ({
 
 const WITH_PROMPT = withText(TEXT_WITH_PROMPT);
 const WITH_PROMPT_FILE = withText(TEXT_WITH_PROMPT_FILE);
+const WITH_OUTCOME: WorkflowDocument = {
+  ...withText(
+    TEXT_WITH_PROMPT.replace(
+      '    agent: k-developer\n',
+      '    agent: k-developer\n    outcome: A greeting in README.md\n',
+    ),
+  ),
+  view: {
+    ...HELLO_DOCUMENT.view!,
+    stages: [
+      {
+        ...HELLO_DOCUMENT.view!.stages[0]!,
+        outcome: 'A greeting in README.md',
+      },
+      HELLO_DOCUMENT.view!.stages[1]!,
+    ],
+  },
+};
 
 // The second stage is the one with the prompt, so a save that lands after the
 // first stage was deleted would pair them wrongly by position.
@@ -220,6 +238,7 @@ function stagesOf(text: string) {
         .find((one) => one !== undefined);
     const prompt = keyed('prompt');
     const file = keyed('prompt_file');
+    const outcome = keyed('outcome');
     return [
       {
         name,
@@ -227,6 +246,7 @@ function stagesOf(text: string) {
         agent: keyed('agent') ?? '',
         ...(prompt === undefined ? {} : { prompt }),
         ...(file === undefined ? {} : { prompt_file: file }),
+        ...(outcome === undefined ? {} : { outcome }),
         range: { line: index + 1, end_line: index + 1 + body.length },
       },
     ];
@@ -330,6 +350,7 @@ function drawn({
   openedFails,
   openedRecovers = false,
   openedHeld = false,
+  stageFields = FIELDS,
   agents,
   useOneCheck = false,
 }: {
@@ -342,6 +363,8 @@ function drawn({
   openedRecovers?: boolean;
   /** The check of the loaded text never answers, as one in flight. */
   openedHeld?: boolean;
+  /** The stage keys the server reports. */
+  stageFields?: StageFieldsByKind;
   /** The agents on offer for the `agent` key. */
   agents?: readonly { readonly id: string; readonly summary: string }[];
   useOneCheck?: boolean;
@@ -374,6 +397,7 @@ function drawn({
       edits={edits}
       scheduler={scheduler}
       validate={validate}
+      stageFields={stageFields}
       useOneCheck={useOneCheck}
       onEditor={(one) => {
         held.editor = one;
@@ -394,6 +418,7 @@ function drawn({
           edits={edits}
           scheduler={scheduler}
           validate={validate}
+          stageFields={stageFields}
           onEditor={(one) => {
             held.editor = one;
           }}
@@ -2019,6 +2044,41 @@ describe('DesignView, the prompt of a stage', () => {
     expect(written).toContain('name: draft');
     expect(written).toContain('agent: k-developer');
     expect(written).toContain('name: review');
+  });
+
+  it('shows the stage outcome read-only and keeps it on save', async () => {
+    const { edits } = drawn({
+      document: WITH_OUTCOME,
+      stageFields: {
+        agent: [
+          ...RULES,
+          {
+            key: 'outcome',
+            type: 'text',
+            required: false,
+            min_length: 1,
+            max_length: 300,
+          },
+        ],
+      },
+    });
+    await settle();
+    await openProperties();
+
+    const outcome = within(panelOf('Properties')).getByRole('textbox', {
+      name: 'outcome',
+    }) as HTMLTextAreaElement;
+    expect(outcome.value).toBe('A greeting in README.md');
+    expect(outcome.readOnly).toBe(true);
+
+    await typeInto(nameInput(), 'writer');
+    await press('Save');
+    await settle();
+
+    expect(edits.save).toHaveBeenCalledWith(
+      expect.stringContaining('outcome: A greeting in README.md'),
+      WITH_OUTCOME.hash,
+    );
   });
 
   it('keeps a prompt read-only when the stage reads a file', async () => {

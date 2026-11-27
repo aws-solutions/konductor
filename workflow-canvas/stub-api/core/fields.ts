@@ -38,5 +38,13 @@ export const STAGE_FIELDS: StageFields = {
       pattern: PATH_PATTERN_SOURCE,
       excludes: ['prompt'],
     },
+    {
+      key: 'outcome',
+      type: 'text',
+      required: false,
+      min_length: 1,
+      max_length: 300,
+      pattern: '^[^\\r\\n]*$',
+    },
   ],
 };

@@ -76,6 +76,7 @@ defaults to the file name without `.yml` and must equal it when present (`NAME_M
 | `stages[].agent`       | name pattern                          | yes, in an agent stage |               | 1     |
 | `stages[].prompt`      | string, 1 to 32768 characters         | no                     | fallback line | 1     |
 | `stages[].prompt_file` | path; text 1 to 32768 characters      | no                     | absent        | 1     |
+| `stages[].outcome`     | string, one line, 1 to 300 characters | no                     | absent        | 2     |
 | `stages[].outputs`     | map of name to path                   | no                     | `{}`          | 2     |
 | `stages[].done_when`   | list of check id                      | no                     | `[]`          | 3a    |
 
@@ -100,6 +101,8 @@ that ships in lettered steps tags a key with the step (`3a`).
   key, including one with no `agent`, is `STAGE_KIND_MISSING`, not `MISSING_KEY`. `flow check` does not require the
   agent to be installed; `flow run` does. A stage `name` is unique (`DUPLICATE_STAGE`), and `start`,
   `end`, `run` and `halt` are reserved (`RESERVED_NAME`) as canvas graph markers.
+- **`outcome`** is one line saying what the stage should produce. It follows the same 1 to 300 character rule as
+  `intent.outcome` and is absent when the stage does not declare it.
 - **`outputs`** maps an output name to a file the stage must leave behind, as in `outputs: { design: DESIGN.md }`. The
   name follows the output name pattern and is unique in the stage (`DUPLICATE_KEY` otherwise). The value is a path that
   follows the path rules. The map keeps its declared order. The [stage prompt](#stage-prompts) names the paths. Only the
@@ -137,6 +140,7 @@ brackets mark what is replaced.
 ```text
 Goal: <goal>
 Workflow outcome: <outcome>
+Stage outcome: <stage-outcome>
 
 You are stage <N> of <M>: <name>.
 Earlier stages: <earlier>.
@@ -150,6 +154,8 @@ Files this stage must write: <outputs>.
 
 - `<N>` counts from 1 and `<M>` is the number of stages. `<earlier>` and `<later>` list the stages before and after, in
   workflow order, as `name (agent-id)` separated by `, `, or `none`.
+- The line `Stage outcome: <stage-outcome>` is slice 2. The function emits it only when the stage declares `outcome`.
+  A stage with no `outcome` gets the preamble without the line, byte for byte.
 - The line `Files this stage must write: <outputs>.` is slice 2 (it comes with `outputs`). The function emits it only
   when the stage declares `outputs`. `<outputs>` is the output paths in declared order, separated by `, `. A stage with
   no `outputs` gets the preamble without the line, byte for byte. The golden tests cover both forms.
@@ -216,7 +222,7 @@ How the runner starts each runner harness. The conformance check re-tests these 
   flag had no effect for any tool-name form tried, so the agent file's `allowedTools` applies and the conformance check
   re-tests the flag. The runner never passes `--trust-all-tools` (D19).
 - **Claude Code (`claude`).** `claude -p "<prompt>" --output-format json --agent <agent-id> --allowedTools
-  "<rule>,<rule>"`, with the stage's final message in `result`. The prompt comes right after `-p`, so `--allowedTools`
+"<rule>,<rule>"`, with the stage's final message in `result`. The prompt comes right after `-p`, so `--allowedTools`
   cannot take it as a rule. `--agent` makes the session run as the stage's agent, with its prompt, model and `tools`,
   and that `tools` list caps which tools the session has.
 - **Claude permissions.** Claude has no approval list separate from `tools`. The runner passes `--allowedTools` with one

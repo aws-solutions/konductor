@@ -70,6 +70,7 @@ const FIRST_RELEASE = [
   '  - name: draft # the first stage',
   '    # the agent that writes',
   '    agent: k-developer   # one of the shipped agents',
+  '    outcome: Add the greeting to README.md',
   '    prompt: >-',
   '      Write the greeting to README.md.',
   '      # This line is part of the prompt.',
@@ -167,6 +168,16 @@ describe('withStages', () => {
     const next = write(TEXT, VIEW, change(VIEW, 0, { agent: 'k-architect' }));
 
     expect(next).toBe(TEXT.replace('k-developer', 'k-architect'));
+  });
+
+  it('changes an agent and keeps the stage outcome byte for byte', () => {
+    const text = TEXT.replace(
+      '    agent: k-developer\n',
+      '    agent: k-developer\n    outcome: "A greeting, exactly" # keep\n',
+    );
+    const next = write(text, VIEW, change(VIEW, 0, { agent: 'k-architect' }));
+
+    expect(next).toBe(text.replace('k-developer', 'k-architect'));
   });
 
   it('renames a stage and keeps its prompt_file', () => {

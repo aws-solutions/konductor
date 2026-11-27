@@ -29,9 +29,10 @@ export interface Fixture {
 
 // The same workflow under each name, so that every fixture shows the keys of
 // the first release. The `prompt_file` is a path only: the stub reads no
-// files. `hello` has plain stages, with a name and an agent and nothing else.
-// The other fixtures show the stage keys, a `prompt` and a `prompt_file`,
-// which the stage writer of the Designer keeps when it changes a stage.
+// files. Every fixture has a stage `outcome`, which the Designer shows in
+// screenshots. `hello` leaves the prompt keys out. The other fixtures show a
+// `prompt` and a `prompt_file`, which the stage writer keeps when it changes a
+// stage.
 const workflow = (
   name: string,
   { extraStages = '', prompts = true } = {},
@@ -50,8 +51,10 @@ params:
 stages:
   - name: draft
     agent: k-developer
+    outcome: Add the greeting to README.md
 ${prompts ? '    prompt: Write the greeting to README.md.\n' : ''}  - name: review
     agent: k-quality-assurance
+    outcome: Check that the greeting is clear and correct
 ${prompts ? '    prompt_file: review.md\n' : ''}${extraStages}`;
 
 const WRAP_UP = `  - name: wrap-up

@@ -75,10 +75,13 @@ function parseRange(value: unknown): LineRange {
 
 function parseStage(value: unknown): StageView {
   const stage = objectOf(value);
+  const outcome =
+    stage.outcome === undefined ? undefined : stringOf(stage.outcome);
   return {
     name: stringOf(stage.name),
     kind: kindOf(stage.kind),
     agent: stringOf(stage.agent),
+    ...(outcome === undefined ? {} : { outcome }),
     range: parseRange(stage.range),
   };
 }
