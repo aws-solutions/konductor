@@ -16,7 +16,7 @@ const KEPT = '000000000010100010000003873A';
 const OTHER = '000000000020100010000005246B';
 
 for (const task of TASKS) {
-  const cd = require(`../../complex/hidden/${task}/hidden/lib/cd.js`);
+  const cd = require('../../scenarios/lib/hidden/carddemo-cd.js');
   const input = `${KEPT}${ZEROS}\r\n${OTHER}`;
 
   test(`${task}: a kept input filler reads as blanks, so both behaviours compare equal`, () => {

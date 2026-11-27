@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const cd = require('../../complex/hidden/cx-carddemo-port/hidden/lib/cd.js');
+const cd = require('../../scenarios/lib/hidden/carddemo-cd.js');
 
 const DATE = '2026-11-25';
 const A1 = '00000000001';
