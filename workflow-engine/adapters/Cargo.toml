@@ -19,3 +19,8 @@ workflow-core = { path = "../core" }
 # The flags that keep an open from blocking on a pipe or following a link. The same version as the CLI's lock file.
 [target.'cfg(unix)'.dependencies]
 libc = "=0.2.189"
+
+# The test oracle that reads agent front matter as YAML 1.2 with anchors and aliases resolved. The same version as the
+# core crate's, so the lock file gains no package.
+[dev-dependencies]
+saphyr-parser = "=0.3.3"

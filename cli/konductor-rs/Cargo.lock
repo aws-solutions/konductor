@@ -1311,6 +1311,7 @@ name = "workflow-core"
 version = "0.1.0"
 dependencies = [
  "saphyr-parser",
+ "sha2",
 ]
 
 [[package]]

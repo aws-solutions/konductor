@@ -165,28 +165,69 @@ pub enum ParseError {
 /// How deep [`parse`] lets arrays and objects nest, so that hostile text cannot exhaust the stack.
 pub const MAX_PARSE_DEPTH: usize = 64;
 
+/// How deep [`parse_lenient`] lets arrays and objects nest. It is for reading a file that another program loads, and
+/// such a program accepts more nesting than [`parse`] does.
+pub const MAX_LENIENT_DEPTH: usize = 128;
+
 /// Parses one JSON value (RFC 8259), with optional white space around it.
 pub fn parse(text: &str) -> Result<Json, ParseError> {
-    let mut parser = Parser {
-        bytes: text.as_bytes(),
-        at: 0,
-    };
-    parser.skip_space();
-    let value = parser.value(0)?;
-    parser.skip_space();
-    if parser.at == parser.bytes.len() {
-        Ok(value)
-    } else {
-        Err(ParseError::Syntax)
-    }
+    let mut parser = Parser::new(text, MAX_PARSE_DEPTH, false);
+    parser.finish().map(|value| value.0)
+}
+
+/// What [`parse_lenient`] read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Lenient {
+    pub value: Json,
+    /// The keys that the top-level object has more than once, each listed once per repeat. The value of such a key is
+    /// the last one. A key repeated deeper in the value is not listed.
+    pub repeated_keys: Vec<String>,
+}
+
+/// Like [`parse`], for reading a file that another program loads, so that this reader does not refuse what that
+/// program takes: arrays and objects may nest up to [`MAX_LENIENT_DEPTH`], and an object may repeat a key. The caller
+/// decides what a repeat of a top-level key means, and a repeat deeper in the value is ignored.
+pub fn parse_lenient(text: &str) -> Result<Lenient, ParseError> {
+    let mut parser = Parser::new(text, MAX_LENIENT_DEPTH, true);
+    parser.finish().map(|(value, repeated_keys)| Lenient {
+        value,
+        repeated_keys,
+    })
 }
 
 struct Parser<'a> {
     bytes: &'a [u8],
     at: usize,
+    max_depth: usize,
+    /// Whether this is the lenient reader: an object may repeat a key (the last value is kept, and a repeat of a top-level
+    /// key is recorded), and a number too large for an f64 is refused.
+    allow_repeats: bool,
+    repeated: Vec<String>,
 }
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
+    fn new(text: &'a str, max_depth: usize, allow_repeats: bool) -> Parser<'a> {
+        Parser {
+            bytes: text.as_bytes(),
+            at: 0,
+            max_depth,
+            allow_repeats,
+            repeated: Vec::new(),
+        }
+    }
+
+    /// The one value of the text, and the top-level keys it repeats.
+    fn finish(&mut self) -> Result<(Json, Vec<String>), ParseError> {
+        self.skip_space();
+        let value = self.value(0)?;
+        self.skip_space();
+        if self.at == self.bytes.len() {
+            Ok((value, std::mem::take(&mut self.repeated)))
+        } else {
+            Err(ParseError::Syntax)
+        }
+    }
+
     fn peek(&self) -> Option<u8> {
         self.bytes.get(self.at).copied()
     }
@@ -229,7 +270,7 @@ impl Parser<'_> {
     }
 
     fn object(&mut self, depth: usize) -> Result<Json, ParseError> {
-        if depth > MAX_PARSE_DEPTH {
+        if depth > self.max_depth {
             return Err(ParseError::TooDeep);
         }
         self.expect(b'{')?;
@@ -246,8 +287,15 @@ impl Parser<'_> {
             self.expect(b':')?;
             self.skip_space();
             let value = self.value(depth)?;
+            let repeated_key = key.clone();
             if map.insert(key, value).is_some() {
-                return Err(ParseError::DuplicateKey);
+                if !self.allow_repeats {
+                    return Err(ParseError::DuplicateKey);
+                }
+                // `depth` is 1 for the top-level object.
+                if depth == 1 {
+                    self.repeated.push(repeated_key);
+                }
             }
             self.skip_space();
             match self.peek() {
@@ -262,7 +310,7 @@ impl Parser<'_> {
     }
 
     fn array(&mut self, depth: usize) -> Result<Json, ParseError> {
-        if depth > MAX_PARSE_DEPTH {
+        if depth > self.max_depth {
             return Err(ParseError::TooDeep);
         }
         self.expect(b'[')?;
@@ -316,10 +364,14 @@ impl Parser<'_> {
         }
         // The slice is ASCII digits and signs, so it is valid UTF-8.
         let text = String::from_utf8_lossy(&self.bytes[start..self.at]).into_owned();
-        Ok(match text.parse::<u64>() {
-            Ok(value) => Json::Number(value),
-            Err(_) => Json::OtherNumber(text),
-        })
+        match text.parse::<u64>() {
+            Ok(value) => Ok(Json::Number(value)),
+            // The program that loads a file read by `parse_lenient` rejects a number too large for an f64 (`1e999`).
+            Err(_) if self.allow_repeats && text.parse::<f64>().is_ok_and(f64::is_infinite) => {
+                Err(ParseError::Syntax)
+            }
+            Err(_) => Ok(Json::OtherNumber(text)),
+        }
     }
 
     fn digits(&mut self) {
