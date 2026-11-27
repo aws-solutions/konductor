@@ -115,7 +115,7 @@ Other items:
 | `/var/tmp/konductor-standard-recheck/results` (incl. `S4.before-t3-v9.json`) | 36K | Live results; `run.sh` skips calls already here |
 | `/var/tmp/konductor-standard-recheck/pin.txt` | 41B | Recheck pin |
 | `/var/tmp/konductor-standard-v1` | 678M | Live STANDARD study dir, used at 18:19 today; `standard-kit-env.sh` and `run-standard-v1.sh` point here |
-| `bench/scenarios/levels.js` | 1 line | Stand-in for the old path, tracked as D-257. Keep until D-257 closes. |
+| `bench/scenarios/levels.js` | 1 line | Stand-in for the old path, tracked as D-257. Deleted 2026-11-27 when D-257 closed. |
 | `bench/ops/workspace/standard-recheck/results-2026-11-24.md` | 3.7K | Tracked; named in `bench/ops/README.md` and `bench/scenarios/t3/HAND-EDITS.md` |
 | `bench/docs/history/suite-folder-plan-2026-11-24.md` | 15K | Tracked; named in DEBT D-257 |
 | `bench/docs/history/step0-findings.md`, `arm-step0-findings.md` | 58K, 11K | Tracked history; not duplicated elsewhere |
