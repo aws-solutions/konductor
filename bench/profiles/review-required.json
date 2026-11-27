@@ -1,0 +1,8 @@
+{
+  "description": "Tasks whose konductor rules require a reviewer spawn, for the report's Review compliance section (report/delegation.js). Sources: the konductor agent prompt, Verification Protocol item 2 (no reviewer for a lookup or a small passing one-file change, unless it touches auth, secrets, data, or infrastructure), and the delegation protocol's phase gate (a threat model goes to k-architect with threat-modeling). A task matches a rule when one of its targetSkills is in the rule's targetSkills or its id is in the rule's taskIds. A run complied when it made at least one reviewer spawn (makerSpawns and reviewerSpawns in report/orch.js). Tasks where the agent is itself the reviewer (code and design review tasks) are not listed: they produce a review, not a change.",
+  "rules": [
+    { "id": "threat-model", "why": "a threat model is a security design; the phase gate sends it to a reviewer", "taskIds": ["t4-threat-model-webhooks"] },
+    { "id": "iam-or-secrets", "why": "an IAM policy, a secrets fix or a security remediation touches auth, secrets or infrastructure (Verification Protocol item 2)", "targetSkills": ["iam-policy-design", "security-remediation"] },
+    { "id": "auth-change", "why": "webhook signature checking is an auth change (Verification Protocol item 2)", "taskIds": ["t1-impl-webhook-verify"] }
+  ]
+}
