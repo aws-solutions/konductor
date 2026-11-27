@@ -10,6 +10,7 @@ import {
   canAddStage,
   canRemoveStage,
   idsOf,
+  insertStage,
   neighbourOf,
   removeParam,
   removeStage,
@@ -65,6 +66,13 @@ function removed(state: EditState, id: string): EditState {
   const next =
     id === state.selectedId ? neighbourOf(state.draft, id) : state.selectedId;
   return edited(state, draft, next ?? state.selectedId);
+}
+
+function inserted(state: EditState, index: number, agent: string): EditState {
+  if (!canAddStage(state.draft)) return state;
+  const draft = insertStage(state.draft, index, agent);
+  const selectedId = draft.stages[Math.min(index, draft.stages.length - 1)]?.id;
+  return edited(state, draft, selectedId ?? state.selectedId);
 }
 
 function added(state: EditState): EditState {
@@ -328,6 +336,8 @@ function step(
       return selected(state, event.id);
     case 'add':
       return added(state);
+    case 'insert':
+      return inserted(state, event.index, event.agent);
     case 'rename':
       return renamed(state, event.id, event.name);
     case 'set-agent':

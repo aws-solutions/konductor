@@ -36,7 +36,7 @@ export const NODE_NAMES = [
 export const STEP_TIMEOUT_MS = 10_000;
 
 /** The most Tab presses between one node and the next one to take focus. */
-const MAX_TABS_TO_NEXT_NODE = 10;
+const MAX_TABS_TO_NEXT_NODE = 24;
 
 /** Page object for the workflow canvas: title, landmark, views and the graph. */
 export class WorkflowCanvasPage {

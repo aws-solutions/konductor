@@ -13,6 +13,7 @@ export {
   DEFAULT_AGENT,
   MAX_PROMPT_CHARS,
   MAX_STAGES,
+  insertStage,
   nextStageName,
   type Draft,
   type DraftStage,

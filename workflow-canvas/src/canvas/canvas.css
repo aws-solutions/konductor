@@ -328,6 +328,28 @@
   }
 }
 
+.react-flow__node-stage.wf-drop-before::before,
+.react-flow__node-stage.wf-drop-after::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  padding: 2px 8px;
+  border-top: 3px solid var(--wf-focus);
+  color: var(--wf-focus);
+  font: 600 10px var(--wf-font-code);
+  text-align: center;
+  content: 'Drop stage here';
+}
+
+.react-flow__node-stage.wf-drop-before::before {
+  top: -30px;
+}
+
+.react-flow__node-stage.wf-drop-after::after {
+  bottom: -32px;
+}
+
 /*
  * The stage that Properties shows. Its outline takes the focus colour and is
  * thicker, so the choice shows without colour too. The name of the node says

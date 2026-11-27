@@ -631,6 +631,22 @@ describe('withStages, on a file with comments in the block', () => {
     );
   });
 
+  it('writes a new stage between existing items without moving their comments', () => {
+    const next = write(COMMENTED, COMMENTED_VIEW, [
+      A!,
+      { name: 'new', agent: 'k-architect' },
+      B!,
+      C!,
+    ]);
+
+    expect(next.indexOf('name: new')).toBeLessThan(
+      next.indexOf('the second one'),
+    );
+    expect(next.indexOf('the second one')).toBeLessThan(
+      next.indexOf("name: 'b'"),
+    );
+  });
+
   it('refuses when the items do not match the view', () => {
     const reason = refuse(COMMENTED, viewOf({ name: 'a', agent: 'x' }), [
       { name: 'a', agent: 'x', from: 0 },

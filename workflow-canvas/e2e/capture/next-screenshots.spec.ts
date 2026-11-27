@@ -98,6 +98,19 @@ test('capture the Design view with workflow parameters', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-params');
 });
 
+test('capture the filtered Components tray', async ({ canvas }) => {
+  await canvas.page
+    .getByRole('searchbox', { name: 'Filter components' })
+    .fill('architect');
+  await expect(
+    canvas.page
+      .getByRole('region', { name: 'Components' })
+      .getByRole('button', { name: /k-architect/ }),
+  ).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-tray');
+});
+
 test('capture the Design view with a prompt being typed', async ({
   canvas,
 }) => {

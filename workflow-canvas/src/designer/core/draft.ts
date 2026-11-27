@@ -144,20 +144,26 @@ export function nextStageName(draft: Draft): string {
   return `agent-${number}`;
 }
 
-/** Adds a stage with a free name and the default agent at the end. */
-export function addStage(draft: Draft): Draft {
+/** Inserts a stage with a free name and the requested agent. */
+export function insertStage(draft: Draft, index: number, agent: string): Draft {
   if (!canAddStage(draft)) return draft;
   const stage = {
     id: idOf(draft.nextId),
     name: nextStageName(draft),
-    agent: DEFAULT_AGENT,
+    agent,
     prompt: '',
   };
+  const at = Math.max(0, Math.min(index, draft.stages.length));
   return {
     ...draft,
-    stages: [...draft.stages, stage],
+    stages: [...draft.stages.slice(0, at), stage, ...draft.stages.slice(at)],
     nextId: draft.nextId + 1,
   };
+}
+
+/** Adds a stage with a free name and the default agent at the end. */
+export function addStage(draft: Draft): Draft {
+  return insertStage(draft, draft.stages.length, DEFAULT_AGENT);
 }
 
 function change(
