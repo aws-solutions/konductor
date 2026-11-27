@@ -43,13 +43,6 @@ reference.
   valid `KONDUCTOR_RESULT` line, a blocked stage halts the run with exit 1, and the run state is kept in
   `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is active per workspace, and a second one exits 75.
   The only harness so far is `fake`, which is test-only: it runs no agent, and the last line of its runs says so.
-- The orchestration-mode session-start hook now applies `orchestration.mode` to any installed
-  agent that loads the `k-direct-work.md` context, not only to `konductor`, so forks and custom
-  distributions that rename the orchestrator still get `coordinator` mode. On Kiro CLI v2 the
-  renamed agent's own file gets the hook, and `doctor` checks it in each one. Agents that load
-  the routing rules instead, like the mux and cmux orchestrators, are unchanged. An agent file
-  over 1 MiB that the hook cannot check gets `Orchestration: auto (fallback: ...)` under
-  `coordinator` instead of no output.
 
 ### Changed
 
@@ -57,6 +50,30 @@ reference.
 - The workflow canvas announces "Ready. Press Run to start." only once a workflow has loaded.
 - The workflow canvas draws run-order ports as small dots that show on hover, focus or select, in place of jigsaw tabs.
 - The workflow canvas API session response reports `konductor_version`, `capabilities` and `limits`.
+
+### Security
+
+- Behavior change for `allowlist_patterns` in the persistent-memory validator: with an allowlist
+  set, only `https` links pass, and an IP-literal host passes only when a pattern spells it
+  exactly. `*` still matches exactly one label. A new `**` leading label matches one or more
+  (`**.example.com` covers `docs.aws.example.com` but not `example.com`). Patterns now match the
+  URL's hostname only, so a query string, fragment or userinfo can no longer carry an allowed
+  suffix (for example `https://evil%2Ecom?.example.com/x`), and a host with an encoded dot or raw
+  non-ASCII characters is rejected. Every `scheme://` is checked in any letter case, including a
+  second link glued to an allowed one, and `http`, `https`, `ws`, `wss` and `ftp` are checked
+  with any number of slashes, so `https:evil.test` and `https:/evil.test` no longer skip the
+  allowlist. `file:` is a link only with two or more slashes, so `file:line` is prose. Punctuation
+  that closes a markdown link, quote or emphasis right after the host no longer blocks an allowed
+  link. A backslash-escaped colon or a character reference in the scheme (`https\://`,
+  `https&#58;//`) is checked like a plain one, and a tab or CR inside a link is removed before the
+  check. Consecutive lines are also checked joined, with the line breaks removed, so a link split
+  across lines is caught, even when one half is already in the file; a joined link blocks only when
+  it crosses a line break next to a new line. Inside a quoted URL attribute such as `href` or a
+  `<...>` link destination, a space does not end the link, so `https://docs.example.com @evil.test/`
+  there is checked as a link to `evil.test`. A bare scheme inside a code span or emphasis
+  (`` `https:` ``) is prose. Links without a scheme (`//host`, `www.host`) are not checked. The URL
+  check runs in one `python3` call per write. An interpreter failure during the check is reported as
+  an environment problem.
 
 ## [2.0.0] - 2026-11-25
 
@@ -115,6 +132,9 @@ Read these before upgrading from 1.2.0.
   the hook is wired, and whether the config value is valid. The docs describe setting the mode
   by hand and reading the mode line in the first reply. Kiro CLI v2 is not supported, and the
   Claude Code plugin does not wire the hook.
+  - The mode applies to any installed agent that loads the `k-direct-work.md` context, not only
+    `konductor`, so a renamed orchestrator still gets `coordinator` mode. The mux and cmux
+    orchestrators, which load the routing rules instead, are unchanged.
 - `konductor synth` warns when an agent's Claude Code skill preload is over 32 KiB or 32 names
   and names the skills Claude Code would drop (`-v` and `--json` report it per agent). Each
   Claude Code agent file ends with a "Skills you can load" block listing its other declared
@@ -258,6 +278,8 @@ Read these before upgrading from 1.2.0.
     the repo merges locally; otherwise it opens a PR. `git-workflow` merges the default branch
     in before a PR instead of rebasing.
 - `NOTICE.txt` lists every shipped crate.
+- The release workflow builds its macOS leg on `macos-latest` and pins the 11.0 deployment
+  target. The retired `macos-14` runner blocked that leg, and with it every release.
 
 ### Security
 
