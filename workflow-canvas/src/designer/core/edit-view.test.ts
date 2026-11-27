@@ -218,7 +218,7 @@ describe('textOf, across saves', () => {
     expect(textOf(next)).toContain('prompt_file: review.md');
   });
 
-  it('knows the stages that were sent when the draft changed during the save', () => {
+  it('knows the stages that were sent when an editable field changed during the save', () => {
     const saving = runOn(
       openDocument(PROMPTED),
       { type: 'rename', id: 's1', name: 'write' },
@@ -227,7 +227,7 @@ describe('textOf, across saves', () => {
     const sent = textOf(saving)!;
     const saved = runOn(
       saving,
-      { type: 'add' },
+      { type: 'rename', id: 's2', name: 'qa' },
       savedOf(saving, [
         stageViewOf('write', 'k-developer'),
         stageViewOf('review', 'k-quality-assurance'),
@@ -238,7 +238,9 @@ describe('textOf, across saves', () => {
 
     expect(isDirty(next)).toBe(true);
     expect(textOf(next)).toBe(
-      `${sent.replace('agent: k-developer', 'agent: k-tpm')}  - name: agent-1\n    agent: k-developer\n`,
+      sent
+        .replace('agent: k-developer', 'agent: k-tpm')
+        .replace('name: review', 'name: qa'),
     );
   });
 });

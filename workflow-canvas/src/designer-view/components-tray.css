@@ -16,8 +16,8 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: var(--wf-component-color, #596579);
-  color: #ffffff;
+  background: var(--wf-component-color, var(--wf-agent-5));
+  color: var(--wf-agent-text);
   font: 600 9px var(--wf-font-code);
   content: attr(data-agent-initials);
 }
@@ -28,33 +28,33 @@
 }
 
 .wf-agent-color-0 {
-  --wf-component-color: #3659c9;
+  --wf-component-color: var(--wf-agent-0);
 }
 
 .wf-agent-color-1 {
-  --wf-component-color: #7239a8;
+  --wf-component-color: var(--wf-agent-1);
 }
 
 .wf-agent-color-2 {
-  --wf-component-color: #0b7a52;
+  --wf-component-color: var(--wf-agent-2);
 }
 
 .wf-agent-color-3 {
-  --wf-component-color: #955600;
+  --wf-component-color: var(--wf-agent-3);
 }
 
 .wf-agent-color-4 {
-  --wf-component-color: #006f96;
+  --wf-component-color: var(--wf-agent-4);
 }
 
 .wf-agent-color-5 {
-  --wf-component-color: #596579;
+  --wf-component-color: var(--wf-agent-5);
 }
 
 .wf-agent-color-6 {
-  --wf-component-color: #a82f61;
+  --wf-component-color: var(--wf-agent-6);
 }
 
 .wf-agent-color-7 {
-  --wf-component-color: #806000;
+  --wf-component-color: var(--wf-agent-7);
 }

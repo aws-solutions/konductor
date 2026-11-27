@@ -38,6 +38,7 @@ import {
   changeBlocker,
   DEFAULT_AGENT,
   fileBlocker,
+  insertionBlocker,
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
@@ -465,7 +466,7 @@ export function DesignView({
       : refusal;
   const paramsMessage = paramsSourceBlocker ?? pageRefusal;
   const insertDisabledReason =
-    frozen ??
+    insertionBlocker(state) ??
     (!canAddStage(state.draft)
       ? `A workflow has at most ${MAX_STAGES} stages.`
       : undefined);
@@ -682,10 +683,8 @@ export function DesignView({
             )}
             <Button
               iconName="add-plus"
-              disabled={frozen !== undefined || !canAddStage(state.draft)}
-              disabledReason={
-                frozen ?? `A workflow has at most ${MAX_STAGES} stages.`
-              }
+              disabled={insertDisabledReason !== undefined}
+              disabledReason={insertDisabledReason}
               onClick={() =>
                 insertAgent(state.draft.stages.length, DEFAULT_AGENT)
               }

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import '../theme/agent-badges.css';
 
 /** The number of deterministic agent badge colours. */
 export const AGENT_BADGE_COLORS = 8;

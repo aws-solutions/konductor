@@ -36,6 +36,7 @@ export {
   canSave,
   fileBlocker,
   formTextOf,
+  insertionBlocker,
   isDirty,
   paramsBlocker,
   problemsOfDraft,

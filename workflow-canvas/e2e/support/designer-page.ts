@@ -44,7 +44,7 @@ export class DesignerPage {
       name: 'prompt_file',
       exact: true,
     });
-    this.add = page.getByRole('button', { name: 'Add stage' });
+    this.add = page.getByRole('button', { name: /^Add agent-/ });
     this.remove = page.getByRole('button', { name: 'Delete stage' });
     this.save = page.getByRole('button', { name: 'Save', exact: true });
     this.saveStatus = page.getByTestId('save-status');
