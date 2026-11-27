@@ -87,6 +87,7 @@ const VIEW = {
       kind: 'agent',
       agent: 'k-developer',
       outcome: 'A greeting in the README',
+      prompt: 'Write the greeting.',
       range: { line: 7, end_line: 9 },
     },
   ],

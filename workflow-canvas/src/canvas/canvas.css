@@ -14,11 +14,23 @@
   --wf-focus: #6236f0;
   --wf-node-bg: #ffffff;
   --wf-node-border: #7a7490;
+  --wf-intent-bg: #6236f0;
+  --wf-intent-border: #6236f0;
+  --wf-intent-text: #ffffff;
+  --wf-port: #0b7a52;
   --wf-text: #16131f;
   --wf-text-muted: #56516a;
   --wf-controls-bg: #ffffff;
   --wf-controls-bg-hover: #efebff;
   --wf-controls-border: #cfc7ba;
+  --wf-agent-0: #3659c9;
+  --wf-agent-1: #7239a8;
+  --wf-agent-2: #0b7a52;
+  --wf-agent-3: #955600;
+  --wf-agent-4: #006f96;
+  --wf-agent-5: #596579;
+  --wf-agent-6: #a82f61;
+  --wf-agent-7: #806000;
 
   border-radius: 12px;
   background: var(--wf-canvas-bg);
@@ -38,6 +50,10 @@
   --wf-focus: #a78bfa;
   --wf-node-bg: #171331;
   --wf-node-border: #8f86ad;
+  --wf-intent-bg: #6b4bef;
+  --wf-intent-border: #a78bfa;
+  --wf-intent-text: #ffffff;
+  --wf-port: #3ddc97;
   --wf-text: #f5f3ee;
   --wf-text-muted: #9c93b8;
   --wf-controls-bg: #171331;
@@ -104,6 +120,58 @@
   line-height: 1.35;
 }
 
+.wf-node-stage {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+}
+
+.wf-stage-copy {
+  min-width: 0;
+}
+
+.wf-agent-badge {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--wf-agent-0);
+  color: var(--wf-intent-text);
+  font: 600 10px var(--wf-font-code);
+  letter-spacing: 0.04em;
+}
+
+.wf-agent-badge[data-color='1'] {
+  background: var(--wf-agent-1);
+}
+
+.wf-agent-badge[data-color='2'] {
+  background: var(--wf-agent-2);
+}
+
+.wf-agent-badge[data-color='3'] {
+  background: var(--wf-agent-3);
+}
+
+.wf-agent-badge[data-color='4'] {
+  background: var(--wf-agent-4);
+}
+
+.wf-agent-badge[data-color='5'] {
+  background: var(--wf-agent-5);
+}
+
+.wf-agent-badge[data-color='6'] {
+  background: var(--wf-agent-6);
+}
+
+.wf-agent-badge[data-color='7'] {
+  background: var(--wf-agent-7);
+}
+
 .wf-node-title {
   overflow: hidden;
   font-size: 14px;
@@ -115,15 +183,32 @@
 .wf-node-sub {
   overflow: hidden;
   color: var(--wf-text-muted);
+  font: 10.5px var(--wf-font-code);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wf-node-description {
+  overflow: hidden;
+  margin-top: 8px;
+  color: var(--wf-text-muted);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf-node-intent .wf-node-title {
+  color: var(--wf-intent-text);
+  font: 600 9.5px var(--wf-font-code);
+  letter-spacing: 0.2em;
 }
 
 /* The outcome of the intent wraps onto up to three lines. */
 .wf-node-intent-outcome {
   display: -webkit-box;
   overflow: hidden;
-  color: var(--wf-text-muted);
+  margin-top: 8px;
+  color: var(--wf-intent-text);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   line-clamp: 3;
@@ -146,11 +231,15 @@
   stroke-width: 2px;
 }
 
+.wf-node-intent .wf-node-body {
+  fill: var(--wf-intent-bg);
+  stroke: var(--wf-intent-border);
+}
+
 /*
- * A run order port is a small dot on the middle of the top edge (in) or the
- * bottom edge (out). It shows while the node is hovered, focused or selected,
- * so the cards stay quiet at rest. `--wf-port-dot-size` matches
- * PORT_DOT_SIZE in card-shape.ts.
+ * A run order port is a green dot on the middle of the top edge (in) or the
+ * bottom edge (out). `--wf-port-dot-size` matches PORT_DOT_SIZE in
+ * card-shape.ts.
  */
 .react-flow .wf-port {
   --wf-port-dot-size: 10px;
@@ -164,9 +253,8 @@
   border: none;
   border-radius: 0;
   background: none;
-  opacity: 0;
+  opacity: 1;
   pointer-events: none;
-  transition: opacity 120ms ease-out;
 }
 
 .react-flow .wf-port::before {
@@ -176,22 +264,11 @@
   box-sizing: border-box;
   width: var(--wf-port-dot-size);
   height: var(--wf-port-dot-size);
-  border: 2px solid var(--wf-edge);
+  border: 2px solid var(--wf-node-bg);
   border-radius: 50%;
-  background: var(--wf-node-bg);
+  background: var(--wf-port);
+  box-shadow: 0 0 0 1px var(--wf-port);
   content: '';
-}
-
-.react-flow__node:hover .wf-port,
-.react-flow__node:focus-visible .wf-port,
-.react-flow__node.selected .wf-port {
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .react-flow .wf-port {
-    transition: none;
-  }
 }
 
 /*
@@ -211,7 +288,8 @@
  * not sit on a patch of the dark fill. After the rules above, to win over them.
  */
 @media (forced-colors: active) {
-  .wf-node-body {
+  .wf-node-body,
+  .wf-node-intent .wf-node-body {
     fill: Canvas;
     stroke: CanvasText;
   }
@@ -220,9 +298,21 @@
     color: CanvasText;
   }
 
+  .wf-node-intent .wf-node-title,
+  .wf-node-intent-outcome,
+  .wf-agent-badge {
+    color: CanvasText;
+  }
+
+  .wf-agent-badge {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
   .react-flow .wf-port::before {
     border-color: CanvasText;
     background: Canvas;
+    box-shadow: none;
   }
 }
 
@@ -234,4 +324,10 @@
 .react-flow__node.selected .wf-node-body {
   stroke: var(--wf-focus);
   stroke-width: 3px;
+}
+
+@media (forced-colors: active) {
+  .react-flow__node.selected .wf-node-body {
+    stroke: Highlight;
+  }
 }

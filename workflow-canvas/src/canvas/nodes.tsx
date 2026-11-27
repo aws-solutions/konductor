@@ -16,14 +16,14 @@ import {
   spreadStroke,
 } from './card-shape';
 import { StopMark } from '../canvas-parts/StopMark';
+import { agentColor, agentInitials } from './agent-badge';
 
 type FlowNode<N extends { type: string; data: Record<string, unknown> }> = Node<
   N['data'],
   N['type']
 >;
 
-// The dot on the top edge where run order arrives. `canvas.css` shows it
-// while the node is hovered, focused or selected.
+// The always-visible dot where run order enters the top edge.
 function SequenceIn() {
   return (
     <Handle
@@ -53,12 +53,20 @@ function SequenceOut() {
  * The card behind the content of a node: one rounded outline, with the focus
  * ring and its gap drawn around it.
  */
-function NodeShape({ height, radius }: { height: number; radius: number }) {
-  const outline = nodeOutline({ width: NODE_WIDTH, height, radius });
+function NodeShape({
+  width,
+  height,
+  radius,
+}: {
+  width: number;
+  height: number;
+  radius: number;
+}) {
+  const outline = nodeOutline({ width, height, radius });
   return (
     <svg
       className="wf-node-shape"
-      width={NODE_WIDTH}
+      width={width}
       height={height}
       aria-hidden="true"
       focusable="false"
@@ -82,8 +90,12 @@ function NodeShape({ height, radius }: { height: number; radius: number }) {
 export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
   return (
     <div className="wf-node wf-node-intent" data-testid="node-intent">
-      <NodeShape height={NODE_HEIGHT.intent} radius={NODE_RADIUS.intent} />
-      <div className="wf-node-title">intent</div>
+      <NodeShape
+        width={NODE_WIDTH.intent}
+        height={NODE_HEIGHT.intent}
+        radius={NODE_RADIUS.intent}
+      />
+      <div className="wf-node-title">INTENT</div>
       <div className="wf-node-intent-outcome" title={data.outcome}>
         {data.outcome}
       </div>
@@ -99,13 +111,31 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
       className="wf-node wf-node-stage"
       data-testid={`node-stage-${data.name}`}
     >
-      <NodeShape height={NODE_HEIGHT.stage} radius={NODE_RADIUS.stage} />
+      <NodeShape
+        width={NODE_WIDTH.stage}
+        height={NODE_HEIGHT.stage}
+        radius={NODE_RADIUS.stage}
+      />
       <SequenceIn />
-      <div className="wf-node-title" title={data.name}>
-        {data.name}
+      <div
+        className="wf-agent-badge"
+        data-color={agentColor(data.agent)}
+        aria-hidden="true"
+      >
+        {agentInitials(data.agent)}
       </div>
-      <div className="wf-node-sub" title={`${data.agent} · ${data.harness}`}>
-        {data.agent} · {data.harness}
+      <div className="wf-stage-copy">
+        <div className="wf-node-title" title={data.name}>
+          {data.name}
+        </div>
+        <div className="wf-node-sub" title={`${data.agent} · ${data.harness}`}>
+          {data.agent} · {data.harness}
+        </div>
+        {data.description && (
+          <div className="wf-node-description" title={data.descriptionTitle}>
+            {data.description}
+          </div>
+        )}
       </div>
       {data.endsRun ? (
         <span className="wf-node-stop">

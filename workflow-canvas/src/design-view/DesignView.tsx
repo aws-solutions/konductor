@@ -322,9 +322,21 @@ export function DesignView({
     () => ({
       name: state.saved.view.name,
       intent: state.saved.view.intent,
-      stages: state.draft.stages,
+      stages: state.draft.stages.map((stage) => {
+        const from = state.bases.indexOf(stage.id);
+        const source = from < 0 ? undefined : state.saved.view.stages[from];
+        return {
+          id: stage.id,
+          name: stage.name,
+          agent: stage.agent,
+          ...(source?.outcome === undefined ? {} : { outcome: source.outcome }),
+          ...(source?.prompt_file === undefined
+            ? { prompt: stage.prompt }
+            : { prompt_file: source.prompt_file }),
+        };
+      }),
     }),
-    [state.saved.view, state.draft.stages],
+    [state.bases, state.draft.stages, state.saved.view],
   );
   const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
   const { select } = editor;

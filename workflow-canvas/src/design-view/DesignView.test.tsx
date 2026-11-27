@@ -501,6 +501,36 @@ describe('DesignView, the drawing', () => {
       screen.getByRole('img', { name: 'The run ends after review' }),
     ).toBeTruthy();
   });
+
+  it('shows the stage outcome before its prompt', async () => {
+    drawn({ document: WITH_OUTCOME });
+    await settle();
+
+    expect(screen.getByTestId('node-stage-draft').textContent).toContain(
+      'A greeting in README.md',
+    );
+    expect(screen.getByTestId('node-stage-draft').textContent).not.toContain(
+      'Write the greeting to README.md.',
+    );
+  });
+
+  it('falls back to the first prompt line', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+
+    expect(screen.getByTestId('node-stage-draft').textContent).toContain(
+      'Write the greeting to README.md.',
+    );
+  });
+
+  it('shows no prompt text for a prompt file', async () => {
+    drawn({ document: WITH_PROMPT_FILE });
+    await settle();
+
+    expect(screen.getByTestId('node-stage-draft').textContent).not.toContain(
+      'review.md',
+    );
+  });
 });
 
 describe('DesignView, a read-only workflow', () => {

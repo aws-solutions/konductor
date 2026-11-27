@@ -16,7 +16,11 @@ const css = readFileSync(
   new URL('../src/canvas/canvas.css', import.meta.url),
   'utf8',
 );
-const SIZE = { width: NODE_WIDTH, height: NODE_HEIGHT.stage, radius: 10 };
+const SIZE = {
+  width: NODE_WIDTH.stage,
+  height: NODE_HEIGHT.stage,
+  radius: NODE_RADIUS.stage,
+};
 const count = (path: string, command: string) => path.split(command).length - 1;
 
 describe('nodeOutline', () => {
@@ -31,7 +35,9 @@ describe('nodeOutline', () => {
 
   it('runs through the middle of the border', () => {
     const half = BORDER_WIDTH / 2;
-    expect(nodeOutline(SIZE).startsWith(`M${half + 10} ${half}L`)).toBe(true);
+    expect(
+      nodeOutline(SIZE).startsWith(`M${half + SIZE.radius} ${half}L`),
+    ).toBe(true);
   });
 });
 
@@ -72,10 +78,12 @@ describe('the port dots', () => {
   it.each(Object.entries(NODE_HEIGHT))(
     'fit on the %s node, clear of its rounded corners',
     (kind, height) => {
-      const radius = NODE_RADIUS[kind as keyof typeof NODE_RADIUS];
+      const nodeKind = kind as keyof typeof NODE_RADIUS;
+      const radius = NODE_RADIUS[nodeKind];
+      const width = NODE_WIDTH[nodeKind];
 
       expect(PORT_DOT_SIZE).toBeLessThan(height / 2);
-      expect(PORT_DOT_SIZE).toBeLessThan(NODE_WIDTH - 2 * radius);
+      expect(PORT_DOT_SIZE).toBeLessThan(width - 2 * radius);
     },
   );
 });

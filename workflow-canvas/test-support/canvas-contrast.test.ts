@@ -2,9 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { AA_GRAPHIC, AA_TEXT, contrastRatio } from '../src/theme/contrast.ts';
 import {
+  AGENT_BADGES,
   CANVAS,
   colorsOf,
   RADIUS,
+  WHITE,
   type ThemeMode,
 } from '../src/theme/tokens.ts';
 import { COLOUR_LITERAL, HEX_COLOUR, readStyleSheet } from './css-variables.ts';
@@ -42,6 +44,17 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     );
   });
 
+  it('keeps the intent and agent tile text readable', () => {
+    expect(ratio('--wf-intent-text', '--wf-intent-bg')).toBeGreaterThanOrEqual(
+      AA_TEXT,
+    );
+    for (let index = 0; index < AGENT_BADGES.length; index += 1) {
+      expect(
+        contrastRatio(v['--wf-intent-text']!, v[`--wf-agent-${index}`]!),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
+
   it('keeps nodes, edges and the focus ring visible', () => {
     for (const name of ['--wf-node-border', '--wf-edge', '--wf-focus']) {
       expect(ratio(name, '--wf-canvas-bg')).toBeGreaterThanOrEqual(AA_GRAPHIC);
@@ -49,10 +62,10 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
   });
 
   it('keeps the port dots visible on the canvas and on the node', () => {
-    expect(ratio('--wf-edge', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
+    expect(ratio('--wf-port', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
       AA_GRAPHIC,
     );
-    expect(ratio('--wf-edge', '--wf-node-bg')).toBeGreaterThanOrEqual(
+    expect(ratio('--wf-port', '--wf-node-bg')).toBeGreaterThanOrEqual(
       AA_GRAPHIC,
     );
   });
@@ -73,6 +86,10 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
       '--wf-canvas-bg': c.bg,
       '--wf-node-bg': c.surface,
       '--wf-node-border': c.control,
+      '--wf-intent-bg': c.fill,
+      '--wf-intent-border': mode === 'dark' ? c.link : c.fill,
+      '--wf-intent-text': WHITE,
+      '--wf-port': c.success,
       '--wf-text': c.text,
       '--wf-text-muted': c.textMuted,
       '--wf-focus': c.link,
@@ -81,6 +98,9 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
       '--wf-controls-bg-hover': c.infoBg,
       '--wf-canvas-dots': k.dots,
       '--wf-edge': k.edge,
+      ...Object.fromEntries(
+        AGENT_BADGES.map((color, index) => [`--wf-agent-${index}`, color]),
+      ),
     };
 
     expect(v).toEqual(expected);

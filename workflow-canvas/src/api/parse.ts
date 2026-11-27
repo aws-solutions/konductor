@@ -77,11 +77,17 @@ function parseStage(value: unknown): StageView {
   const stage = objectOf(value);
   const outcome =
     stage.outcome === undefined ? undefined : stringOf(stage.outcome);
+  const prompt =
+    stage.prompt === undefined ? undefined : stringOf(stage.prompt);
+  const promptFile =
+    stage.prompt_file === undefined ? undefined : stringOf(stage.prompt_file);
   return {
     name: stringOf(stage.name),
     kind: kindOf(stage.kind),
     agent: stringOf(stage.agent),
     ...(outcome === undefined ? {} : { outcome }),
+    ...(prompt === undefined ? {} : { prompt }),
+    ...(promptFile === undefined ? {} : { prompt_file: promptFile }),
     range: parseRange(stage.range),
   };
 }
