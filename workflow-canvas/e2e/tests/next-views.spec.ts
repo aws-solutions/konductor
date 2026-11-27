@@ -85,6 +85,7 @@ test('saves the text shown after Undo and Redo over a raw edit', async ({
 
   await expect(yaml).toHaveValue(beforeRaw);
   await canvas.page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => saved.length).toBe(1);
   await expect(canvas.page.getByTestId('save-status')).toHaveText('Saved');
   expect(saved).toEqual([beforeRaw]);
 
@@ -92,6 +93,7 @@ test('saves the text shown after Undo and Redo over a raw edit', async ({
 
   await expect(yaml).toHaveValue(typed);
   await canvas.page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => saved.length).toBe(2);
   await expect(canvas.page.getByTestId('save-status')).toHaveText('Saved');
   expect(saved).toEqual([beforeRaw, typed]);
 });
@@ -193,7 +195,7 @@ test('checks a changed stage and marks its lines in the text', async ({
   await name.fill('drafting');
 
   await expect(canvas.page.getByTestId('yaml-check-status')).toContainText(
-    'The text is valid',
+    'Flow valid',
   );
   await canvas.page.getByRole('tab', { name: 'YAML' }).click();
   await expect(

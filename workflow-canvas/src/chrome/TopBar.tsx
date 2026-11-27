@@ -1,43 +1,57 @@
 // SPDX-License-Identifier: Apache-2.0
-import TopNavigation from '@cloudscape-design/components/top-navigation';
 import { otherMode } from '../theme/mode';
 import { LOGO_DATA_URI, type ThemeMode } from '../theme/tokens';
+import { viewTabId } from './ModeSwitch';
 
 /** The id of the top bar, which the page layout reads to sit below it. */
 export const TOP_BAR_ID = 'wf-top-bar';
 
-/**
- * The bar across the top: the logo and the page name, and the button that
- * switches between the light and the dark mode. The accessible name of the
- * button starts with its visible text.
- */
+/** A place in the workflow shell. */
+export type ShellPlace = 'library' | 'canvas';
+
+/** The product bar with its two places and theme control. */
 export function TopBar({
   mode,
+  place,
+  onPlace,
   onToggle,
 }: {
   mode: ThemeMode;
+  place: ShellPlace;
+  onPlace: (place: ShellPlace) => void;
   onToggle: () => void;
 }) {
   return (
-    <div id={TOP_BAR_ID}>
-      <TopNavigation
-        // The identity needs an href. The page has no other place to go, so
-        // following it does nothing.
-        identity={{
-          href: '#',
-          onFollow: (event) => event.preventDefault(),
-          title: 'Workflow canvas',
-          logo: { src: LOGO_DATA_URI, alt: 'Konductor' },
-        }}
-        utilities={[
-          {
-            type: 'button',
-            text: `Theme: ${mode}`,
-            ariaLabel: `Theme: ${mode}. Switch to ${otherMode(mode)}`,
-            onClick: onToggle,
-          },
-        ]}
-      />
-    </div>
+    <header id={TOP_BAR_ID} className="wf-top-bar">
+      <div className="wf-brand">
+        <img src={LOGO_DATA_URI} alt="" />
+        <span>Konductor</span>
+      </div>
+      <nav className="wf-places" aria-label="Places">
+        <button
+          type="button"
+          id={viewTabId('library')}
+          aria-current={place === 'library' ? 'page' : undefined}
+          onClick={() => onPlace('library')}
+        >
+          Library
+        </button>
+        <button
+          type="button"
+          aria-current={place === 'canvas' ? 'page' : undefined}
+          onClick={() => onPlace('canvas')}
+        >
+          Canvas
+        </button>
+      </nav>
+      <button
+        type="button"
+        className="wf-theme-toggle"
+        aria-label={`Theme: ${mode}. Switch to ${otherMode(mode)}`}
+        onClick={onToggle}
+      >
+        Theme: {mode}
+      </button>
+    </header>
   );
 }

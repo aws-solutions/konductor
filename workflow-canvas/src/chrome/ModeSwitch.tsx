@@ -8,7 +8,8 @@ export interface PageView<Id extends string> {
   content: ReactNode;
 }
 
-const tabId = (id: string) => `wf-view-${id}-tab`;
+/** The id that connects a view's tab to its panel. */
+export const viewTabId = (id: string) => `wf-view-${id}-tab`;
 const panelId = (id: string) => `wf-view-${id}-panel`;
 
 /**
@@ -78,7 +79,7 @@ export function ModeSwitch<Id extends string>({
             }}
             type="button"
             role="tab"
-            id={tabId(view.id)}
+            id={viewTabId(view.id)}
             aria-selected={selected}
             aria-controls={panelId(view.id)}
             tabIndex={selected ? 0 : -1}
@@ -113,7 +114,7 @@ export function ModePanels<Id extends string>({
             key={view.id}
             role="tabpanel"
             id={panelId(view.id)}
-            aria-labelledby={tabId(view.id)}
+            aria-labelledby={viewTabId(view.id)}
             tabIndex={0}
             hidden={!selected}
             className="wf-mode-panel"

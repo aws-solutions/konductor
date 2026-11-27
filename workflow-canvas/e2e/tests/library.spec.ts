@@ -7,7 +7,7 @@ const READY = 'Adversarial pull request review';
 const PLANNED = 'Design document creation';
 
 async function openLibrary(page: Page) {
-  await page.getByRole('tab', { name: 'Library' }).click();
+  await page.getByRole('button', { name: 'Library' }).click();
   await expect(page.getByText(READY)).toBeVisible();
 }
 
@@ -108,7 +108,7 @@ test('shows an empty Library explicitly', async ({ canvas }) => {
     route.fulfill({ json: { entries: [] } }),
   );
 
-  await canvas.page.getByRole('tab', { name: 'Library' }).click();
+  await canvas.page.getByRole('button', { name: 'Library' }).click();
 
   await expect(
     canvas.page.getByText('No shipped workflows are available.'),

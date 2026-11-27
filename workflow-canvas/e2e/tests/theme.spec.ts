@@ -7,15 +7,20 @@ import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 const DARK_CANVAS = 'rgb(11, 10, 18)';
 const LIGHT_CANVAS = 'rgb(245, 243, 238)';
 
-const BAND_RGB = 'rgb(20, 16, 38)';
-const BAND_DIVIDER_RGB = 'rgb(42, 36, 80)';
-const BAND_LINK_RGB = 'rgb(196, 178, 255)';
+const LIGHT_BORDER = 'rgb(207, 199, 186)';
+const LIGHT_FILL = 'rgb(98, 54, 240)';
+const DARK_BORDER = 'rgb(58, 49, 104)';
+const DARK_FILL = 'rgb(107, 75, 239)';
+const WHITE = 'rgb(255, 255, 255)';
 
 test('shows the top bar, the breadcrumb and the title of the page', async ({
   canvas,
 }) => {
   await expect(
-    canvas.page.getByRole('link', { name: 'Workflow canvas' }),
+    canvas.page.getByText('Konductor', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    canvas.page.getByRole('navigation', { name: 'Places' }),
   ).toBeVisible();
   await expect(canvas.themeButton).toBeVisible();
   await expect(canvas.breadcrumbs).toContainText('Workflows');
@@ -151,9 +156,12 @@ test('switches with the keyboard', async ({ canvas }) => {
   await expect(canvas.themeButton).toHaveText('Theme: dark');
 });
 
-// The view switch sits in the header band, on the row of the title, with the
-// selected segment filled.
-async function expectSwitchOnBand(canvas: WorkflowCanvasPage) {
+// The view switch sits on the row of the title, with the selected segment filled.
+async function expectSwitchInHeader(
+  canvas: WorkflowCanvasPage,
+  border: string,
+  fill: string,
+) {
   // The Design view has a tab list of its own, so the switch is the one named
   // for the views of the page.
   const list = canvas.page.getByRole('tablist', {
@@ -166,26 +174,19 @@ async function expectSwitchOnBand(canvas: WorkflowCanvasPage) {
   expect(title && switcher).toBeTruthy();
   expect(switcher!.y).toBeLessThan(title!.y + title!.height);
   expect(switcher!.y + switcher!.height).toBeGreaterThan(title!.y);
-  await expect(list).toHaveCSS('border-top-color', BAND_DIVIDER_RGB);
-  await expect(canvas.tab('Design')).toHaveCSS(
-    'background-color',
-    BAND_LINK_RGB,
-  );
-  await expect(canvas.tab('Design')).toHaveCSS('color', BAND_RGB);
+  await expect(list).toHaveCSS('border-top-color', border);
+  await expect(canvas.tab('Design')).toHaveCSS('background-color', fill);
+  await expect(canvas.tab('Design')).toHaveCSS('color', WHITE);
 }
 
-test('puts the view switch on the dark band in the light mode', async ({
-  canvas,
-}) => {
-  await expectSwitchOnBand(canvas);
+test('uses the light palette for the view switch', async ({ canvas }) => {
+  await expectSwitchInHeader(canvas, LIGHT_BORDER, LIGHT_FILL);
 });
 
-test('puts the view switch on the dark band in the dark mode', async ({
-  canvas,
-}) => {
+test('uses the dark palette for the view switch', async ({ canvas }) => {
   await canvas.switchTheme();
 
-  await expectSwitchOnBand(canvas);
+  await expectSwitchInHeader(canvas, DARK_BORDER, DARK_FILL);
 });
 
 test('sets the saved mode before the app script runs', async ({ canvas }) => {

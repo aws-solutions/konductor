@@ -17,6 +17,8 @@ const BAND_VARIABLES = {
   '--wf-band-text': BAND.text,
   '--wf-band-text-muted': BAND.textMuted,
   '--wf-band-link': BAND.link,
+  '--wf-band-success': BAND.success,
+  '--wf-band-warning': BAND.warning,
   '--wf-font-text': FONT_TEXT,
   '--wf-font-code': FONT_CODE,
 } as const;
@@ -34,6 +36,7 @@ function modeVariables(mode: ThemeMode) {
     '--wf-color-text-muted': colors.textMuted,
     '--wf-color-text-subtle': colors.textSubtle,
     '--wf-color-accent': colors.accent,
+    '--wf-color-fill': colors.fill,
     '--wf-color-link': colors.link,
     '--wf-color-success': colors.success,
     '--wf-color-error': colors.error,
