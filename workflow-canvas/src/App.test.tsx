@@ -14,14 +14,8 @@ const settled = (result: LoadResult) => Promise.resolve(result);
 
 const ports = () => fakeNextPorts();
 
-// The top bar measures itself, and jsdom has no layout, so it shows its
-// buttons in the overflow menu. The measuring copy is hidden from the
-// accessibility tree, but it is the same button with the same handler.
 const themeButton = (mode: 'light' | 'dark') =>
-  screen.getAllByRole('button', {
-    name: new RegExp(`^Theme: ${mode}`),
-    hidden: true,
-  })[0]!;
+  screen.getByRole('button', { name: new RegExp(`^Theme: ${mode}`) });
 
 afterEach(() => {
   window.localStorage.clear();
@@ -67,11 +61,10 @@ describe('App', () => {
     ).toBeTruthy();
   });
 
-  it('moves between the views with the arrow keys, Home and End', () => {
+  it('moves between Design and Run with the arrow keys, Home and End', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
     const designer = screen.getByRole('tab', { name: 'Design' });
     const execution = screen.getByRole('tab', { name: 'Run' });
-    const library = screen.getByRole('tab', { name: 'Library' });
     designer.focus();
 
     fireEvent.keyDown(designer, { key: 'ArrowRight' });
@@ -80,21 +73,17 @@ describe('App', () => {
     expect(screen.getByRole('tabpanel', { name: 'Run' })).toBeTruthy();
 
     fireEvent.keyDown(execution, { key: 'ArrowRight' });
-    expect(library.getAttribute('aria-selected')).toBe('true');
-    expect(document.activeElement).toBe(library);
-
-    fireEvent.keyDown(library, { key: 'ArrowRight' });
     expect(designer.getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(designer);
 
     fireEvent.keyDown(designer, { key: 'End' });
-    expect(library.getAttribute('aria-selected')).toBe('true');
+    expect(execution.getAttribute('aria-selected')).toBe('true');
 
-    fireEvent.keyDown(library, { key: 'Home' });
+    fireEvent.keyDown(execution, { key: 'Home' });
     expect(designer.getAttribute('aria-selected')).toBe('true');
 
     fireEvent.keyDown(designer, { key: 'ArrowLeft' });
-    expect(library.getAttribute('aria-selected')).toBe('true');
+    expect(execution.getAttribute('aria-selected')).toBe('true');
   });
 
   it('announces nothing while the workflow is loading', () => {
@@ -188,7 +177,7 @@ describe('App', () => {
     });
     render(<App load={settled(loaded(document))} nextPortsFor={() => next} />);
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Library' }));
 
     expect(
       await screen.findByText('Adversarial pull request review'),
@@ -215,6 +204,27 @@ describe('App', () => {
     expect(
       screen.getByRole('tab', { name: 'Run' }).getAttribute('aria-selected'),
     ).toBe('false');
+  });
+
+  it('shows workflow state, flow check and Save in the page header', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
+    await screen.findByTestId('node-stage-draft');
+
+    expect(screen.getByTestId('save-status').textContent).toBe('No changes');
+    expect(screen.getByTestId('yaml-check-status').textContent).toContain(
+      'Not checked yet',
+    );
+    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy();
+
+    fireEvent.change(screen.getByTestId('yaml-text'), {
+      target: { value: `${HELLO_DOCUMENT.text}# changed\n` },
+    });
+    expect(screen.getByTestId('save-status').textContent).toBe(
+      'Unsaved changes',
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
   });
 
   it('shows that the workflow is loading until the load settles', async () => {
@@ -289,7 +299,7 @@ describe('App', () => {
     render(
       <App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={() => next} />,
     );
-    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Library' }));
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Start from Adversarial pull request review',
@@ -326,7 +336,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run' }));
     await vi.waitFor(() => expect(next.startRun).toHaveBeenCalledTimes(1));
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Library' }));
     const startFrom = await screen.findByRole('button', {
       name: 'Start from Adversarial pull request review',
     });
@@ -398,7 +408,7 @@ describe('App', () => {
         nextPortsFor={() => next}
       />,
     );
-    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Library' }));
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Start from Adversarial pull request review',
@@ -439,7 +449,7 @@ describe('App', () => {
     render(
       <App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={() => next} />,
     );
-    fireEvent.click(await screen.findByRole('tab', { name: 'Library' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Library' }));
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Start from Adversarial pull request review',
@@ -480,9 +490,19 @@ describe('App', () => {
     expect(screen.queryByText('Loading the workflow')).toBeNull();
   });
 
-  it('shows the top bar with the page name and a theme button', () => {
+  it('shows the product, places and theme control in the top bar', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} nextPortsFor={ports} />);
 
+    expect(screen.getByText('Konductor')).toBeTruthy();
+    const places = screen.getByRole('navigation', { name: 'Places' });
+    expect(
+      within(places)
+        .getByRole('button', { name: 'Canvas' })
+        .getAttribute('aria-current'),
+    ).toBe('page');
+    expect(
+      within(places).getByRole('button', { name: 'Library' }),
+    ).toBeTruthy();
     expect(themeButton('light').textContent).toBe('Theme: light');
     expect(themeButton('light').getAttribute('aria-label')).toBe(
       'Theme: light. Switch to dark',

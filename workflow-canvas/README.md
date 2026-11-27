@@ -4,8 +4,8 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page has Design, Run and Library views, picked with a switch in the page
-header. The Design view loads the workflow
+The top bar has Library and Canvas places. Canvas has Design and Run views,
+picked with a switch in the page header. The Design view loads the workflow
 from the API and draws it: the intent and each stage in list order (name,
 agent and harness), joined by run-order edges, with a mark under the last
 stage where the run ends. Beside the drawing it shows the text of the file and
@@ -452,9 +452,10 @@ The rest wraps the core, so the rules can be tested without a browser:
 
 ## The Design view
 
-The view has the graph on the left, with **Add stage** above it and the save
-line and **Save** in its header, and two panes on the right: **YAML**, the
-text of the workflow to type over, and **Properties**. Properties
+The view has the graph on the left, with **Add stage** above it, and two panes
+on the right: **YAML**, the text of the workflow to type over, and
+**Properties**. The page header holds Save, the saved or unsaved state, and the
+flow-check state. Properties
 shows the selected stage (the first one when the page opens): its `name`, its
 `agent` and its `prompt`, and **Delete stage**. These are the keys of a stage
 that the view edits. A stage may also have a `prompt_file`, which the page
@@ -801,29 +802,27 @@ and a violet accent.
   `@cloudscape-design/components/theming` (colours, fonts and radii only,
   with a value for each mode), publishes the active palette as `--wf-*` CSS
   variables, and switches the mode with `applyMode` from
-  `@cloudscape-design/global-styles`. The header band and the top bar are dark
-  in both modes, so their text colours are set for the band in `tokens.ts`.
-  The root element gets `data-theme` (`light` or `dark`) and `color-scheme`; a
+  `@cloudscape-design/global-styles`. The root element gets `data-theme` (`light` or `dark`) and `color-scheme`; a
   small script in `index.html` sets both before the first paint, so a dark page
   does not flash white.
 - `src/theme/fonts.ts` loads Outfit and JetBrains Mono from the pinned
   `@fontsource/outfit` and `@fontsource/jetbrains-mono` packages (SIL Open
   Font License 1.1). The Latin files are bundled, so the page makes no request
   to a font site.
-- The top bar (`src/chrome/TopBar.tsx`) has the K logo, the page name and the
-  **Theme: light** / **Theme: dark** button. The first visit follows the
+- The top bar (`src/chrome/TopBar.tsx`) has the product mark and name, Library
+  and Canvas places, and the **Theme: light** / **Theme: dark** button. The
+  first visit follows the
   system setting (`prefers-color-scheme`). Pressing the button saves the mode
   in local storage (`src/theme/mode.ts`), and the saved mode wins from then
   on. A page that was never switched keeps following the system, but only as it
   was at load: a later change of the system setting, or of the choice in
   another tab, shows after a reload.
-- The page header is a dark band with the breadcrumb `Workflows > <workflow>`
-  (the page has no separate workflow index, so no crumb is a link), the name of
-  the workflow as the title ("Workflow canvas" until one has loaded) and, on
-  the same row, the switch between Design, Run and Library
-  (`src/chrome/ModeSwitch.tsx`). The switch is a tab list drawn as segments:
-  Tab reaches the selected one, and the arrow keys, Home and End select
-  another.
+- The page header has the uppercase breadcrumb `Workflows > <workflow>` (the
+  page has no separate workflow index, so no crumb is a link), the workflow
+  name as the title ("Workflow canvas" until one has loaded), and the Design
+  and Run switch. Beside it are the saved, unsaved or running state, the flow
+  check, and Save on Design. The switch is a tab list drawn as segments: Tab
+  reaches the selected one, and the arrow keys, Home and End select another.
 - Nodes are cards with the corner radius of the theme. The run-order ports
   are small dots, 10 pixels across, in the middle of the top edge (in) and the
   bottom edge (out). They show while a node is hovered, has the keyboard focus

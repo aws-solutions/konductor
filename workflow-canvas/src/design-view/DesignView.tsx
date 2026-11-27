@@ -12,7 +12,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
 } from 'react';
 import { WorkflowCanvas, type CanvasSelection } from '../canvas/WorkflowCanvas';
 import {
@@ -154,8 +153,7 @@ function CheckLine({
   );
 }
 
-// React's keyboard event does not carry `isComposing`; the browser's does.
-function shortcutKeyOf(event: KeyboardEvent): ShortcutKey {
+function shortcutKeyOf(event: globalThis.KeyboardEvent): ShortcutKey {
   return {
     key: event.key,
     ctrlKey: event.ctrlKey,
@@ -163,7 +161,7 @@ function shortcutKeyOf(event: KeyboardEvent): ShortcutKey {
     shiftKey: event.shiftKey,
     altKey: event.altKey,
     repeat: event.repeat,
-    isComposing: event.nativeEvent.isComposing,
+    isComposing: event.isComposing,
     keyCode: event.keyCode,
   };
 }
@@ -193,6 +191,9 @@ export function DesignView({
   scheduler,
   stageFields = {},
   agents = KNOWN_AGENTS,
+  submittedText,
+  controlsInPageHeader = false,
+  onCheckChange,
 }: {
   editor: Editor;
   /**
@@ -211,6 +212,12 @@ export function DesignView({
   stageFields?: StageFieldsByKind;
   /** The agents to offer for the `agent` key. */
   agents?: readonly { readonly id: string; readonly summary: string }[];
+  /** The text sent by the Save control in the page header. */
+  submittedText?: string;
+  /** Moves the save and check controls into the page header. */
+  controlsInPageHeader?: boolean;
+  /** Reports the flow check shown in the page header. */
+  onCheckChange?: (status: DraftStatus, failure: string | undefined) => void;
 }) {
   const { state } = editor;
   const headingId = useId();
@@ -224,6 +231,7 @@ export function DesignView({
   // The text the save in flight sent, kept so a later edit does not change
   // what the places of the stages are read for.
   const [sent, setSent] = useState<string>();
+  const sentText = submittedText ?? sent;
   const history = useEditHistory(savedText);
   const draft = useYamlDraft({
     initialText: savedText,
@@ -271,8 +279,8 @@ export function DesignView({
     // editor takes edits while it is in flight, so the places of the stages
     // must come from the draft that sent it, not from the one on the page
     // when its answer arrives.
-    ...(state.save.phase === 'saving' && sent !== undefined
-      ? { submitted: sent }
+    ...(state.save.phase === 'saving' && sentText !== undefined
+      ? { submitted: sentText }
       : {}),
   });
   // A change of the stages makes a text; the text shown is the one the
@@ -288,6 +296,9 @@ export function DesignView({
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
+  useEffect(() => {
+    onCheckChange?.(draft.status, draft.failure);
+  }, [draft.failure, draft.status, onCheckChange]);
   const showingEarlier = history.text !== text;
   // The list is about the text on screen. The editor's check, which holds a
   // refused save's findings, is about the draft, so it joins only while the
@@ -431,15 +442,16 @@ export function DesignView({
     ],
   );
 
-  const onKeyDown = useCallback(
-    (event: KeyboardEvent) => {
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
       const asked = undoShortcut(shortcutKeyOf(event));
       if (asked === undefined) return;
       event.preventDefault();
       stepHistory(asked);
-    },
-    [stepHistory],
-  );
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [stepHistory]);
   const onUndo = useCallback(() => stepHistory('undo'), [stepHistory]);
   const onRedo = useCallback(() => stepHistory('redo'), [stepHistory]);
 
@@ -457,11 +469,7 @@ export function DesignView({
       : undefined;
 
   return (
-    <section
-      className="wf-design-view"
-      aria-labelledby={headingId}
-      onKeyDown={onKeyDown}
-    >
+    <section className="wf-design-view" aria-labelledby={headingId}>
       <h2 className="wf-visually-hidden" id={headingId}>
         Design
       </h2>
@@ -512,7 +520,9 @@ export function DesignView({
             on the page. A save still keeps them.
           </Alert>
         )}
-        <CheckLine status={draft.status} failure={draft.failure} />
+        {!controlsInPageHeader && (
+          <CheckLine status={draft.status} failure={draft.failure} />
+        )}
         <EditAlerts state={state} onReload={editor.reload} />
         <Findings diagnostics={findings} />
         <DesignerLayout
@@ -567,14 +577,16 @@ export function DesignView({
           }
         >
           <SpaceBetween size="s">
-            <SaveControls
-              state={state}
-              onSave={() => {
-                if (refusal !== undefined || written === undefined) return;
-                setSent(written);
-                editor.save();
-              }}
-            />
+            {!controlsInPageHeader && (
+              <SaveControls
+                state={state}
+                onSave={() => {
+                  if (refusal !== undefined || written === undefined) return;
+                  setSent(written);
+                  editor.save();
+                }}
+              />
+            )}
             <Button
               iconName="add-plus"
               disabled={frozen !== undefined || !canAddStage(state.draft)}

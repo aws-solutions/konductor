@@ -3,13 +3,24 @@ import AppLayout from '@cloudscape-design/components/app-layout';
 import Alert from '@cloudscape-design/components/alert';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
-import { ModePanels, ModeSwitch, type PageView } from './chrome/ModeSwitch';
+import { ModePanels, type PageView } from './chrome/ModeSwitch';
+import {
+  PageHeaderActions,
+  type FlowCheckPill,
+} from './chrome/PageHeaderActions';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { DesignView } from './design-view/DesignView';
-import { isDirty } from './designer/core';
+import { isDirty, textOf as draftTextOf } from './designer/core';
+import type { DraftStatus } from './designer-view/yaml-draft';
 import { useEditor } from './designer/use-editor';
 import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
@@ -41,11 +52,16 @@ import {
 import { WorkflowGate } from './workflow/WorkflowGate';
 
 type ViewId = 'designer' | 'execution' | 'library';
+type CanvasView = Exclude<ViewId, 'library'>;
 
-/** The page views, by the labels the switch shows, before any can draw. */
-const LOADING_VIEWS: readonly { id: ViewId; label: string }[] = [
+/** The canvas views before either can draw. */
+const LOADING_CANVAS_VIEWS: readonly { id: CanvasView; label: string }[] = [
   { id: 'designer', label: 'Design' },
   { id: 'execution', label: 'Run' },
+];
+
+const LOADING_VIEWS: readonly { id: ViewId; label: string }[] = [
+  ...LOADING_CANVAS_VIEWS,
   { id: 'library', label: 'Library' },
 ];
 
@@ -81,10 +97,10 @@ function dataFailures(next: NextData): readonly string[] {
 }
 
 /**
- * Root component: the top bar, then the page header (breadcrumbs, the name of
- * the workflow as the title, and the Design, Run and Library switch), then
- * the selected view. Design and Run use the loaded workflow, while Library
- * lists shipped workflows through the same session.
+ * Root component: the product bar and places, then the page header with the
+ * breadcrumb, workflow name, Design and Run switch, state, flow check and
+ * Save control, then the selected view. Design and Run use the loaded
+ * workflow, while Library lists shipped workflows through the same session.
  *
  * `nextPortsFor` gives the views the calls they need beyond the session's
  * own. The page, not the view that draws it, follows a run, so a change of
@@ -171,6 +187,11 @@ export function App({
     [displayed, document],
   );
   const [view, setView] = useState<ViewId>('designer');
+  const [canvasView, setCanvasView] = useState<CanvasView>('designer');
+  const [submittedText, setSubmittedText] = useState<string>();
+  const [flowCheck, setFlowCheck] = useState<FlowCheckPill>({
+    status: 'unchecked',
+  });
   const [copyBlocked, setCopyBlocked] = useState<string>();
   const [libraryAnnouncement, setLibraryAnnouncement] = useState('');
   const workflowName = openWorkflowName(saved);
@@ -222,7 +243,25 @@ export function App({
     ...(runMemory && nextRunPorts !== NO_RUN_PORTS ? { runMemory } : {}),
   });
   const nextRun = nextRunner.lifecycle;
-  const workflowViews: PageView<ViewId>[] =
+  const saveFromHeader = useCallback(() => {
+    if (!editor) return;
+    const text = draftTextOf(editor.state);
+    if (text === undefined) return;
+    setSubmittedText(text);
+    editor.save();
+  }, [editor]);
+  const updateFlowCheck = useCallback(
+    (status: DraftStatus, failure: string | undefined) => {
+      setFlowCheck((current) => {
+        if (current.status === status && current.failure === failure) {
+          return current;
+        }
+        return failure === undefined ? { status } : { status, failure };
+      });
+    },
+    [],
+  );
+  const workflowViews: PageView<CanvasView>[] =
     editor && nextPorts && runs && loaded && checks && source
       ? [
           {
@@ -237,6 +276,9 @@ export function App({
                 scheduler={scheduler}
                 stageFields={next.extras.stageFields}
                 agents={next.agents}
+                submittedText={submittedText}
+                controlsInPageHeader
+                onCheckChange={updateFlowCheck}
               />
             ),
           },
@@ -253,12 +295,10 @@ export function App({
             ),
           },
         ]
-      : LOADING_VIEWS.filter((candidate) => candidate.id !== 'library').map(
-          (candidate) => ({
-            ...candidate,
-            content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
-          }),
-        );
+      : LOADING_CANVAS_VIEWS.map((candidate) => ({
+          ...candidate,
+          content: <WorkflowGate result={result}>{() => null}</WorkflowGate>,
+        }));
   const libraryView: PageView<ViewId> = {
     id: 'library',
     label: 'Library',
@@ -279,10 +319,12 @@ export function App({
           onAnnounce={setLibraryAnnouncement}
           onCopyUncertain={(message) => {
             setCopyBlocked(message);
+            setCanvasView('designer');
             setView('designer');
           }}
           onCopy={(copiedDocument) => {
             setCopied({ source, document: copiedDocument });
+            setCanvasView('designer');
             setView('designer');
           }}
         />
@@ -306,7 +348,14 @@ export function App({
   );
   return (
     <>
-      <TopBar mode={mode} onToggle={toggleMode} />
+      <TopBar
+        mode={mode}
+        place={view === 'library' ? 'library' : 'canvas'}
+        onPlace={(place) =>
+          setView(place === 'library' ? 'library' : canvasView)
+        }
+        onToggle={toggleMode}
+      />
       <AppLayout
         headerSelector={`#${TOP_BAR_ID}`}
         disableContentPaddings
@@ -316,25 +365,36 @@ export function App({
         content={
           <ContentLayout
             defaultPadding
-            headerVariant="high-contrast"
-            breadcrumbs={<Breadcrumbs workflowName={workflowName} />}
+            breadcrumbs={
+              <Breadcrumbs
+                workflowName={view === 'library' ? 'Library' : workflowName}
+              />
+            }
             header={
               <Header
                 variant="h1"
                 actions={
-                  <ModeSwitch
-                    ariaLabel="Workflow canvas views"
-                    views={views}
-                    active={view}
-                    focusRequest={copyBlocked ? 2 : copied ? 1 : 0}
-                    onChange={(nextView) => {
-                      setLibraryAnnouncement('');
-                      setView(nextView);
-                    }}
-                  />
+                  view !== 'library' ? (
+                    <PageHeaderActions
+                      views={workflowViews}
+                      active={view}
+                      state={copyBlocked ? undefined : editor?.state}
+                      running={nextRun.active}
+                      check={flowCheck}
+                      focusRequest={copyBlocked ? 2 : copied ? 1 : 0}
+                      onView={(nextView) => {
+                        setLibraryAnnouncement('');
+                        setCanvasView(nextView);
+                        setView(nextView);
+                      }}
+                      onSave={saveFromHeader}
+                    />
+                  ) : undefined
                 }
               >
-                {workflowName ?? 'Workflow canvas'}
+                {view === 'library'
+                  ? 'Library'
+                  : (workflowName ?? 'Workflow canvas')}
               </Header>
             }
           >

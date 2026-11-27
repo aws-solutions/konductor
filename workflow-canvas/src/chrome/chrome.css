@@ -1,13 +1,87 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-/*
- * The view switch is dark in both modes. Its selected segment uses the band's link colour.
- */
+.wf-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--wf-color-border);
+  background: linear-gradient(
+    135deg,
+    var(--wf-color-surface),
+    var(--wf-color-field)
+  );
+  color: var(--wf-color-text);
+}
+
+.wf-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.wf-brand img {
+  width: 30px;
+  height: 30px;
+}
+
+.wf-places {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--wf-color-border-strong);
+  border-radius: 10px;
+  background: var(--wf-color-field);
+}
+
+.wf-places button,
+.wf-theme-toggle {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--wf-color-text-muted);
+  font: 500 12px var(--wf-font-text);
+  cursor: pointer;
+}
+
+.wf-places button {
+  padding: 5px 11px;
+}
+
+.wf-places button:hover,
+.wf-theme-toggle:hover {
+  color: var(--wf-color-text);
+}
+
+.wf-places button[aria-current='page'] {
+  background: var(--wf-color-surface-alt);
+  box-shadow: inset 0 -3px 0 var(--wf-color-accent);
+  color: var(--wf-color-text);
+}
+
+.wf-places button:focus-visible,
+.wf-theme-toggle:focus-visible {
+  outline: 2px solid var(--wf-color-accent);
+  outline-offset: 2px;
+}
+
+.wf-theme-toggle {
+  margin-left: auto;
+  padding: 6px 9px;
+  font-family: var(--wf-font-code);
+  font-size: 10px;
+}
+
+/* The Design and Run switch uses the active page palette. */
 .wf-mode-switch {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--wf-band-divider);
+  border: 1px solid var(--wf-color-border-strong);
   border-radius: 10px;
 }
 
@@ -16,23 +90,23 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--wf-band-text-muted);
+  color: var(--wf-color-text-muted);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .wf-mode-segment:hover {
-  color: var(--wf-band-text);
+  color: var(--wf-color-text);
 }
 
 .wf-mode-segment[aria-selected='true'] {
-  background: var(--wf-band-link);
-  color: var(--wf-band-background);
+  background: var(--wf-color-fill);
+  color: #ffffff;
 }
 
 .wf-mode-segment:focus-visible {
-  outline: 2px solid var(--wf-band-link);
+  outline: 2px solid var(--wf-color-link);
   outline-offset: 2px;
 }
 
@@ -40,6 +114,10 @@
   .wf-mode-segment[aria-selected='true'] {
     background: Highlight;
     color: HighlightText;
+  }
+  /* Forced colors drop box-shadow, so the current place keeps a border. */
+  .wf-places button[aria-current='page'] {
+    border-bottom: 3px solid ButtonText;
   }
 }
 
@@ -58,7 +136,63 @@
   gap: 8px;
   margin: 0;
   padding: 0;
+  color: var(--wf-color-link);
+  font: 500 10px/1.3 var(--wf-font-code);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   list-style: none;
+}
+
+.wf-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.wf-state-pill,
+.wf-check-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--wf-color-border-strong);
+  border-radius: 999px;
+  color: var(--wf-color-text-muted);
+  font: 10.5px var(--wf-font-code);
+  white-space: nowrap;
+}
+
+.wf-state-pill {
+  border-color: var(--wf-color-success);
+  color: var(--wf-color-success);
+}
+
+.wf-state-pill[data-state='unsaved'] {
+  border-color: var(--wf-color-warning);
+  color: var(--wf-color-warning);
+}
+
+.wf-state-pill[data-state='running'],
+.wf-state-pill[data-state='saving'] {
+  border-color: var(--wf-color-link);
+  color: var(--wf-color-link);
+}
+
+.wf-check-pill {
+  border-color: var(--wf-color-link);
+  color: var(--wf-color-link);
+}
+
+.wf-check-pill[data-check='valid'] {
+  border-color: var(--wf-color-success);
+  color: var(--wf-color-success);
+}
+
+.wf-check-pill[data-check='invalid'] {
+  border-color: var(--wf-color-warning);
+  color: var(--wf-color-warning);
 }
 
 code {

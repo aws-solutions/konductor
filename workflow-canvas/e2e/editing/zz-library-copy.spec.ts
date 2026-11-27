@@ -6,7 +6,7 @@ const READY = 'Adversarial pull request review';
 test('copies a library workflow, edits it, and saves the copy', async ({
   canvas,
 }) => {
-  await canvas.page.getByRole('tab', { name: 'Library' }).click();
+  await canvas.page.getByRole('button', { name: 'Library' }).click();
   await canvas.page.getByRole('button', { name: `Open ${READY}` }).click();
   await expect(canvas.page.getByTestId('read-only-note')).toBeVisible();
 

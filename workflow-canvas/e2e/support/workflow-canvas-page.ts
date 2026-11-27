@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, type Locator, type Page } from '@playwright/test';
 
-/** Tab labels in display order; also used to look up each tab and its panel. */
+/** View labels in display order, including the Library place. */
 export const TAB_NAMES = ['Design', 'Run', 'Library'] as const;
-/** The label of one tab. */
+/** The label of one page view. */
 export type TabName = (typeof TAB_NAMES)[number];
 
 /** The two modes of the page. */
@@ -97,7 +97,9 @@ export class WorkflowCanvasPage {
   }
 
   tab(name: TabName): Locator {
-    return this.page.getByRole('tab', { name });
+    return name === 'Library'
+      ? this.page.getByRole('button', { name: 'Library' })
+      : this.page.getByRole('tab', { name });
   }
 
   tabPanel(name: TabName): Locator {
@@ -140,13 +142,22 @@ export class WorkflowCanvasPage {
     await this.tabPanel(name).waitFor();
   }
 
-  /** Asserts `name` is the only selected tab and its panel is showing. */
+  /** Asserts `name` is the selected view and its panel is showing. */
   async expectTabShown(name: TabName): Promise<void> {
-    for (const tabName of TAB_NAMES) {
-      await expect(this.tab(tabName)).toHaveAttribute(
-        'aria-selected',
-        String(tabName === name),
-      );
+    const canvas = this.page.getByRole('button', { name: 'Canvas' });
+    const library = this.page.getByRole('button', { name: 'Library' });
+    if (name === 'Library') {
+      await expect(library).toHaveAttribute('aria-current', 'page');
+      await expect(canvas).not.toHaveAttribute('aria-current', 'page');
+    } else {
+      await expect(canvas).toHaveAttribute('aria-current', 'page');
+      await expect(library).not.toHaveAttribute('aria-current', 'page');
+      for (const tabName of ['Design', 'Run'] as const) {
+        await expect(this.tab(tabName)).toHaveAttribute(
+          'aria-selected',
+          String(tabName === name),
+        );
+      }
     }
     await expect(this.tabPanel(name)).toBeVisible();
   }
