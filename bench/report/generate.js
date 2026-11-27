@@ -15,7 +15,7 @@ const { buildRunDocument } = require('./build.js');
 const { toMarkdown, toHtml } = require('./doc.js');
 const { readJson } = require('./load.js');
 const { enrichOrch, summarize: summarizeOrch } = require('./orch.js');
-const { reviewCompliance, costSplit } = require('./delegation.js');
+const { reviewCompliance, costSplit, contextPerArm } = require('./delegation.js');
 const { profileCheck } = require('../runner/lib/profiles.js');
 
 const DETAILS = ['quick', 'full'];
@@ -133,7 +133,7 @@ function generateRunReport({ run, tasks, baseline, out, detail, format, scoringF
     quality = summarizeQuality({ groups: armIds.map((id) => ({ id, label: id, run, arm: id })), tasks, pack: qualityPack, scoredWeight: a.weights.pack ?? null });
     doc.blocks.push(...qualityBlocks(quality));
   }
-  const json = { ...a.report, detail: d, quoteRule: a.quote, quoteSensitivity: sens, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), ...(a.packStale.length ? { packStale: a.packStale } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), reviewCompliance: reviewCompliance(run, tasks), costSplit: costSplit(run), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
+  const json = { ...a.report, detail: d, quoteRule: a.quote, quoteSensitivity: sens, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), ...(a.packStale.length ? { packStale: a.packStale } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), reviewCompliance: reviewCompliance(run, tasks), costSplit: costSplit(run), contextPerArm: contextPerArm(run), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
   const { dir, name } = outPaths(out, defaultDir);
   const { renderMarkdown } = require('./render.js');
   const written = writeOutputs({ dir, name, blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json });

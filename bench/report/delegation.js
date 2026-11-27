@@ -7,6 +7,8 @@
 // Cost split: how much of each arm's turn time and tool calls ran in sub-executions (kiro-cli v3 keeps one transcript
 // per spawn, session/<sid>/sub-executions/<subtask id>.jsonl) and how much of that was reviewer spawns. Credits are
 // metered per turn, not per spawn, so the split is in time and calls; credits are only shown per run.
+// Context per arm: the main session's context_usage reports in stream.jsonl (about one per model call): the fixed
+// context of the first breakdown (context files, tool specs, prompts) and the mean and peak share of the window.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -129,6 +131,65 @@ function costSplit(run, spec = loadMetricsSpec()) {
   });
 }
 
+const median = (xs) => {
+  const v = xs.filter(fin).sort((a, b) => a - b);
+  if (!v.length) return null;
+  const m = Math.floor(v.length / 2);
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+};
+const tokensOf = (b, key) => (fin(b?.[key]?.tokens) ? b[key].tokens : 0);
+
+/**
+ * The context reports of one run's main session, or null when it has none: fixedTokens (the sum of the first
+ * breakdown) with contextFiles, tools and prompts, updates, meanPct and peakPct, and windowTokens (fixedTokens over
+ * the first share; the share is rounded to 0.1, so this is an estimate). Only lines that name context_usage are parsed.
+ */
+function contextOf(runDir) {
+  const file = path.join(runDir, 'stream.jsonl');
+  if (!fs.existsSync(file)) return null;
+  const pcts = [];
+  let first = null;
+  let firstPct = null;
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    if (!line.includes('context_usage')) continue;
+    let k;
+    try { k = JSON.parse(line).data?.update?._meta?.kiro; } catch { continue; }
+    if (k?.kind !== 'context_usage' || !fin(k.usagePercentage)) continue;
+    pcts.push(k.usagePercentage);
+    if (!first && k.breakdown) { first = k.breakdown; firstPct = k.usagePercentage; }
+  }
+  if (!pcts.length) return null;
+  const fixedTokens = first ? Object.keys(first).reduce((n, key) => n + tokensOf(first, key), 0) : null;
+  return {
+    fixedTokens, contextFiles: first ? tokensOf(first, 'contextFiles') : null, tools: first ? tokensOf(first, 'tools') : null, prompts: first ? tokensOf(first, 'yourPrompts') : null,
+    updates: pcts.length, meanPct: sum(pcts) / pcts.length, peakPct: Math.max(...pcts),
+    windowTokens: fixedTokens && firstPct > 0 ? Math.round(fixedTokens / (firstPct / 100)) : null,
+  };
+}
+
+/** Per arm: runs with a context report, and the median over them of each contextOf field. */
+function contextPerArm(run) {
+  return armsOf(run).map((arm) => {
+    const cs = executed(run).filter((e) => e.armId === arm).map((e) => { if (e.delegationContext === undefined) e.delegationContext = contextOf(e.dir); return e.delegationContext; }).filter(Boolean);
+    const med = (k) => median(cs.map((c) => c[k]));
+    return { arm, withData: cs.length, fixedTokens: med('fixedTokens'), contextFiles: med('contextFiles'), tools: med('tools'), prompts: med('prompts'), updates: med('updates'), meanPct: med('meanPct'), peakPct: med('peakPct'), windowTokens: med('windowTokens') };
+  });
+}
+
+const n0 = (v) => (fin(v) ? String(Math.round(v)) : 'n/a');
+const p1 = (v) => (fin(v) ? `${v.toFixed(1)}%` : 'n/a');
+const kTok = (share, window) => (fin(share) && fin(window) ? `${Math.round((share / 100) * window / 1000)}k` : 'n/a');
+
+function contextBlocks(rows) {
+  if (!rows.some((r) => r.withData)) return [];
+  return [
+    D.h(2, 'Context per arm'),
+    D.table(['arm', 'runs with data', 'fixed context at start (tokens)', 'context files', 'tool specs', 'prompts', 'context reports per run', 'mean share per report', 'about (tokens)', 'peak share', 'about (tokens)'],
+      rows.map((r) => [r.arm, r.withData, n0(r.fixedTokens), n0(r.contextFiles), n0(r.tools), n0(r.prompts), fin(r.updates) ? r.updates.toFixed(1) : 'n/a', p1(r.meanPct), kTok(r.meanPct, r.windowTokens), p1(r.peakPct), kTok(r.peakPct, r.windowTokens)])),
+    D.note('Medians over the runs of each arm. The main session reports its context use in stream.jsonl (session_info_update, kind context_usage), about once per model call; spawns are not included. The fixed context is the first report\'s breakdown: always-loaded context files, built-in and MCP tool specs, and the prompts (the agent prompt itself is not in the breakdown). Tokens are estimates: the window is the fixed context over its first share, which kiro-cli rounds to 0.1%.'),
+  ];
+}
+
 const minutes = (ms) => (ms / 60000).toFixed(1);
 
 function costSplitBlocks(rows) {
@@ -142,4 +203,4 @@ function costSplitBlocks(rows) {
 }
 
 
-module.exports = { loadReviewRules, requiredReview, reviewCompliance, complianceBlocks, subExecutions, unionMs, costSplit, costSplitBlocks, RULES_FILE };
+module.exports = { loadReviewRules, requiredReview, reviewCompliance, complianceBlocks, subExecutions, unionMs, costSplit, costSplitBlocks, contextOf, contextPerArm, contextBlocks, RULES_FILE };

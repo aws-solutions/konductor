@@ -16,7 +16,7 @@ const { MIN_RECALL, fetchUnchecked, externalFetchCell } = require('../runner/lib
 const { gradedSummary, gradedTable } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
 const { orchBlocks } = require('./orch.js');
-const { reviewCompliance, complianceBlocks, costSplit, costSplitBlocks } = require('./delegation.js');
+const { reviewCompliance, complianceBlocks, costSplit, costSplitBlocks, contextPerArm, contextBlocks } = require('./delegation.js');
 const { buildThreeArm, threeArmBlocks, DEFAULT_ARMS } = require('./three-arm.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -338,6 +338,7 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   blocks.push(...orchBlocks(run, { phases: docPhases }));
   blocks.push(...complianceBlocks(reviewCompliance(run, tasks)));
   blocks.push(...costSplitBlocks(costSplit(run)));
+  blocks.push(...contextBlocks(contextPerArm(run)));
 
   spendSection({ run, j, rows, arms, unit, blocks, add });
 

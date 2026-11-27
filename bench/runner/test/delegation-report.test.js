@@ -81,6 +81,7 @@ test('the written run report and its json carry the review compliance of a requi
     assert.deepEqual(r.json.reviewCompliance.find((x) => x.arm === 'head').missing, ['t1#2']);
     assert.match(md, /## Main session and sub-executions/);
     assert.equal(r.json.costSplit.find((x) => x.arm === 'head').runs, 2);
+    assert.ok(Array.isArray(r.json.contextPerArm), 'context per arm is in the json even when no run reported context');
   } finally { s.done(); }
 });
 
@@ -121,5 +122,35 @@ test('the cost split gives each arm main-session and sub-execution time and call
     const md = JSON.stringify(dl.costSplitBlocks(rows));
     assert.match(md, /Main session and sub-executions/);
     assert.match(md, /50%/, 'sub-executions took half of arm a\'s turn time');
+  } finally { s.done(); }
+});
+
+// ---- context per arm ----
+const ctxEv = (pct, breakdown) => ({ type: 'sessionUpdate', data: { sessionId: 'root', update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: pct, contextUsage: { usagePercentage: pct }, ...(breakdown ? { breakdown } : {}) } } } } });
+const BD = (files, tools, prompts, items = []) => ({ contextFiles: { tokens: files, items }, tools: { tokens: tools }, memory: { tokens: 0 }, kiroResponses: { tokens: 0 }, yourPrompts: { tokens: prompts }, sessionFiles: { tokens: 0 } });
+
+test('a run\'s context: the fixed context of the first breakdown, and the mean and peak share per context report', () => {
+  const s = setup([{ arm: 'a', rep: 1, events: [ctxEv(2, BD(6000, 7000, 7000)), ctxEv(4), ctxEv(6)] }, { arm: 'a', rep: 2, events: [] }]);
+  try {
+    const c = dl.contextOf(s.dirOf({ arm: 'a', rep: 1 }));
+    assert.deepEqual({ fixed: c.fixedTokens, files: c.contextFiles, tools: c.tools, prompts: c.prompts, n: c.updates, mean: c.meanPct, peak: c.peakPct, window: c.windowTokens }, { fixed: 20000, files: 6000, tools: 7000, prompts: 7000, n: 3, mean: 4, peak: 6, window: 1000000 });
+    assert.equal(dl.contextOf(s.dirOf({ arm: 'a', rep: 2 })), null, 'no context report: null');
+  } finally { s.done(); }
+});
+
+test('context per arm is the median over runs with a report, and the block shows it', () => {
+  const runs = [
+    { arm: 'base', rep: 1, events: [ctxEv(1, BD(0, 7000, 3000)), ctxEv(3)] },
+    { arm: 'head', rep: 1, events: [ctxEv(2, BD(6000, 7000, 7000)), ctxEv(4), ctxEv(6)] },
+    { arm: 'head', rep: 2, events: [ctxEv(2, BD(6000, 7000, 7000)), ctxEv(8)] },
+  ];
+  const s = setup(runs);
+  try {
+    const rows = dl.contextPerArm(loadRun(s.runDir));
+    const head = rows.find((r) => r.arm === 'head');
+    assert.deepEqual({ runs: head.withData, fixed: head.fixedTokens, mean: head.meanPct, peak: head.peakPct, updates: head.updates }, { runs: 2, fixed: 20000, mean: 4.5, peak: 7, updates: 2.5 });
+    const md = JSON.stringify(dl.contextBlocks(rows));
+    assert.match(md, /Context per arm/);
+    assert.match(md, /20000/);
   } finally { s.done(); }
 });
