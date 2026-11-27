@@ -35,6 +35,7 @@ function makeKiroCaller({ authDb, timeoutMs, scratchRoot = os.tmpdir(), kiroBin 
     const errPath = path.join(root, 'stderr.txt');
     try {
       sandbox.emptyKiroHome(home);
+      writeJudgeSettings(home);
       sandbox.copyAuthDb(authDb, home);
       const { env } = buildChildEnv(process.env, { home, tmpdir: path.join(root, 'tmp'), agentEngine: 'v2' });
       const args = ['chat', '--no-interactive', '--model', model, '--trust-tools=', '--output-format', 'stream-json', prompt];
@@ -57,6 +58,13 @@ function makeKiroCaller({ authDb, timeoutMs, scratchRoot = os.tmpdir(), kiroBin 
       procs.untrackScratch(root);
     }
   };
+}
+
+/** Writes the judge's kiro-cli settings into the scratch `home`: auto compaction off, so a judge reply never reads a summary of its bundle (D-279). */
+function writeJudgeSettings(home) {
+  const dir = path.join(home, '.kiro', 'settings');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'cli.json'), `${JSON.stringify({ 'chat.disableAutoCompaction': true }, null, 2)}\n`);
 }
 
 function keepRaw(rawDir, model, prompt, outPath, errPath) {
