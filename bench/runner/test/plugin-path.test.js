@@ -31,7 +31,7 @@ const backend = (name) => ({
   'plugin.json': manifest(name),
   'meta.js': `module.exports = Object.freeze({ id: '${name}', costUnit: 'usd', label: 'an outside backend' });`,
   // An outside plugin cannot reach the SDK by a relative path, so it names the bench checkout's SDK folder.
-  'backend.js': `const { sandbox } = require(${JSON.stringify(SDK)}); exports.makeCaller = () => async () => ({ text: typeof sandbox.KIRO_BIN, credits: 0, usd: 0, latencyMs: 1 });`,
+  'backend.js': `const { sandbox } = require(${JSON.stringify(SDK)}); exports.makeCaller = () => async () => ({ text: typeof sandbox.sha256File, credits: 0, usd: 0, latencyMs: 1 });`,
 });
 
 test('pluginPathRoots reads a path list of absolute folders, and refuses a relative or missing one', (t) => {
@@ -63,7 +63,7 @@ test('the outside backend loads and reaches the SDK by its absolute path', async
   const reg = backendRegistry([root]);
   assert.ok(reg.ids().includes('outside-be'));
   const caller = require(reg.part('outside-be').entry).makeCaller({});
-  assert.equal((await caller({ model: 'm', prompt: 'p' })).text, 'string');
+  assert.equal((await caller({ model: 'm', prompt: 'p' })).text, 'function');
 });
 
 test('a bad BENCH_PLUGIN_PATH stops the bench with the reason', () => {

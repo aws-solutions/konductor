@@ -89,10 +89,12 @@ A `parts` entry with the main kind, a kind listed twice or a missing file refuse
 still one plugin: `bench plugins` lists a row per part, and `run-config.json` records the folder once.
 
 A plugin's code may require only `node:*` modules, files in its own folder and the bench SDK, `bench/sdk`. The SDK
-gives the bench helpers a harness needs, one part per helper module: `const { parseStream } = require('../../sdk').stream;`.
-Read `bench/sdk/index.js` for the list of parts. `runner/test/plugin-sdk-lint.test.js`
-fails when a plugin requires `runner/lib` or another plugin directly. A helper the SDK does not have yet is added to
-`bench/sdk/index.js`, not required around it. Files under the plugin's `test/` folder are not checked.
+gives the bench helpers a harness needs, one part per helper module, and each part lists the helpers by name:
+`const { parseStream } = require('../../sdk').stream;`. Read `bench/sdk/index.js` for the parts and their names.
+`runner/test/plugin-sdk-lint.test.js` fails when a plugin requires `runner/lib` or another plugin directly, and when a
+plugin reads a helper its part does not list. A helper the SDK does not have yet is added by name to its part in
+`bench/sdk/index.js`, not required around it. Files under the plugin's `test/` folder are checked for the second rule
+only (the reads), not for the first (the requires).
 
 `test/conformance.js` tells the kit how to read the recorded run with no model call:
 
