@@ -12,6 +12,9 @@
 #   case 8: a call that writes no result is counted and stops the job, no retry
 #   case 9: a job with a Claude model, or a recheck by its writer's own family, is refused at --plan
 #   case 10: each wrapper runs its own job
+#   case 12: --call-worst: a call whose worst case would pass the cap is refused before it starts (a 22-credit call
+#            counts 22 against cap 50: 22 + 30 > 50, while 22 + 15 would fit); the ledger records worst=N; the wrapper
+#            passes the flag on
 #   case 11: the D-275 CardDemo recheck: its bundle holds rules, interface, hidden tests and goldens and no answer key
 #            or authorship; --go needs --cap; the cap stops the job; no Claude model
 set -uo pipefail
@@ -136,6 +139,18 @@ B=$T/cx/calls/C4/work/tasks/cx-carddemo-batchday
   && ok "D-275 bundle: rules, interface, hidden tests, goldens" || { bad "D-275 bundle: $(ls "$B" "$B/hidden" 2>&1 | head -5)"; tail -2 "$T/log"; }
 [ ! -e "$B/fixture/.bench-answer-key.md" ] && ! grep -q '"authorship"\|"review"' "$B/task.json" && ok "D-275 bundle: no answer key, authorship or review" || bad "D-275 bundle leaks the key or authorship"
 grep -q 'gpt-5.6-luna recheck' "$T/calls" && grep -q 'deepseek-3.2 recheck' "$T/calls" && ! grep -qi claude "$T/calls" && ok "D-275: three non-Claude families" || bad "D-275 models: $(cat "$T/calls")"
+
+# case 12
+: > "$T/calls"; rm -rf "$T/k"; STUB_CREDITS=22 run k D-123 --go --call-worst 40; rc=$?
+[ "$rc" = 1 ] && [ "$(calls)" = 0 ] && grep -q 'REFUSED W1: spent 0 of the 30 cap leaves no room for its worst case 40' "$T/log" \
+  && ok "worst 40 over cap 30: the first call is refused, no call" || { bad "worst refuse: rc $rc, calls $(calls)"; tail -2 "$T/log"; }
+rm -rf "$T/k"; : > "$T/calls"; STUB_CREDITS=22 run k D-159 --go --call-worst 20; rc=$?   # cap 75, writer and recheck
+[ "$rc" = 0 ] && grep -q 'worst=20 ' "$T/k/ledger" && ok "the ledger line records worst=20" || { bad "worst ledger: $(cat "$T/k/ledger")"; }
+rm -rf "$T/k"; : > "$T/calls"; STUB_CREDITS=22 run k D-123 --go --call-worst 5 x; rc=$?
+[ "$rc" = 64 ] && ok "a stray argument is a usage error" || bad "usage: rc $rc"
+rm -rf "$T/cx"; : > "$T/calls"; STUB_CREDITS=22 cx --go --cap 50 --call-worst 30; rc=$?
+[ "$rc" = 1 ] && [ "$(calls)" = 1 ] && grep -q 'REFUSED C2: spent 22 of the 50 cap leaves no room for its worst case 30' "$T/log" \
+  && ok "D-275 wrapper passes --call-worst on: 22 + 30 passes 50" || { bad "D-275 worst: rc $rc, calls $(calls)"; tail -2 "$T/log"; }
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

@@ -5,17 +5,20 @@
 # --plan (the default) is free. --go is PAID and needs your own cap, in counted credits (15 per call or its real
 # credits, whichever is more): the job stops before the call that could pass it.
 #   bash run-debt-d275-cx-recheck.sh [--plan]
-#   bash run-debt-d275-cx-recheck.sh --go --cap 105
+#   bash run-debt-d275-cx-recheck.sh --go --cap 105 [--call-worst N]
+# --call-worst N: a call's worst case in counted credits for the check before each call (default 15; a model's own
+# highest real cost in the ledger counts too). One glm-5 call on the bundle cost 110, so set it to the real worst.
 # Engine and rules: debt-paid/run.sh. The tasks are read from its own checkout, $KONDUCTOR_WS/worktrees/cx-recheck
 # (made at origin/feat/bench-pilot-nk on the first run), so push the task changes first.
 set -u
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-MODE=--plan CAP=
+MODE=--plan CAP= WORST=
 while [ $# -gt 0 ]; do
   case "$1" in
     --plan|--go) MODE=$1 ;;
     --cap) shift; CAP=${1:-} ;;
-    *) echo "usage: bash $0 [--plan | --go --cap N]"; exit 64 ;;
+    --call-worst) shift; WORST=${1:-} ;;
+    *) echo "usage: bash $0 [--plan | --go --cap N [--call-worst N]]"; exit 64 ;;
   esac
   shift
 done
@@ -37,4 +40,4 @@ if [ -n "$CAP" ]; then
   export JOBS
 fi
 # Not exec: the trap above must run when the engine ends.
-bash "$HERE/debt-paid/run.sh" D-275 "$MODE"
+bash "$HERE/debt-paid/run.sh" D-275 "$MODE" ${WORST:+--call-worst "$WORST"}

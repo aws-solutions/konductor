@@ -8,9 +8,13 @@
 #                              the counted floor and the cap; no model call, no ledger line, no pin
 #   bash run.sh JOB --go       PAID (Kiro credits): runs the job's calls in order; rerun to resume (finished calls
 #                              are skipped); touch STATE/STOP to stop before the next call
+#   --call-worst N             (either mode) a call's worst case in counted credits, used in the pre-call check
+#                              instead of 15 (default 15)
 #
 # Spend: every call counts as max(15, its real credits) against the job's cap in jobs.txt. A call starts only when
-# the ledger leaves room for one more counted call (spent + 15 <= cap); its counted figure is written after it. No
+# the ledger leaves room for its worst case (spent + worst <= cap); its counted figure is written after it. The worst
+# case of a call is the larger of --call-worst (default 15) and the highest real cost the ledger holds for the same
+# model, and it is written to the ledger line as worst=N. No
 # retry: a call that leaves no result is counted and stops the job. --go refuses to start, and stops before a call,
 # while another paid job runs (PAID_PAT: a pilot, wave, study, fill, recheck queue or batch kiro-cli call), while
 # another debt-paid run holds JOB_LOCK, while the heavy lock is held or while the load is 4 or more.
@@ -28,6 +32,11 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 WS=$KONDUCTOR_WS
 JOB=${1:-}
 MODE=${2:---plan}
+CALL_WORST=
+if [ $# -gt 2 ]; then
+  [ $# = 4 ] && [ "$3" = --call-worst ] || { echo "usage: bash $0 JOB [--plan|--go] [--call-worst N]"; exit 64; }
+  CALL_WORST=$4
+fi
 JOBS=${JOBS:-$HERE/jobs.txt}
 PIN_REPO=${PIN_REPO:-$WS/worktrees/debt-paid}
 KIRO=${KIRO:-kiro-cli}
@@ -38,9 +47,12 @@ JOB_LOCK=${JOB_LOCK:-/var/tmp/konductor-debt-paid.lock}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 PAID_PAT=${PAID_PAT:-run-overnight[.]sh|run-clean-fill[.]sh|run-cc-[a-z-]*[.]sh|run-model-swap|run-nudge|run-forced|run-aa-pack|run-pilot|run-fw30|pilot-wave[.]sh|plant-wave[.]sh|standard-recheck/run[.]sh|run-rest[.]sh|bench/runner/bench[.]js run|kiro-cli chat --no-interactive}
 COUNT_MIN=15
+case "$CALL_WORST" in '') CALL_WORST=$COUNT_MIN ;; *[!0-9]*|0) echo "--call-worst needs a whole number above 0"; exit 64 ;; esac
 . "$(dirname "$0")/../../lib.sh"   # say, stop and fail (B-005)
 prep() { BENCH_REPO=$PIN_REPO node "$HERE/prep.js" "$@"; }
 spent() { touch "$LEDGER"; awk '{ s += $3 } END { printf "%g", s + 0 }' "$LEDGER"; }
+# worst_of MODEL: the call's worst case: --call-worst, or the highest real cost in the ledger for MODEL if more.
+worst_of() { touch "$LEDGER"; awk -v m="$1" -v w="$CALL_WORST" '$2 == m { r = substr($4, 6) + 0; if (r > w) w = r } END { printf "%g", w }' "$LEDGER"; }
 calls_of() { awk -v j="$JOB" '$1 == j' "$JOBS"; }
 
 # Why a paid call may not start now, or nothing.
@@ -66,10 +78,11 @@ check_line() {
 
 # call NAME KIND MODEL FROM ID...: one paid call. Returns 3 when the job must stop.
 call() {
-  local name=$1 kind=$2 model=$3 from=$4 w h prompt real counted rc=0 out
+  local name=$1 kind=$2 model=$3 from=$4 w h prompt real counted rc=0 out worst
   shift 4
   w=$WORK/calls/$name
-  awk -v s="$(spent)" -v c="$CAP" -v m="$COUNT_MIN" 'BEGIN { exit !(s + m > c) }' && { say "REFUSED $name: spent $(spent) of the $CAP cap leaves no room for a counted call"; return 3; }
+  worst=$(worst_of "$model")
+  awk -v s="$(spent)" -v c="$CAP" -v m="$worst" 'BEGIN { exit !(s + m > c) }' && { say "REFUSED $name: spent $(spent) of the $CAP cap leaves no room for its worst case $worst"; return 3; }
   local why; why=$(busy) && { say "STOP: $why; rerun later (it resumes)"; return 3; }
   rm -rf -- "$w"; mkdir -p "$w/work" "$STATE/results"
   prompt=$(FROM=$([ "$from" = - ] || echo "$STATE/results/$from") prep prompt "$kind" "$JOB" "$name" "$w/work" "$@") || { say "prompt or bundle failed for $name"; return 3; }
@@ -81,7 +94,7 @@ call() {
   BENCH_REPO=$PIN_REPO node "$HERE/../standard-recheck/rc-home.js" clean "$h"
   real=$(prep credits "$w/call.out")
   counted=$(awk -v r="$real" -v m="$COUNT_MIN" 'BEGIN { if (r == "NaN" || r + 0 < m) print m; else print r + 0 }')
-  echo "$name $model $counted real=$real rc=$rc $(date -u +%FT%TZ)" >> "$LEDGER"
+  echo "$name $model $counted real=$real rc=$rc worst=$worst $(date -u +%FT%TZ)" >> "$LEDGER"
   out=$STATE/results/$name; [ "$kind" = write ] || out=$out.json
   if prep result "$kind" "$w/call.out" "$w/work" "$out"; then say "ok $name: counted $counted (real $real)"
   else say "NORESULT $name (exit $rc, see $w/call.err); the job stops, no retry"; return 3; fi
