@@ -440,10 +440,11 @@ The rest wraps the core, so the rules can be tested without a browser:
   draw: loading, error, or empty (no file yet, or a file with errors, with
   their messages). Once there is one, the Design and Run views draw it (next section).
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
-  (`@xyflow/react`). Nodes cannot be moved or connected; the view can be
-  panned, and zoomed with the controls. A stage can be selected, with a click
-  or with Enter or Space on the node; only the Design view draws the graph.
-  Each node can be reached with the Tab key and has a name for
+  (`@xyflow/react`). Nodes cannot be moved, and run-order handles cannot be
+  connected. In the Design view, dedicated data handles create output links.
+  The view can be panned and zoomed with the controls. A stage can be selected,
+  with a click or with Enter or Space on the node; only the Design view draws
+  the graph. Each node can be reached with the Tab key and has a name for
   screen readers, which ends with "selected" for the selected stage. The view
   fits the graph again when a stage is added or deleted. The view starts zoomed out
   far enough to show the longest workflow the API allows (40 stages), where the
