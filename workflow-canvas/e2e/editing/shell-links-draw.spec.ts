@@ -78,6 +78,82 @@ test('draws and deletes only generated reference lines', async ({
   await expect(edge(designer)).toHaveCount(0);
 });
 
+test('preserves trailing prompt newlines when deleting a generated link', async ({
+  designer,
+}) => {
+  await saveYaml(designer, (text) =>
+    withReference(text, 'Keep this.\n\nRead {draft.design}.'),
+  );
+  await edge(designer).click();
+  await designer.page.keyboard.press('Delete');
+  await designer.page.getByRole('tab', { name: 'Properties' }).click();
+  await expect(designer.prompt).toHaveValue('Keep this.\n');
+});
+
+test('deletes generated links with Backspace', async ({ designer }) => {
+  await saveYaml(designer, (text) =>
+    withReference(text, 'Read {draft.design}.'),
+  );
+  await edge(designer).click();
+  await designer.page.keyboard.press('Backspace');
+  await expect(edge(designer)).toHaveCount(0);
+  await expect(designer.page.getByTestId('designer-live')).toHaveText(
+    'Link design removed.',
+  );
+});
+
+test('deletes generated links from the edge menu', async ({ designer }) => {
+  await saveYaml(designer, (text) =>
+    withReference(text, 'Read {draft.design}.'),
+  );
+  await edge(designer).click();
+  await designer.page.getByRole('button', { name: 'Link actions' }).click();
+  await designer.page.getByRole('menuitem', { name: 'Delete link' }).click();
+  await expect(edge(designer)).toHaveCount(0);
+});
+
+test('blocks deletion when the target prompt writer refuses it', async ({
+  designer,
+}) => {
+  await saveYaml(designer, (text) =>
+    text
+      .replace(
+        DRAFT_OUTCOME,
+        `${DRAFT_OUTCOME}    outputs:\n      design: DESIGN.md\n`,
+      )
+      .replace(
+        REVIEW_BLOCK,
+        '  - {name: review, agent: k-quality-assurance, outcome: "Check that the greeting is clear and correct", prompt: "Read {draft.design}."}\n',
+      ),
+  );
+  const link = edge(designer);
+  await link.click();
+  await expect(
+    designer.page.getByRole('button', { name: 'Link actions' }),
+  ).toBeDisabled();
+  await designer.page.keyboard.press('Delete');
+  await expect(link).toBeVisible();
+  await expect(designer.page.getByTestId('designer-live')).not.toHaveText(
+    'Link design removed.',
+  );
+});
+
+test('draws a same-stage reference decoded from an escaped scalar', async ({
+  designer,
+}) => {
+  await saveYaml(designer, (text) =>
+    text.replace(
+      DRAFT_OUTCOME,
+      `${DRAFT_OUTCOME}    outputs:\n      design: DESIGN.md\n    prompt: "Read \\u007bdraft.design\\u007d."\n`,
+    ),
+  );
+  await expect(
+    designer.page.getByRole('group', {
+      name: 'Output design from stage draft to stage draft',
+    }),
+  ).toBeVisible();
+});
+
 test('keeps deletion blocked while raw YAML is pending', async ({
   designer,
 }) => {

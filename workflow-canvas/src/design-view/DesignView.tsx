@@ -49,6 +49,7 @@ import {
   canRemoveStage,
   changeBlocker,
   checksBlocker,
+  dataUnlinkBlocker,
   doneWhenBlocker,
   DEFAULT_AGENT,
   fileBlocker,
@@ -753,6 +754,22 @@ export function DesignView({
       )?.id,
     [state.draft.stages],
   );
+  const deleteLinkBlocker = useCallback(
+    (
+      sourceNodeId: string,
+      targetNodeId: string,
+      output: string,
+      generated: boolean,
+    ) => {
+      if (!generated) return frozen;
+      const sourceId = stageIdFromNode(sourceNodeId);
+      const targetId = stageIdFromNode(targetNodeId);
+      return sourceId && targetId
+        ? dataUnlinkBlocker(state, sourceId, targetId, output)
+        : 'The output link no longer matches these stages.';
+    },
+    [frozen, stageIdFromNode, state],
+  );
   const deleteLink = useCallback(
     (
       sourceNodeId: string,
@@ -853,7 +870,11 @@ export function DesignView({
             <WorkflowCanvas
               graph={graph}
               selection={selection}
-              linking={{ onDelete: deleteLink, disabledReason: frozen }}
+              linking={{
+                onDelete: deleteLink,
+                deleteBlocker: deleteLinkBlocker,
+                disabledReason: frozen,
+              }}
               insertion={{
                 ...(insertDisabledReason === undefined
                   ? {}

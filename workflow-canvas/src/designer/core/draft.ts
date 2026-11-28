@@ -476,6 +476,13 @@ export function unlinkOutput(
   const target = draft.stages.find((stage) => stage.id === targetId);
   if (!source || !target) return draft;
   const line = `Read {${source.name}.${output}}.`;
+  if (target.prompt === line) return change(draft, targetId, { prompt: '' });
+  const suffix = `\n${line}`;
+  if (target.prompt.endsWith(suffix)) {
+    return change(draft, targetId, {
+      prompt: target.prompt.slice(0, -suffix.length),
+    });
+  }
   const lines = target.prompt.split('\n');
   const at = lines.lastIndexOf(line);
   if (at < 0) return draft;
