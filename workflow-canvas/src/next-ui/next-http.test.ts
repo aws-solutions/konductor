@@ -889,7 +889,11 @@ describe('createNextPorts, the check of a text', () => {
 
   it('reads an intent with the longest outcome the contract allows', async () => {
     const outcome = 'a'.repeat(300);
-    const view = { ...answer.view, intent: { outcome, accept: [] } };
+    const accept = [
+      { id: 'readme', file: 'README.md' },
+      { id: 'tests', run: ['npm', 'test'] },
+    ];
+    const view = { ...answer.view, intent: { outcome, accept } };
     const { fetchFn } = serverOf({ body: { view, diagnostics: [] } });
     const ports = createNextPorts(TOKEN, { fetchFn });
 
@@ -899,7 +903,7 @@ describe('createNextPorts, the check of a text', () => {
     );
 
     // Every other key of the intent comes through with it.
-    expect(checked.view?.intent).toEqual({ outcome, accept: [] });
+    expect(checked.view?.intent).toEqual({ outcome, accept });
   });
 
   it('reads a view with as many stages as a workflow may have', async () => {
@@ -1010,6 +1014,37 @@ describe('createNextPorts, the check of a text', () => {
       { ...answer.view, intent: 'Ship' },
     ],
     ['an intent with no outcome', { ...answer.view, intent: { accept: [] } }],
+    [
+      'acceptance checks that are not a list',
+      { ...answer.view, intent: { outcome: 'Ship', accept: 'readme' } },
+    ],
+    [
+      'an acceptance check with both kinds',
+      {
+        ...answer.view,
+        intent: {
+          outcome: 'Ship',
+          accept: [{ id: 'readme', file: 'README.md', run: ['test'] }],
+        },
+      },
+    ],
+    [
+      'an acceptance check with an empty run',
+      {
+        ...answer.view,
+        intent: {
+          outcome: 'Ship',
+          accept: [{ id: 'tests', run: [] }],
+        },
+      },
+    ],
+    [
+      'an acceptance check with neither kind',
+      {
+        ...answer.view,
+        intent: { outcome: 'Ship', accept: [{ id: 'tests' }] },
+      },
+    ],
     [
       'an intent whose outcome is not text',
       { ...answer.view, intent: { outcome: 7 } },

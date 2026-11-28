@@ -10,6 +10,7 @@ import {
   idsOf,
   sourceParamIds,
   type Draft,
+  type DraftCheck,
   type SubmittedOutputRows,
 } from './draft';
 import { checkOf, type Check } from './problems';
@@ -69,6 +70,8 @@ export interface EditState {
   sent?: readonly string[];
   /** Output row ids submitted for each stage, in submitted stage order. */
   sentOutputs?: readonly SubmittedOutputRows[];
+  /** Check row keys submitted in source order. */
+  sentChecks?: readonly string[];
   /** The ids of the params in the save that is going on, in order. */
   sentParams?: readonly string[];
   selectedId: string;
@@ -131,6 +134,13 @@ export type EditEvent =
   | { type: 'add-output'; stageId: string }
   | { type: 'remove-output'; stageId: string; outputId: string }
   | {
+      type: 'set-check';
+      key: string;
+      check: Omit<DraftCheck, 'key' | 'sourceIndex'>;
+    }
+  | { type: 'add-check' }
+  | { type: 'remove-check'; key: string }
+  | {
       type: 'set-param';
       id: string;
       change: Partial<
@@ -180,7 +190,12 @@ export function openDocument(
 ): EditState | undefined {
   if (!isEditable(document)) return undefined;
   const prompts = savedPrompts(document)?.map((spot) => spot.text);
-  const draft = draftOf(document.view.stages, prompts, document.view.params);
+  const draft = draftOf(
+    document.view.stages,
+    prompts,
+    document.view.params,
+    document.view.intent.accept,
+  );
   return {
     saved: document,
     draft,

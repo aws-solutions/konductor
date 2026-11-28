@@ -26,6 +26,7 @@ const TEXT = [
 
 const VIEW = {
   ...HELLO_VIEW,
+  intent: { outcome: 'Add a greeting' },
   params: undefined,
   stages: [
     {

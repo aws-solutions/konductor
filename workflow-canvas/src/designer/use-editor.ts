@@ -17,6 +17,7 @@ import {
   reloadWorkflow,
   saveDraft,
   textOf,
+  type DraftCheck,
   type EditState,
 } from './core';
 
@@ -36,6 +37,9 @@ export interface Editor {
   ): void;
   addOutput(stageId: string): void;
   removeOutput(stageId: string, outputId: string): void;
+  setCheck(key: string, check: Omit<DraftCheck, 'key' | 'sourceIndex'>): void;
+  addCheck(): void;
+  removeCheck(key: string): void;
   setParam(
     id: string,
     change: Partial<
@@ -139,6 +143,9 @@ export function useEditor(
         addOutput: (stageId) => dispatch({ type: 'add-output', stageId }),
         removeOutput: (stageId, outputId) =>
           dispatch({ type: 'remove-output', stageId, outputId }),
+        setCheck: (key, check) => dispatch({ type: 'set-check', key, check }),
+        addCheck: () => dispatch({ type: 'add-check' }),
+        removeCheck: (key) => dispatch({ type: 'remove-check', key }),
         setParam: (id, change) => dispatch({ type: 'set-param', id, change }),
         addParam: () => dispatch({ type: 'add-param' }),
         removeParam: (id) => dispatch({ type: 'remove-param', id }),

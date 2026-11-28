@@ -8,6 +8,7 @@ import {
   errorMessageOf,
   errorRunIdOf,
   isObject,
+  parseIntent,
   parseRunStarted,
   parseWorkflowDocument,
 } from '../api/parse';
@@ -349,7 +350,8 @@ const OUTCOME_LONGEST = 300;
 // it came.
 function intentOrFail(value: unknown): unknown {
   if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
-  const outcome = textOrFail(value.outcome);
+  const intent = parseIntent(value);
+  const { outcome } = intent;
   if (
     outcome === '' ||
     [...outcome].length > OUTCOME_LONGEST ||
@@ -357,7 +359,7 @@ function intentOrFail(value: unknown): unknown {
   ) {
     throw new ApiError(BAD_REPLY, 200);
   }
-  return value;
+  return { ...value, ...intent };
 }
 
 // The parsed workflow of the answer. `parse.ts` has `parseCheckResult` for

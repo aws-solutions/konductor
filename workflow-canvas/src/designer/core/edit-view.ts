@@ -6,6 +6,7 @@ import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 import { paramsInPlaceBlocker, withParams } from './param-text';
 import { outputEditBlocker, withOutputs } from './outputs-text';
+import { withAcceptanceChecks } from './checks-spots';
 
 /** The words that say why a read-only workflow cannot be changed. */
 export const READ_ONLY_REASON = 'The workflow is read-only.';
@@ -117,6 +118,37 @@ export function paramIdsForWrite(state: EditState): string[] {
   return paramsForWrite(state).map((param) => param.id);
 }
 
+/** Whether the acceptance-check draft differs from the saved view. */
+export function acceptanceChecksDirty(state: EditState): boolean {
+  const before = state.saved.view.intent.accept ?? [];
+  const checks = state.draft.checks ?? [];
+  return (
+    before.length !== checks.length ||
+    checks.some((check, index) => {
+      const saved = before[index];
+      return (
+        !saved ||
+        check.id !== saved.id ||
+        check.kind !== (saved.run === undefined ? 'file' : 'run') ||
+        check.file !== (saved.file ?? '') ||
+        check.run.join('\0') !== (saved.run ?? []).join('\0')
+      );
+    })
+  );
+}
+
+function acceptanceCheckRequests(state: EditState) {
+  return (state.draft.checks ?? []).map(
+    ({ id, kind, file, run, sourceIndex }) => ({
+      id,
+      kind,
+      file,
+      run,
+      ...(sourceIndex === undefined ? {} : { source: sourceIndex }),
+    }),
+  );
+}
+
 /** Whether any stage output declaration differs from the saved view. */
 export function outputsDirty(state: EditState): boolean {
   return state.draft.stages.some((stage) => {
@@ -150,11 +182,12 @@ function outputRequests(state: EditState) {
   });
 }
 
-// Whether the stages, params, outputs or prompts of the draft differ from the file.
+// Whether the stages, params, outputs, checks or prompts differ from the file.
 function formDirty(state: EditState): boolean {
   if (!sameStages(stagesOf(state.draft), state.saved.view.stages)) return true;
   if (paramsDirty(state)) return true;
   if (outputsDirty(state)) return true;
+  if (acceptanceChecksDirty(state)) return true;
   // A file whose prompts cannot be read has none that the draft could change.
   const spots = savedPrompts(state.saved);
   return (
@@ -205,10 +238,17 @@ export function writtenOf(state: EditState): Written {
     staged.ok && outputsDirty(state)
       ? withOutputs(staged.text, outputRequests(state))
       : staged;
-  const result =
-    withStageOutputs.ok && paramsDirty(state)
-      ? withParams(
+  const withChecks =
+    withStageOutputs.ok && acceptanceChecksDirty(state)
+      ? withAcceptanceChecks(
           withStageOutputs.text,
+          acceptanceCheckRequests(state),
+        )
+      : withStageOutputs;
+  const result =
+    withChecks.ok && paramsDirty(state)
+      ? withParams(
+          withChecks.text,
           paramsForWrite(state).map((param) => {
             const from = state.paramBases.indexOf(param.id);
             const original =
@@ -235,7 +275,7 @@ export function writtenOf(state: EditState): Written {
           }),
           saved.view.params !== undefined,
         )
-      : withStageOutputs;
+      : withChecks;
   written.set(draft, { saved, bases, result });
   return result;
 }
