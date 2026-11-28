@@ -1,14 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import {
-  isAlias,
-  isMap,
-  isScalar,
-  isSeq,
-  parseDocument,
-  type Pair,
-  type Scalar,
-  type YAMLMap,
-} from 'yaml';
+import { outputSpots, type OutputsSpot } from './outputs-spots';
 import { scalar } from './scalar-text';
 import type { Written } from './stage-text';
 
@@ -38,10 +29,6 @@ const LAYOUT_REASON =
   'The outputs of this stage use a layout the editor cannot keep byte for byte. Change them in the YAML tab.';
 const COMMENTS_REASON =
   'The outputs of this stage contain comments, so adding or removing a row could move them. Change the rows in the YAML tab.';
-const METADATA_REASON =
-  'The outputs of this stage use an anchor, alias or tag, so the editor cannot change them safely. Change them in the YAML tab.';
-const DUPLICATE_REASON =
-  'The outputs of this stage contain a duplicate key, so the editor cannot change them safely. Change them in the YAML tab.';
 
 interface Patch {
   readonly start: number;
@@ -49,39 +36,8 @@ interface Patch {
   readonly text: string;
 }
 
-function pairNamed(pair: Pair, name: string): boolean {
-  return isScalar(pair.key) && pair.key.value === name;
-}
-
-function textScalar(node: unknown): node is Scalar<string> {
-  return (
-    isScalar(node) &&
-    typeof node.value === 'string' &&
-    node.range !== undefined &&
-    node.anchor === undefined &&
-    node.tag === undefined
-  );
-}
-
 function eolOf(text: string): string {
   return text.includes('\r\n') ? '\r\n' : text.includes('\r') ? '\r' : '\n';
-}
-
-function columnOf(text: string, offset: number): number {
-  let start = offset;
-  while (start > 0 && text[start - 1] !== '\n' && text[start - 1] !== '\r') {
-    start -= 1;
-  }
-  return offset - start;
-}
-
-function afterLine(text: string, offset: number): number {
-  let end = offset;
-  while (end < text.length && text[end] !== '\n' && text[end] !== '\r') {
-    end += 1;
-  }
-  if (text[end] === '\r' && text[end + 1] === '\n') return end + 2;
-  return end < text.length ? end + 1 : end;
 }
 
 function renderFlow(outputs: readonly OutputToWrite[]): string {
@@ -103,161 +59,94 @@ function same(
   );
 }
 
-function mapPairs(map: YAMLMap): readonly Pair[] | string {
-  const names = new Set<string>();
-  const pairs: Pair[] = [];
-  for (const pair of map.items) {
-    if (
-      isAlias(pair.value) ||
-      !textScalar(pair.key) ||
-      !textScalar(pair.value)
-    ) {
-      return METADATA_REASON;
-    }
-    const name = pair.key.value;
-    if (names.has(name)) return DUPLICATE_REASON;
-    names.add(name);
-    pairs.push(pair);
-  }
-  return pairs;
-}
-
 function replaceMap(
-  text: string,
-  map: YAMLMap,
+  spot: NonNullable<OutputsSpot['outputs']>,
   outputs: readonly OutputToWrite[],
-): Patch | string {
-  if (!map.range) return LAYOUT_REASON;
-  const source = text.slice(map.range[0], map.range[1]);
-  if (source.includes('#')) return COMMENTS_REASON;
-  if (map.flow) {
-    return {
-      start: map.range[0],
-      end: map.range[1],
-      text: renderFlow(outputs),
-    };
+  eol: string,
+): Patch {
+  if (spot.flow) {
+    return { start: spot.start, end: spot.end, text: renderFlow(outputs) };
   }
-  const first = map.items[0]?.key as Scalar | null | undefined;
-  const last = map.items.at(-1);
-  const lastKey = last?.key as Scalar | null | undefined;
-  const lastValue = last?.value as Scalar | YAMLMap | null | undefined;
-  const contentEnd = Math.max(
-    lastKey?.range?.[1] ?? 0,
-    lastValue?.range?.[1] ?? 0,
-  );
-  if (!first?.range || contentEnd === 0) return LAYOUT_REASON;
-  if (outputs.length === 0) {
-    return { start: map.range[0], end: contentEnd, text: '{}' };
-  }
-  const indent = ' '.repeat(columnOf(text, first.range[0]));
-  const eol = eolOf(text);
   return {
-    start: map.range[0],
-    end: contentEnd,
-    text: outputs
-      .map(
-        ({ name, path }, index) =>
-          `${index === 0 ? '' : indent}${name}: ${scalar(path)}`,
-      )
-      .join(eol),
+    start: spot.start,
+    end: spot.contentEnd,
+    text:
+      outputs.length === 0
+        ? '{}'
+        : outputs
+            .map(
+              ({ name, path }, index) =>
+                `${index === 0 ? '' : spot.indent}${name}: ${scalar(path)}`,
+            )
+            .join(eol),
   };
 }
 
 function editMap(
-  text: string,
-  map: YAMLMap,
+  spot: NonNullable<OutputsSpot['outputs']>,
   outputs: readonly OutputToWrite[],
+  eol: string,
 ): readonly Patch[] | string {
-  const parsed = mapPairs(map);
-  if (typeof parsed === 'string') return parsed;
-  if (parsed.length !== outputs.length) {
-    const patch = replaceMap(text, map, outputs);
-    return typeof patch === 'string' ? patch : [patch];
+  if (spot.pairs.length !== outputs.length) {
+    return spot.hasComments
+      ? COMMENTS_REASON
+      : [replaceMap(spot, outputs, eol)];
   }
-  const patches: Patch[] = [];
-  for (const [index, output] of outputs.entries()) {
-    const pair = parsed[index]!;
-    const key = pair.key as Scalar<string>;
-    const value = pair.value as Scalar<string>;
-    if (key.value !== output.name) {
-      patches.push({
-        start: key.range![0],
-        end: key.range![1],
-        text: output.name,
-      });
-    }
-    if (value.value !== output.path) {
-      patches.push({
-        start: value.range![0],
-        end: value.range![1],
-        text: scalar(output.path),
-      });
-    }
-  }
-  return patches;
+  return outputs.flatMap((output, index) => {
+    const before = spot.pairs[index]!;
+    return [
+      ...(before.name === output.name
+        ? []
+        : [{ start: before.key[0], end: before.key[1], text: output.name }]),
+      ...(before.path === output.path
+        ? []
+        : [
+            {
+              start: before.value[0],
+              end: before.value[1],
+              text: scalar(output.path),
+            },
+          ]),
+    ];
+  });
 }
 
 function insertOutputs(
   text: string,
-  stage: YAMLMap,
+  spot: OutputsSpot,
   outputs: readonly OutputToWrite[],
+  eol: string,
 ): Patch | string | undefined {
   if (outputs.length === 0) return undefined;
-  if (!stage.range || stage.items.length === 0) return LAYOUT_REASON;
-  if (stage.flow) {
-    const close = stage.range[1] - 1;
+  if (spot.stageFlow && spot.stageClose !== undefined) {
     return {
-      start: close,
-      end: close,
-      text: `${stage.items.length > 0 ? ', ' : ''}outputs: ${renderFlow(outputs)}`,
+      start: spot.stageClose,
+      end: spot.stageClose,
+      text: `, outputs: ${renderFlow(outputs)}`,
     };
   }
-  const first = stage.items[0]?.key as Scalar | null | undefined;
-  const last = stage.items.at(-1);
-  const lastKey = last?.key as Scalar | null | undefined;
-  const lastValue = last?.value as Scalar | YAMLMap | null | undefined;
-  const lastEnd = Math.max(
-    lastKey?.range?.[1] ?? 0,
-    lastValue?.range?.[1] ?? 0,
-  );
-  if (!first?.range || lastEnd === 0) return LAYOUT_REASON;
-  const eol = eolOf(text);
-  const indent = ' '.repeat(columnOf(text, first.range[0]));
-  const child = `${indent}  `;
-  const at = afterLine(text, lastEnd);
+  if (spot.insertAt === undefined) return LAYOUT_REASON;
+  const child = `${spot.keyIndent}  `;
   const prefix =
-    at === text.length && !text.endsWith('\n') && !text.endsWith('\r')
+    spot.insertAt === text.length &&
+    !text.endsWith('\n') &&
+    !text.endsWith('\r')
       ? eol
       : '';
   return {
-    start: at,
-    end: at,
-    text: `${prefix}${indent}outputs:${eol}${outputs
+    start: spot.insertAt,
+    end: spot.insertAt,
+    text: `${prefix}${spot.keyIndent}outputs:${eol}${outputs
       .map(({ name, path }) => `${child}${name}: ${scalar(path)}${eol}`)
       .join('')}`,
   };
 }
 
-function stageMaps(text: string): readonly YAMLMap[] | string {
-  const document = parseDocument(text, { uniqueKeys: false });
-  if (document.errors.length > 0 || !isMap(document.contents))
-    return LAYOUT_REASON;
-  const roots = document.contents.items.filter((pair) =>
-    pairNamed(pair, 'stages'),
-  );
-  if (roots.length !== 1 || !isSeq(roots[0]!.value)) return LAYOUT_REASON;
-  const stages: YAMLMap[] = [];
-  for (const item of roots[0]!.value.items) {
-    if (!isMap(item)) return LAYOUT_REASON;
-    stages.push(item);
-  }
-  return stages;
-}
-
 /** The file-wide reason stage outputs cannot be edited in place. */
 export function outputsInPlaceBlocker(text: string): string | undefined {
-  const stages = stageMaps(text);
-  return typeof stages === 'string' ? stages : undefined;
+  const spots = outputSpots(text);
+  if (typeof spots === 'string') return spots;
+  return spots.find((spot) => spot.reason)?.reason;
 }
 
 /** Writes output declarations by source range while preserving every other byte. */
@@ -272,44 +161,26 @@ export function withOutputs(
   ) {
     return { ok: false, reason: OUTPUT_NAME_ERROR };
   }
-  const stages = stageMaps(text);
-  if (typeof stages === 'string' || stages.length !== requested.length) {
+  const spots = outputSpots(text);
+  if (typeof spots === 'string' || spots.length !== requested.length) {
     return {
       ok: false,
-      reason: typeof stages === 'string' ? stages : LAYOUT_REASON,
+      reason: typeof spots === 'string' ? spots : LAYOUT_REASON,
     };
   }
+  const eol = eolOf(text);
   const patches: Patch[] = [];
   for (const [index, request] of requested.entries()) {
     if (same(request.outputs, request.before)) continue;
-    const stage = stages[index]!;
-    const pairs = stage.items.filter((pair) => pairNamed(pair, 'outputs'));
-    if (pairs.length > 1) return { ok: false, reason: DUPLICATE_REASON };
-    const pair = pairs[0];
-    if (!pair) {
-      const inserted = insertOutputs(text, stage, request.outputs);
+    const spot = spots[index]!;
+    if (spot.reason) return { ok: false, reason: spot.reason };
+    if (!spot.outputs) {
+      const inserted = insertOutputs(text, spot, request.outputs, eol);
       if (typeof inserted === 'string') return { ok: false, reason: inserted };
       if (inserted) patches.push(inserted);
       continue;
     }
-    if (
-      isAlias(pair.value) ||
-      !isMap(pair.value) ||
-      pair.value.anchor ||
-      pair.value.tag
-    ) {
-      return { ok: false, reason: METADATA_REASON };
-    }
-    const outputsKey = pair.key as Scalar | null | undefined;
-    if (
-      pair.value.items.length !== request.outputs.length &&
-      outputsKey?.range &&
-      pair.value.range &&
-      text.slice(outputsKey.range[1], pair.value.range[1]).includes('#')
-    ) {
-      return { ok: false, reason: COMMENTS_REASON };
-    }
-    const edited = editMap(text, pair.value, request.outputs);
+    const edited = editMap(spot.outputs, request.outputs, eol);
     if (typeof edited === 'string') return { ok: false, reason: edited };
     patches.push(...edited);
   }
