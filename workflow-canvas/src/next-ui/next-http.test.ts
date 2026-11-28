@@ -995,6 +995,14 @@ describe('createNextPorts, the check of a text', () => {
       { ...answer.view, stages: [{ ...stage, agent: 7 }] },
     ],
     [
+      'a stage whose done_when is not a list',
+      { ...answer.view, stages: [{ ...stage, done_when: 'check' }] },
+    ],
+    [
+      'a stage whose done_when entry is not text',
+      { ...answer.view, stages: [{ ...stage, done_when: [7] }] },
+    ],
+    [
       'a stage range that is not a mapping',
       { ...answer.view, stages: [{ ...stage, range: 'lines 1 to 2' }] },
     ],

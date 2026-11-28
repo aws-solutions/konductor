@@ -23,6 +23,7 @@ import {
   renameStage,
   setAgent,
   setCheck,
+  setDoneWhen,
   setOutput,
   setParam,
   setPrompt,
@@ -158,6 +159,18 @@ function checkAdded(state: EditState): EditState {
 
 function checkRemoved(state: EditState, key: string): EditState {
   return edited(state, removeCheck(state.draft, key), state.selectedId);
+}
+
+function doneWhenSet(
+  state: EditState,
+  stageId: string,
+  keys: readonly string[],
+): EditState {
+  return edited(
+    state,
+    setDoneWhen(state.draft, stageId, keys),
+    state.selectedId,
+  );
 }
 
 function paramSet(
@@ -428,6 +441,8 @@ function step(
       return checkAdded(state);
     case 'remove-check':
       return checkRemoved(state, event.key);
+    case 'set-done-when':
+      return doneWhenSet(state, event.stageId, event.keys);
     case 'set-param':
       return paramSet(state, event.id, event.change);
     case 'add-param':

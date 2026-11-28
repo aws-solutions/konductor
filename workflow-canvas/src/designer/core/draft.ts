@@ -30,6 +30,9 @@ export interface DraftOutput {
   readonly path: string;
 }
 
+export type DraftCheckReference =
+  { readonly key: string } | { readonly id: string };
+
 /** A stage being edited. The `id` stays when the stage is renamed. */
 export interface DraftStage {
   id: string;
@@ -43,6 +46,8 @@ export interface DraftStage {
   prompt: string;
   outputs?: readonly DraftOutput[];
   nextOutputId?: number;
+  /** Stable check keys, or unresolved source ids. */
+  doneWhen?: readonly DraftCheckReference[];
 }
 
 /** The editable workflow declaration. */
@@ -67,6 +72,16 @@ export const DEFAULT_AGENT = 'k-developer';
 
 function idOf(number: number): string {
   return `s${number}`;
+}
+
+function checkReferences(
+  ids: readonly string[],
+  checks: readonly DraftCheck[],
+): DraftCheckReference[] {
+  return ids.map((id) => {
+    const matches = checks.filter((check) => check.id === id);
+    return matches.length === 1 ? { key: matches[0]!.key } : { id };
+  });
 }
 
 /**
@@ -105,6 +120,14 @@ export function draftOf(
       required: false,
     });
   }
+  const draftChecks: DraftCheck[] = checks.map((check, index) => ({
+    key: `c${index + 1}`,
+    sourceIndex: index,
+    id: check.id,
+    kind: check.run === undefined ? 'file' : 'run',
+    file: check.file ?? '',
+    run: check.run ?? [],
+  }));
   return {
     stages: stages.map((stage, index) => ({
       ...stage,
@@ -119,16 +142,10 @@ export function draftOf(
         }),
       ),
       nextOutputId: Object.keys(stage.outputs ?? {}).length + 1,
+      doneWhen: checkReferences(stage.done_when ?? [], draftChecks),
     })),
     params: draftParams,
-    checks: checks.map((check, index) => ({
-      key: `c${index + 1}`,
-      sourceIndex: index,
-      id: check.id,
-      kind: check.run === undefined ? 'file' : 'run',
-      file: check.file ?? '',
-      run: check.run ?? [],
-    })),
+    checks: draftChecks,
     nextId: stages.length + 1,
     nextParamId,
     nextCheckId: checks.length + 1,
@@ -257,6 +274,7 @@ export function insertStage(draft: Draft, index: number, agent: string): Draft {
     prompt: '',
     outputs: [],
     nextOutputId: 1,
+    doneWhen: [],
   };
   const at = Math.max(0, Math.min(index, draft.stages.length));
   return {
@@ -275,7 +293,10 @@ function change(
   draft: Draft,
   id: string,
   edit: Partial<
-    Pick<DraftStage, 'name' | 'agent' | 'prompt' | 'outputs' | 'nextOutputId'>
+    Pick<
+      DraftStage,
+      'name' | 'agent' | 'prompt' | 'outputs' | 'nextOutputId' | 'doneWhen'
+    >
   >,
 ): Draft {
   return {
@@ -348,6 +369,20 @@ export function removeOutput(
     : change(draft, stageId, { outputs });
 }
 
+function bindUniqueCheckReferences(
+  stages: readonly DraftStage[],
+  checks: readonly DraftCheck[],
+): readonly DraftStage[] {
+  return stages.map((stage) => ({
+    ...stage,
+    doneWhen: (stage.doneWhen ?? []).map((reference) => {
+      if ('key' in reference) return reference;
+      const matches = checks.filter(({ id }) => id === reference.id);
+      return matches.length === 1 ? { key: matches[0]!.key } : reference;
+    }),
+  }));
+}
+
 /** Changes one acceptance check. */
 export function setCheck(
   draft: Draft,
@@ -357,11 +392,13 @@ export function setCheck(
   if (!(draft.checks ?? []).some((candidate) => candidate.key === key)) {
     return draft;
   }
+  const checks = (draft.checks ?? []).map((candidate) =>
+    candidate.key === key ? { ...candidate, ...check } : candidate,
+  );
   return {
     ...draft,
-    checks: (draft.checks ?? []).map((candidate) =>
-      candidate.key === key ? { ...candidate, ...check } : candidate,
-    ),
+    checks,
+    stages: bindUniqueCheckReferences(draft.stages, checks),
   };
 }
 
@@ -372,30 +409,60 @@ export function addCheck(draft: Draft): Draft {
   const ids = new Set(checks.map((check) => check.id));
   while (ids.has(`check-${number}`)) number += 1;
   const next = draft.nextCheckId ?? 1;
+  const added: DraftCheck = {
+    key: `c${next}`,
+    id: `check-${number}`,
+    kind: 'file',
+    file: '',
+    run: [],
+  };
+  const nextChecks = [...checks, added];
   return {
     ...draft,
-    checks: [
-      ...checks,
-      {
-        key: `c${next}`,
-        id: `check-${number}`,
-        kind: 'file',
-        file: '',
-        run: [],
-      },
-    ],
+    checks: nextChecks,
+    stages: bindUniqueCheckReferences(draft.stages, nextChecks),
     nextCheckId: next + 1,
   };
 }
 
-/** Removes one acceptance check. */
+/** Removes one acceptance check and every reference to its stable key. */
 export function removeCheck(draft: Draft, key: string): Draft {
   const checks = draft.checks ?? [];
   if (!checks.some((check) => check.key === key)) return draft;
+  const nextChecks = checks.filter((check) => check.key !== key);
+  const stages = draft.stages.map((stage) => ({
+    ...stage,
+    doneWhen: (stage.doneWhen ?? []).filter(
+      (reference) => !('key' in reference) || reference.key !== key,
+    ),
+  }));
   return {
     ...draft,
-    checks: checks.filter((check) => check.key !== key),
+    checks: nextChecks,
+    stages: bindUniqueCheckReferences(stages, nextChecks),
   };
+}
+
+/** Changes the stable check keys that one stage waits for. */
+export function setDoneWhen(
+  draft: Draft,
+  stageId: string,
+  keys: readonly string[],
+): Draft {
+  return change(draft, stageId, {
+    doneWhen: keys.map((key) => ({ key })),
+  });
+}
+
+/** Resolves stable check references to the ids written in YAML. */
+export function doneWhenIds(
+  draft: Draft,
+  references: readonly DraftCheckReference[],
+): string[] {
+  const ids = new Map((draft.checks ?? []).map(({ key, id }) => [key, id]));
+  return references.map((reference) =>
+    'id' in reference ? reference.id : (ids.get(reference.key) ?? ''),
+  );
 }
 
 /** Gives a parameter field the value as typed. */

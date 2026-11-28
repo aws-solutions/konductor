@@ -321,7 +321,15 @@ function viewStageOf(
   ) {
     throw new ApiError(BAD_REPLY, 200);
   }
-  return { ...value, name };
+  const doneWhen = value.done_when;
+  if (doneWhen !== undefined && !Array.isArray(doneWhen)) {
+    throw new ApiError(BAD_REPLY, 200);
+  }
+  return {
+    ...value,
+    name,
+    ...(doneWhen === undefined ? {} : { done_when: doneWhen.map(textOrFail) }),
+  };
 }
 
 // The `checks` of a run: a state per check id. A run of the contract always

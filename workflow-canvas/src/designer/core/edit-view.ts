@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditableDocument, EditState } from './edit-state';
-import { sameStages, stagesOf, type Draft, type DraftStage } from './draft';
+import {
+  doneWhenIds,
+  sameStages,
+  stagesOf,
+  type Draft,
+  type DraftStage,
+} from './draft';
 import { hasErrors, withEchoes, type Problem } from './problems';
 import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 import { paramsInPlaceBlocker, withParams } from './param-text';
 import { outputEditBlocker, withOutputs } from './outputs-text';
 import { withAcceptanceChecks } from './checks-spots';
+import { doneWhenEditBlocker, withDoneWhen } from './done-when-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
 export const READ_ONLY_REASON = 'The workflow is read-only.';
@@ -149,6 +156,35 @@ function acceptanceCheckRequests(state: EditState) {
   );
 }
 
+function doneWhenValues(state: EditState, stage: DraftStage): string[] {
+  return doneWhenIds(state.draft, stage.doneWhen ?? []);
+}
+
+/** Whether any stage completion checks differ from the saved view. */
+export function doneWhenDirty(state: EditState): boolean {
+  return state.draft.stages.some((stage) => {
+    const source = state.bases.indexOf(stage.id);
+    const before =
+      source < 0 ? [] : (state.saved.view.stages[source]?.done_when ?? []);
+    const values = doneWhenValues(state, stage);
+    return (
+      before.length !== values.length ||
+      values.some((value, index) => value !== before[index])
+    );
+  });
+}
+
+function doneWhenRequests(state: EditState) {
+  return state.draft.stages.map((stage) => {
+    const source = state.bases.indexOf(stage.id);
+    return {
+      values: doneWhenValues(state, stage),
+      before:
+        source < 0 ? [] : (state.saved.view.stages[source]?.done_when ?? []),
+    };
+  });
+}
+
 /** Whether any stage output declaration differs from the saved view. */
 export function outputsDirty(state: EditState): boolean {
   return state.draft.stages.some((stage) => {
@@ -188,6 +224,7 @@ function formDirty(state: EditState): boolean {
   if (paramsDirty(state)) return true;
   if (outputsDirty(state)) return true;
   if (acceptanceChecksDirty(state)) return true;
+  if (doneWhenDirty(state)) return true;
   // A file whose prompts cannot be read has none that the draft could change.
   const spots = savedPrompts(state.saved);
   return (
@@ -245,10 +282,18 @@ export function writtenOf(state: EditState): Written {
           acceptanceCheckRequests(state),
         )
       : withStageOutputs;
-  const result =
-    withChecks.ok && paramsDirty(state)
-      ? withParams(
+  const withCompletionChecks =
+    withChecks.ok && doneWhenDirty(state)
+      ? withDoneWhen(
           withChecks.text,
+          doneWhenRequests(state),
+          new Set((draft.checks ?? []).map(({ id }) => id)),
+        )
+      : withChecks;
+  const result =
+    withCompletionChecks.ok && paramsDirty(state)
+      ? withParams(
+          withCompletionChecks.text,
           paramsForWrite(state).map((param) => {
             const from = state.paramBases.indexOf(param.id);
             const original =
@@ -275,7 +320,7 @@ export function writtenOf(state: EditState): Written {
           }),
           saved.view.params !== undefined,
         )
-      : withChecks;
+      : withCompletionChecks;
   written.set(draft, { saved, bases, result });
   return result;
 }
@@ -319,6 +364,19 @@ export function paramsBlocker(state: EditState): string | undefined {
       state.saved.view.params !== undefined,
     )
   );
+}
+
+/** Why one stage's completion-check list cannot be changed. */
+export function doneWhenBlocker(
+  state: EditState,
+  stageId: string,
+): string | undefined {
+  const blocked = changeBlocker(state);
+  if (blocked) return blocked;
+  const sourceIndex = state.bases.indexOf(stageId);
+  return sourceIndex < 0
+    ? undefined
+    : doneWhenEditBlocker(state.saved.text, sourceIndex);
 }
 
 /** Why one stage's output declarations cannot make this kind of edit. */

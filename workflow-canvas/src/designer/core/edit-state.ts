@@ -140,6 +140,7 @@ export type EditEvent =
     }
   | { type: 'add-check' }
   | { type: 'remove-check'; key: string }
+  | { type: 'set-done-when'; stageId: string; keys: readonly string[] }
   | {
       type: 'set-param';
       id: string;

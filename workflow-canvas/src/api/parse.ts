@@ -93,6 +93,10 @@ function parseStage(value: unknown): StageView {
     stage.prompt_file === undefined ? undefined : stringOf(stage.prompt_file);
   const outputs =
     stage.outputs === undefined ? undefined : stringMapOf(stage.outputs);
+  const doneWhen =
+    stage.done_when === undefined
+      ? undefined
+      : arrayOf(stage.done_when).map(stringOf);
   return {
     name: stringOf(stage.name),
     kind: kindOf(stage.kind),
@@ -101,6 +105,7 @@ function parseStage(value: unknown): StageView {
     ...(prompt === undefined ? {} : { prompt }),
     ...(promptFile === undefined ? {} : { prompt_file: promptFile }),
     ...(outputs === undefined ? {} : { outputs }),
+    ...(doneWhen === undefined ? {} : { done_when: doneWhen }),
     range: parseRange(stage.range),
   };
 }

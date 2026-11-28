@@ -40,6 +40,7 @@ export interface Editor {
   setCheck(key: string, check: Omit<DraftCheck, 'key' | 'sourceIndex'>): void;
   addCheck(): void;
   removeCheck(key: string): void;
+  setDoneWhen(stageId: string, keys: readonly string[]): void;
   setParam(
     id: string,
     change: Partial<
@@ -146,6 +147,8 @@ export function useEditor(
         setCheck: (key, check) => dispatch({ type: 'set-check', key, check }),
         addCheck: () => dispatch({ type: 'add-check' }),
         removeCheck: (key) => dispatch({ type: 'remove-check', key }),
+        setDoneWhen: (stageId, keys) =>
+          dispatch({ type: 'set-done-when', stageId, keys }),
         setParam: (id, change) => dispatch({ type: 'set-param', id, change }),
         addParam: () => dispatch({ type: 'add-param' }),
         removeParam: (id) => dispatch({ type: 'remove-param', id }),
