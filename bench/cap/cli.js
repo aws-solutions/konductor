@@ -51,6 +51,7 @@ const { cmdKeepPrune } = require('./kprun.js');
 const { cmdUnits, cmdUnitStage } = require('./unitstage.js');
 const { cmdDelegation } = require('./delegation.js');
 const { cmdUnitAuthor } = require('./unitauthor.js');
+const { cmdSkillAuthor } = require('./skillauthor.js');
 const { cmdSelect } = require('./selectrun.js');
 const { cmdNudgePreview, cmdNudgeCheck } = require('./nudgecli.js');
 const { writeReview, importRatings } = require('./review.js');
@@ -737,7 +738,7 @@ const SUB_DISPATCH = {
   trigger: cmdTrigger, 'prune-report': cmdPruneReport, scenarios: cmdScenarios, controls: cmdControls,
   'skill-plan': cmdSkillPlan, 'skill-study': cmdSkillStudy, decide: cmdDecide, review: cmdReview,
   'review-import': cmdReviewImport, criteria: cmdCriteria, 'forced-prefix': cmdForcedPrefix, 'keep-prune': cmdKeepPrune,
-  select: cmdSelect, units: cmdUnits, 'unit-stage': cmdUnitStage, 'unit-author': cmdUnitAuthor,
+  select: cmdSelect, units: cmdUnits, 'unit-stage': cmdUnitStage, 'unit-author': cmdUnitAuthor, 'skill-author': cmdSkillAuthor,
   delegation: cmdDelegation, 'nudge-preview': cmdNudgePreview, 'nudge-check': cmdNudgeCheck,
 };
 const SUBCOMMANDS = Object.keys(SUB_DISPATCH);

@@ -4,8 +4,8 @@
   "batch": "pilot-a",
   "generated_at": "2026-11-28T19:00:00.000Z",
   "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
-  "skills_version": "konductor@535e3c47",
-  "rules_sha256": "ec9e746c1d1255cfa9ed6469db9f067262c03e39fa66bbc4987778874284810c",
+  "skills_version": "konductor@c9fd46b5",
+  "rules_sha256": "6b5dc5d1db45eb5c0a16dbe46f9f267bffc9d8b4a60113fe325dc550aa93c422",
   "scenarios": [
     {
       "id": "threat-modeling-pilot-a-1",

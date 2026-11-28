@@ -6,8 +6,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 
+const { filesOf } = require('../../cap/skillsource.js');
 const { verifyBaselines } = require('../../cap/baselineverify.js');
 const { BASELINES_DIR } = require('../../cap/frozen.js');
 
@@ -31,6 +33,18 @@ test('each pilot draft has two batches of 8 tasks, a selection set and recorded 
     for (const kind of ['load', 'none']) assert.ok(b.selection.requests.filter((r) => r.expect === kind).length >= 5, `${name} ${kind}`);
     assert.ok(b.rules.source?.subject?.sha256, `${name} rules.source`);
     assert.equal(v.manifest.sources[name].subject_sha256, b.rules.source.subject.sha256, name);
+  }
+});
+
+test('each pilot draft is what cap skill-author makes from its source in bench/cap/skill-sources (provenance aside)', () => {
+  const read = (s, f) => JSON.parse(fs.readFileSync(path.join(DRAFTS, s, f), 'utf8'));
+  for (const name of PILOT) {
+    const source = JSON.parse(fs.readFileSync(path.join(REPO, 'bench', 'cap', 'skill-sources', `${name}.json`), 'utf8'));
+    for (const [file, obj, kind] of filesOf(source, { repo: REPO }).files) {
+      const disk = read(name, file);
+      const body = { rules: (x) => x.rules, tasks: (x) => x.scenarios, buckets: (x) => x.scenarios, selection: (x) => x.requests }[kind];
+      assert.deepEqual(body(disk), body(obj), `${name}/${file}`);
+    }
   }
 });
 

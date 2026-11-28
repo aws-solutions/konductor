@@ -1,0 +1,637 @@
+{
+  "skill": "threat-modeling",
+  "request_context": "A request to find the security threats in a described system design and map controls to them, as a threat model a security reviewer can check.",
+  "writtenBy": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "generatedAt": "2026-11-28T19:00:00.000Z",
+  "selection": {
+    "load": [
+      0,
+      2,
+      4,
+      5,
+      9
+    ],
+    "none": [
+      10,
+      11,
+      13,
+      14,
+      17
+    ]
+  },
+  "rules": [
+    {
+      "c": "style",
+      "q": "Use consistent threat numbering (T-001, T-002, etc.)",
+      "o": "Numbers threats T-001 onward and mitigations M-001 onward.",
+      "h": "Any threat model."
+    },
+    {
+      "c": "useful",
+      "q": "Never assume or infer the existence of security controls, services, or architecture components not clearly specified",
+      "o": "Does not add components or controls the design does not state (a WAF, a VPC, encryption) and does not credit them.",
+      "w": "Invented controls give false comfort.",
+      "h": "A design that lists few controls."
+    },
+    {
+      "c": "useful",
+      "q": "Leaks usually happen in URLs, headers, logs, and emails, not in the primary store",
+      "o": "Traces each token, secret and credential through the flow and flags where it leaks: in URLs, headers, logs or emails.",
+      "w": "Most leaks are in transit paths, not the database.",
+      "h": "A flow with presigned links, tokens or API keys."
+    },
+    {
+      "c": "useful",
+      "q": "rating each threat's likelihood and impact and deriving its priority from both",
+      "o": "Gives each threat a likelihood and an impact rating, and a priority that follows from both.",
+      "w": "Priority without both ratings is a guess.",
+      "h": "Any threat list."
+    },
+    {
+      "c": "useful",
+      "q": "Do not mark something Implemented because it is a common default",
+      "o": "Marks each mitigation Implemented only when the design documents it, and Not implemented or Unknown otherwise.",
+      "w": "Assumed defaults are a common gap.",
+      "h": "A design silent on a usual default such as encryption."
+    },
+    {
+      "c": "useful",
+      "q": "State each mitigation as a concrete change to this design",
+      "o": "Writes each mitigation as a concrete change to a named component or setting, not consider X.",
+      "w": "Vague mitigations do not get built.",
+      "h": "Any mitigation list."
+    },
+    {
+      "c": "useful",
+      "q": "Security testing strategy as a table: test ID, type, the concrete input or action, expected result, and the threat IDs it covers",
+      "o": "Gives a test table with test id, type, concrete input, expected result and the threat ids covered.",
+      "w": "Tests tied to threats prove mitigations work.",
+      "h": "A request that asks how to test."
+    },
+    {
+      "c": "useful",
+      "q": "Ensure each threat has at least one mitigation",
+      "o": "Maps every threat to at least one mitigation.",
+      "w": "An unmitigated threat is an open risk.",
+      "h": "Any threat list."
+    },
+    {
+      "c": "useful",
+      "q": "each in-scope component against the six categories",
+      "o": "Gives a coverage matrix of each in-scope component against the six STRIDE categories, with threat ids or none found in each cell.",
+      "w": "Shows nothing was skipped.",
+      "h": "A design with several components."
+    },
+    {
+      "c": "useful",
+      "q": "record each one in the document's assumptions table with what changes if it is wrong",
+      "o": "When asked not to ask questions, makes small assumptions and lists each in an assumptions table with what changes if it is wrong.",
+      "w": "Reviewers check assumptions in one place.",
+      "h": "A request saying do not ask me questions."
+    },
+    {
+      "c": "useful",
+      "q": "model only what the change adds or alters",
+      "o": "For a change to an existing design, models only the new or changed parts and trust boundaries.",
+      "w": "Re-modelling the whole system buries the change.",
+      "h": "A new endpoint added to an existing design."
+    },
+    {
+      "c": "useful",
+      "q": "Continue the threat and mitigation numbering from where the user says to start.",
+      "o": "Starts threat and mitigation numbers where the user says.",
+      "w": "Keeps ids unique across the document.",
+      "h": "A change model told to start at T-021."
+    },
+    {
+      "c": "useful",
+      "q": "External trust boundaries not identified",
+      "o": "Names the external trust boundaries (internet to API, third party callbacks) and analyses authentication and authorization threats at them.",
+      "w": "Missing boundaries is a must-fix gap.",
+      "h": "A design with an internet-facing entry."
+    },
+    {
+      "c": "useful",
+      "q": "A launch recommendation: which mitigations must ship first",
+      "o": "Ends with residual risks and which mitigations must ship before launch.",
+      "w": "Owners need a launch call.",
+      "h": "A pre-launch request."
+    },
+    {
+      "c": "generic",
+      "q": "Limit threat analysis to documented architecture within the defined scope boundaries",
+      "o": "Keeps the analysis to the stated scope.",
+      "w": "Any good analysis keeps to scope.",
+      "h": "Any scoped request."
+    },
+    {
+      "c": "useful",
+      "q": "Data in transit and at rest encryption not addressed",
+      "o": "Addresses encryption in transit and at rest for each data store and link, flagging where the design is silent.",
+      "w": "Missing encryption analysis is a must-fix gap.",
+      "h": "A design with stores and network links."
+    }
+  ],
+  "batches": {
+    "pilot-a": [
+      {
+        "title": "Document sharing with presigned links",
+        "section": "Step 7: Identify Threats",
+        "prompt": "Do the STRIDE analysis for our document-sharing service. Don't ask me questions, just note your assumptions.\n\nDesign: users sign in with Cognito. API Gateway calls a Lambda that creates an S3 presigned GET URL (valid 7 days) for a shared document and emails the link to the recipient through SES. Each share is recorded in DynamoDB (owner, recipient, document key). The Lambda logs each request event, including the full generated URL, to CloudWatch.",
+        "rubric": [
+          [
+            3,
+            "Traces the presigned URL and flags its leak in the CloudWatch logs and the email, not only in S3."
+          ],
+          [
+            3,
+            "Flags the 7-day validity as widening the window for a leaked link."
+          ],
+          [
+            2,
+            "Does not credit controls the design does not state, such as a WAF or KMS keys."
+          ],
+          [
+            10,
+            "Lists its assumptions in a table with what changes if each is wrong."
+          ],
+          [
+            4,
+            "Rates each threat's likelihood and impact and derives its priority."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as removing the URL from logs and shortening the expiry."
+          ]
+        ],
+        "why": "The secret leaks through logs and email, which the skill's tracing step targets."
+      },
+      {
+        "title": "Webhook intake from a payment provider",
+        "section": "Step 7: Identify Threats",
+        "prompt": "What could go wrong security-wise with this architecture? No questions please, make assumptions and say what they are.\n\nWebhooks come in from Stripe over the internet to a public ALB. An ECS service parses the event, writes the payment row to RDS Postgres and pushes a message to SQS for the fulfilment worker. The design doc does not mention signature checks on the webhook. The fulfilment worker ships goods when it sees a paid message.",
+        "rubric": [
+          [
+            13,
+            "Names the internet to ALB webhook entry as an external trust boundary and flags missing webhook signature checks as spoofing."
+          ],
+          [
+            2,
+            "Does not assume a signature check exists because Stripe offers one."
+          ],
+          [
+            8,
+            "Maps each threat to at least one mitigation."
+          ],
+          [
+            16,
+            "Addresses encryption in transit and at rest for RDS and SQS, flagging where the design is silent."
+          ],
+          [
+            6,
+            "Gives a concrete mitigation such as verifying the Stripe-Signature header in the ECS service."
+          ],
+          [
+            14,
+            "Says which mitigations must ship before launch."
+          ]
+        ],
+        "why": "A spoofable external entry that leads straight to shipping goods."
+      },
+      {
+        "title": "Change-only model for a new upload endpoint",
+        "section": "Change-Only Threat Models",
+        "prompt": "We added a public file-upload endpoint to an existing design that already has a threat model (threats T-001 to T-020, mitigations M-001 to M-018). Update the risk analysis for the change only, starting at T-021 and M-019. Don't ask questions.\n\nChange: a new POST /upload on the existing API Gateway, open to unauthenticated users, writes files up to 50 MB straight into the existing reports bucket, which internal staff open in the browser.",
+        "rubric": [
+          [
+            11,
+            "Models only the new endpoint and its new trust boundary, not the whole system again."
+          ],
+          [
+            12,
+            "Starts threat numbers at T-021 and mitigation numbers at M-019."
+          ],
+          [
+            13,
+            "Flags the unauthenticated public entry as a new external trust boundary."
+          ],
+          [
+            7,
+            "Gives a test table with concrete inputs (for example an HTML file with script, an oversized file) mapped to threat ids."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as a separate upload bucket and content-type checks."
+          ],
+          [
+            10,
+            "Lists its assumptions with what changes if each is wrong."
+          ]
+        ],
+        "why": "A change to an existing model, with numbering and scope rules."
+      },
+      {
+        "title": "IoT pipeline with no stated encryption",
+        "section": "Security Assessment Principles",
+        "prompt": "Run a STRIDE pass on our IoT telemetry pipeline. Don't invent components that aren't in the design. No questions, just note assumptions.\n\nDesign: devices connect to AWS IoT Core with X.509 certificates. An IoT rule writes messages to a Kinesis stream. A Lambda reads the stream and writes readings to Timestream. Dashboards read Timestream through Grafana with a shared admin login. Nothing else is in the design doc.",
+        "rubric": [
+          [
+            2,
+            "Does not add components or controls the design does not list (VPC endpoints, KMS keys, a WAF)."
+          ],
+          [
+            9,
+            "Gives a coverage matrix of IoT Core, Kinesis, Lambda, Timestream and Grafana against the six categories."
+          ],
+          [
+            5,
+            "Marks encryption at rest for Kinesis and Timestream as Unknown or Not implemented, not Implemented."
+          ],
+          [
+            13,
+            "Flags the shared Grafana admin login as an authentication and repudiation threat."
+          ],
+          [
+            8,
+            "Maps each threat to at least one mitigation."
+          ],
+          [
+            15,
+            "Keeps to the stated pipeline."
+          ]
+        ],
+        "why": "A sparse design that tempts the writer to invent and credit controls."
+      },
+      {
+        "title": "Compliance audit on documented boundaries only",
+        "section": "Step 8: Define Mitigations",
+        "prompt": "We need to document trust boundaries, threat actors and baseline security controls for our compliance audit. Only the internal admin API is in scope. Don't ask questions.\n\nDesign: staff reach the admin API through the corporate VPN. The API runs on ECS and calls the customer database (RDS) with a single database user that has full rights. Admin actions are not logged. TLS is used from the VPN to the load balancer; the doc says nothing about TLS to the database.",
+        "rubric": [
+          [
+            15,
+            "Keeps to the admin API scope and does not model the customer-facing app."
+          ],
+          [
+            13,
+            "Names the boundary from VPN users to the admin API and analyses authentication and authorization threats there."
+          ],
+          [
+            5,
+            "Marks TLS to the database as Unknown, not Implemented."
+          ],
+          [
+            4,
+            "Rates likelihood and impact for each threat."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as per-role database users and an audit log of admin actions."
+          ],
+          [
+            8,
+            "Maps every threat to a mitigation."
+          ]
+        ],
+        "why": "A scoped compliance model with full-rights credentials and no audit trail."
+      },
+      {
+        "title": "Data export feature abuse",
+        "section": "Step 7: Identify Threats",
+        "prompt": "Security analysis for our export my data feature: who could abuse it, how, and what mitigations we have or need. Don't ask questions.\n\nDesign: a signed-in user clicks Export. A Lambda builds a ZIP of their data, stores it in S3 and emails a download link built as https://exports.example.com/dl?file=<user_id>.zip. The download handler serves the file named in the file parameter. Links do not expire.",
+        "rubric": [
+          [
+            3,
+            "Traces the download link and flags that it carries a guessable user id and never expires, and travels by email."
+          ],
+          [
+            13,
+            "Flags the download handler serving any file named in the parameter as an authorization threat."
+          ],
+          [
+            4,
+            "Rates the guessable link threat high in likelihood and impact."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as random file keys, an owner check in the handler and short expiry."
+          ],
+          [
+            7,
+            "Gives a test table with a concrete input such as another user's id in the file parameter."
+          ],
+          [
+            14,
+            "Says which mitigations must ship first."
+          ]
+        ],
+        "why": "An insecure direct object reference hidden in a link that travels by email."
+      },
+      {
+        "title": "SSO integration with every HIGH risk mitigated",
+        "section": "Quality Gate",
+        "prompt": "Our CISO wants to see that every HIGH risk in the new SSO integration has a mitigation. Produce the threat and mitigation document. No questions, assume where you must.\n\nDesign: the app accepts SAML assertions from the corporate IdP at /sso/acs. The app maps the NameID to a local account, creating it if missing. Sessions are cookies valid for 30 days. The doc does not say whether assertions are signature-checked or whether the cookie is marked Secure.",
+        "rubric": [
+          [
+            8,
+            "Maps every threat, and every HIGH one in particular, to at least one mitigation."
+          ],
+          [
+            2,
+            "Does not assume assertion signatures are checked."
+          ],
+          [
+            4,
+            "Rates each threat and shows which are HIGH from likelihood and impact."
+          ],
+          [
+            5,
+            "Marks the Secure cookie flag and signature check as Unknown, not Implemented."
+          ],
+          [
+            10,
+            "Lists assumptions with what changes if each is wrong."
+          ],
+          [
+            14,
+            "Gives residual risks and which mitigations must ship first."
+          ]
+        ],
+        "why": "The CISO's ask matches the skill's every-threat-mitigated rule and its status honesty."
+      },
+      {
+        "title": "Security tests tied to threats",
+        "section": "Step 8: Define Mitigations",
+        "prompt": "Before launch, analyze the GraphQL gateway design for spoofing, repudiation, info disclosure, DoS and privilege escalation, and tell us how we'd test each mitigation. No questions.\n\nDesign: a public GraphQL endpoint on API Gateway with a Lambda resolver. Clients send an API key in a header. Queries can nest without a depth limit. Introspection is on in production. Errors return full stack traces.",
+        "rubric": [
+          [
+            7,
+            "Gives a test table with test id, type, concrete input (a deeply nested query, an introspection query), expected result and threat ids."
+          ],
+          [
+            9,
+            "Covers the gateway and resolver against all six categories, including tampering, which the request leaves out."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as a depth limit, turning off introspection and generic errors."
+          ],
+          [
+            3,
+            "Traces the API key in headers and flags where it could be logged."
+          ],
+          [
+            8,
+            "Maps every threat to a mitigation."
+          ]
+        ],
+        "why": "A request focused on tests, which the skill ties to threat ids."
+      }
+    ],
+    "pilot-b": [
+      {
+        "title": "AppSec review document",
+        "section": "Threat Model Template",
+        "prompt": "AppSec review is in 3 weeks for the payments-ledger service. Write the threat model they expect: scope, architecture, assets, threats, mitigations, testing strategy. No questions.\n\nDesign: an internal API on ECS behind a private ALB records ledger entries in Aurora Postgres. A nightly job exports the ledger to an S3 bucket shared with the finance team's account. Service-to-service calls use IAM SigV4.",
+        "rubric": [
+          [
+            15,
+            "States in-scope and out-of-scope parts explicitly."
+          ],
+          [
+            13,
+            "Names the cross-account S3 share as an external trust boundary and analyses its authorization."
+          ],
+          [
+            16,
+            "Addresses encryption at rest for Aurora and the export bucket, and in transit, flagging where the design is silent."
+          ],
+          [
+            7,
+            "Includes a test table tied to threat ids."
+          ],
+          [
+            10,
+            "Lists assumptions with what changes if each is wrong."
+          ],
+          [
+            14,
+            "Ends with residual risks and a launch recommendation."
+          ]
+        ],
+        "why": "A full document request where the template parts matter."
+      },
+      {
+        "title": "Multi-tenant admin portal",
+        "section": "Step 7: Identify Threats",
+        "prompt": "Identify the security threats for the new multi-tenant admin portal and document controls for each, with T-xxx and M-xxx ids. Don't ask me questions.\n\nDesign: tenant admins sign in with Cognito. The portal's API reads the tenant id from a custom header the browser sends and queries a shared DynamoDB table by that id. Support staff use the same portal with a super-admin Cognito group.",
+        "rubric": [
+          [
+            13,
+            "Flags trusting a browser-sent tenant header as an authorization and elevation threat at the external boundary."
+          ],
+          [
+            4,
+            "Rates the cross-tenant read threat high in likelihood and impact."
+          ],
+          [
+            6,
+            "Gives a concrete mitigation: take the tenant id from the signed token, not a header."
+          ],
+          [
+            8,
+            "Maps every threat to a mitigation."
+          ],
+          [
+            9,
+            "Gives a coverage matrix for the portal API, Cognito and DynamoDB."
+          ],
+          [
+            2,
+            "Does not assume per-tenant IAM conditions exist."
+          ]
+        ],
+        "why": "A cross-tenant authorization hole in a common pattern."
+      },
+      {
+        "title": "Tokens forwarded to a third party",
+        "section": "Step 7: Identify Threats",
+        "prompt": "Threat-model this integration. No questions, note assumptions.\n\nDesign: our API receives the user's OAuth access token in the Authorization header. To fetch the user's calendar, it forwards the same token as a query parameter to a partner API (https://partner.example/cal?token=...). Requests and responses, URLs included, are logged to our log pipeline, which three other teams can read. Errors are emailed to the on-call alias with the request URL.",
+        "rubric": [
+          [
+            3,
+            "Traces the access token and flags leaks in the partner URL, the shared logs and the error emails."
+          ],
+          [
+            13,
+            "Names the partner API call as an external trust boundary and flags token forwarding as an elevation and disclosure risk."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as a token exchange for a scoped partner token and stripping tokens from logs."
+          ],
+          [
+            4,
+            "Rates likelihood and impact for each threat."
+          ],
+          [
+            10,
+            "Lists assumptions with what changes if each is wrong."
+          ]
+        ],
+        "why": "A credential that leaks through URLs, logs and email."
+      },
+      {
+        "title": "Scope narrower than the system",
+        "section": "Step 1: Clarify Threat Model Scope",
+        "prompt": "Only the password reset flow is in scope for this threat model; the rest of the auth service had its own review. No questions.\n\nFlow: a user enters their email; the service creates a reset token, stores it in Redis for 24 hours and emails a link with the token in the URL. The reset page posts the token and new password. There is no rate limit on the email request. The login API, MFA and session handling exist but are out of scope.",
+        "rubric": [
+          [
+            15,
+            "Keeps to the reset flow and does not model login, MFA or sessions."
+          ],
+          [
+            3,
+            "Traces the reset token through the email, the URL and any logs or referrers."
+          ],
+          [
+            13,
+            "Analyses authentication threats in the reset flow, such as account takeover with a stolen link."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as single-use tokens, shorter expiry and a rate limit."
+          ],
+          [
+            8,
+            "Maps every threat to a mitigation."
+          ],
+          [
+            7,
+            "Gives a test table tied to threat ids."
+          ]
+        ],
+        "why": "A narrow scope that the skill must respect while tracing the token."
+      },
+      {
+        "title": "Design credited with defaults it does not state",
+        "section": "Step 8: Define Mitigations",
+        "prompt": "Write the mitigations table for this design with an implementation status for each mitigation. We're presenting it to the security council tomorrow, no questions please.\n\nDesign: a Lambda reads customer orders from an SQS queue and writes them to a DynamoDB table and an S3 bucket. The design doc says the S3 bucket blocks public access. It says nothing else about encryption, IAM scoping or logging.",
+        "rubric": [
+          [
+            5,
+            "Marks block public access as Implemented and marks encryption, IAM scoping and logging as Unknown or Not implemented, not Implemented."
+          ],
+          [
+            2,
+            "Does not credit KMS encryption or least-privilege roles the doc does not state."
+          ],
+          [
+            16,
+            "Addresses encryption at rest for SQS, DynamoDB and S3 and in transit."
+          ],
+          [
+            6,
+            "States each mitigation as a concrete change to a named component."
+          ],
+          [
+            8,
+            "Maps each threat to a mitigation."
+          ]
+        ],
+        "why": "A status column that is easy to fill with assumed defaults."
+      },
+      {
+        "title": "Threat list with no ratings from a teammate",
+        "section": "Quality Gate",
+        "prompt": "A teammate wrote this threat list for our public URL shortener. Can you turn it into a proper threat model section? No questions.\n\nTheir list: 1) someone could spam the create endpoint, 2) links could point to malware, 3) someone could guess short codes for private links, 4) the stats page shows the creator's email.\n\nDesign: API Gateway, a Lambda, DynamoDB. Short codes are 4 characters. Private links are just unlisted.",
+        "rubric": [
+          [
+            4,
+            "Adds likelihood and impact to each threat and derives its priority."
+          ],
+          [
+            8,
+            "Maps each threat to at least one mitigation."
+          ],
+          [
+            9,
+            "Places the threats in a STRIDE matrix against the components, with none found where it applies."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as longer codes, a create rate limit and removing the email from stats."
+          ],
+          [
+            7,
+            "Gives a test table tied to threat ids."
+          ],
+          [
+            13,
+            "Names the public API as an external trust boundary."
+          ]
+        ],
+        "why": "An unrated list the skill turns into rated threats with a matrix and tests."
+      },
+      {
+        "title": "Admin console behind a shared VPN account",
+        "section": "Step 7: Identify Threats",
+        "prompt": "Identify threats for our warehouse admin console before launch. No questions, assume where needed.\n\nDesign: warehouse staff reach the console over a site VPN using one shared VPN account per warehouse. The console lets staff change stock counts and approve returns. Actions are written to a log with the warehouse id but no user id. The console talks to an internal API over plain HTTP inside the VPC.",
+        "rubric": [
+          [
+            13,
+            "Flags shared VPN accounts as an authentication and repudiation threat, since actions cannot be tied to a person."
+          ],
+          [
+            16,
+            "Flags plain HTTP inside the VPC as an encryption-in-transit gap."
+          ],
+          [
+            4,
+            "Rates likelihood and impact for each threat."
+          ],
+          [
+            14,
+            "Says which mitigations must ship before launch."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as per-user sign-in and TLS on the internal API."
+          ]
+        ],
+        "why": "Repudiation and transit gaps in an internal tool that looks low risk."
+      },
+      {
+        "title": "Change to add a partner callback, numbering given",
+        "section": "Change-Only Threat Models",
+        "prompt": "Extend our existing threat model for one change only. The current model ends at T-014 and M-011; continue from there. No questions.\n\nChange: our order service will now accept status callbacks from a shipping partner at POST /partner/status over the internet, authenticated by a static shared secret in a header. The callback updates order status in the existing orders table. Nothing else changes.",
+        "rubric": [
+          [
+            12,
+            "Starts threat numbers at T-015 and mitigation numbers at M-012."
+          ],
+          [
+            11,
+            "Models only the callback and its new boundary, not the existing order service."
+          ],
+          [
+            3,
+            "Traces the shared secret in the header and flags where it could be logged or leaked."
+          ],
+          [
+            13,
+            "Names the internet to callback entry as an external trust boundary."
+          ],
+          [
+            6,
+            "Gives concrete mitigations, such as HMAC signing with timestamps and secret rotation."
+          ],
+          [
+            8,
+            "Maps every new threat to a mitigation."
+          ]
+        ],
+        "why": "A change model where numbering, scope and secret tracing all apply."
+      }
+    ]
+  }
+}

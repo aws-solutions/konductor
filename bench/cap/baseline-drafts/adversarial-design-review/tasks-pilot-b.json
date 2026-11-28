@@ -4,8 +4,8 @@
   "batch": "pilot-b",
   "generated_at": "2026-11-28T19:00:00.000Z",
   "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
-  "skills_version": "konductor@535e3c47",
-  "rules_sha256": "dd75590b1cf3616a451784df6a0e07d0038441385aee9f603926dcdecc69b6e3",
+  "skills_version": "konductor@c9fd46b5",
+  "rules_sha256": "b96fdfbf4bcf141a47af9eac4dab743c6d9fad4bda42d037a9b55690ac417501",
   "scenarios": [
     {
       "id": "adversarial-design-review-pilot-b-1",

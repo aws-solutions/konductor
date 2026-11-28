@@ -4,8 +4,8 @@
   "batch": "pilot-b",
   "generated_at": "2026-11-28T19:00:00.000Z",
   "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
-  "skills_version": "konductor@535e3c47",
-  "rules_sha256": "b74d0c40d8a559297e7dbbec763a63b7378253b98e24caee109a2f9fbc8eb863",
+  "skills_version": "konductor@c9fd46b5",
+  "rules_sha256": "dca40f64b68ed9e7c8d9beb4076a33bea27704645f46704067d92133c7b80db2",
   "scenarios": [
     {
       "id": "design-quality-check-pilot-b-1",

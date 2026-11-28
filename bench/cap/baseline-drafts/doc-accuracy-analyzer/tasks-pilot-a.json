@@ -4,8 +4,8 @@
   "batch": "pilot-a",
   "generated_at": "2026-11-28T19:00:00.000Z",
   "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
-  "skills_version": "konductor@535e3c47",
-  "rules_sha256": "d3776f3552dd97006256d19d1aec81e3c3ca238bd6339a34da8a5c5a56e32c27",
+  "skills_version": "konductor@c9fd46b5",
+  "rules_sha256": "59691fe6f8d06d864aa48f0ec7694a39703d9822354a76d205ce2fe843ec3cfd",
   "scenarios": [
     {
       "id": "doc-accuracy-analyzer-pilot-a-1",

@@ -1,0 +1,628 @@
+{
+  "skill": "adversarial-design-review",
+  "request_context": "A request to attack the decisions and trade-offs of a design document as a skeptical reviewer, with findings sorted by how serious they are.",
+  "writtenBy": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "generatedAt": "2026-11-28T19:00:00.000Z",
+  "selection": {
+    "load": [
+      1,
+      3,
+      4,
+      7,
+      8
+    ],
+    "none": [
+      10,
+      11,
+      14,
+      15,
+      16
+    ]
+  },
+  "rules": [
+    {
+      "c": "style",
+      "q": "N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N SUGGESTION",
+      "o": "Ends with a count of findings in each severity class.",
+      "h": "Any adversarial review."
+    },
+    {
+      "c": "useful",
+      "q": "Wrong architecture choice for the stated requirements",
+      "o": "Rates a design that contradicts a stated requirement (a synchronous call where the requirement says async) as CRITICAL architectural.",
+      "w": "A design that breaks its own requirement cannot ship.",
+      "h": "A sync design for an async requirement."
+    },
+    {
+      "c": "useful",
+      "q": "Missing security boundary (no auth, no encryption at rest/transit where PII is involved)",
+      "o": "Rates personal data handled with no stated encryption or access control as CRITICAL architectural.",
+      "w": "Missing boundaries on PII are launch blockers.",
+      "h": "A design storing personal data with no encryption stated."
+    },
+    {
+      "c": "useful",
+      "q": "Single point of failure with no stated mitigation",
+      "o": "Rates a single component whose loss stops the system, with no mitigation stated, as CRITICAL architectural.",
+      "w": "Unmitigated single points break availability goals.",
+      "h": "One instance or one region with no failover."
+    },
+    {
+      "c": "useful",
+      "q": "Incorrect technical claim about a service or technology",
+      "o": "Rates a false claim about a service (a wrong limit, a feature that does not exist) as CRITICAL factual.",
+      "w": "False facts make the design not work.",
+      "h": "A doc citing a wrong service limit."
+    },
+    {
+      "c": "useful",
+      "q": "Contradictory requirements (two requirements that cannot both be satisfied)",
+      "o": "Rates two requirements that cannot both hold as CRITICAL factual and names both.",
+      "w": "No design can meet both.",
+      "h": "Requirements for strong consistency and no cross-region latency at once."
+    },
+    {
+      "c": "useful",
+      "q": "Missing alternative in a decision that has obvious alternatives",
+      "o": "Rates a significant decision with no alternatives considered, or an obvious alternative left out, as IMPORTANT.",
+      "w": "A choice with no alternatives cannot be judged.",
+      "h": "An ADR naming one option only."
+    },
+    {
+      "c": "useful",
+      "q": "Incomplete trade-off (dimensions missing: cost, latency, complexity, scalability, operability)",
+      "o": "Rates a trade-off that leaves out key dimensions as IMPORTANT and names the missing ones.",
+      "w": "Missing dimensions hide costs.",
+      "h": "A trade-off table with only cost and latency."
+    },
+    {
+      "c": "useful",
+      "q": "Flag any identified fallacy as IMPORTANT with the fallacy name and the affected section.",
+      "o": "Names the fallacy in a justification (false dichotomy, circular reasoning, appeal to authority) and rates it IMPORTANT.",
+      "w": "Faulty arguments hide weak decisions.",
+      "h": "A justification that cites a big company as proof."
+    },
+    {
+      "c": "useful",
+      "q": "Do not raise a CRITICAL because a design looks risky.",
+      "o": "Keeps unsourced load figures and unproven dependencies at IMPORTANT, and saves CRITICAL for broken requirements, missing required boundaries, unmitigated single points and false facts.",
+      "w": "Inflated severity blocks good designs.",
+      "h": "A risky-looking but requirement-consistent design."
+    },
+    {
+      "c": "useful",
+      "q": "Name the requirement (e.g., R2) the finding breaks.",
+      "o": "Each CRITICAL finding names the requirement it breaks by its label.",
+      "w": "Authors know what to fix.",
+      "h": "Any doc with numbered requirements."
+    },
+    {
+      "c": "useful",
+      "q": "Do not add requirements, regulations, services, or numbers the document does not state",
+      "o": "Does not invent requirements, laws or numbers the doc does not state, and adds no generic checklist items with no anchor in the text.",
+      "w": "Invented findings waste author time.",
+      "h": "A doc with no regulatory scope."
+    },
+    {
+      "c": "useful",
+      "q": "Every finding, SUGGESTION included, gets a concrete `Rebuttal needed` line",
+      "o": "Each finding says what evidence, alternative or change would answer it.",
+      "w": "Authors need a way to close each finding.",
+      "h": "Any finding list."
+    },
+    {
+      "c": "useful",
+      "q": "the document does not advance to PE review with any CRITICAL finding present",
+      "o": "Says the doc does not advance while any CRITICAL finding stands, and states the advance condition.",
+      "w": "The review is a gate.",
+      "h": "Any readiness question."
+    },
+    {
+      "c": "useful",
+      "q": "HIGH requires multi-axis corroboration and is unavailable when the panel is declined",
+      "o": "In a single-voice review (no panel), gives no finding HIGH confidence and says the review was single-voice.",
+      "w": "Confidence must match how the review was done.",
+      "h": "A user asking for a quick single pass."
+    },
+    {
+      "c": "generic",
+      "q": "Every finding cites the section and the text it challenges.",
+      "o": "Each finding points to the section it challenges.",
+      "w": "Any good review points to the place.",
+      "h": "Any review."
+    },
+    {
+      "c": "useful",
+      "q": "When a finding relies on outside knowledge (a service limit, a pricing figure), say so in the challenge.",
+      "o": "Says when a challenge rests on outside knowledge, such as a service limit, rather than on the doc.",
+      "w": "Authors can check the outside fact.",
+      "h": "A finding about a service limit the doc does not state."
+    }
+  ],
+  "batches": {
+    "pilot-a": [
+      {
+        "title": "Sync design against an async requirement",
+        "section": "Calibrating Severity",
+        "prompt": "Attack the decisions in this design. Single pass is fine, no need for anything fancy.\n\n# Order Confirmation Emails\n\nR1: order placement must not wait on email delivery (async).\nR2: emails arrive within 2 minutes.\n\n## Design\nThe order API calls the email provider's HTTP API inline before returning 201 to the client. On provider timeout (10 s) the order call returns 500 and the client retries.\n\n## ADR-1\nInline call over a queue: fewer moving parts. Big retailers do it this way, so it is proven.",
+        "rubric": [
+          [
+            2,
+            "Rates the inline email call as CRITICAL architectural, since it breaks R1's async requirement."
+          ],
+          [
+            11,
+            "Names R1 as the requirement broken."
+          ],
+          [
+            9,
+            "Names the appeal to authority (big retailers do it) in ADR-1 and rates it IMPORTANT."
+          ],
+          [
+            7,
+            "Rates the missing alternative (a queue or event) as IMPORTANT, or folds it into the ADR-1 finding."
+          ],
+          [
+            14,
+            "Says the doc does not advance while the CRITICAL stands."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal, such as moving email to a queue."
+          ]
+        ],
+        "why": "A clear requirement break plus a fallacy; severity and naming the requirement are the point."
+      },
+      {
+        "title": "Personal data with no encryption stated",
+        "section": "Classification",
+        "prompt": "Be a hostile reviewer on this design, I'd rather hear it now. Quick single-voice pass please.\n\n# Patient Intake Forms\n\nR1: store intake forms (name, birth date, symptoms) for 7 years.\nR2: clinic staff can search forms by patient name.\n\n## Design\nForms are posted to an API Gateway endpoint, a Lambda writes them as JSON to an S3 bucket, and an OpenSearch domain indexes them for search. Staff use an internal web page that calls the search API.\n\n## ADR-1\nS3 over RDS: cheaper for 7-year retention and needs no patching. Compared: S3, RDS, DynamoDB on cost, durability and operations.",
+        "rubric": [
+          [
+            3,
+            "Rates the missing encryption and access control for personal health data as CRITICAL architectural."
+          ],
+          [
+            16,
+            "Points to the Design section as where the boundary is missing."
+          ],
+          [
+            12,
+            "Does not invent named regulations or numbers the doc does not state as requirements."
+          ],
+          [
+            10,
+            "Does not mark ADR-1 CRITICAL, since it compares options on several dimensions."
+          ],
+          [
+            15,
+            "Says the review is single-voice and gives no finding HIGH confidence."
+          ],
+          [
+            13,
+            "Gives a concrete rebuttal, such as stating encryption and staff authorization on each store."
+          ]
+        ],
+        "why": "A missing boundary on personal data with an otherwise fair ADR; tests severity and staying in the doc."
+      },
+      {
+        "title": "Single region, single writer",
+        "section": "Architecture stress test",
+        "prompt": "Poke holes in this, especially the single region part. Just you, no panel.\n\n# Search Indexer HLD\n\nR1: search stays available during a single instance failure.\nR2: index updates visible within 60 s.\n\n## Design\nOne EC2 instance runs the indexer process, which reads change events from a Kinesis stream and writes to an OpenSearch domain with 3 data nodes across 3 AZs. All in us-east-1.\n\n## Why a single region\nMulti-region is expensive, so single region is the only sensible option.",
+        "rubric": [
+          [
+            4,
+            "Rates the one indexer instance as a single point of failure with no stated mitigation, CRITICAL architectural."
+          ],
+          [
+            11,
+            "Names R2 (updates visible within 60 s) as at risk when the indexer instance fails, without claiming R1 is broken, since the domain spans 3 AZs."
+          ],
+          [
+            9,
+            "Names the false dichotomy in Why a single region (multi-region or single region only) and rates it IMPORTANT."
+          ],
+          [
+            10,
+            "Does not rate single region itself CRITICAL, since no stated requirement asks for region failure."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal, such as two indexers with a lease."
+          ],
+          [
+            16,
+            "Points each finding to its section."
+          ]
+        ],
+        "why": "A real single point next to a risky-looking choice that breaks no requirement."
+      },
+      {
+        "title": "Wrong service limit used in sizing",
+        "section": "Classification",
+        "prompt": "Argue against this design as hard as you can. Single reviewer is fine.\n\n# Event Payload Store\n\nR1: store each event's full payload (up to 1.5 MB) for lookup by id.\n\n## Design\nEach event is written as one DynamoDB item. The doc says: \"DynamoDB items can be up to 2 MB, so 1.5 MB payloads fit with room to spare.\" Lookups use GetItem by event id.\n\n## ADR-1\nDynamoDB over S3: single-digit millisecond reads. Trade-off considered: latency.",
+        "rubric": [
+          [
+            5,
+            "Rates the 2 MB item claim as CRITICAL factual: the item limit is 400 KB."
+          ],
+          [
+            17,
+            "Says the 400 KB figure comes from outside knowledge of the service limit."
+          ],
+          [
+            11,
+            "Names R1 as broken, since 1.5 MB payloads do not fit an item."
+          ],
+          [
+            8,
+            "Rates ADR-1's trade-off as IMPORTANT for weighing latency only."
+          ],
+          [
+            14,
+            "Says the doc does not advance."
+          ],
+          [
+            13,
+            "Gives a rebuttal, such as payloads in S3 with a pointer item."
+          ]
+        ],
+        "why": "A false service limit that breaks the requirement; tests the factual class and the outside-knowledge note."
+      },
+      {
+        "title": "Contradictory requirements",
+        "section": "Classification",
+        "prompt": "Stress test this design against its NFRs. Single pass.\n\n# Global Inventory\n\nR1: every read in every region sees the latest write (strong consistency worldwide).\nR2: writes complete in under 10 ms from any region.\nR3: three regions: us-east-1, eu-west-1, ap-southeast-2.\n\n## Design\nAurora Global Database with a writer in us-east-1 and readers in the other two regions. Writes from other regions are forwarded to us-east-1.",
+        "rubric": [
+          [
+            6,
+            "Rates R1 with R2 as contradictory requirements (CRITICAL factual): worldwide strong consistency cannot finish writes in 10 ms across these regions."
+          ],
+          [
+            11,
+            "Names R1 and R2 by label."
+          ],
+          [
+            2,
+            "Rates write forwarding to us-east-1 as breaking R2 for writes from other regions."
+          ],
+          [
+            17,
+            "Says the latency reasoning rests on outside knowledge of cross-region round-trip times."
+          ],
+          [
+            13,
+            "Gives a rebuttal, such as relaxing R1 for some reads or R2 for remote writes."
+          ]
+        ],
+        "why": "Two requirements that cannot both hold; the class is factual, not a design flaw."
+      },
+      {
+        "title": "Risky-looking but sound design",
+        "section": "Calibrating Severity",
+        "prompt": "Be skeptical about this one. My lead says it's fine but I don't trust that. Quick single pass, no panel.\n\n# Image Resize Pipeline\n\nR1: thumbnails ready within 30 s of upload.\nR2: no lost uploads.\n\n## Design\nS3 upload event goes to an SQS queue (with a DLQ after 5 tries); a Lambda resizes and writes thumbnails. Expected load: 50 uploads a second at peak.\n\n## ADR-1\nSQS plus Lambda over an ECS worker and over Step Functions: compared on cost, latency, operations and scaling.",
+        "rubric": [
+          [
+            10,
+            "Does not raise any CRITICAL, since no requirement is broken and no required boundary or single point is missing."
+          ],
+          [
+            10,
+            "Rates the unsourced 50 uploads a second figure as IMPORTANT, asking where it comes from."
+          ],
+          [
+            12,
+            "Does not invent extra requirements to criticise."
+          ],
+          [
+            15,
+            "Says the review is single-voice and gives no finding HIGH confidence."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal."
+          ],
+          [
+            16,
+            "Points each finding to its section."
+          ]
+        ],
+        "why": "A design a reviewer might over-flag; calibration keeps it at IMPORTANT and below."
+      },
+      {
+        "title": "Trade-off table with two dimensions",
+        "section": "Review Checklist",
+        "prompt": "The trade-off section of my CDC design lists only cost and latency. Challenge it, single reviewer.\n\n# CDC Pipeline, section 4\n\nR1: replicate Postgres changes to the warehouse within 5 minutes.\n\n| Option | Cost | Latency |\n| DMS | $300/mo | 1 min |\n| Debezium on MSK | $900/mo | 10 s |\n\nDecision: DMS, cheaper and fast enough for R1.",
+        "rubric": [
+          [
+            8,
+            "Rates the trade-off as IMPORTANT for leaving out complexity, scalability and operability."
+          ],
+          [
+            7,
+            "Notes any obvious alternative left out (such as a managed CDC from the warehouse vendor) without inventing requirements."
+          ],
+          [
+            10,
+            "Does not rate the DMS choice CRITICAL, since it meets R1."
+          ],
+          [
+            12,
+            "Does not add numbers or requirements the doc does not state."
+          ],
+          [
+            13,
+            "Gives a concrete rebuttal: add the missing dimensions to the table."
+          ]
+        ],
+        "why": "A narrow trade-off on a choice that meets its requirement."
+      },
+      {
+        "title": "Panel not mentioned by the user",
+        "section": "Steps",
+        "prompt": "Before this goes to the principal engineer next week, I want someone to tear apart the architecture choices. Every decision, every trade-off. Assume it's wrong.\n\n# Notification Fan-out\n\nR1: deliver 1M notifications within 10 minutes.\n\n## Design\nA single Lambda reads the target list from S3 and calls SNS publish once per user, in a loop.\n\n## ADR-1\nLambda over ECS: serverless is always cheaper.",
+        "rubric": [
+          [
+            15,
+            "Either offers the deliberation panel with its cost and the single-voice option, or, proceeding without confirmation, says it is a single-voice review and gives no HIGH confidence."
+          ],
+          [
+            2,
+            "Rates one Lambda publishing 1M messages in a loop as unable to meet R1, CRITICAL architectural with R1 named, noting the 15-minute run limit and publish rate."
+          ],
+          [
+            17,
+            "Says the limit reasoning rests on outside knowledge of Lambda or SNS limits."
+          ],
+          [
+            9,
+            "Names the overgeneralisation in serverless is always cheaper and rates it IMPORTANT."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal."
+          ]
+        ],
+        "why": "The consent step for the panel applies, plus a scale flaw and a fallacy."
+      }
+    ],
+    "pilot-b": [
+      {
+        "title": "ADR with one option",
+        "section": "Classification",
+        "prompt": "I wrote an ADR choosing EventBridge for inter-service events. Argue against it as hard as you can, single pass.\n\n# ADR-0007: EventBridge for service events\n\nContext: services call each other over HTTP today, and outages cascade.\nDecision: all services publish domain events to one EventBridge bus.\nConsequences: looser coupling.\n\nR1 (from the HLD): events for the same order are processed in order.",
+        "rubric": [
+          [
+            7,
+            "Rates the ADR's lack of any alternative (SNS plus SQS, Kinesis, MSK) as IMPORTANT."
+          ],
+          [
+            2,
+            "Rates EventBridge as not meeting R1 per-order ordering, since it does not guarantee order, and names R1."
+          ],
+          [
+            17,
+            "Says the ordering point rests on outside knowledge of EventBridge."
+          ],
+          [
+            8,
+            "Rates the one-word consequences as an incomplete trade-off."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal."
+          ],
+          [
+            16,
+            "Points each finding to its ADR section."
+          ]
+        ],
+        "why": "A one-option ADR that also breaks a requirement the HLD states."
+      },
+      {
+        "title": "Severity buckets and readiness for tenant isolation",
+        "section": "Quality Gate",
+        "prompt": "Review the decisions in our tenant isolation design adversarially. Severity buckets please, and tell me whether it's ready to go on. Single pass is fine.\n\n# Tenant Isolation\n\nR1: one tenant can never read another tenant's data.\n\n## Design\nAll tenants share one DynamoDB table; the partition key is tenant_id. The API reads tenant_id from a query string parameter supplied by the client.\n\n## ADR-1\nShared table over table per tenant: lower cost and simpler operations. Considered cost, operations and noisy neighbours.",
+        "rubric": [
+          [
+            3,
+            "Rates trusting a client-supplied tenant_id as a missing security boundary, CRITICAL architectural."
+          ],
+          [
+            11,
+            "Names R1 as broken."
+          ],
+          [
+            10,
+            "Does not mark the shared table choice CRITICAL, since ADR-1 compares options and isolation can be enforced."
+          ],
+          [
+            14,
+            "Says the doc is not ready to go on while the CRITICAL stands, and states the exit condition."
+          ],
+          [
+            13,
+            "Gives a rebuttal, such as taking tenant_id from the signed token."
+          ]
+        ],
+        "why": "A real boundary break hidden behind a sound-looking ADR, plus the gate question."
+      },
+      {
+        "title": "Unsourced load figure that drives the design",
+        "section": "Calibrating Severity",
+        "prompt": "Pretend you're the most skeptical principal engineer in the org. Go after each architectural choice. Single voice.\n\n# Feature Flags Service\n\nR1: flag reads under 5 ms p99.\nR2: flag changes visible within 60 s.\n\n## Design\nThe SDK caches flags in memory and polls the service every 30 s. The service handles 200k polls per second at peak, so it runs on 40 ECS tasks behind an ALB.\n\n## ADR-1\nPolling over push: compared on complexity, latency, cost and operations; polling wins on simplicity.",
+        "rubric": [
+          [
+            10,
+            "Rates the unsourced 200k polls per second as IMPORTANT, even though it drives the sizing, not CRITICAL."
+          ],
+          [
+            12,
+            "Does not invent other load numbers to argue against it."
+          ],
+          [
+            10,
+            "Does not raise any CRITICAL, since R1 and R2 are met by the design as written."
+          ],
+          [
+            15,
+            "Says the review is single-voice and gives no HIGH confidence."
+          ],
+          [
+            13,
+            "Gives a rebuttal, such as deriving the poll rate from client count and interval."
+          ]
+        ],
+        "why": "A load-bearing but unproven number, which the skill keeps at IMPORTANT."
+      },
+      {
+        "title": "Circular justification in an order routing doc",
+        "section": "Fallacy Checking",
+        "prompt": "Need a hostile reviewer for my architecture doc before the bar raiser sees it. Focus on whether the chosen option is actually justified. Just your own pass.\n\n# Order Routing\n\nR1: route each order to the nearest warehouse with stock within 200 ms.\n\n## Decision\nWe chose a rules engine because a rules engine is the right way to route orders. Options: a rules engine, or hardcoded if-statements.",
+        "rubric": [
+          [
+            9,
+            "Names the circular reasoning in the decision (chosen because it is the right way) and rates it IMPORTANT."
+          ],
+          [
+            9,
+            "Names the false dichotomy (rules engine or if-statements only)."
+          ],
+          [
+            7,
+            "Names obvious alternatives left out, such as a scored lookup service."
+          ],
+          [
+            8,
+            "Rates the missing trade-off dimensions against R1's 200 ms target."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal."
+          ]
+        ],
+        "why": "Two named fallacies in one decision."
+      },
+      {
+        "title": "Revised doc with only IMPORTANT findings left",
+        "section": "Quality Gate",
+        "prompt": "We fixed every CRITICAL from the last round. Is it ready for PE review now? Single pass.\n\n# Rate Limiter v3\n\nR1: limit each tenant to its plan rate.\nR2: limiter outage must not block traffic (fail open).\n\n## Design\nToken buckets in ElastiCache Redis with a replica in a second AZ; on Redis timeout (5 ms) the gateway allows the request. Expected 30k checks a second.\n\n## ADR-1\nRedis over DynamoDB: lower latency. Considered latency only.",
+        "rubric": [
+          [
+            8,
+            "Rates ADR-1's latency-only trade-off as IMPORTANT."
+          ],
+          [
+            10,
+            "Rates the unsourced 30k checks a second as IMPORTANT, not CRITICAL."
+          ],
+          [
+            10,
+            "Does not invent a CRITICAL, since the earlier ones are fixed and no requirement is broken."
+          ],
+          [
+            14,
+            "Says the doc still does not meet the exit condition (0 CRITICAL and 0 IMPORTANT), so it is not ready for PE review."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal."
+          ]
+        ],
+        "why": "A doc that can fail the gate on IMPORTANT findings alone, as the skill says."
+      },
+      {
+        "title": "Doc with no compliance scope",
+        "section": "Staying in the Document",
+        "prompt": "Play devil's advocate on this internal tools design. Single reviewer, no panel.\n\n# Build Cache\n\nR1: CI builds reuse cached artifacts across branches.\nR2: cache hit returns in under 1 s.\n\n## Design\nAn S3 bucket keyed by content hash, read through a small proxy on each CI runner. Artifacts are build outputs only; no customer or personal data.\n\n## ADR-1\nS3 over a self-run Bazel remote cache: no servers to run. Compared on cost, latency, operations and scale.",
+        "rubric": [
+          [
+            12,
+            "Does not raise data residency, privacy laws or other regulations the doc does not state."
+          ],
+          [
+            12,
+            "Adds no generic checklist findings with no anchor in the text."
+          ],
+          [
+            17,
+            "If it raises the S3 latency for R2, it says that rests on outside knowledge."
+          ],
+          [
+            10,
+            "Raises no CRITICAL, since no requirement is broken."
+          ],
+          [
+            16,
+            "Points each finding to its section."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal."
+          ]
+        ],
+        "why": "A sound internal design that invites invented findings."
+      },
+      {
+        "title": "Payments ledger choices",
+        "section": "Classification",
+        "prompt": "Play devil's advocate on this. We picked Aurora over DynamoDB and SQS over Kinesis and I'm not sure the justifications hold up. Single pass.\n\n# Payments Ledger v2\n\nR1: every ledger entry is written exactly once.\nR2: entries for an account are applied in order.\n\n## Design\nThe API puts each entry on an SQS standard queue; workers write to Aurora.\n\n## ADR-1\nAurora over DynamoDB: the team knows SQL.\n## ADR-2\nSQS over Kinesis: SQS is simpler.",
+        "rubric": [
+          [
+            2,
+            "Rates an SQS standard queue as breaking R2 ordering and R1 without dedupe, CRITICAL architectural, naming R1 and R2."
+          ],
+          [
+            17,
+            "Says the ordering and duplicate delivery points rest on outside knowledge of SQS standard queues."
+          ],
+          [
+            8,
+            "Rates ADR-1 and ADR-2 as one-dimension trade-offs (skills, simplicity), IMPORTANT."
+          ],
+          [
+            7,
+            "Names the left-out alternative SQS FIFO in ADR-2."
+          ],
+          [
+            14,
+            "Says the doc does not advance."
+          ],
+          [
+            13,
+            "Gives each finding a concrete rebuttal."
+          ]
+        ],
+        "why": "A queue choice that breaks both stated requirements and two thin ADRs."
+      },
+      {
+        "title": "Findings format and counts",
+        "section": "Steps",
+        "prompt": "Attack the design decisions in this rate limiter doc. I want CRITICAL / IMPORTANT / MINOR findings, with what rebuttal each one needs. Single voice is fine.\n\n# Rate Limiter\n\nR1: enforce per-API-key limits.\n\n## Design\nEach API host keeps counters in its own memory; the load balancer spreads keys randomly across 12 hosts.\n\n## ADR-1\nIn-memory counters over Redis: zero added latency.",
+        "rubric": [
+          [
+            2,
+            "Rates per-host counters with random spreading as breaking R1 (each key can get up to 12 times its limit), CRITICAL architectural, naming R1."
+          ],
+          [
+            7,
+            "Names left-out alternatives, such as sticky routing by key or a shared store."
+          ],
+          [
+            13,
+            "Gives every finding, minor ones included, a concrete rebuttal line."
+          ],
+          [
+            15,
+            "Says the review is single-voice and gives no HIGH confidence."
+          ],
+          [
+            16,
+            "Points each finding to its section."
+          ]
+        ],
+        "why": "A clear requirement break and a request for the full findings format."
+      }
+    ]
+  }
+}

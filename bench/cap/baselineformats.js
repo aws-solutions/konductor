@@ -734,4 +734,6 @@ module.exports = {
   MIN_SELECTION_EACH,
   MANIFEST_KEY,
   loadChecked,
+  namesSkill,
+  normalizeForMatch,
 };

@@ -4,8 +4,8 @@
   "batch": "pilot-b",
   "generated_at": "2026-11-28T19:00:00.000Z",
   "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
-  "skills_version": "konductor@535e3c47",
-  "rules_sha256": "45edc7a5380747aa52c6d5e0eb7e89c8467d68ee6b79a8d6d7c31b777aa71659",
+  "skills_version": "konductor@c9fd46b5",
+  "rules_sha256": "72afc5e94082b50469cca5d4920ced59747bd7ffd5dfe363ec9ee475ae025cb7",
   "scenarios": [
     {
       "id": "verification-pilot-b-1",

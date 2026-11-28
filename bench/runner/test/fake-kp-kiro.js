@@ -58,6 +58,26 @@ if (prompt.startsWith('You write benchmark tasks')) {
   reply = { labels: Array.from({ length: n }, (_, i) => (isLadder ? (broken(i) ? 'MISSING' : 'MET') : met(i) ? 'MET' : 'MISSING')) };
   // FAKE_KP_TITLE_CASE=1: labels spelled Met / Missing, which a judge model may do.
   if (process.env.FAKE_KP_TITLE_CASE) reply.labels = reply.labels.map((l) => l[0] + l.slice(1).toLowerCase());
+} else if (prompt.startsWith('You extract rules')) {
+  // The skill author's rules step (cap-skill-author.test.js): every body line of the skill becomes a rule; the second
+  // is style and the last generic, the rest useful.
+  kind = 'rules';
+  const body = prompt.slice(prompt.indexOf('<<<FILE\n') + 8, prompt.indexOf('\nFILE>>>')).split('---').pop();
+  const lines = body.split('\n').filter((l) => l.trim().length >= 12 && !l.startsWith('#'));
+  reply = { request_context: 'A request the skill is for.', rules: lines.map((q, i) => ({ q, c: i === 1 ? 'style' : i === lines.length - 1 ? 'generic' : 'useful', o: `Does what line ${i + 1} says.`, w: 'it matters', h: 'a plan' })) };
+} else if (prompt.startsWith('You write skill benchmark tasks') || prompt.startsWith('You fix skill benchmark tasks')) {
+  kind = prompt.startsWith('You fix') ? 'skill-fix' : 'skill-write';
+  const rules = jsonAfter('Rules:\n', '\n\n');
+  const ids = kind === 'skill-fix' ? jsonAfter('Failed tasks with notes:\n', '\n\nReply').map((t) => t.id) : jsonAfter('Task ids:\n', '\n\nReply');
+  const kept = rules.filter((r) => r.class !== 'style').map((r) => r.n);
+  const fixed = (id) => kind === 'skill-fix' && !list('FAKE_KP_NOFIX').includes(id);
+  reply = { tasks: ids.map((id) => ({ id, title: `Case ${id}`, section: 'Steps', why: 'the skill changes the answer',
+    prompt: `A team is about to ship a change to their service and pasted the plan below, with the steps, the people involved, the systems it touches and the checks they will run before and after the switch. They want a careful review that says what is missing and what to do first (case ${id.split('-').pop()}).${fixed(id) ? ' FIXED' : ''}`,
+    rubric: Array.from({ length: 5 }, (_, i) => [kept[i % kept.length], `The answer covers point ${i + 1} of its rule.`]) })) };
+} else if (prompt.startsWith('You review skill benchmark tasks')) {
+  kind = 'skill-review';
+  const tasks = jsonAfter('Tasks:\n', '\n\nReply');
+  reply = { reviews: tasks.map((t) => ({ id: t.id, verdict: list('FAKE_KP_FAIL').includes(t.id) && !t.prompt.endsWith(' FIXED') ? 'fail' : 'pass', note: 'checked' })) };
 } else {
   kind = 'answer';
   reply = null;

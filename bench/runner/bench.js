@@ -10,7 +10,7 @@
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
  *   node bench/runner/bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review|emit ...   (the scenario pack's authoring tools; free, no credits)
- *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select|units|unit-stage|unit-author|delegation ...   (capability benchmarking; draft, trigger and live runs cost credits)
+ *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select|units|unit-stage|unit-author|skill-author|delegation ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/docs/reference.md.
@@ -378,6 +378,11 @@ const USAGE = `Usage:
        (PAID: writes a unit's frozen baseline from its briefs: glm-5 writes, deepseek-3.2 reviews, one fix, then a still failing task is dropped and recorded;
        at most 8 calls, each spend-checked as above, resumable from --work. --dry-run prints the steps and the worst case, free. --replace ID: a dropped
        task's replacement, deepseek-3.2 writes and glm-5 reviews, two calls, into the draft. --sign-off NAME: free, freezes the draft into --out with source.signedOffBy)
+  node bench/runner/bench.js cap skill-author --skill NAME --from-source FILE [--out DIR] [--repo-root DIR]
+       (free: a hand-written skill baseline source becomes a draft folder in bench/cap/baseline-drafts, checked by the frozen verifier)
+  node bench/runner/bench.js cap skill-author --skill NAME [--from-source FILE --review-only] --work DIR --ledger FILE --cap N [--out DIR] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
+       (PAID: glm-5 writes the rules and two batches of 8 tasks, deepseek-3.2 reviews, one fix, then a still failing task is dropped and recorded; at most
+       9 calls, spend-checked, resumable from --work. --review-only: deepseek-3.2 checks each batch of a hand-written source once and drops what fails, 2 calls)
   node bench/runner/bench.js cap unit-author --kind agent|sop|context --unit NAME --rewrite FILE --from BASELINE --out FILE --work DIR --ledger FILE --cap N [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
        (PAID: a new version of a frozen baseline with the tasks of --rewrite written again (its families, one batch, one fix, then drop and record; at
        most 4 calls); every other task is copied unchanged and --out has no sign-off. --dry-run prints the steps and the worst case, free)

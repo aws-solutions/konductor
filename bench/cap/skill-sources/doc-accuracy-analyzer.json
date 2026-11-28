@@ -1,0 +1,587 @@
+{
+  "skill": "doc-accuracy-analyzer",
+  "request_context": "A request to fact-check the claims in a design document against the evidence given, and say which are right, wrong, stretched or unproven.",
+  "writtenBy": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "generatedAt": "2026-11-28T19:00:00.000Z",
+  "selection": {
+    "load": [
+      0,
+      2,
+      4,
+      5,
+      9
+    ],
+    "none": [
+      10,
+      12,
+      16,
+      17,
+      19
+    ]
+  },
+  "rules": [
+    {
+      "c": "style",
+      "q": "CONFIRMED: N | INCORRECT: N | OVERSTATED: N",
+      "o": "The report has a summary line counting claims in each class.",
+      "h": "Any fact-check report."
+    },
+    {
+      "c": "useful",
+      "q": "are the highest-risk claim types",
+      "o": "Picks out every already built and needs only configuration claim and checks it hardest against the code or config given.",
+      "w": "These claims hide most unplanned work.",
+      "h": "A doc saying a feature is already implemented."
+    },
+    {
+      "c": "useful",
+      "q": "Do not accept the document's assertion as evidence.",
+      "o": "Judges each claim against the evidence given (code, metrics, docs), never against the document repeating it.",
+      "w": "A doc cannot prove itself.",
+      "h": "A doc whose claims are restated in its own appendix."
+    },
+    {
+      "c": "useful",
+      "q": "Contradicted by primary source",
+      "o": "Marks a claim the evidence contradicts as INCORRECT, the most serious class, and says the text must be corrected.",
+      "w": "Wrong facts break designs.",
+      "h": "A doc stating a limit the evidence contradicts."
+    },
+    {
+      "c": "useful",
+      "q": "True but exaggerated",
+      "o": "Marks a claim that is partly true but overstated (all regions, unlimited, already handles) as OVERSTATED, a significant class, not as confirmed or wrong.",
+      "w": "Stretched claims mislead without being false.",
+      "h": "A doc saying unlimited where a quota exists."
+    },
+    {
+      "c": "useful",
+      "q": "It is rated SUGGESTION, because new services and internal facts often have no public source.",
+      "o": "Marks a claim with no evidence either way as UNVERIFIED, a minor class, and asks for a callout saying what was checked, instead of calling it wrong.",
+      "w": "Lack of proof is not disproof.",
+      "h": "Internal team facts with no source given."
+    },
+    {
+      "c": "useful",
+      "q": "True but incomplete without qualifier",
+      "o": "Marks a claim that is true only with a missing condition as MISSING CONTEXT and names the qualifier.",
+      "w": "Missing conditions cause wrong use.",
+      "h": "A limit that holds only in one mode."
+    },
+    {
+      "c": "useful",
+      "q": "For each INCORRECT or OVERSTATED finding, provide:",
+      "o": "For each wrong or stretched claim, gives the original text, a corrected text and the source of the correction.",
+      "w": "Authors can fix the text directly.",
+      "h": "Any doc with a wrong claim."
+    },
+    {
+      "c": "useful",
+      "q": "0 INCORRECT (CRITICAL) findings remain, including the routed AWS claims.",
+      "o": "Gives an overall PASS or FAIL: FAIL while any INCORRECT claim remains uncorrected, PASS otherwise when stretched claims are fixed or flagged.",
+      "w": "The result is a gate.",
+      "h": "Docs with and without wrong claims."
+    },
+    {
+      "c": "useful",
+      "q": "Identify any step that assumes a capability not confirmed in Steps 2 and 3",
+      "o": "Traces the design's flow end to end and flags any step that relies on a capability the evidence does not confirm.",
+      "w": "Feasibility gaps hide between true facts.",
+      "h": "A flow that needs a feature nobody confirmed."
+    },
+    {
+      "c": "useful",
+      "q": "Implementation claims require a file path or commit reference",
+      "o": "Asks for a file path or commit for each claim that something is implemented, and does not confirm it without one.",
+      "w": "Code claims need code evidence.",
+      "h": "A doc saying retry logic exists, with no path."
+    },
+    {
+      "c": "generic",
+      "q": "Scan the document and extract all verifiable claims by category",
+      "o": "Lists the claims it checked.",
+      "w": "Any fact-check lists what it checked.",
+      "h": "Any fact-check."
+    },
+    {
+      "c": "useful",
+      "q": "Only a concrete existing solution makes one INCORRECT",
+      "o": "Treats claims that nothing like this exists as UNVERIFIED unless a concrete existing solution is named, and as INCORRECT only then.",
+      "w": "Absence claims are hard to disprove.",
+      "h": "A doc saying no team has built this."
+    },
+    {
+      "c": "useful",
+      "q": "Reclassify a CONFIRMED row as OVERSTATED or MISSING CONTEXT when the document's wording goes further than the cited page",
+      "o": "Downgrades a claim that cites a real fact but words it more strongly than the source to OVERSTATED or MISSING CONTEXT.",
+      "w": "A true source can be overstated.",
+      "h": "A doc that cites the right page but says always where the page says by default."
+    }
+  ],
+  "batches": {
+    "pilot-a": [
+      {
+        "title": "Already-built auth claim against a code excerpt",
+        "section": "Step 1: Extract Verifiable Claims",
+        "prompt": "Before review, check the claims in section 3 of our design doc. I pasted the code it refers to.\n\nDoc, section 3: \"Token refresh is already implemented in src/auth/refresh.ts and needs only configuration to support the new partner app. Refresh tokens rotate on every use.\"\n\nsrc/auth/refresh.ts (whole file):\n```ts\nexport async function refresh(token: string) {\n  const session = await store.get(token);\n  if (!session) throw new Error('expired');\n  return issueAccessToken(session.userId); // same refresh token is reused\n}\n```\nThere is no partner app config anywhere in the repo (I grepped for partner).",
+        "rubric": [
+          [
+            2,
+            "Singles out the already implemented and needs only configuration wording as the riskiest claims."
+          ],
+          [
+            4,
+            "Marks refresh tokens rotate on every use as INCORRECT, since the code reuses the same token."
+          ],
+          [
+            5,
+            "Marks needs only configuration as OVERSTATED or INCORRECT, since no partner config exists and the code has no partner path."
+          ],
+          [
+            8,
+            "Gives corrected text for each wrong claim, citing src/auth/refresh.ts."
+          ],
+          [
+            9,
+            "Gives an overall FAIL."
+          ],
+          [
+            12,
+            "Lists each claim it checked."
+          ]
+        ],
+        "why": "Code claims checked against a code excerpt; the skill's push on already built claims is the point."
+      },
+      {
+        "title": "AWS limits stated in an ingest design",
+        "section": "Step 2: Route AWS Claims to aws-service-validator",
+        "prompt": "A reviewer said some numbers in my design are off. Please go through them.\n\nFrom docs/ingest.md:\n1. \"Each Kinesis shard accepts up to 10,000 records per second for writes.\"\n2. \"DynamoDB items can be up to 4 MB, so we store the full raw payload in the item.\"\n3. \"Lambda functions can run for up to 15 minutes, which covers our longest batch (9 minutes, measured in run B-17).\"\n4. \"S3 gives strong read-after-write consistency for new objects, so the loader can read right after the write.\"\n\nPlease tell me which ones I need to fix before the review.",
+        "rubric": [
+          [
+            4,
+            "Marks claim 1 as INCORRECT: a shard accepts up to 1,000 records per second (or 1 MB per second) for writes."
+          ],
+          [
+            4,
+            "Marks claim 2 as INCORRECT: the DynamoDB item size limit is 400 KB, and says storing the payload in the item breaks."
+          ],
+          [
+            10,
+            "Says claim 2's error breaks the design step that stores the raw payload in the item, not only the sentence."
+          ],
+          [
+            8,
+            "Gives corrected text with the source for each wrong claim, such as the service quotas page."
+          ],
+          [
+            9,
+            "Gives an overall FAIL while claims 1 and 2 stand."
+          ],
+          [
+            12,
+            "Confirms claims 3 and 4 as correct."
+          ]
+        ],
+        "why": "Two wrong AWS limits and two right ones; the classes and the effect on the design matter."
+      },
+      {
+        "title": "Unlimited where a quota exists",
+        "section": "Step 4: Classify Findings",
+        "prompt": "Fact-check this paragraph from our proposal before my manager reads it:\n\n\"API Gateway gives us unlimited requests per second, so the burst from the Black Friday campaign is not a concern. As AWS documents, the default account throttle is 10,000 requests per second per Region, and we have used about 2,000 at our past peak (CloudWatch dashboard CW-api-peak). Our team is the first in the company to put API Gateway in front of a mainframe.\"\n\nI want to know what to change, with the reason.",
+        "rubric": [
+          [
+            5,
+            "Marks unlimited requests per second as OVERSTATED or INCORRECT, since the same paragraph cites a 10,000 per second default throttle."
+          ],
+          [
+            14,
+            "Treats the cited 10,000 default as confirmed, and the unlimited wording as going further than that source."
+          ],
+          [
+            13,
+            "Marks the first in the company claim as UNVERIFIED, not INCORRECT, since no existing solution is named."
+          ],
+          [
+            8,
+            "Gives corrected text, such as a default throttle of 10,000 per second that can be raised, with the source."
+          ],
+          [
+            9,
+            "Gives a result that matches the classes found."
+          ]
+        ],
+        "why": "A paragraph that cites a quota and then overstates it, plus an absence claim."
+      },
+      {
+        "title": "Internal throughput claim with no evidence",
+        "section": "Pass Condition",
+        "prompt": "Check the claims in this section of our design for the search team:\n\n\"Our order service already handles 5,000 requests per second in production. Retry logic is built on top of the existing SDK middleware. The service was load tested last year.\"\n\nI couldn't find the load test report, and I don't have dashboard access right now. The repo has src/retry/ with a file backoff.ts that wraps the AWS SDK's retry strategy (I checked that one). What do I need to do before the doc can pass?",
+        "rubric": [
+          [
+            6,
+            "Marks the 5,000 requests per second claim as UNVERIFIED, not INCORRECT, since no evidence either way is given."
+          ],
+          [
+            6,
+            "Asks for an UNVERIFIED callout in the doc saying what was looked for."
+          ],
+          [
+            11,
+            "Confirms the retry claim only with the file path src/retry/backoff.ts as its evidence."
+          ],
+          [
+            3,
+            "Does not accept the load tested last year sentence as evidence on its own."
+          ],
+          [
+            9,
+            "Says the doc can pass once callouts are added, since nothing is INCORRECT."
+          ]
+        ],
+        "why": "Unproven internal facts should be flagged, not failed; the pass rule depends on that."
+      },
+      {
+        "title": "End-to-end flow assumes an unconfirmed feature",
+        "section": "Step 5: Assess Approach Feasibility",
+        "prompt": "Can you verify this design actually works as written? The flow:\n\n1. Clients upload CSVs to S3.\n2. S3 triggers a Lambda for each object.\n3. The Lambda sends each row to an SQS FIFO queue, and the queue automatically sorts rows by the customer_id column across the whole queue.\n4. A consumer reads rows in customer order and writes them to Postgres.\n\nThe doc says step 3 is how we guarantee per-customer order. Everything else was built before by the team.",
+        "rubric": [
+          [
+            10,
+            "Traces the flow and flags step 3 as relying on a capability not confirmed: FIFO queues keep order within a message group, they do not sort by a column."
+          ],
+          [
+            4,
+            "Marks the automatic sort claim as INCORRECT."
+          ],
+          [
+            8,
+            "Gives a correction, such as using customer_id as the message group id, with the source."
+          ],
+          [
+            2,
+            "Flags built before by the team as an implementation claim with no evidence."
+          ],
+          [
+            9,
+            "Gives an overall FAIL."
+          ]
+        ],
+        "why": "The facts are mostly right but one step depends on a feature that does not exist; only a flow trace catches it."
+      },
+      {
+        "title": "Doc evidence appendix that restates claims",
+        "section": "Step 3: Investigate the Remaining Claims",
+        "prompt": "Please fact-check this. The author says every claim is backed by the appendix.\n\nSection 2: \"Our cache hit rate is 97%. Cold reads take 300 ms. The cache cluster costs $400 a month.\"\n\nAppendix A (Evidence): \"As stated above, the hit rate is 97%, cold reads take 300 ms and cost is $400 a month.\"\n\nThe team's metrics export, which I pasted from Grafana: hit rate last 30 days 81%; cold read p50 290 ms; invoice line for the cache cluster: $412.",
+        "rubric": [
+          [
+            3,
+            "Does not accept Appendix A as evidence, since it only repeats the claims."
+          ],
+          [
+            4,
+            "Marks the 97% hit rate as INCORRECT against the 81% metrics export."
+          ],
+          [
+            12,
+            "Confirms the cold read and cost claims as roughly right against the export and invoice."
+          ],
+          [
+            8,
+            "Gives corrected text for the hit rate, citing the Grafana export."
+          ],
+          [
+            9,
+            "Gives an overall FAIL until the hit rate is fixed."
+          ]
+        ],
+        "why": "A doc citing itself as evidence; the skill says only the primary source counts."
+      },
+      {
+        "title": "True limit missing its condition",
+        "section": "Step 4: Classify Findings",
+        "prompt": "Check these two statements in our Lambda design:\n\n1. \"Lambda gives each function up to 10,240 MB of memory, so we can load the whole 6 GB model into memory.\"\n2. \"Lambda's /tmp storage is 512 MB, so we can't unpack the model to disk.\"\n\nOur team lead says statement 2 is outdated. Just tell me which are right and what to write instead.",
+        "rubric": [
+          [
+            12,
+            "Confirms statement 1's 10,240 MB memory maximum."
+          ],
+          [
+            7,
+            "Marks statement 2 as MISSING CONTEXT or INCORRECT: 512 MB is the default, and ephemeral storage can be set up to 10,240 MB."
+          ],
+          [
+            8,
+            "Gives the corrected text for statement 2 with the source."
+          ],
+          [
+            10,
+            "Says the claim about not unpacking to disk no longer holds once storage is raised."
+          ],
+          [
+            9,
+            "Gives a result that matches the classes found."
+          ]
+        ],
+        "why": "A true default stated as a hard limit; the right class is about the missing condition."
+      },
+      {
+        "title": "Landscape claim with a named counterexample",
+        "section": "Step 3: Investigate the Remaining Claims",
+        "prompt": "Fact-check the motivation section of this proposal for the platform council:\n\n\"No team in the company has built a shared feature-flag service, so every team runs its own. Building one is novel work.\"\n\nA colleague just told me the payments team runs flags.internal, a shared flag service that 14 teams already use (she linked me the wiki page go/flags-internal, which lists those teams). The proposal also says \"AWS recommends AppConfig for feature flags\" with no link.",
+        "rubric": [
+          [
+            13,
+            "Marks the no team has built claim as INCORRECT, since a concrete existing shared service is named."
+          ],
+          [
+            8,
+            "Gives corrected text that mentions flags.internal, citing go/flags-internal."
+          ],
+          [
+            6,
+            "Marks the AWS recommends claim as UNVERIFIED until a documentation link is given."
+          ],
+          [
+            9,
+            "Gives an overall FAIL."
+          ],
+          [
+            12,
+            "Lists each claim it checked."
+          ]
+        ],
+        "why": "An absence claim that a named solution disproves, unlike the earlier first in the company case."
+      }
+    ],
+    "pilot-b": [
+      {
+        "title": "Global tables in every Region",
+        "section": "Step 4: Classify Findings",
+        "prompt": "pls audit the claims in this paragraph before the review on Monday:\n\n\"DynamoDB global tables are available in all regions, including the new ones we plan to launch in. Replication is synchronous, so a write in one region is immediately readable in every other region. We confirmed this design with the AWS account team last year.\"\n\nThe regions we plan to launch in are not listed in the doc.",
+        "rubric": [
+          [
+            5,
+            "Marks available in all regions as OVERSTATED or UNVERIFIED for the unnamed launch regions, asking to check the Region table."
+          ],
+          [
+            4,
+            "Marks synchronous replication with immediate reads everywhere as INCORRECT for standard global tables, which replicate asynchronously."
+          ],
+          [
+            3,
+            "Does not accept the account team conversation as evidence."
+          ],
+          [
+            8,
+            "Gives corrected text for the replication claim with the source."
+          ],
+          [
+            9,
+            "Gives an overall FAIL."
+          ]
+        ],
+        "why": "An overstated availability claim and a wrong consistency claim in one paragraph."
+      },
+      {
+        "title": "Needs only configuration for a new region",
+        "section": "Step 1: Extract Verifiable Claims",
+        "prompt": "Fact-check our expansion doc. Main claim: \"Launching in eu-west-1 requires only configuration: set REGION=eu-west-1 and deploy.\"\n\nWhat I found in the repo:\n- infra/main.tf hardcodes the bucket name orders-us-east-1 and an ACM certificate ARN in us-east-1.\n- src/config.ts reads REGION but src/payments.ts calls a payment processor endpoint https://us.api.processor.example with no region switch.\n\nTell me what's true and what isn't.",
+        "rubric": [
+          [
+            2,
+            "Treats requires only configuration as the riskiest claim and checks it against the repo excerpts."
+          ],
+          [
+            4,
+            "Marks the claim as INCORRECT, since the bucket name, the certificate and the processor endpoint are hardcoded to the US."
+          ],
+          [
+            11,
+            "Cites the file paths infra/main.tf and src/payments.ts as the evidence."
+          ],
+          [
+            8,
+            "Gives corrected text listing the work needed beyond configuration."
+          ],
+          [
+            9,
+            "Gives an overall FAIL."
+          ]
+        ],
+        "why": "A configuration-only claim disproved by repo facts; the skill targets exactly this claim type."
+      },
+      {
+        "title": "Accuracy report on a mixed set of claims",
+        "section": "Step 7: Produce Report",
+        "prompt": "Produce an accuracy check for these claims from docs/design/search-v2.md:\n\n1. \"OpenSearch Serverless needs no capacity planning at all.\"\n2. \"Our index has 40M documents\" (the cluster stats I pasted say docs.count: 39,812,004).\n3. \"Reindexing is already scripted in tools/reindex.py\" (that file does not exist; tools/ has only backup.py).\n4. \"Search latency p99 is 120 ms\" (no data given).\n\nI need to know which are verified, wrong or unverifiable, with corrections.",
+        "rubric": [
+          [
+            5,
+            "Marks claim 1 as OVERSTATED: serverless still has capacity units and limits to consider."
+          ],
+          [
+            12,
+            "Confirms claim 2 against the cluster stats."
+          ],
+          [
+            4,
+            "Marks claim 3 as INCORRECT, since tools/reindex.py does not exist."
+          ],
+          [
+            6,
+            "Marks claim 4 as UNVERIFIED with a callout, not INCORRECT."
+          ],
+          [
+            8,
+            "Gives corrected text for claims 1 and 3."
+          ],
+          [
+            9,
+            "Gives an overall FAIL, from claim 3."
+          ]
+        ],
+        "why": "One claim in each class, so the classes, corrections and result all show."
+      },
+      {
+        "title": "Correct claim worded past its source",
+        "section": "Step 4: Classify Findings",
+        "prompt": "Can you check the security section of our design?\n\n\"S3 encrypts every object automatically, so we never need to think about encryption, including for our KMS-managed customer keys. See the S3 encryption docs page.\"\n\nThe linked page says S3 applies server-side encryption with S3 managed keys (SSE-S3) as the base level for new objects, and that customer managed KMS keys must be configured per bucket or request.",
+        "rubric": [
+          [
+            14,
+            "Confirms that S3 encrypts new objects by default, but says the doc's wording goes further than the cited page."
+          ],
+          [
+            5,
+            "Marks never need to think about encryption, including KMS customer keys as OVERSTATED or INCORRECT, since KMS keys need setup."
+          ],
+          [
+            8,
+            "Gives corrected text citing the page."
+          ],
+          [
+            9,
+            "Gives a result that matches the classes found."
+          ],
+          [
+            12,
+            "Lists the claims it checked."
+          ]
+        ],
+        "why": "The cited page is right but the doc overstates it; the reclassify rule applies."
+      },
+      {
+        "title": "Bedrock capabilities oversold",
+        "section": "Step 4: Classify Findings",
+        "prompt": "My manager thinks our doc oversells what the model service can do out of the box. Claims:\n\n1. \"Bedrock Knowledge Bases ingest our PDFs and answer questions with citations.\"\n2. \"No fine-tuning or extra work is needed for answers to be 100% accurate on our policy documents.\"\n3. \"It already integrates with our Confluence\" (our team has not set up any connector; the doc gives no link or config).\n\nGo claim by claim and tell me where we're stretching the truth.",
+        "rubric": [
+          [
+            12,
+            "Treats claim 1 as broadly confirmed (knowledge bases do retrieval with source citations), noting it needs setup."
+          ],
+          [
+            5,
+            "Marks 100% accurate as OVERSTATED, since no retrieval system guarantees that."
+          ],
+          [
+            2,
+            "Flags already integrates as an already built claim with no evidence."
+          ],
+          [
+            11,
+            "Asks for the config or connector setup before claim 3 can be confirmed, and marks it unconfirmed or wrong given nobody set one up."
+          ],
+          [
+            8,
+            "Gives corrected text for claims 2 and 3."
+          ]
+        ],
+        "why": "A mix of a fair claim, an overstated one and an already built one with no evidence."
+      },
+      {
+        "title": "Strong consistency claim, used by an existing service",
+        "section": "Step 3: Investigate the Remaining Claims",
+        "prompt": "Is this statement in section 4 of docs/storage.md actually right?\n\n\"S3 is strongly consistent for all operations, including bucket listing after deletes and bucket configuration changes, and the upload service already relies on this in src/upload/finalize.ts.\"\n\nsrc/upload/finalize.ts reads the object with GetObject right after PutObject. It never lists the bucket. Please check it and tell me how to fix the text if needed.",
+        "rubric": [
+          [
+            14,
+            "Confirms strong read-after-write consistency for objects and listings, but says bucket configuration changes are eventually consistent, so for all operations goes too far."
+          ],
+          [
+            7,
+            "Marks the all operations wording as OVERSTATED or MISSING CONTEXT and names the qualifier."
+          ],
+          [
+            11,
+            "Confirms the upload service claim with the file path, limited to GetObject after PutObject."
+          ],
+          [
+            8,
+            "Gives corrected text for the section."
+          ],
+          [
+            9,
+            "Gives a result that matches the classes found."
+          ]
+        ],
+        "why": "A mostly true claim stretched to all operations, and a code claim that holds only in part."
+      },
+      {
+        "title": "Doc revised after review, recheck before resubmission",
+        "section": "When to Use",
+        "prompt": "We revised the doc after review. Recheck these claims before we resubmit:\n\n1. \"Step Functions Standard workflows can run for up to one year.\"\n2. \"SQS standard queues guarantee exactly-once delivery, so the consumer needs no dedupe.\"\n3. \"The dedupe table was dropped in the revision\" (the diff I pasted removes infra/dedupe.tf).\n\nThe reviewer's old comment said claim 2 was wrong; the author says it's fixed now.",
+        "rubric": [
+          [
+            12,
+            "Confirms claim 1 (up to one year for Standard workflows)."
+          ],
+          [
+            4,
+            "Marks claim 2 as INCORRECT: standard queues give at-least-once delivery."
+          ],
+          [
+            10,
+            "Flags that dropping the dedupe table (claim 3) breaks the flow, since the consumer still needs dedupe."
+          ],
+          [
+            3,
+            "Does not accept the author's word that claim 2 is fixed."
+          ],
+          [
+            9,
+            "Gives an overall FAIL."
+          ]
+        ],
+        "why": "A wrong claim that survived a revision and a change that depends on it."
+      },
+      {
+        "title": "Best practice claim with no citation",
+        "section": "Guidelines",
+        "prompt": "Check these approach claims in our architecture doc before the council sees it:\n\n1. \"It is well known that a single shared VPC for all teams is the AWS best practice.\"\n2. \"AWS recommends one account per workload\" (the doc links the AWS multi-account strategy whitepaper, which recommends separate accounts to isolate workloads and environments).\n3. \"Our current shared VPC has had zero security incidents\" (no source).",
+        "rubric": [
+          [
+            3,
+            "Does not accept it is well known as evidence for claim 1."
+          ],
+          [
+            6,
+            "Marks claim 1 as UNVERIFIED or INCORRECT and asks for a documentation link."
+          ],
+          [
+            12,
+            "Confirms claim 2 against the linked whitepaper."
+          ],
+          [
+            6,
+            "Marks claim 3 as UNVERIFIED with a callout."
+          ],
+          [
+            9,
+            "Gives a result that matches the classes found."
+          ]
+        ],
+        "why": "Approach claims backed by phrasing only versus one with a real citation."
+      }
+    ]
+  }
+}

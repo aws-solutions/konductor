@@ -1,0 +1,575 @@
+{
+  "skill": "verification",
+  "request_context": "A request to finish or sign off a change where the answer must prove the change works, with tests run before and after and the output shown.",
+  "writtenBy": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "generatedAt": "2026-11-28T19:00:00.000Z",
+  "selection": {
+    "load": [
+      0,
+      1,
+      3,
+      6,
+      9
+    ],
+    "none": [
+      10,
+      11,
+      12,
+      14,
+      19
+    ]
+  },
+  "rules": [
+    {
+      "c": "style",
+      "q": "**Result:** PASS / FAIL",
+      "o": "Puts evidence in a block with command, exit code, output and a PASS or FAIL result.",
+      "h": "Any done claim."
+    },
+    {
+      "c": "useful",
+      "q": "Write a failing test. Run it. Confirm it FAILS. Show the output.",
+      "o": "For a bug fix or new code, writes a test first and requires seeing it fail before the fix, with the failing output.",
+      "w": "A test never seen failing may test nothing.",
+      "h": "A bug fix request."
+    },
+    {
+      "c": "useful",
+      "q": "Define success criteria before implementation.",
+      "o": "States what must be true when done before writing code.",
+      "w": "Without criteria, done is a guess.",
+      "h": "A feature request with loose wording."
+    },
+    {
+      "c": "useful",
+      "q": "Run the full test suite. Confirm all tests pass. Show the output.",
+      "o": "Requires the full suite, not only the new test, to pass with output before calling the change done.",
+      "w": "Fixes break other things.",
+      "h": "A change where only one test was run."
+    },
+    {
+      "c": "useful",
+      "q": "Execute them and show output.",
+      "o": "Refuses to call work done on should pass or looks correct, and asks for or plans the actual run with its output.",
+      "w": "Belief is not evidence.",
+      "h": "A user asking to confirm without any run."
+    },
+    {
+      "c": "useful",
+      "q": "fix the code, never delete the test",
+      "o": "Rejects deleting or skipping a failing test to get green, and fixes the code instead.",
+      "w": "Deleting tests hides bugs.",
+      "h": "A diff that removes a failing test."
+    },
+    {
+      "c": "useful",
+      "q": "Checker must score PASS before presenting to user",
+      "o": "For a generated document, runs or calls for the matching checker and needs a PASS before presenting it.",
+      "w": "Artifacts need the same proof as code.",
+      "h": "A request to finish a design doc."
+    },
+    {
+      "c": "useful",
+      "q": "For a document or infrastructure change with no test to write, keep SPEC, then build or validate the change instead of RED, GREEN and REFACTOR",
+      "o": "For infrastructure or docs, states criteria and validates (plan, lint, synth) instead of forcing a unit test.",
+      "w": "Some changes have no unit test.",
+      "h": "A Terraform or config change."
+    },
+    {
+      "c": "useful",
+      "q": "Clean up code. Run tests again. Confirm they stay GREEN.",
+      "o": "After a refactor, reruns the tests and shows they still pass, before and after.",
+      "w": "Refactors must not change behavior.",
+      "h": "A refactor request."
+    },
+    {
+      "c": "useful",
+      "q": "Evidence provided but incomplete (e.g., exit code shown but output omitted)",
+      "o": "Treats evidence with a missing piece (exit code without output, a summary without the run) as not enough and asks for the rest.",
+      "w": "Partial evidence can hide failures.",
+      "h": "A report quoting exit 0 with no output."
+    },
+    {
+      "c": "useful",
+      "q": "Describe exactly what was observed",
+      "o": "For a manual check, asks for or gives exact observations (inputs, outputs, what was seen), not it works.",
+      "w": "Vague manual checks prove nothing.",
+      "h": "A UI or script change tested by hand."
+    },
+    {
+      "c": "useful",
+      "q": "all changes need evidence",
+      "o": "Does not skip checks because the change is small.",
+      "w": "Small changes break things too.",
+      "h": "A one-line change the user calls trivial."
+    },
+    {
+      "c": "generic",
+      "q": "Read implementations, don't assume patterns.",
+      "o": "Bases claims on the code or output shown, not on assumed patterns.",
+      "w": "Any careful answer reads the code.",
+      "h": "Any code question."
+    },
+    {
+      "c": "useful",
+      "q": "I have exact file paths and line numbers",
+      "o": "Names the exact file and line for each issue or change it reports.",
+      "w": "Vague locations cannot be checked.",
+      "h": "A report of a found bug."
+    }
+  ],
+  "batches": {
+    "pilot-a": [
+      {
+        "title": "Done claim with no test output",
+        "section": "Anti-Patterns",
+        "prompt": "The slugify fix in src/utils/slug.ts is in. Here's the diff:\n\n```diff\n- return s.toLowerCase().replace(/ /g, '-');\n+ return s.toLowerCase().trim().replace(/\\s+/g, '-');\n```\n\nThe bug was that 'Hello  World ' became 'hello--world-'. The other dev says the tests should pass, the code looks right. Can I close the ticket? I haven't run anything.",
+        "rubric": [
+          [
+            5,
+            "Says it cannot be called done on should pass or looks right, and that the tests must be run and shown."
+          ],
+          [
+            2,
+            "Asks for a test with the bug's input ('Hello  World ') that fails before the fix and passes after."
+          ],
+          [
+            4,
+            "Asks for the full suite to pass, with output, before closing the ticket."
+          ],
+          [
+            13,
+            "Reads the diff and says whether it handles the stated input, without claiming the run result."
+          ],
+          [
+            14,
+            "Names src/utils/slug.ts and the changed line."
+          ]
+        ],
+        "why": "A done claim with only belief behind it; the skill's whole point."
+      },
+      {
+        "title": "Diff that deletes a failing test",
+        "section": "Quality Gate",
+        "prompt": "CI is green now, can you approve? I fixed the pagination change. The PR:\n\n```diff\n src/paginate.py\n- end = start + size + 1\n+ end = start + size\n tests/test_paginate.py\n- def test_last_page_has_remaining_items():\n-     assert paginate(list(range(25)), page=3, size=10) == [20, 21, 22, 23, 24]\n```\n\nThat test kept failing so I removed it, it was flaky anyway.",
+        "rubric": [
+          [
+            6,
+            "Rejects removing the failing test to get green and says to fix the code instead."
+          ],
+          [
+            13,
+            "Checks whether the code change would make the removed test pass, based on the diff, before calling it flaky."
+          ],
+          [
+            2,
+            "Asks to restore the test and show it passing with the fix."
+          ],
+          [
+            4,
+            "Asks for the full suite output after restoring."
+          ],
+          [
+            14,
+            "Names tests/test_paginate.py and the removed test."
+          ]
+        ],
+        "why": "Deleting a failing test is a stop condition in the skill."
+      },
+      {
+        "title": "Test-first request for a new function",
+        "section": "TDD Workflow",
+        "prompt": "Implement parseDuration in src/duration.js: '1h30m' should return 5400 (seconds), '45s' returns 45, '2h' returns 7200, and anything else throws. Do it properly, I want to see that the tests actually caught something. Show me the plan and the code, and the test run you would expect at each step.",
+        "rubric": [
+          [
+            3,
+            "States the success criteria first (the four cases and the throw case)."
+          ],
+          [
+            2,
+            "Writes the tests first and says they must be run and seen failing before the code exists."
+          ],
+          [
+            9,
+            "Includes a cleanup step with the tests run again and still passing."
+          ],
+          [
+            4,
+            "Ends with running the full suite with its output."
+          ],
+          [
+            5,
+            "Does not claim the tests pass without a run, and marks expected output as expected, not observed."
+          ]
+        ],
+        "why": "A full red, green, refactor cycle is asked for."
+      },
+      {
+        "title": "Exit code without output",
+        "section": "Evidence Requirements",
+        "prompt": "My teammate added input validation to the createUser handler and wrote in the PR: \"Ran the tests, exit code 0, all good.\" There's no output pasted, and the PR adds a new file tests/createUser.validation.test.ts. Last time someone said that, the new test file wasn't even picked up by the runner. Is this enough to merge?",
+        "rubric": [
+          [
+            10,
+            "Says exit code 0 alone is incomplete evidence and asks for the run output."
+          ],
+          [
+            10,
+            "Asks for output showing the new test file actually ran (its test names in the output)."
+          ],
+          [
+            4,
+            "Asks for the full suite output."
+          ],
+          [
+            5,
+            "Does not approve the merge on the teammate's word."
+          ],
+          [
+            14,
+            "Names tests/createUser.validation.test.ts."
+          ]
+        ],
+        "why": "Partial evidence, with a known way it can hide a test that never ran."
+      },
+      {
+        "title": "Refactor with behaviour kept",
+        "section": "TDD Workflow",
+        "prompt": "Refactor src/cart/total.ts to remove the duplicated tax logic between subtotalWithTax() and lineTax(). Behavior must not change. Here's the current test run before I touch it:\n\n```\n$ npm test -- cart\nPASS test/cart/total.test.ts (14 tests)\n```\n\nWrite the refactor and tell me what you'd show me after to prove nothing changed.",
+        "rubric": [
+          [
+            9,
+            "Says the same tests must be run after the refactor and shown still passing, compared with the before run."
+          ],
+          [
+            4,
+            "Asks for the full suite after, not only the cart tests."
+          ],
+          [
+            3,
+            "States the success criterion: same results for every existing test."
+          ],
+          [
+            5,
+            "Does not claim the after run passes without having it."
+          ],
+          [
+            14,
+            "Names the functions and file it changes."
+          ]
+        ],
+        "why": "A refactor whose proof is the before and after run."
+      },
+      {
+        "title": "Terraform change with no unit test",
+        "section": "TDD Workflow",
+        "prompt": "I added a lifecycle rule to infra/s3.tf to expire objects under tmp/ after 7 days. There's no unit test setup for the Terraform in this repo. Before I say it's done, what do I need to show? Here's the block:\n\n```hcl\nlifecycle_rule {\n  prefix  = \"tmp/\"\n  enabled = true\n  expiration { days = 7 }\n}\n```",
+        "rubric": [
+          [
+            8,
+            "Does not force a unit test; asks for criteria then validation instead (terraform validate and plan, with output)."
+          ],
+          [
+            3,
+            "States what must be true: only tmp/ objects expire after 7 days."
+          ],
+          [
+            5,
+            "Says plan output must be shown, not assumed."
+          ],
+          [
+            10,
+            "Says a plan summary line alone is not enough; the plan output itself must be shown."
+          ],
+          [
+            13,
+            "Reads the block and notes anything in it that the plan should confirm (for example the prefix)."
+          ]
+        ],
+        "why": "An infrastructure change where the skill swaps the test cycle for validation."
+      },
+      {
+        "title": "Small change skipped",
+        "section": "Anti-Patterns",
+        "prompt": "It's a one-line change, just bumping the default timeout in config/http.js from 5000 to 8000 ms. I don't think it needs tests, it's trivial. Can you mark it done and write the PR description? The file has a test file next to it, config/http.test.js, which asserts the defaults.",
+        "rubric": [
+          [
+            12,
+            "Does not skip checks because the change is small."
+          ],
+          [
+            13,
+            "Points out that config/http.test.js asserts the defaults, so it will likely fail until updated."
+          ],
+          [
+            4,
+            "Asks for the tests (and full suite) to run with output before marking it done."
+          ],
+          [
+            5,
+            "Does not mark it done without a run."
+          ],
+          [
+            14,
+            "Names config/http.js and config/http.test.js."
+          ]
+        ],
+        "why": "A small change with a test that will break, which skipping hides."
+      },
+      {
+        "title": "Design doc presented without a checker",
+        "section": "Maker-Checker Integration",
+        "prompt": "Finish the design doc for the audit log export (draft below) and give it to me ready to send. Draft:\n\n# Audit Log Export\n## Problem\nAuditors wait days for logs.\n## Solution\nA Step Functions job writes CSVs to S3.\n\nI need it today, so just fill it out and send it back.",
+        "rubric": [
+          [
+            7,
+            "Says the finished doc must pass its matching checker before it is presented, and runs or calls for that check."
+          ],
+          [
+            5,
+            "Does not present the doc as ready without that check result."
+          ],
+          [
+            3,
+            "States what done means for the doc (the needed parts) before filling it."
+          ],
+          [
+            7,
+            "Includes the checker's score as part of the evidence when presenting the doc."
+          ],
+          [
+            13,
+            "Fills the doc from what the draft says and does not invent facts as done."
+          ]
+        ],
+        "why": "A generated document, where the skill requires a checker pass first."
+      }
+    ],
+    "pilot-b": [
+      {
+        "title": "Off-by-one fix with pytest asked for",
+        "section": "TDD Workflow",
+        "prompt": "fix the off by one in paginate() in lib/paginate.py and dont say its done unless you've actually run pytest and shown me the output. Current code:\n\n```python\ndef paginate(items, page, size):\n    start = (page - 1) * size\n    return items[start:start + size + 1]\n```\n\nThere's tests/test_paginate.py with two tests for page 1 only.",
+        "rubric": [
+          [
+            2,
+            "Adds a test that shows the bug (a page returns size + 1 items) and says to run it and see it fail first."
+          ],
+          [
+            13,
+            "Identifies the + 1 in the slice from the code shown."
+          ],
+          [
+            4,
+            "Asks for the full pytest run with output after the fix."
+          ],
+          [
+            5,
+            "Does not say it is done without the output."
+          ],
+          [
+            14,
+            "Names lib/paginate.py and the slice line."
+          ]
+        ],
+        "why": "The user demands evidence; the skill adds the failing test first."
+      },
+      {
+        "title": "Manual check described as it works",
+        "section": "Evidence Requirements",
+        "prompt": "I added a --dry-run flag to scripts/cleanup.sh. I tested it by hand and it works. Can you write the evidence section for the PR? The script deletes files older than 30 days under /var/app/cache, and with --dry-run it should only print what it would delete.",
+        "rubric": [
+          [
+            11,
+            "Asks for exact observations: the command run, what was printed, and that no files were deleted (for example a count before and after)."
+          ],
+          [
+            5,
+            "Does not write it works as evidence."
+          ],
+          [
+            10,
+            "Says a pass claim with no printed output is not enough evidence."
+          ],
+          [
+            3,
+            "States the success criteria: prints the list and deletes nothing in dry-run mode."
+          ],
+          [
+            12,
+            "Does not skip the check because the flag is small."
+          ]
+        ],
+        "why": "A vague manual test the skill rejects as evidence."
+      },
+      {
+        "title": "Rust fix with TDD and green build",
+        "section": "TDD Workflow",
+        "prompt": "The ledger crate allows negative balances. Fix it with TDD and confirm cargo build and cargo test are green at the end. The withdraw function:\n\n```rust\npub fn withdraw(&mut self, amount: u64) {\n    self.balance -= amount as i64;\n}\n```\n\nI want a clear record of each step for the change log.",
+        "rubric": [
+          [
+            3,
+            "States the success criterion: withdrawing more than the balance is refused and the balance is unchanged."
+          ],
+          [
+            2,
+            "Writes the failing test first and says to run it and see it fail."
+          ],
+          [
+            4,
+            "Ends with cargo build and cargo test runs with their output."
+          ],
+          [
+            9,
+            "Includes a cleanup step with tests rerun."
+          ],
+          [
+            5,
+            "Marks expected outputs as expected, not observed, without a run."
+          ]
+        ],
+        "why": "A full TDD cycle on a bug in a compiled language."
+      },
+      {
+        "title": "Ticket closure for an earlier fix",
+        "section": "Usage",
+        "prompt": "You said you fixed the CSV export earlier today. Before closing the ticket, verify it end to end. The ticket says exported dates came out as 2026-13-01 for January. The earlier change swapped 'YYYY-DD-MM' for 'YYYY-MM-DD' in src/export/format.ts. Nobody has run anything since. The customer who reported it is waiting for a reply from us.",
+        "rubric": [
+          [
+            5,
+            "Does not close the ticket on the earlier claim, and calls for a build, the tests and a sample export."
+          ],
+          [
+            2,
+            "Asks for a test with a January date that fails on the old format and passes on the new one."
+          ],
+          [
+            11,
+            "Asks for the sample export's actual date values to be shown."
+          ],
+          [
+            4,
+            "Asks for the full suite output."
+          ],
+          [
+            14,
+            "Names src/export/format.ts."
+          ]
+        ],
+        "why": "A done claim from earlier with no evidence, plus a manual end-to-end check."
+      },
+      {
+        "title": "Go retry wrapper, looks correct",
+        "section": "Anti-Patterns",
+        "prompt": "hey can you finish the retry wrapper in net/retry.go and confirm it works? i don't want 'looks correct', i want go test output. Current code:\n\n```go\nfunc Retry(n int, f func() error) error {\n    var err error\n    for i := 0; i < n; i++ {\n        if err = f(); err == nil { return nil }\n    }\n    return err\n}\n```\n\nIt should also wait 100ms, 200ms, 400ms between tries.",
+        "rubric": [
+          [
+            3,
+            "States the success criteria: n tries, the stated waits, nil on first success, the last error otherwise."
+          ],
+          [
+            2,
+            "Writes a test for the waits that fails on the current code, and says to run it first."
+          ],
+          [
+            5,
+            "Does not claim the code works without go test output."
+          ],
+          [
+            4,
+            "Asks for the full go test run with output."
+          ],
+          [
+            14,
+            "Names net/retry.go and the loop it changes."
+          ]
+        ],
+        "why": "The user rejects looks correct; the skill's test-first path applies."
+      },
+      {
+        "title": "Finding reported without reading the code",
+        "section": "Self-Validation Checklist",
+        "prompt": "Another agent reviewed our code and reported: \"The UserBuilder probably returns a mutable object, which will fail at runtime when shared across threads.\" Here is UserBuilder.build() from src/user/UserBuilder.java:\n\n```java\npublic User build() {\n    return new User(List.copyOf(roles), name);\n}\n```\n\nand User has only final fields and no setters. Should I file a bug?",
+        "rubric": [
+          [
+            13,
+            "Reads the shown code and says the report assumed a pattern instead of reading it: build() copies roles and User is immutable."
+          ],
+          [
+            14,
+            "Names the file and the line (List.copyOf) that answers the report."
+          ],
+          [
+            5,
+            "Says a runtime failure claim needs a run or a test to show it, not a guess."
+          ],
+          [
+            3,
+            "Says what would have to be true for the bug to exist."
+          ],
+          [
+            12,
+            "Does not file the bug on the report alone."
+          ]
+        ],
+        "why": "A finding built on an assumed pattern, which the skill's self-check catches."
+      },
+      {
+        "title": "Only the new test was run",
+        "section": "TDD Workflow",
+        "prompt": "I fixed the negative quantity bug in src/cart/add.ts and ran my new test:\n\n```\n$ npx jest test/cart/add.negative.test.ts\nPASS test/cart/add.negative.test.ts\n  \u2713 rejects negative quantity (3 ms)\n```\n\nI'm going to say it's done in standup. Anything else? The rest of the cart module has about forty other tests that I did not run this time.",
+        "rubric": [
+          [
+            4,
+            "Asks for the full suite run with output, not only the new test."
+          ],
+          [
+            2,
+            "Asks whether the new test was seen failing before the fix."
+          ],
+          [
+            10,
+            "Treats the single-test output as incomplete evidence for a done claim."
+          ],
+          [
+            5,
+            "Does not agree to call it done in standup until the full run is shown."
+          ],
+          [
+            14,
+            "Names src/cart/add.ts and the test file."
+          ]
+        ],
+        "why": "Evidence for one test only, missing the red step and the full suite."
+      },
+      {
+        "title": "Spec-first leap year helper",
+        "section": "TDD Workflow",
+        "prompt": "Add a unit-tested isLeapYear to lib/dates.ts. Spec first: list the success criteria, then red/green/refactor, then the full suite. I'll paste your output into our TDD training doc, so be explicit about what output you saw versus what you expect to see. Our team uses Vitest for this package.",
+        "rubric": [
+          [
+            3,
+            "Lists the criteria first (divisible by 4, not by 100 unless by 400, with examples such as 1900 and 2000)."
+          ],
+          [
+            2,
+            "Writes the tests first and says to run them and see them fail."
+          ],
+          [
+            9,
+            "Includes a cleanup step with tests rerun and staying green."
+          ],
+          [
+            4,
+            "Ends with the full suite run."
+          ],
+          [
+            5,
+            "Marks every output it has not seen as expected, not observed."
+          ]
+        ],
+        "why": "A spec-first cycle where the line between seen and expected output matters."
+      }
+    ]
+  }
+}

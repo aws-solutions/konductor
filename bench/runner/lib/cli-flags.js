@@ -75,6 +75,7 @@ const FLAGS = {
   'cap units': ['kind', 'coverage', 'out', 'repo-root', 'json', 'list'],
   'cap unit-stage': ['kind', 'unit', 'run', 'out', 'provider', 'delegation', 'estimate', 'depth', 'max-units', 'repo-root', 'cap', 'ledger', 'work', 'model', 'judges', 'kiro-bin', 'auth-db', 'dry-run', 'baselines', 'render', 'controls-only', 'role-line'],
   'cap unit-author': ['kind', 'unit', 'work', 'ledger', 'cap', 'briefs', 'out', 'kiro-bin', 'auth-db', 'repo-root', 'dry-run', 'replace', 'sign-off', 'rewrite', 'from'],
+  'cap skill-author': ['skill', 'from-source', 'review-only', 'work', 'ledger', 'cap', 'out', 'kiro-bin', 'auth-db', 'repo-root', 'dry-run'],
   'cap delegation': ['agent', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'repo-root', 'json'],
   'cap select': ['skill', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'from-run', 'write-tasks', 'repo-root', 'json', 'usage-runs'],
   'scenarios lint': ['base', 'repo-root', 'json'],
@@ -91,7 +92,7 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review', 'emit'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'unit-author', 'delegation', 'nudge-preview', 'nudge-check'] };
+const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review', 'emit'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'unit-author', 'skill-author', 'delegation', 'nudge-preview', 'nudge-check'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
