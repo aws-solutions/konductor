@@ -118,6 +118,20 @@ test('capture the Design view with acceptance checks', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-checks');
 });
 
+test('capture the check editor in the dark mode', async ({ canvas }) => {
+  await canvas.switchTheme();
+  await canvas.page
+    .getByRole('button', { name: /checks 1, edit acceptance checks/ })
+    .click();
+  await expect(
+    canvas.page
+      .getByRole('tabpanel', { name: 'Properties' })
+      .getByRole('textbox', { name: 'Check file 1' }),
+  ).toHaveValue('README.md');
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-checks-dark');
+});
+
 test('capture the Design view with workflow parameters', async ({ canvas }) => {
   await canvas.page
     .getByRole('button', {
