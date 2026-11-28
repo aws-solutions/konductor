@@ -110,6 +110,7 @@ export type EditEvent =
   | { type: 'open'; document: WorkflowDocument }
   | { type: 'select'; id: string }
   | { type: 'add' }
+  | { type: 'insert'; index: number; agent: string }
   | { type: 'rename'; id: string; name: string }
   | { type: 'set-agent'; id: string; agent: string }
   | { type: 'set-prompt'; id: string; prompt: string }

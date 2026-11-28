@@ -7,6 +7,7 @@ import {
   canRemoveStage,
   DEFAULT_AGENT,
   draftOf,
+  insertStage,
   MAX_STAGES,
   neighbourOf,
   removeParam,
@@ -104,6 +105,23 @@ describe('addStage', () => {
     expect(canAddStage(full)).toBe(false);
     expect(addStage(full)).toBe(full);
     expect(canAddStage(draftOf(TWO))).toBe(true);
+  });
+});
+
+describe('insertStage', () => {
+  it('inserts the chosen agent at a bounded index with the next free name', () => {
+    const inserted = insertStage(draftOf(TWO), 1, 'k-architect');
+
+    expect(stagesOf(inserted)).toEqual([
+      TWO[0],
+      { name: 'agent-1', agent: 'k-architect' },
+      TWO[1],
+    ]);
+    expect(inserted.stages[1]?.id).toBe('s3');
+    expect(stagesOf(insertStage(draftOf(TWO), 99, 'k-tpm')).at(-1)).toEqual({
+      name: 'agent-1',
+      agent: 'k-tpm',
+    });
   });
 });
 

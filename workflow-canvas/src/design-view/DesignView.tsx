@@ -22,6 +22,7 @@ import {
   PARAM_NAME_ERROR,
   parameterNameError,
 } from '../designer/core/param-text';
+import { ComponentsTray } from '../designer-view/ComponentsTray';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import {
   useEditHistory,
@@ -35,7 +36,9 @@ import {
   canEdit,
   canRemoveStage,
   changeBlocker,
+  DEFAULT_AGENT,
   fileBlocker,
+  insertionBlocker,
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
@@ -462,6 +465,24 @@ export function DesignView({
       ? undefined
       : refusal;
   const paramsMessage = paramsSourceBlocker ?? pageRefusal;
+  const insertDisabledReason =
+    insertionBlocker(state) ??
+    (!canAddStage(state.draft)
+      ? `A workflow has at most ${MAX_STAGES} stages.`
+      : undefined);
+  const insertAgent = useCallback(
+    (index: number, agent: string) => {
+      if (insertDisabledReason !== undefined) return;
+      const name = nextStageName(state.draft);
+      editor.insert(index, agent);
+      setOpens((count) => count + 1);
+      setAnnouncement(({ count }) => ({
+        text: `Stage ${name} added with ${agent}.`,
+        count: count + 1,
+      }));
+    },
+    [editor, insertDisabledReason, state.draft],
+  );
 
   // Why the text cannot be typed into now, if it cannot: read-only, a load,
   // or a save on its way to the server.
@@ -581,7 +602,18 @@ export function DesignView({
         <EditAlerts state={state} onReload={editor.reload} />
         <Findings diagnostics={findings} />
         <DesignerLayout
-          drawing={<WorkflowCanvas graph={graph} selection={selection} />}
+          drawing={
+            <WorkflowCanvas
+              graph={graph}
+              selection={selection}
+              insertion={{
+                ...(insertDisabledReason === undefined
+                  ? {}
+                  : { disabledReason: insertDisabledReason }),
+                onInsert: insertAgent,
+              }}
+            />
+          }
           yaml={{
             file: state.saved.name,
             text: history.text,
@@ -651,11 +683,11 @@ export function DesignView({
             )}
             <Button
               iconName="add-plus"
-              disabled={frozen !== undefined || !canAddStage(state.draft)}
-              disabledReason={
-                frozen ?? `A workflow has at most ${MAX_STAGES} stages.`
+              disabled={insertDisabledReason !== undefined}
+              disabledReason={insertDisabledReason}
+              onClick={() =>
+                insertAgent(state.draft.stages.length, DEFAULT_AGENT)
               }
-              onClick={() => editor.add()}
             >
               Add {nextStageName(state.draft)}
             </Button>
@@ -685,6 +717,14 @@ export function DesignView({
                 Redo
               </Button>
             </SpaceBetween>
+            <ComponentsTray
+              agents={agents}
+              disabled={insertDisabledReason !== undefined}
+              disabledReason={
+                insertDisabledReason ?? 'A stage can be added to this workflow.'
+              }
+              onAdd={(agent) => insertAgent(state.draft.stages.length, agent)}
+            />
           </SpaceBetween>
         </DesignerLayout>
       </SpaceBetween>

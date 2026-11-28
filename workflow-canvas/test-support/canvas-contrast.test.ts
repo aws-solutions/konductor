@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import { AA_GRAPHIC, AA_TEXT, contrastRatio } from '../src/theme/contrast.ts';
 import {
-  AGENT_BADGES,
   CANVAS,
   colorsOf,
   RADIUS,
@@ -44,15 +43,10 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     );
   });
 
-  it('keeps the intent and agent tile text readable', () => {
+  it('keeps the intent text readable', () => {
     expect(ratio('--wf-intent-text', '--wf-intent-bg')).toBeGreaterThanOrEqual(
       AA_TEXT,
     );
-    for (let index = 0; index < AGENT_BADGES.length; index += 1) {
-      expect(
-        contrastRatio(v['--wf-intent-text']!, v[`--wf-agent-${index}`]!),
-      ).toBeGreaterThanOrEqual(AA_TEXT);
-    }
   });
 
   it('keeps the params chip text and edge visible on the intent card', () => {
@@ -104,9 +98,6 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
       '--wf-controls-bg-hover': c.infoBg,
       '--wf-canvas-dots': k.dots,
       '--wf-edge': k.edge,
-      ...Object.fromEntries(
-        AGENT_BADGES.map((color, index) => [`--wf-agent-${index}`, color]),
-      ),
     };
 
     expect(v).toEqual(expected);

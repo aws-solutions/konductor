@@ -13,11 +13,13 @@ import '@xyflow/react/dist/style.css';
 import {
   useCallback,
   useMemo,
+  type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
 import type { CanvasGraph } from '../graph';
 import './canvas.css';
+import { AGENT_DRAG_TYPE } from './agent-drag';
 import { READ_ONLY_ARIA_LABELS, SELECTABLE_ARIA_LABELS } from './aria-labels';
 import { FitWhenGrown } from './FitWhenGrown';
 import { IntentNode, StageNode } from './nodes';
@@ -53,6 +55,41 @@ export interface CanvasSelection {
   onParams?(): void;
 }
 
+/** Adds an agent stage at the drop position. */
+export interface CanvasInsertion {
+  disabledReason?: string;
+  onInsert(index: number, agent: string): void;
+}
+
+function stageElements(root: HTMLElement): HTMLElement[] {
+  return [
+    ...root.querySelectorAll<HTMLElement>('.react-flow__node-stage'),
+  ].sort(
+    (left, right) =>
+      left.getBoundingClientRect().top - right.getBoundingClientRect().top,
+  );
+}
+
+function dropIndex(root: HTMLElement, y: number): number {
+  const stages = stageElements(root);
+  const found = stages.findIndex((stage) => {
+    const bounds = stage.getBoundingClientRect();
+    return y < bounds.top + bounds.height / 2;
+  });
+  return found < 0 ? stages.length : found;
+}
+
+function markDrop(root: HTMLElement, index?: number): void {
+  const stages = stageElements(root);
+  for (const stage of stages) {
+    stage.classList.remove('wf-drop-before', 'wf-drop-after');
+  }
+  if (index === undefined || stages.length === 0) return;
+  const target = stages[index];
+  if (target) target.classList.add('wf-drop-before');
+  else stages.at(-1)?.classList.add('wf-drop-after');
+}
+
 /**
  * Draws a workflow graph. The view can be panned and zoomed, but nodes
  * cannot be moved or connected. With `selection`, a stage can be chosen by a
@@ -63,9 +100,11 @@ export interface CanvasSelection {
 export function WorkflowCanvas({
   graph,
   selection,
+  insertion,
 }: {
   graph: CanvasGraph;
   selection?: CanvasSelection;
+  insertion?: CanvasInsertion;
 }) {
   const selectedId = selection?.selectedId;
   const onSelect = selection?.onSelect;
@@ -110,6 +149,42 @@ export function WorkflowCanvas({
     },
     [onSelect],
   );
+  const onDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (
+        !insertion ||
+        insertion.disabledReason ||
+        !event.dataTransfer.types.includes(AGENT_DRAG_TYPE)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      markDrop(
+        event.currentTarget,
+        dropIndex(event.currentTarget, event.clientY),
+      );
+    },
+    [insertion],
+  );
+  const onDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget;
+    if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
+      markDrop(event.currentTarget);
+    }
+  }, []);
+  const onDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!insertion || insertion.disabledReason) return;
+      const agent = event.dataTransfer.getData(AGENT_DRAG_TYPE);
+      if (!agent) return;
+      event.preventDefault();
+      const index = dropIndex(event.currentTarget, event.clientY);
+      markDrop(event.currentTarget);
+      insertion.onInsert(index, agent);
+    },
+    [insertion],
+  );
   return (
     <div
       className="wf-canvas"
@@ -118,6 +193,10 @@ export function WorkflowCanvas({
       style={{ height: CANVAS_HEIGHT }}
       onClick={onClick}
       onKeyDown={onKeyDown}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      title={insertion?.disabledReason}
     >
       <ReactFlow
         nodes={nodes}

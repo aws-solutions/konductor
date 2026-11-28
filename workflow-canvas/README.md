@@ -453,11 +453,14 @@ The rest wraps the core, so the rules can be tested without a browser:
 
 ## The Design view
 
-The view has three columns. The left column holds Add stage, Undo and Redo.
-The drawing in the middle shows the intent and each stage. The intent's
-`params` chip opens the parameter declarations in the side panel, where you
-can edit their names, descriptions, defaults and required state. The `goal`
-parameter stays present. The side column has two panes: **YAML**, the text of
+The view has three columns. The left column keeps Add stage, Undo and Redo
+above a Components tray. The tray lists the agents from the server and can be
+filtered. Press Enter on an agent to add it at the end, or drag it onto the
+drawing to insert a stage between cards or at the end. The drawing in the
+middle shows the intent and each stage. The intent's `params` chip opens the
+parameter declarations in the side panel, where you can edit their names,
+descriptions, defaults and required state. The `goal` parameter stays present.
+The side column has two panes: **YAML**, the text of
 the workflow to type over, and **Properties**. The page header holds Save, the
 saved or unsaved state, and the flow-check state. Properties shows the
 selected stage (the first one when the page opens): its `name`, its `agent`

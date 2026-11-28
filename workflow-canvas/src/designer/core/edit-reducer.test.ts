@@ -67,6 +67,7 @@ describe('a read-only workflow', () => {
 
   it.each([
     ['add', { type: 'add' }],
+    ['insert', { type: 'insert', index: 1, agent: 'k-tpm' }],
     ['rename', { type: 'rename', id: 's1', name: 'other' }],
     ['set-agent', { type: 'set-agent', id: 's1', agent: 'k-tpm' }],
     ['remove', { type: 'remove', id: 's1' }],
@@ -414,7 +415,7 @@ describe('save', () => {
     const state = run(
       dirty(),
       { type: 'save' },
-      { type: 'add' },
+      { type: 'rename', id: 's2', name: 'qa' },
       {
         type: 'refused',
         revision: 1,
@@ -599,6 +600,26 @@ describe('an edit made while a save is in flight', () => {
   const editedWhileSaving = () =>
     run(saving(), { type: 'rename', id: 's2', name: 'qa' });
 
+  it('takes no Add or indexed insertion while a form save is held', () => {
+    const state = saving();
+
+    expect(reduce(state, { type: 'add' })).toBe(state);
+    expect(
+      reduce(state, { type: 'insert', index: 1, agent: 'k-architect' }),
+    ).toBe(state);
+  });
+
+  it('takes no insertion while a raw edit is held', () => {
+    const state = run(opened(), {
+      type: 'set-text',
+      text: `${HELLO_TEXT}# raw`,
+    });
+
+    expect(
+      reduce(state, { type: 'insert', index: 1, agent: 'k-architect' }),
+    ).toBe(state);
+  });
+
   it('is kept, with the sentence shown, when the save fails', () => {
     const failed = run(editedWhileSaving(), {
       type: 'failed',
@@ -753,6 +774,7 @@ describe('a reload', () => {
 
   it.each([
     ['add', { type: 'add' }],
+    ['insert', { type: 'insert', index: 1, agent: 'k-tpm' }],
     ['rename', { type: 'rename', id: 's1', name: 'other' }],
     ['set-agent', { type: 'set-agent', id: 's1', agent: 'k-tpm' }],
     ['remove', { type: 'remove', id: 's2' }],

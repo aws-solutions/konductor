@@ -56,6 +56,12 @@ export function changeBlocker(state: EditState): string | undefined {
   return rawTextOf(state) === undefined ? undefined : RAW_EDIT_REASON;
 }
 
+/** Why no stage may be inserted now, or `undefined` when one may be. */
+export function insertionBlocker(state: EditState): string | undefined {
+  if (state.save.phase === 'saving') return SAVING_REASON;
+  return changeBlocker(state);
+}
+
 /**
  * Why the text cannot be typed over now, or `undefined` when it can. Typing
  * pauses for the whole of any save: the answer settles what the file holds,

@@ -25,6 +25,7 @@ export interface Editor {
   state: EditState;
   select(id: string): void;
   add(): void;
+  insert(index: number, agent: string): void;
   rename(id: string, name: string): void;
   setAgent(id: string, agent: string): void;
   setPrompt(id: string, prompt: string): void;
@@ -122,6 +123,7 @@ export function useEditor(
         state,
         select: (id) => dispatch({ type: 'select', id }),
         add: () => dispatch({ type: 'add' }),
+        insert: (index, agent) => dispatch({ type: 'insert', index, agent }),
         rename: (id, name) => dispatch({ type: 'rename', id, name }),
         setAgent: (id, agent) => dispatch({ type: 'set-agent', id, agent }),
         setPrompt: (id, prompt) => dispatch({ type: 'set-prompt', id, prompt }),

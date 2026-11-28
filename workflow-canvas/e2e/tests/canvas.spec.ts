@@ -236,6 +236,29 @@ test('fits every node of a workflow of 40 stages in the canvas', async ({
   await expectEveryNodeInCanvas(canvas);
 });
 
+test('turns off every stage insertion path at 40 stages', async ({ page }) => {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({ json: workflowOf(40) }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  await expect(
+    page.getByRole('button', { name: /^Add agent-/ }),
+  ).toBeDisabled();
+  await expect(
+    page
+      .getByRole('region', { name: 'Components' })
+      .getByRole('button', { name: /k-developer\b/ }),
+  ).toBeDisabled();
+  await expect(page.getByTestId('component-limit-reason')).toHaveText(
+    'A workflow has at most 40 stages.',
+  );
+});
+
 test('fits the nodes of a bigger workflow that replaces the one on the page', async ({
   canvas,
   page,

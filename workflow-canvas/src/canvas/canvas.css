@@ -23,14 +23,6 @@
   --wf-controls-bg: #ffffff;
   --wf-controls-bg-hover: #efebff;
   --wf-controls-border: #cfc7ba;
-  --wf-agent-0: #3659c9;
-  --wf-agent-1: #7239a8;
-  --wf-agent-2: #0b7a52;
-  --wf-agent-3: #955600;
-  --wf-agent-4: #006f96;
-  --wf-agent-5: #596579;
-  --wf-agent-6: #a82f61;
-  --wf-agent-7: #806000;
 
   border-radius: 12px;
   background: var(--wf-canvas-bg);
@@ -139,7 +131,7 @@
   height: 36px;
   border-radius: 9px;
   background: var(--wf-agent-0);
-  color: var(--wf-intent-text);
+  color: var(--wf-agent-text);
   font: 600 10px var(--wf-font-code);
   letter-spacing: 0.04em;
 }
@@ -326,6 +318,28 @@
     background: Canvas;
     box-shadow: none;
   }
+}
+
+.react-flow__node-stage.wf-drop-before::before,
+.react-flow__node-stage.wf-drop-after::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  padding: 2px 8px;
+  border-top: 3px solid var(--wf-focus);
+  color: var(--wf-focus);
+  font: 600 10px var(--wf-font-code);
+  text-align: center;
+  content: 'Drop stage here';
+}
+
+.react-flow__node-stage.wf-drop-before::before {
+  top: -30px;
+}
+
+.react-flow__node-stage.wf-drop-after::after {
+  bottom: -32px;
 }
 
 /*

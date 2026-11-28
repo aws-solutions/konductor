@@ -10,6 +10,7 @@ import {
   canAddStage,
   canRemoveStage,
   idsOf,
+  insertStage,
   neighbourOf,
   removeParam,
   removeStage,
@@ -31,6 +32,7 @@ import {
   canSave,
   changeBlocker,
   formTextOf,
+  insertionBlocker,
   isDirty,
   paramIdsForWrite,
   paramsDirty,
@@ -67,8 +69,19 @@ function removed(state: EditState, id: string): EditState {
   return edited(state, draft, next ?? state.selectedId);
 }
 
+function inserted(state: EditState, index: number, agent: string): EditState {
+  if (insertionBlocker(state) !== undefined || !canAddStage(state.draft)) {
+    return state;
+  }
+  const draft = insertStage(state.draft, index, agent);
+  const selectedId = draft.stages[Math.min(index, draft.stages.length - 1)]?.id;
+  return edited(state, draft, selectedId ?? state.selectedId);
+}
+
 function added(state: EditState): EditState {
-  if (!canAddStage(state.draft)) return state;
+  if (insertionBlocker(state) !== undefined || !canAddStage(state.draft)) {
+    return state;
+  }
   const draft = addStage(state.draft);
   return edited(state, draft, draft.stages.at(-1)?.id ?? state.selectedId);
 }
@@ -328,6 +341,8 @@ function step(
       return selected(state, event.id);
     case 'add':
       return added(state);
+    case 'insert':
+      return inserted(state, event.index, event.agent);
     case 'rename':
       return renamed(state, event.id, event.name);
     case 'set-agent':
