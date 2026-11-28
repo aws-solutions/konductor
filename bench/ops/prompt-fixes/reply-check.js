@@ -12,6 +12,9 @@
 //   node reply-check.js plan    --tasks smoke|all|ID,ID --reps N --run-limit N [--runs DIR]   free: paid call count and cost
 //   node reply-check.js may-run --runs DIR --ledger FILE --cap N --run-cap N --run-limit N
 //                               free: exit 0 and "left N" when one more early-stopped run fits both caps, else 1 and why
+//   node reply-check.js rebook-early --runs DIR [--arm A] [--apply yes]
+//                               free: tops up early stops an older bench booked at the floor to their measured
+//                               creditSplit (D-299), in DIR/rebooked; without --apply yes it only says what it would book
 //   node reply-check.js review  --prompts DIR --out DIR --claude MODEL --cap N --runs DIR --cap-usd X --work DIR
 //                               [--kiro-bin F] [--auth-db F] [--aws-export-profile P] [--cache DIR] [--panel-module F]
 //                               PAID: per prompt, one Claude reviewer call (kiro-cli, counted at max(15, real)) and one
@@ -228,8 +231,9 @@ function runsOf(dir, arm) {
 const eventsOf = (dir) => parseStream(fs.readFileSync(path.join(dir, 'stream.jsonl'), 'utf8')).events;
 const mark = (v) => (v === null ? 'n/a' : v ? 'yes' : 'NO');
 const verdictOf = (v) => (v === null ? 'not-reached' : v ? 'met' : 'not-met');
-// A run is early-stopped when the caller says so (--early yes), or bench stopped it (a stop reason or the credit limit).
-const stoppedOf = (result, early) => early || Boolean(result.stopped) || (result.flags ?? []).includes('creditLimit');
+// A run is early-stopped when the caller says so (--early yes), or bench stopped it (a stop reason, the stop watcher's
+// earlyStopped flag or the credit limit).
+const stoppedOf = (result, early) => early || Boolean(result.stopped) || (result.flags ?? []).some((f) => f === 'earlyStopped' || f === 'creditLimit');
 const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
 function scoreTable(runs, early = false) {
@@ -285,6 +289,37 @@ function mayRun({ runs, ledger, cap, runCap, runLimit }) {
   return { ok: true, left: Math.round(Math.min(runCap - r.credits, cap - total) * 100) / 100 };
 }
 
+/**
+ * Re-books early-stopped runs of `arm` under `runs` that an older bench charged at the censored floor although their
+ * session wrote a creditSplit (D-299; the reply check's t12-mux-parallel-merge r1 of 2026-11-28, booked 1.0, measured
+ * 1.642). Each such run keeps its cell (its stream and frozen prompt are the result) and gets a top-up line, measured
+ * minus booked, in runs/rebooked/<cell>/credit-ledger.jsonl, once. Returns [{ cell, booked, measured, topUp }].
+ */
+function rebookEarly({ runs, arm, apply = false }) {
+  const { makeSplitReader } = require('../../runner/lib/credit-watch.js');
+  const out = [];
+  for (const { dir, result: r } of runsOf(runs, arm)) {
+    if (!(r.flags ?? []).includes('earlyStopped') || r.creditMeasured != null || r.credits != null) continue;
+    const measured = makeSplitReader(path.join(dir, 'session'), { flat: true }).read();
+    if (measured == null) continue;
+    const cell = path.resolve(dir, '..', '..', '..');
+    const name = path.relative(runs, cell).split(path.sep).join('-');
+    const booked = path.join(runs, 'rebooked', name);
+    if (fs.existsSync(booked)) continue;
+    const m = Math.ceil(measured * 1000) / 1000;
+    const item = { cell: name, booked: r.creditsCharged ?? 0, measured: m, topUp: Math.round((m - (r.creditsCharged ?? 0)) * 1000) / 1000 };
+    if (item.topUp <= 0) continue;
+    if (apply) {
+      fs.mkdirSync(booked, { recursive: true });
+      const line = { at: new Date().toISOString(), kind: 'run', unit: 'credits', arm: r.armId, task: r.taskId, replicate: r.replicate ?? null, status: r.status,
+        credits: item.topUp, charged: item.topUp, censored: false, rebooked: { booked: item.booked, measured: m, from: name, reason: 'D-299 early stop booked at the floor' } };
+      fs.appendFileSync(path.join(booked, 'credit-ledger.jsonl'), `${JSON.stringify(line)}\n`);
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 class UsageError extends Error {}
 
 function parseArgs(argv) {
@@ -321,6 +356,12 @@ function main(argv, log = console.log) {
     const r = mayRun({ runs: opts.runs, ledger: opts.ledger, cap: Number(opts.cap), runCap: Number(opts['run-cap']), runLimit: Number(opts['run-limit']) });
     log(r.ok ? `left ${r.left}` : r.why);
     return r.ok ? 0 : 1;
+  } else if (cmd === 'rebook-early') {
+    need(opts, 'runs');
+    const apply = opts.apply === 'yes';
+    const done = rebookEarly({ runs: opts.runs, arm, apply });
+    for (const x of done) log(`${x.cell}: early stop booked ${x.booked}, measured ${x.measured}; ${apply ? 'booked' : 'would book'} ${x.topUp} more`);
+    if (!done.length) log('no early stop to re-book');
   } else if (cmd === 'review') {
     need(opts, 'prompts', 'out', 'claude', 'cap', 'runs', 'cap-usd', 'work');
     const cap = Number(opts.cap); const capUsd = Number(opts['cap-usd']);
@@ -334,7 +375,7 @@ function main(argv, log = console.log) {
     if (opts.out) fs.writeFileSync(opts.out, md);
     log(md);
   } else {
-    throw new UsageError('usage: reply-check.js score|prompts|plan|may-run|review|compare (see the header)');
+    throw new UsageError('usage: reply-check.js score|prompts|plan|may-run|rebook-early|review|compare (see the header)');
   }
   return 0;
 }
@@ -346,4 +387,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { expectationsFor, timeline, scoreRun, transcriptOf, reviewPrompt, checkReview, paidPlan, panelCallUsd, writePrompts, readManifest, sha256, mayRun, main, SMOKE, PANEL, MANIFEST };
+module.exports = { expectationsFor, timeline, scoreRun, transcriptOf, reviewPrompt, checkReview, paidPlan, panelCallUsd, writePrompts, readManifest, sha256, mayRun, rebookEarly, main, SMOKE, PANEL, MANIFEST };

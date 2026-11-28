@@ -10,7 +10,8 @@
 # pack on every finished run, then the report. reply-check: --plan builds nothing paid and prints the calls and caps; a
 # wrong REVIEWER is refused; the paid step runs 12 early-stopped candidate runs, freezes 15 prompts (12 new, 3 smoke),
 # makes one stub Claude call and three stub panel calls per prompt and writes the side-by-side report, leaving the
-# study's plan.json as it was; a rerun calls nothing; the run cap stops the run that could pass it.
+# study's plan.json as it was; a rerun calls nothing; the run cap stops the run that could pass it; a planned early
+# stop that the old bench exited 5 on is booked at its measured spend by reply-check --repin and kept on resume (D-299).
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 REPO=$(cd "$HERE/../../.." && pwd -P)
@@ -38,14 +39,30 @@ if (a[0] === 'report') { fs.mkdirSync(opt('--out'), { recursive: true }); fs.wri
 const out = opt('--out'); const task = opt('--tasks'); const arm = opt('--arms').split('=')[0];
 const rep = Number(opt('--replicate-offset')) + 1;
 const credits = Number(process.env.STUB_CREDITS || 2);
-fs.mkdirSync(path.join(out, arm, task, String(rep)), { recursive: true });
+const cell = path.join(out, arm, task, String(rep));
+// --resume keeps a cell that has a result, as bench.js does for every status but budget_skipped.
+if (a.includes('--resume') && fs.existsSync(path.join(cell, 'result.json'))) process.exit(0);
+fs.mkdirSync(cell, { recursive: true });
 fs.writeFileSync(path.join(out, 'run-config.json'), '{}');
-fs.appendFileSync(path.join(out, 'credit-ledger.jsonl'), `${JSON.stringify({ kind: 'run', unit: 'credits', arm, task, replicate: rep, credits, charged: credits })}\n`);
 const plan = process.env.STUB_PLAN === 'none' ? null : (task === 't12-mux-parallel-merge' ? 'team' : 'solo');
 const r = { armId: arm, taskId: task, replicate: rep, credits, planLine: plan ? `Plan: ${plan}, because stub` : null, planCall: { plan }, writerSpawns: plan === 'team' ? 3 : 0 };
-fs.writeFileSync(path.join(out, arm, task, String(rep), 'result.json'), JSON.stringify(r));
-const ev = { type: 'sessionUpdate', data: { sessionId: 's', update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: plan ? `Plan: ${plan}, because stub\nSkills: none fit\n` : 'stub\n' } } } };
-fs.writeFileSync(path.join(out, arm, task, String(rep), 'stream.jsonl'), `${JSON.stringify(ev)}\n`);
+// STUB_EARLY=1: the run is stopped at --max-tool-calls and its session wrote a creditSplit of 1.642. STUB_EARLY_EXIT=5 is
+// the bench before D-299 (booked at the floor 1.0, exit 5); 0, the default, the bench after it (booked at 1.642, exit 0).
+const early = process.env.STUB_EARLY === '1';
+const earlyExit = Number(process.env.STUB_EARLY_EXIT || 0);
+if (early) {
+  Object.assign(r, { status: 'error', credits: null, creditsCensored: true, flags: ['earlyStopped'], error: 'stopped early: max-tool-calls (8) | the run was ended by a signal', planLine: 'Plan: after a read-only look' });
+  r.creditsCharged = earlyExit ? 1 : 1.642;
+  if (!earlyExit) r.creditMeasured = 1.642;
+  fs.mkdirSync(path.join(cell, 'session', 'sess_a'), { recursive: true });
+  fs.writeFileSync(path.join(cell, 'session', 'sess_a', 'messages.jsonl'), '{"payload":{"type":"session_metadata","key":"creditSplit","value":{"main":1.642,"delegated":0,"auxiliary":0}}}\n');
+}
+const charged = early ? r.creditsCharged : credits;
+fs.appendFileSync(path.join(out, 'credit-ledger.jsonl'), `${JSON.stringify({ kind: 'run', unit: 'credits', arm, task, replicate: rep, credits: early ? null : credits, charged, ...(early ? { censored: true } : {}) })}\n`);
+fs.writeFileSync(path.join(cell, 'result.json'), JSON.stringify(r));
+const ev = { type: 'sessionUpdate', data: { sessionId: 's', update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: r.planLine ? `${r.planLine}\nSkills: none fit\n` : 'stub\n' } } } };
+fs.writeFileSync(path.join(cell, 'stream.jsonl'), `${JSON.stringify(ev)}\n`);
+if (early && earlyExit) { console.log('INFRA FAILURE: all 1 run(s) errored (1)'); process.exit(earlyExit); }
 EOF
 
 # The reply check's reviewers: a fake kiro-cli for Claude (answers every check "met") and a stub panel module.
@@ -128,6 +145,34 @@ n_panel=$(find "$RV/gpt-5.6-luna" "$RV/deepseek-3.2" "$RV/qwen3-coder-next" -nam
 : > "$T/calls.log"
 run "$S1" reply-check --foreground
 [ "$code" = 0 ] && [ "$(calls)" = 0 ] && ok "a reply-check rerun calls nothing" || bad "reply-check rerun (exit $code, $(calls) calls)"
+# Early stop (D-299): the bench before the fix called a planned --max-tool-calls stop an infra failure and exited 5,
+# which stopped the step at its first run. --repin books that run at its measured creditSplit; the resumed step keeps
+# it without a rerun (bench --resume), runs the 11 left, which now exit 0, and freezes all 15 prompts.
+S6=$(mktemp -d /var/tmp/pfa-s6.XXXX)
+trap 'find "$T" "$S1" "$S2" "$S3" "$S4" "$S5" "$S6" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3" "$S4" "$S5" "$S6"' EXIT
+cp "$S1/plan.json" "$S6/plan.json"
+mkdir -p "$S6/runs"
+cp -r "$S1/runs/smoke" "$S6/runs/smoke"
+: > "$T/calls.log"
+STUB_EARLY=1 STUB_EARLY_EXIT=5 run "$S6" reply-check --foreground
+{ [ "$code" = 1 ] && [ "$(calls)" = 1 ] && grep -q 'bench exit 5 on reply-check t12-mux-parallel-merge r1' "$T/log"; } \
+  && ok "the old bench's exit 5 on a planned early stop stops the step (the 2026-11-28 failure)" || bad "early stop, old bench (exit $code, $(calls) calls): $(tail -2 "$T/log")"
+run "$S6" reply-check --repin
+{ [ "$code" = 0 ] && grep -q 't12-mux-parallel-merge-r1: early stop booked 1, measured 1.642; would book 0.642 more' "$T/log" && [ ! -d "$S6/reply-check/runs/rebooked" ]; } \
+  && ok "reply-check --repin lists the floor-booked early stop and books nothing" || bad "repin dry run (exit $code): $(tail -3 "$T/log")"
+run "$S6" reply-check --repin --yes
+{ [ "$code" = 0 ] && grep -q 'reply check runs booked 1.64 of 72' "$T/log"; } && ok "reply-check --repin --yes books the measured 1.642" || bad "repin apply (exit $code): $(tail -3 "$T/log")"
+run "$S6" reply-check --repin --yes
+{ grep -q 'no early stop to re-book' "$T/log" && grep -q 'booked 1.64 of 72' "$T/log"; } && ok "a second --repin --yes books nothing more" || bad "repin twice: $(tail -3 "$T/log")"
+: > "$T/calls.log"
+STUB_EARLY=1 run "$S6" reply-check --foreground
+n6=$(node -p "Object.keys(require('$S6/reply-check/prompts/manifest.json').entries).length" 2>/dev/null || echo 0)
+spent6=$(node -p "require('$REPO/bench/ops/prompt-fixes/study.js').spent('$S6/reply-check/runs').credits")
+{ [ "$code" = 0 ] && [ "$(calls)" = 12 ] && [ "$(grep -c -- '--resume' "$T/calls.log")" = 1 ] && [ "$n6" = 15 ] && [ "$spent6" = 19.7 ] \
+  && [ -f "$S6/reply-check/prompts/candidate.t12-mux-parallel-merge.r1.review-prompt.txt" ] && [ -s "$S6/reply-check/report.md" ]; } \
+  && ok "after --repin the step keeps r1 without a rerun, runs 11 early stops that exit 0, and reviews all 15 prompts (19.7 booked)" \
+  || bad "early stop resume (exit $code, $(calls) calls, $n6 prompts, $spent6 booked): $(tail -3 "$T/log")"
+
 STUB_CREDITS=7 run "$S5" reply-check --foreground
 { [ "$code" = 1 ] && grep -q 'STOP: run cap: 70 spent of 72' "$T/log" && [ "$(find "$S5/reply-check/runs" -name result.json | wc -l)" = 10 ]; } \
   && ok "the reply-check run cap stops the run that could pass 72" || bad "reply-check cap (exit $code): $(tail -2 "$T/log")"

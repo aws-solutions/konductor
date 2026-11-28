@@ -14,9 +14,11 @@ function infraFailure(results, minMs = minRealRunMs()) {
   if (!ran.length) return null;
   const errored = ran.filter((r) => r.status === 'error' && !r.agentSelfKill).length;
   const selfKilled = ran.filter((r) => r.agentSelfKill).length;
+  const stoppedEarly = ran.filter((r) => (r.flags ?? []).includes('earlyStopped')).length;
   const quick = ran.filter((r) => r.status !== 'error' && Number.isFinite(r.wallClockMs) && r.wallClockMs < minMs).length;
-  // An agent that killed its own runtime ran (D-243): that is a result, so it never counts toward an infra failure.
-  if (selfKilled || errored + quick !== ran.length) return null;
+  // An agent that killed its own runtime ran (D-243), and so did one the bench stopped on purpose at --stop-on or
+  // --max-tool-calls (D-299): each is a result, so it never counts toward an infra failure.
+  if (selfKilled || stoppedEarly || errored + quick !== ran.length) return null;
   return { runs: ran.length, errored, quick, reason: `all ${ran.length} run(s) errored (${errored}) or finished in under ${minMs} ms (${quick}); treat the study as an infrastructure failure, not a result` };
 }
 

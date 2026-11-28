@@ -128,12 +128,14 @@ function median(values) {
  * so it is charged the median of the arm's completed runs (or `floor` when there are none).
  */
 // `killedAt`: for a run the per-run credit limit killed, the larger of the limit and the v3 figure at the kill (the
-// session's measured creditSplit, or the context_usage estimate when the session wrote none).
+// session's measured creditSplit, or the context_usage estimate when the session wrote none); for a planned early stop,
+// its measured creditSplit when the session wrote one (D-299), else null, so the median or floor applies.
 const CREDITS = (r) => ({
   observed: r.credits || 0,
   censored: Boolean(r.creditsCensored),
   known: r.credits != null,
-  killedAt: r.flags?.includes('creditLimit') && r.creditLimit != null ? Math.max(r.creditLimit, r.creditMeasured ?? r.creditEstimate ?? 0) : null,
+  killedAt: r.flags?.includes('creditLimit') && r.creditLimit != null ? Math.max(r.creditLimit, r.creditMeasured ?? r.creditEstimate ?? 0)
+    : r.flags?.includes('earlyStopped') && r.creditMeasured != null ? r.creditMeasured : null,
 });
 const USD = (r) => ({ observed: r.costUsd || 0, censored: Boolean(r.costCensored), known: r.costUsd != null });
 

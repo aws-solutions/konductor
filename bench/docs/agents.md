@@ -446,7 +446,7 @@ For studies that run for hours, read [the runbook](runbook.md). These are the po
 | Risk | What bench does | What you do |
 | --- | --- | --- |
 | The login expires mid-run | `run` checks `kiro-cli whoami` before building and between runs. A run that failed on a login error is charged 0 and marked infra. After `--max-auth-failures` such runs in a row (default 3) the rest are skipped and `run` exits 6 | Log in again right before a long chunk; after exit 6, log in and rerun |
-| Every run failed, or every run ended in under a second | `run` exits 5 and writes `infraFailure` to `summary.json` | Read one run's `stderr.txt` before spending more |
+| Every run failed, or every run ended in under a second | `run` exits 5 and writes `infraFailure` to `summary.json`; a planned stop (`--stop-on`, `--max-tool-calls`) is a result and never counts | Read one run's `stderr.txt` before spending more |
 | The agent CLI changes mid-study | A run whose agent could not start is charged 0, marked as a launch failure, and counts toward the same stop as login failures | Do not update or move the agent CLI while a study runs |
 | A task hangs | Each task has a time limit | `--timeout-sec N` replaces it for every task |
 | Spend runs away | `--budget-credits X` stops new runs at 90% of X; ending past 100% exits 3 | Always pass a budget |

@@ -105,6 +105,8 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       clearInterval(watcher);
       // Read the final credits before closeAll moves the live stream file.
       const credits = meter ? meter.poll() : null;
+      // An early stop (stop watcher) is booked at the session's measured creditSplit when it wrote one (D-299).
+      if (stopped && stopped.reason !== 'end_turn' && !metered && meter?.measured()) metered = { measured: meter.live() };
       closeAll();
       resolve({ ...result, credits, creditLimitHit: limitHit, creditEstimate: metered?.estimate ?? null, creditMeasured: metered?.measured ?? null, stopped, tamperedFiles: tampered });
     };
@@ -366,7 +368,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
         exec.error = `stopped early: ${exec.stopped.reason} (${exec.stopped.detail})`;
       }
       if (exec.creditLimitHit && exec.creditEstimate != null) exec.creditEstimate += spent;
-      if (exec.creditLimitHit && exec.creditMeasured != null) exec.creditMeasured += spent;
+      if (exec.creditMeasured != null) exec.creditMeasured += spent;
       if (exec.creditLimitHit) exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${limitText(exec.creditMeasured != null ? { measured: exec.creditMeasured } : exec.creditEstimate == null ? spent : { estimate: exec.creditEstimate })}`;
       execs.push(exec);
       if (exec.creditLimitHit || (exec.stopped && exec.stopped.reason !== 'end_turn')) break;
@@ -399,7 +401,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     timedOut: execs.some((e) => e.timedOut),
     creditLimitHit: execs.some((e) => e.creditLimitHit),
     creditEstimate: execs.find((e) => e.creditLimitHit)?.creditEstimate ?? null,
-    creditMeasured: execs.find((e) => e.creditLimitHit)?.creditMeasured ?? null,
+    creditMeasured: execs.find((e) => e.creditLimitHit || (e.stopped && e.stopped.reason !== 'end_turn'))?.creditMeasured ?? null,
     ...(ctx.runCreditLimit == null ? {} : { creditLimit: ctx.runCreditLimit, creditOvershoot: over ? spent - ctx.runCreditLimit : null }),
     ...(soft && ctx.runCreditLimit != null ? { creditLimitMode: 'soft', ...(over ? { creditLimitWarning: `per-run credit limit ${ctx.runCreditLimit} passed at ${spent.toFixed(3)} credits (soft mode: the run was not stopped)` } : {}) } : {}),
     stopped: execs.map((e) => e.stopped).find((x) => x && x.reason !== 'end_turn') ?? null,

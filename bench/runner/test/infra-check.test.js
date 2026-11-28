@@ -26,6 +26,13 @@ test('one run that did real work clears the flag', () => {
   assert.equal(infraFailure([r('error', null), r('timeout', 60000)]), null);
 });
 
+test('a run the bench stopped early on purpose (earlyStopped) is a result, not an infra failure (D-299)', () => {
+  const stopped = { status: 'error', wallClockMs: 32506, flags: ['earlyStopped'], error: 'stopped early: max-tool-calls (8) | the run was ended by a signal' };
+  assert.equal(infraFailure([stopped]), null);
+  assert.equal(infraFailure([stopped, r('error', null)]), null);
+  assert.ok(infraFailure([{ ...stopped, flags: ['creditLimit'] }]), 'a credit-limit kill is not a planned stop');
+});
+
 test('budget-skipped runs are ignored, and a study with none left is not flagged', () => {
   assert.equal(infraFailure([r('budget_skipped', null)]), null);
   assert.equal(infraFailure([]), null);

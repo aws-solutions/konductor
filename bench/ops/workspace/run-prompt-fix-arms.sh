@@ -19,6 +19,9 @@
 #   bash run-prompt-fix-arms.sh reply-check --plan     free: builds and verifies the candidate arm (the frozen adaptive
 #                                                      arm's fixes 1 to 9 plus P1 and P2) and prints the reply check's
 #                                                      calls and caps
+#   bash run-prompt-fix-arms.sh reply-check --repin [--yes]   free: moves the reply check's bench pin to BENCH_REF when it
+#                                                      carries the D-299 early-stop fix, and tops up early stops the old
+#                                                      pin booked at the floor to their measured spend; --yes applies
 #   REVIEWER=claude-opus-5.5 bash run-prompt-fix-arms.sh reply-check   PAID (background, log $S/reply-check.log): the
 #                                                      reply check of reports/adaptive-prompt-cap-check-2026-11-27.md
 #
@@ -93,7 +96,7 @@ RC_SMOKE_PROMPTS=t1-bug-date-range,t12-mux-parallel-merge,t12-split-shared-file
 ARM_RC=""; RC_HASH=""; RCJS=""
 
 . "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
-usage() { echo "usage: bash $0 --plan | smoke|A|B|C|judge [--foreground] | sign-carddemo-key [--yes] | rebook [--yes] | reply-check [--plan|--foreground]"; exit 64; }
+usage() { echo "usage: bash $0 --plan | smoke|A|B|C|judge [--foreground] | sign-carddemo-key [--yes] | rebook [--yes] | reply-check [--plan|--repin [--yes]|--foreground]"; exit 64; }
 
 # under_home PATH: true when PATH (resolved through its nearest existing parent) is under HOME.
 under_home() {
@@ -445,6 +448,40 @@ rc_freeze() {
   say "reply check plan frozen: $f"
 }
 
+# rc_repin_mode YES: free. Moves the reply check's frozen bench pin to BENCH_REF when it carries the D-299 fix (a planned
+# --max-tool-calls stop is a result, not an infra failure and exit 5) and is ahead of the pin; plan.json keeps the old
+# pin under repins, and the arm, reviewer and caps stay. Then tops up each early stop the old pin booked at the floor to
+# its measured creditSplit (reply-check.js rebook-early), so the caps count it. Without --yes it only says what it would do.
+rc_repin_mode() {
+  local yes=$1 f=$RC_S/plan.json old new tool
+  exec 9> "$OWN_LOCK"
+  flock -n 9 || stop "a prompt-fix step holds $OWN_LOCK: wait for it to end"
+  [ -s "$f" ] || stop "no frozen reply check plan in $f: nothing to re-pin"
+  old=$(node -p "require('$f').benchSha")
+  new=$old
+  if [ "$GIT_CHECK" != 0 ]; then
+    [ -z "$(git -C "$RC_REPO" status --porcelain)" ] || stop "$RC_REPO has local changes: use a clean worktree"
+    [ "$NO_FETCH" = 1 ] || git -C "$RC_REPO" fetch -q origin feat/bench-pilot-nk || stop "fetch failed in $RC_REPO"
+    new=$(git -C "$RC_REPO" rev-parse "$BENCH_REF") || stop "cannot resolve $BENCH_REF in $RC_REPO"
+    git -C "$RC_REPO" merge-base --is-ancestor "$old" "$new" || stop "$BENCH_REF (${new:0:8}) is not ahead of the frozen pin ${old:0:8}"
+    git -C "$RC_REPO" grep -q 'D-299' "$new" -- bench/runner/lib/infra-check.js || stop "$BENCH_REF (${new:0:8}) has no D-299 early-stop fix"
+  fi
+  tool=$OPS/bench/ops/prompt-fixes/reply-check.js
+  [ -f "$tool" ] || tool=$RC_REPO/bench/ops/prompt-fixes/reply-check.js
+  [ -d "$RC_S/runs" ] && node "$tool" rebook-early --runs "$RC_S/runs" --arm "$RC_NAME" | sed "s/^/  /"
+  if [ "$yes" != 1 ]; then
+    say "dry run: nothing moved. reply check bench pin ${old:0:8} -> ${new:0:8}. Apply: bash $0 reply-check --repin --yes"
+    return 0
+  fi
+  if [ "$new" != "$old" ]; then
+    git -C "$RC_REPO" checkout -q --detach "$new" || stop "checkout of ${new:0:8} failed in $RC_REPO"
+    node -e 'const [f, o, n] = process.argv.slice(1); const p = JSON.parse(require("fs").readFileSync(f, "utf8")); p.repins = [...(p.repins || []), { from: o, to: n, at: new Date().toISOString(), reason: "D-299: a planned max-tool-calls stop is a result, booked at its measured creditSplit" }]; p.benchSha = n; require("fs").writeFileSync(f, JSON.stringify(p, null, 2) + "\n");' "$f" "$old" "$new"
+    say "reply check bench pin moved: ${old:0:8} -> ${new:0:8} (plan.json repins)"
+  fi
+  [ -d "$RC_S/runs" ] && node "$tool" rebook-early --runs "$RC_S/runs" --arm "$RC_NAME" --apply yes | sed "s/^/  /"
+  say "reply check runs booked $(node -p "require('$tool'.replace(/reply-check\.js$/, 'study.js')).spent('$RC_S/runs').credits") of $RC_RUN_CAP. Resume: REVIEWER=$REVIEWER bash $0 reply-check"
+}
+
 rc_plan_mode() {
   local rcjs smoke n
   rc_reviewer
@@ -522,10 +559,11 @@ rc_paid_mode() {
 }
 
 main() {
-  local mode="" fg=0 yes=0 plan=0 a
+  local mode="" fg=0 yes=0 plan=0 repin=0 a
   for a in "$@"; do
     case "$a" in
       --plan) plan=1 ;;
+      --repin) repin=1 ;;
       smoke|A|B|C|judge|sign-carddemo-key|rebook|reply-check) [ -z "$mode" ] || usage; mode=$a ;;
       --foreground) fg=1 ;;
       --yes) yes=1 ;;
@@ -535,6 +573,7 @@ main() {
   if [ "$plan" = 1 ]; then
     case "$mode" in '') mode=--plan ;; reply-check) mode=reply-check-plan ;; *) usage ;; esac
   fi
+  if [ "$repin" = 1 ]; then [ "$mode" = reply-check ] && [ "$plan" = 0 ] || usage; mode=reply-check-repin; fi
   [ -n "$mode" ] || usage
   [ -n "$WS" ] || stop "set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)"
   for d in "$S" "$CACHE"; do under_home "$d" && stop "$d is under HOME ($HOME); work dirs go outside it, for example under /var/tmp"; done
@@ -547,6 +586,7 @@ main() {
     sign-carddemo-key) sign_mode "$yes"; return ;;
     rebook) rebook_mode "$yes"; return ;;
     reply-check-plan) rc_plan_mode; return ;;
+    reply-check-repin) rc_repin_mode "$yes"; return ;;
   esac
   if [ "$fg" = 0 ]; then
     setsid nohup bash "${BASH_SOURCE[0]}" "$mode" --foreground >> "$S/$mode.log" 2>&1 < /dev/null &
