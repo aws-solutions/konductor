@@ -37,6 +37,7 @@ export {
   canEdit,
   changeBlocker,
   checksBlocker,
+  dataUnlinkBlocker,
   doneWhenBlocker,
   canSave,
   fileBlocker,

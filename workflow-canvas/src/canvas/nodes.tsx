@@ -3,6 +3,8 @@ import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import {
+  DATA_IN,
+  DATA_OUT,
   NODE_HEIGHT,
   NODE_WIDTH,
   SEQUENCE_IN,
@@ -32,7 +34,7 @@ function SequenceIn() {
       type="target"
       position={Position.Top}
       id={SEQUENCE_IN}
-      isConnectable={false}
+      isConnectable
       className="wf-port wf-port-in"
     />
   );
@@ -45,8 +47,32 @@ function SequenceOut() {
       type="source"
       position={Position.Bottom}
       id={SEQUENCE_OUT}
-      isConnectable={false}
+      isConnectable
       className="wf-port wf-port-out"
+    />
+  );
+}
+
+function DataIn() {
+  return (
+    <Handle
+      type="target"
+      position={Position.Left}
+      id={DATA_IN}
+      isConnectable
+      className="wf-data-port wf-data-port-in"
+    />
+  );
+}
+
+function DataOut() {
+  return (
+    <Handle
+      type="source"
+      position={Position.Right}
+      id={DATA_OUT}
+      isConnectable
+      className="wf-data-port wf-data-port-out"
     />
   );
 }
@@ -176,6 +202,8 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
         radius={NODE_RADIUS.stage}
       />
       <SequenceIn />
+      <DataIn />
+      <DataOut />
       <div
         className="wf-agent-badge"
         data-color={agentColor(data.agent)}

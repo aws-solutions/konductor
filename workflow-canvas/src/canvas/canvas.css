@@ -24,6 +24,7 @@
   --wf-controls-bg-hover: #efebff;
   --wf-controls-border: #cfc7ba;
 
+  position: relative;
   border-radius: 12px;
   background: var(--wf-canvas-bg);
   /* The graph library reads these for its zoom buttons and its credit line. */
@@ -55,6 +56,40 @@
 
 .wf-canvas .react-flow__attribution a {
   color: var(--wf-text-muted);
+}
+
+.wf-link-menu {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+}
+
+.wf-canvas .react-flow__edge-path {
+  stroke: var(--wf-edge);
+  stroke-width: 2.5px;
+}
+
+.wf-canvas .react-flow__edge.wf-data-edge .react-flow__edge-path {
+  stroke: var(--wf-port);
+}
+
+.wf-canvas .react-flow__edge.wf-data-edge .react-flow__edge-text {
+  fill: var(--wf-port);
+  font-weight: 700;
+}
+
+.wf-canvas
+  .react-flow__edge.wf-data-edge:is(.selected, :focus-visible)
+  .react-flow__edge-path {
+  stroke: var(--wf-focus);
+  stroke-width: 4px;
+}
+
+.wf-canvas
+  .react-flow__edge.wf-data-edge:is(.selected, :focus-visible)
+  .react-flow__edge-text {
+  fill: var(--wf-focus);
 }
 
 /*
@@ -294,6 +329,19 @@
   background: var(--wf-port);
   box-shadow: 0 0 0 1px var(--wf-port);
   content: '';
+}
+
+.react-flow .wf-data-port {
+  width: 10px;
+  min-width: 10px;
+  height: 10px;
+  min-height: 10px;
+  padding: 0;
+  border: 2px solid var(--wf-node-bg);
+  border-radius: 50%;
+  background: var(--wf-port);
+  box-shadow: 0 0 0 1px var(--wf-port);
+  opacity: 1;
 }
 
 /*

@@ -105,6 +105,33 @@ test('capture the Design view with a stage output', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-outputs');
 });
 
+test('capture a drawn data link', async ({ canvas }) => {
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  const panel = canvas.page.getByRole('tabpanel', { name: 'Properties' });
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  await panel.getByRole('textbox', { name: 'Output name 1' }).fill('design');
+  await panel.getByRole('textbox', { name: 'Output path 1' }).fill('DESIGN.md');
+  await panel
+    .getByRole('textbox', { name: 'prompt', exact: true })
+    .fill('Read {draft.design}.');
+  await canvas.page.getByTestId('node-stage-review').click();
+  await panel
+    .getByRole('textbox', { name: 'prompt', exact: true })
+    .fill('Read {draft.design}.');
+  await expect(
+    canvas.page.getByRole('group', {
+      name: 'Output design from stage draft to stage review',
+    }),
+  ).toBeVisible();
+  await expect(
+    canvas.page.getByRole('group', {
+      name: 'Output design from stage draft to stage draft',
+    }),
+  ).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-links-draw');
+});
+
 test('capture the Design view with acceptance checks', async ({ canvas }) => {
   await canvas.page
     .getByRole('button', { name: /checks 1, edit acceptance checks/ })

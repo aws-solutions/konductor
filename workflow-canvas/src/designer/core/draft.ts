@@ -465,6 +465,31 @@ export function doneWhenIds(
   );
 }
 
+/** Removes only a line created by the data-link action. */
+export function unlinkOutput(
+  draft: Draft,
+  sourceId: string,
+  targetId: string,
+  output: string,
+): Draft {
+  const source = draft.stages.find((stage) => stage.id === sourceId);
+  const target = draft.stages.find((stage) => stage.id === targetId);
+  if (!source || !target) return draft;
+  const line = `Read {${source.name}.${output}}.`;
+  if (target.prompt === line) return change(draft, targetId, { prompt: '' });
+  const suffix = `\n${line}`;
+  if (target.prompt.endsWith(suffix)) {
+    return change(draft, targetId, {
+      prompt: target.prompt.slice(0, -suffix.length),
+    });
+  }
+  const lines = target.prompt.split('\n');
+  const at = lines.lastIndexOf(line);
+  if (at < 0) return draft;
+  lines.splice(at, 1);
+  return change(draft, targetId, { prompt: lines.join('\n') });
+}
+
 /** Gives a parameter field the value as typed. */
 export function setParam(
   draft: Draft,

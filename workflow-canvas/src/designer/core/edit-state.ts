@@ -142,6 +142,12 @@ export type EditEvent =
   | { type: 'remove-check'; key: string }
   | { type: 'set-done-when'; stageId: string; keys: readonly string[] }
   | {
+      type: 'unlink-output';
+      sourceId: string;
+      targetId: string;
+      output: string;
+    }
+  | {
       type: 'set-param';
       id: string;
       change: Partial<

@@ -4,6 +4,7 @@ import {
   doneWhenIds,
   sameStages,
   stagesOf,
+  unlinkOutput,
   type Draft,
   type DraftStage,
 } from './draft';
@@ -388,6 +389,32 @@ export function doneWhenBlocker(
   return sourceIndex < 0
     ? undefined
     : doneWhenEditBlocker(state.saved.text, sourceIndex);
+}
+
+/** Why one generated data link cannot be removed from its prompt. */
+export function dataUnlinkBlocker(
+  state: EditState,
+  sourceId: string,
+  targetId: string,
+  output: string,
+): string | undefined {
+  const blocked = changeBlocker(state);
+  if (blocked) return blocked;
+  const target = state.draft.stages.find(({ id }) => id === targetId);
+  if (!target || !state.draft.stages.some(({ id }) => id === sourceId)) {
+    return 'The output link no longer matches these stages.';
+  }
+  const prompt = promptFieldOf(state, target);
+  if (prompt.kind === 'file' || prompt.kind === 'both') {
+    return 'A stage with prompt_file cannot change this data link.';
+  }
+  if (prompt.kind === 'blocked') return prompt.reason;
+  const draft = unlinkOutput(state.draft, sourceId, targetId, output);
+  if (draft === state.draft) {
+    return 'This generated link no longer matches the prompt.';
+  }
+  const written = writtenOf({ ...state, draft });
+  return written.ok ? undefined : written.reason;
 }
 
 /** Why one stage's output declarations cannot make this kind of edit. */
