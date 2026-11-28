@@ -3,6 +3,7 @@ import { ApiError } from './api';
 import type {
   CheckResult,
   DiagnosticView,
+  EditableCheck,
   Harness,
   LineRange,
   ParamView,
@@ -140,15 +141,16 @@ function parseParams(value: unknown): Pick<WorkflowView, 'params'> {
   };
 }
 
-function parseCheck(value: unknown) {
+function parseCheck(value: unknown): EditableCheck {
   const check = objectOf(value);
   const id = stringOf(check.id);
   const hasFile = Object.hasOwn(check, 'file');
   const hasRun = Object.hasOwn(check, 'run');
   if (hasFile === hasRun) fail();
-  return hasFile
-    ? { id, file: stringOf(check.file) }
-    : { id, run: arrayOf(check.run).map(stringOf) };
+  if (hasFile) return { id, file: stringOf(check.file) };
+  const run = arrayOf(check.run).map(stringOf);
+  if (run.length === 0) fail();
+  return { id, run };
 }
 
 export function parseIntent(value: unknown): WorkflowView['intent'] {

@@ -173,6 +173,59 @@ describe('withAcceptanceChecks structural range edits', () => {
     ).toEqual(['old', 'next']);
   });
 
+  const flow = `${HEAD}  accept: [{"id": "first", "file": "FIRST.md"}, {"id": "old", "file": "OLD.md"}]
+stages:
+  - name: plan
+    agent: k-architect
+`;
+
+  it.each([
+    [
+      'append',
+      [
+        fileCheck('first', 'FIRST.md', 0),
+        fileCheck('old', 'OLD.md', 1),
+        fileCheck('next', 'NEXT.md'),
+      ],
+      '  accept: [{"id": "first", "file": "FIRST.md"}, {"id": "old", "file": "OLD.md"}, {id: next, file: NEXT.md}]',
+    ],
+    [
+      'prepend',
+      [
+        fileCheck('next', 'NEXT.md'),
+        fileCheck('first', 'FIRST.md', 0),
+        fileCheck('old', 'OLD.md', 1),
+      ],
+      '  accept: [{id: next, file: NEXT.md}, {"id": "first", "file": "FIRST.md"}, {"id": "old", "file": "OLD.md"}]',
+    ],
+    [
+      'remove first',
+      [fileCheck('old', 'OLD.md', 1)],
+      '  accept: [{"id": "old", "file": "OLD.md"}]',
+    ],
+    [
+      'remove last',
+      [fileCheck('first', 'FIRST.md', 0)],
+      '  accept: [{"id": "first", "file": "FIRST.md"}]',
+    ],
+  ] as const)('%s preserves flow row boundaries', (_, checks, acceptLine) => {
+    const written = value(withAcceptanceChecks(flow, checks));
+    expect(written).toBe(flow.replace(/^  accept:.*$/m, acceptLine));
+    expect(parse(written).intent.accept).toHaveLength(checks.length);
+  });
+
+  it('removes the only flow row', () => {
+    const text = flow.replace(
+      '[{"id": "first", "file": "FIRST.md"}, {"id": "old", "file": "OLD.md"}]',
+      '[{"id": "old", "file": "OLD.md"}]',
+    );
+    const written = value(withAcceptanceChecks(text, []));
+    expect(written).toBe(
+      text.replace('[{"id": "old", "file": "OLD.md"}]', '[]'),
+    );
+    expect(parse(written).intent.accept).toEqual([]);
+  });
+
   it('refuses a pure row reorder', () => {
     const text = BLOCK.replace(
       '    - id: old\n      file: OLD.md',

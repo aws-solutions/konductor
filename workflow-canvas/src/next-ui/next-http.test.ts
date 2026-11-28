@@ -1029,6 +1029,23 @@ describe('createNextPorts, the check of a text', () => {
       },
     ],
     [
+      'an acceptance check with an empty run',
+      {
+        ...answer.view,
+        intent: {
+          outcome: 'Ship',
+          accept: [{ id: 'tests', run: [] }],
+        },
+      },
+    ],
+    [
+      'an acceptance check with neither kind',
+      {
+        ...answer.view,
+        intent: { outcome: 'Ship', accept: [{ id: 'tests' }] },
+      },
+    ],
+    [
       'an intent whose outcome is not text',
       { ...answer.view, intent: { outcome: 7 } },
     ],

@@ -109,7 +109,7 @@ function checkSpot(
       ? textScalar(pair.value)
       : scalarSequenceSource(text, pair.value);
   if (!id || !key || !field) return METADATA;
-  const rowEnd = contentEnd(value);
+  const rowEnd = flowSequence ? value.range[1] : contentEnd(value);
   return {
     id,
     kind,

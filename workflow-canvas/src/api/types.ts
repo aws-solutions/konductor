@@ -61,11 +61,17 @@ export interface ParamView {
 export type GoalParamView = Pick<ParamView, 'description' | 'default'>;
 
 /** One editable acceptance check. */
-export interface EditableCheck {
-  readonly id: string;
-  readonly file?: string;
-  readonly run?: readonly string[];
-}
+export type EditableCheck =
+  | {
+      readonly id: string;
+      readonly file: string;
+      readonly run?: never;
+    }
+  | {
+      readonly id: string;
+      readonly run: readonly string[];
+      readonly file?: never;
+    };
 
 /** The parsed workflow, ready to draw. */
 export interface WorkflowView {
