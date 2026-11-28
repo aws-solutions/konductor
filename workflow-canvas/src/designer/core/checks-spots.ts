@@ -2,6 +2,7 @@
 import { scalar } from './scalar-text';
 import {
   scalarSequencePatches,
+  scalarSequenceSource,
   type ScalarSequenceSource,
 } from './source-sequence';
 import {
@@ -19,6 +20,7 @@ import {
   contentEnd,
   eolOf,
   hasComment,
+  hasMapComments,
   insertMapPair,
   isMap,
   isSeq,
@@ -61,7 +63,6 @@ const DUPLICATE_SOURCE =
 interface CheckSpot extends SourceRow {
   readonly id: TextScalar;
   readonly kind: 'file' | 'run';
-  readonly kindKey: readonly [number, number];
   readonly value: TextScalar | ScalarSequenceSource;
   readonly flow: boolean;
   readonly fieldStart: number;
@@ -80,39 +81,6 @@ interface AcceptanceSpot {
   readonly reason?: string;
 }
 
-function sourceError(pair: ReturnType<typeof uniquePair>): string | undefined {
-  return pair === 'duplicate' ? DUPLICATE_SOURCE : undefined;
-}
-
-function mapHasComments(map: YAMLMap): boolean {
-  return (
-    hasComment(map) ||
-    map.items.some(
-      (pair) =>
-        hasComment(pair) || hasComment(pair.key) || hasComment(pair.value),
-    )
-  );
-}
-
-function sequenceSource(
-  text: string,
-  value: unknown,
-): ScalarSequenceSource | undefined {
-  if (!isSeq(value) || !value.range || value.anchor || value.tag) {
-    return undefined;
-  }
-  const items = value.items.map(textScalar);
-  if (items.some((item) => item === undefined)) return undefined;
-  return {
-    flow: value.flow === true,
-    close: value.range[1] - 1,
-    indent: ' '.repeat(columnOf(text, value.range[0])),
-    items: items as readonly TextScalar[],
-    hasComments:
-      hasComment(value) || value.items.some((item) => hasComment(item)),
-  };
-}
-
 function checkSpot(
   text: string,
   value: unknown,
@@ -124,10 +92,9 @@ function checkSpot(
   const idPair = uniquePair(value, 'id');
   const filePair = uniquePair(value, 'file');
   const runPair = uniquePair(value, 'run');
-  const duplicate = [idPair, filePair, runPair]
-    .map(sourceError)
-    .find((error) => error !== undefined);
-  if (duplicate) return duplicate;
+  if ([idPair, filePair, runPair].includes('duplicate')) {
+    return DUPLICATE_SOURCE;
+  }
   if (!idPair || idPair === 'duplicate') return LAYOUT;
   const fields = [filePair, runPair].filter(
     (pair) => pair !== undefined && pair !== 'duplicate',
@@ -138,13 +105,14 @@ function checkSpot(
   const pair = fields[0]!;
   const key = textScalar(pair.key);
   const field =
-    kind === 'file' ? textScalar(pair.value) : sequenceSource(text, pair.value);
+    kind === 'file'
+      ? textScalar(pair.value)
+      : scalarSequenceSource(text, pair.value);
   if (!id || !key || !field) return METADATA;
   const rowEnd = contentEnd(value);
   return {
     id,
     kind,
-    kindKey: key.range,
     value: field,
     flow: value.flow === true,
     start: flowSequence ? value.range[0] : lineStart(text, value.range[0]),
@@ -318,7 +286,7 @@ function insertedPatch(
   checks: readonly CheckToWrite[],
 ): SourcePatch | string | undefined {
   if (checks.length === 0) return undefined;
-  if (spot.map.flow && mapHasComments(spot.map)) {
+  if (spot.map.flow && hasMapComments(spot.map)) {
     return CHECK_COMMENTS_REASON;
   }
   const first = textScalar(spot.map.items[0]?.key);
@@ -336,27 +304,6 @@ function insertedPatch(
   return insertMapPair(text, spot.map, 'accept', value) ?? LAYOUT;
 }
 
-function sameChecks(
-  checks: readonly CheckToWrite[],
-  source: readonly CheckSpot[],
-): boolean {
-  return (
-    checks.length === source.length &&
-    checks.every((check, index) => {
-      const row = source[index];
-      if (!row || check.id !== row.id.text || check.kind !== row.kind) {
-        return false;
-      }
-      return check.kind === 'file'
-        ? check.file === (row.value as TextScalar).text
-        : check.run.join('\0') ===
-            (row.value as ScalarSequenceSource).items
-              .map(({ text }) => text)
-              .join('\0');
-    })
-  );
-}
-
 export function checkCollectionBlocker(
   text: string,
   collection: 'accept',
@@ -366,7 +313,7 @@ export function checkCollectionBlocker(
   const spot = acceptanceSpot(text);
   if (typeof spot === 'string') return spot;
   const insertionComments =
-    !spot.source && spot.map.flow && mapHasComments(spot.map);
+    !spot.source && spot.map.flow && hasMapComments(spot.map);
   return (
     spot.reason ??
     (structural && (spot.source?.hasComments || insertionComments)
@@ -394,9 +341,6 @@ export function withAcceptanceChecks(
       ok: false,
       reason: typeof spot === 'string' ? spot : spot.reason!,
     };
-  }
-  if (spot.source && sameChecks(checks, spot.source.rows)) {
-    return { ok: true, text };
   }
   const changed = spot.source
     ? existingPatches(text, spot.source, checks)

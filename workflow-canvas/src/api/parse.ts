@@ -151,7 +151,7 @@ function parseCheck(value: unknown) {
     : { id, run: arrayOf(check.run).map(stringOf) };
 }
 
-function parseIntent(value: unknown): WorkflowView['intent'] {
+export function parseIntent(value: unknown): WorkflowView['intent'] {
   const intent = objectOf(value);
   return {
     outcome: stringOf(intent.outcome),

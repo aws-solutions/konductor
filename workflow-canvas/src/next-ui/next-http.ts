@@ -8,14 +8,11 @@ import {
   errorMessageOf,
   errorRunIdOf,
   isObject,
+  parseIntent,
   parseRunStarted,
   parseWorkflowDocument,
 } from '../api/parse';
-import type {
-  EditableCheck,
-  LibraryEntry,
-  WorkflowDocument,
-} from '../api/types';
+import type { LibraryEntry, WorkflowDocument } from '../api/types';
 import {
   parseWorkflowExtras,
   type WorkflowExtras,
@@ -351,20 +348,10 @@ const OUTCOME_LONGEST = 300;
 // person reads it and not as the two units each takes in a JavaScript string.
 // Every other key of the intent, such as the checks of `accept`, is kept as
 // it came.
-function acceptanceCheckOrFail(value: unknown): EditableCheck {
-  if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
-  const id = textOrFail(value.id);
-  const hasFile = Object.hasOwn(value, 'file');
-  const hasRun = Object.hasOwn(value, 'run');
-  if (hasFile === hasRun) throw new ApiError(BAD_REPLY, 200);
-  if (hasFile) return { id, file: textOrFail(value.file) };
-  if (!Array.isArray(value.run)) throw new ApiError(BAD_REPLY, 200);
-  return { id, run: value.run.map(textOrFail) };
-}
-
 function intentOrFail(value: unknown): unknown {
   if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
-  const outcome = textOrFail(value.outcome);
+  const intent = parseIntent(value);
+  const { outcome } = intent;
   if (
     outcome === '' ||
     [...outcome].length > OUTCOME_LONGEST ||
@@ -372,13 +359,7 @@ function intentOrFail(value: unknown): unknown {
   ) {
     throw new ApiError(BAD_REPLY, 200);
   }
-  if (value.accept === undefined) return { ...value, outcome };
-  if (!Array.isArray(value.accept)) throw new ApiError(BAD_REPLY, 200);
-  return {
-    ...value,
-    outcome,
-    accept: value.accept.map(acceptanceCheckOrFail),
-  };
+  return { ...value, ...intent };
 }
 
 // The parsed workflow of the answer. `parse.ts` has `parseCheckResult` for

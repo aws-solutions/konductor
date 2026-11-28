@@ -85,8 +85,6 @@ export interface CheckDeclaration {
   readonly id: string;
   /** Whether the check reads a file or runs a command. */
   readonly kind: 'file' | 'run';
-  readonly file?: string;
-  readonly run?: readonly string[];
 }
 
 /** The checks a workflow declares, and which stage waits for each. */
