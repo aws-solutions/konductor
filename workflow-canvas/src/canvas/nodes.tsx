@@ -179,6 +179,11 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
             {data.description}
           </div>
         )}
+        {data.problem && (
+          <div className="wf-stage-problem" title={data.problem}>
+            Needs attention
+          </div>
+        )}
       </div>
       {data.endsRun ? (
         <span className="wf-node-stop">

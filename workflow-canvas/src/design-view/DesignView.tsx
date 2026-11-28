@@ -23,6 +23,7 @@ import {
   parameterNameError,
 } from '../designer/core/param-text';
 import { ComponentsTray } from '../designer-view/ComponentsTray';
+import { outputNameError } from '../designer/core/outputs-text';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import {
   useEditHistory,
@@ -42,7 +43,9 @@ import {
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
+  outputsBlocker,
   paramsBlocker,
+  problemsOfDraft,
   promptFieldOf,
   rawTextOf,
   READ_ONLY_REASON,
@@ -331,6 +334,7 @@ export function DesignView({
   const ofNow = answer?.view ? answer : undefined;
   const checked = ofNow ?? draft.lastGood ?? opened.answer;
   const shownParamCount = history.paramCount ?? state.draft.params.length;
+  const stageProblems = useMemo(() => problemsOfDraft(state), [state]);
   const spec = useMemo(
     () => ({
       name: state.saved.view.name,
@@ -347,10 +351,22 @@ export function DesignView({
           ...(source?.prompt_file === undefined
             ? { prompt: stage.prompt }
             : { prompt_file: source.prompt_file }),
+          ...(() => {
+            const problem = stageProblems.find(
+              (candidate) => candidate.stageId === stage.id,
+            )?.message;
+            return problem === undefined ? {} : { problem };
+          })(),
         };
       }),
     }),
-    [state.bases, state.draft.stages, state.saved.view, shownParamCount],
+    [
+      stageProblems,
+      state.bases,
+      state.draft.stages,
+      state.saved.view,
+      shownParamCount,
+    ],
   );
   const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
   const { select } = editor;
@@ -370,6 +386,10 @@ export function DesignView({
     [state.draft.params],
   );
   const parameterNameFailure = Object.values(paramNameErrors)[0];
+  const outputNameFailure = state.draft.stages
+    .flatMap((stage) => stage.outputs ?? [])
+    .map((output) => outputNameError(output.name))
+    .find((error) => error !== undefined);
   const announcedNameFailure = useRef(false);
   useEffect(() => {
     if (parameterNameFailure === undefined) {
@@ -383,6 +403,19 @@ export function DesignView({
       count: count + 1,
     }));
   }, [parameterNameFailure]);
+  const announcedOutputFailure = useRef(false);
+  useEffect(() => {
+    if (outputNameFailure === undefined) {
+      announcedOutputFailure.current = false;
+      return;
+    }
+    if (announcedOutputFailure.current) return;
+    announcedOutputFailure.current = true;
+    setAnnouncement(({ count }) => ({
+      text: outputNameFailure,
+      count: count + 1,
+    }));
+  }, [outputNameFailure]);
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -436,8 +469,12 @@ export function DesignView({
     .filter(
       (key) => !SAVABLE_KEYS.includes(key) || (key === 'prompt' && !promptRead),
     );
+  const outputSourceBlocker = outputsBlocker(state);
   const stage: LayoutStage | undefined = picked && {
     name: picked.name,
+    outputs: picked.outputs ?? [],
+    outputsDisabled: outputSourceBlocker !== undefined,
+    outputsDisabledReason: outputSourceBlocker,
     rules,
     values,
     // The agent the file names, which stays on offer even when the list of
@@ -639,6 +676,21 @@ export function DesignView({
           onParamChange={(id, change) => editor.setParam(id, change)}
           onParamAdd={editor.addParam}
           onParamRemove={editor.removeParam}
+          onOutputChange={(id, change) => {
+            if (picked && outputSourceBlocker === undefined) {
+              editor.setOutput(picked.id, id, change);
+            }
+          }}
+          onOutputAdd={() => {
+            if (picked && outputSourceBlocker === undefined) {
+              editor.addOutput(picked.id);
+            }
+          }}
+          onOutputRemove={(id) => {
+            if (picked && outputSourceBlocker === undefined) {
+              editor.removeOutput(picked.id, id);
+            }
+          }}
           onStageChange={({ values: next }) => {
             if (!picked) return;
             const name = next.name ?? '';

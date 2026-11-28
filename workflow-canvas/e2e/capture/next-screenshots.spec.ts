@@ -95,6 +95,16 @@ test('capture the stage panel in the dark mode', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-properties-dark');
 });
 
+test('capture the Design view with a stage output', async ({ canvas }) => {
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  const panel = canvas.page.getByRole('tabpanel', { name: 'Properties' });
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  await panel.getByRole('textbox', { name: 'Output name 1' }).fill('design');
+  await panel.getByRole('textbox', { name: 'Output path 1' }).fill('DESIGN.md');
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-outputs');
+});
+
 test('capture the Design view with workflow parameters', async ({ canvas }) => {
   await canvas.page
     .getByRole('button', {

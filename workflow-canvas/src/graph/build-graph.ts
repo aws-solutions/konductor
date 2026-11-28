@@ -84,6 +84,7 @@ function stageNode(
       agent: stage.agent,
       harness,
       ...descriptionOf(stage),
+      ...(stage.problem === undefined ? {} : { problem: stage.problem }),
     },
   };
 }
