@@ -34,7 +34,7 @@
 #
 # Steps (bench/ops/prompt-fixes/study.js STEPS): smoke 4 tasks x 3 arms x 1 rep, cap 90 credits, 25 a run; A rows 1-9
 # x 3 arms x 3 reps, cap 800; B rows 10-14 x 3 arms x 3 reps, cap 700; per-run limit 100 in A and B; C cx-carddemo-
-# batchday x 3 arms, 3 reps when they fit 520 (the owner's cap, 2026-11-27; it was 474) else 2, soft per-run cap 270
+# batchday x 3 arms, 3 reps when they fit 598 (the owner's cap, 2026-11-27, D-298; it was 520, then 474) else 2, soft per-run cap 270
 # (as run-cx.sh --soft: never kills a run; 270 is the 3600 s timeout at 4.5 credits a minute). Each run is its own
 # bench.js call. Before each one the credit ledger of the step must have no entry of unknown cost, spend plus the
 # per-run limit must stay within the cap, and at 60% of the cap the forecast of the runs left must fit (study.js

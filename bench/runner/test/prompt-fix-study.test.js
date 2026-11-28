@@ -23,7 +23,7 @@ test('cells: smoke is 4 tasks x 3 arms x 1 rep with the team task first; A is 81
 
 test('forecast: every step has runs, arms, a cap and a worst case; caps are the approved ones', () => {
   const { steps: f, judge } = forecast(path.join(tmp(), 'none'));
-  assert.deepEqual([f.smoke.cap, f.A.cap, f.B.cap, f.C.cap], [90, 800, 700, 520]);
+  assert.deepEqual([f.smoke.cap, f.A.cap, f.B.cap, f.C.cap], [90, 800, 700, 598]);
   assert.equal(f.B.runLimit, 100);
   assert.equal(f.A.worstCase, 81 * 100);
   assert.ok(f.smoke.total > 0 && f.smoke.arms.vanilla > 0);
@@ -31,13 +31,13 @@ test('forecast: every step has runs, arms, a cap and a worst case; caps are the 
   assert.ok(judge.capUsd >= judge.high && judge.high > judge.mid && judge.mid > 0);
 });
 
-test('batch C: 3 arms x 3 reps of CardDemo (607.5) do not fit 520, so 2 reps; soft worst case 270 still lets 4 of the 6 start (the 5th needs 521, all 6 need 598)', () => {
+test('batch C: 3 arms x 3 reps of CardDemo (607.5) do not fit 598, so 2 reps; at the soft worst case 270 all 6 runs start (the owner ruled 598, D-298)', () => {
   const { steps } = forecast(path.join(tmp(), 'none'));
   assert.equal(steps.C.reps, 2);
   assert.equal(steps.C.runs, 6);
   assert.equal(steps.C.total, 405);
   assert.equal(steps.C.soft, true);
-  assert.equal(steps.C.startable, 4);
+  assert.equal(steps.C.startable, 6);
 });
 
 test('judgeMayStart: refuses when judge USD spent plus one run high estimate passes the cap', () => {

@@ -27,12 +27,12 @@ const { makeSplitReader } = require('../../runner/lib/credit-watch.js');
 const ARMS = ['vanilla', 'konductor-adaptive', 'konductor-coordinator'];
 const byRow = (lo, hi) => Object.entries(EXPECT.tasks).filter(([, e]) => e.row >= lo && e.row <= hi).sort((a, b) => a[1].row - b[1].row).map(([id]) => id);
 // Smoke: rows 10, 1, 7 and 8; the team task first, so the gate's team-writer evidence comes before the cap can bind.
-// Batch C: cx-carddemo-batchday, cap 520 (the owner raised it from 474, 2026-11-27; it was the CardDemo approval of
-// 600 less 125.5 spent), soft per-run caps
+// Batch C: cx-carddemo-batchday, cap 598 (owner ruling 2026-11-27, D-298: all 6 runs of 2 reps start at the soft
+// worst case; it was 520, and before that 474 = the CardDemo approval of 600 less 125.5 spent), soft per-run caps
 // as run-cx.sh --soft: a run is never killed, its worst case is the 3600 s timeout at the top measured rate of 4.5
 // credits a minute (270). Measured per run (owner, 2026-11-27): konductor 77, vanilla 48.5; the two konductor arms are
 // planned at konductor's 77 (inferred). 3 reps when they fit the cap, else 2.
-const CX = { id: 'cx-carddemo-batchday', cap: 520, softWorst: 270, perRun: { vanilla: 48.5, 'konductor-adaptive': 77, 'konductor-coordinator': 77 } };
+const CX = { id: 'cx-carddemo-batchday', cap: 598, softWorst: 270, perRun: { vanilla: 48.5, 'konductor-adaptive': 77, 'konductor-coordinator': 77 } };
 const cxPerRep = Object.values(CX.perRun).reduce((a, b) => a + b, 0);
 const STEPS = {
   smoke: { tasks: ['t12-mux-parallel-merge', 't1-bug-date-range', 't12-split-shared-file', 'probe-e2e-explicit-yes'], reps: 1, cap: 90, runLimit: 25 },
