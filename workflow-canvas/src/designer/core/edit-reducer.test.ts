@@ -281,6 +281,40 @@ describe('save', () => {
     expect(stagesOf(saved.draft)[0]?.agent).toBe('k-tpm');
   });
 
+  it('settles after removing the last saved output', () => {
+    const text = HELLO_TEXT.replace(
+      '    agent: k-developer\n',
+      '    agent: k-developer\n    outputs:\n      design: DESIGN.md\n',
+    );
+    const state = openDocument({
+      ...HELLO_DOCUMENT,
+      text,
+      view: {
+        ...HELLO_VIEW,
+        stages: [
+          { ...HELLO_VIEW.stages[0]!, outputs: { design: 'DESIGN.md' } },
+          HELLO_VIEW.stages[1]!,
+        ],
+      },
+    })!;
+    const outputId = state.draft.stages[0]!.outputs![0]!.id;
+    const saving = run(
+      state,
+      { type: 'remove-output', stageId: 's1', outputId },
+      { type: 'save' },
+    );
+    const saved = run(saving, {
+      type: 'saved',
+      text: textOf(saving)!,
+      result: savedResult([
+        { ...HELLO_VIEW.stages[0]!, outputs: {} },
+        HELLO_VIEW.stages[1]!,
+      ]),
+    });
+
+    expect(saveStatus(saved)).toEqual({ kind: 'success', text: 'Saved' });
+  });
+
   it('replaces the findings of an older draft with those of the save', () => {
     const saved = run(
       opened(),

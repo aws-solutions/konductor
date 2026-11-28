@@ -137,18 +137,28 @@ function replaceMap(
       text: renderFlow(outputs),
     };
   }
-  if (outputs.length === 0) {
-    return { start: map.range[0], end: map.range[1], text: '{}' };
-  }
   const first = map.items[0]?.key as Scalar | null | undefined;
-  if (!first?.range) return LAYOUT_REASON;
+  const last = map.items.at(-1);
+  const lastKey = last?.key as Scalar | null | undefined;
+  const lastValue = last?.value as Scalar | YAMLMap | null | undefined;
+  const contentEnd = Math.max(
+    lastKey?.range?.[1] ?? 0,
+    lastValue?.range?.[1] ?? 0,
+  );
+  if (!first?.range || contentEnd === 0) return LAYOUT_REASON;
+  if (outputs.length === 0) {
+    return { start: map.range[0], end: contentEnd, text: '{}' };
+  }
   const indent = ' '.repeat(columnOf(text, first.range[0]));
   const eol = eolOf(text);
   return {
     start: map.range[0],
-    end: map.range[1],
+    end: contentEnd,
     text: outputs
-      .map(({ name, path }) => `${indent}${name}: ${scalar(path)}`)
+      .map(
+        ({ name, path }, index) =>
+          `${index === 0 ? '' : indent}${name}: ${scalar(path)}`,
+      )
       .join(eol),
   };
 }

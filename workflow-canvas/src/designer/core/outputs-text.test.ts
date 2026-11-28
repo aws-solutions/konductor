@@ -63,6 +63,18 @@ describe('withOutputs', () => {
     expect(written).toContain('    prompt: Plan it. # keep\n    outputs:\n');
   });
 
+  it('removes the last row without consuming the next stage line', () => {
+    const text = `${block()}  - name: review\n    agent: k-reviewer\n`;
+    const written = withOutputs(text, [
+      { outputs: [], before: { design: 'DESIGN.md' } },
+      { outputs: [], before: {} },
+    ]);
+    expect(written.ok).toBe(true);
+    if (!written.ok) throw new Error(written.reason);
+    expect(parse(written.text).stages).toHaveLength(2);
+    expect(parse(written.text).stages[0].outputs).toEqual({});
+  });
+
   it('refuses structural edits that could move output comments', () => {
     const text = block().replace(
       '      design:',
