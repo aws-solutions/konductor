@@ -3,6 +3,7 @@ import {
   isAlias,
   isMap,
   isNode,
+  isPair,
   isScalar,
   isSeq,
   parseDocument,
@@ -58,6 +59,9 @@ export function nodeEnd(node: unknown): number {
 }
 
 export function contentEnd(node: unknown): number {
+  if (isPair(node)) {
+    return Math.max(contentEnd(node.key), contentEnd(node.value));
+  }
   if (isMap(node)) {
     return Math.max(
       0,
