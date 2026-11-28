@@ -173,6 +173,36 @@ test('keeps deletion blocked while raw YAML is pending', async ({
   await expect(yaml).toHaveValue(/# pending/);
 });
 
+test('keeps deletion blocked for a server read-only workflow', async ({
+  designer,
+}) => {
+  await saveYaml(designer, (text) =>
+    withReference(text, 'Read {draft.design}.'),
+  );
+  await designer.page.route('**/api/workflow', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as Record<string, unknown>;
+    await route.fulfill({ response, json: { ...body, read_only: true } });
+  });
+  await designer.page.reload();
+
+  const link = edge(designer);
+  await link.click();
+  await expect(
+    designer.page.getByRole('button', { name: 'Link actions' }),
+  ).toBeDisabled();
+  await designer.page.keyboard.press('Delete');
+  await designer.page.keyboard.press('Backspace');
+  await expect(link).toBeVisible();
+  await expect(designer.page.getByTestId('designer-live')).not.toHaveText(
+    'Link design removed.',
+  );
+  await designer.openYaml();
+  await expect(designer.page.getByTestId('yaml-text')).toHaveValue(
+    /Read \{draft\.design\}\./,
+  );
+});
+
 test('keeps authored references and opens their stage', async ({
   designer,
 }) => {
