@@ -67,9 +67,10 @@ it('adds a new stable key and removes only the selected row', () => {
 
 it('binds a saved new row to its source index', () => {
   const added = addCheck(draftOf(STAGES, [], {}, CHECKS));
-  const saved = rebaseCheckSources(added, [
-    ...CHECKS,
-    { id: 'check-1', file: '' },
-  ]);
+  const saved = rebaseCheckSources(
+    added,
+    [...CHECKS, { id: 'check-1', file: '' }],
+    added.checks?.map(({ key }) => key) ?? [],
+  );
   expect(saved.checks?.at(-1)?.sourceIndex).toBe(2);
 });

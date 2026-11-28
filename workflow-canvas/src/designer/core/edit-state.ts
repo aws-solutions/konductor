@@ -70,6 +70,8 @@ export interface EditState {
   sent?: readonly string[];
   /** Output row ids submitted for each stage, in submitted stage order. */
   sentOutputs?: readonly SubmittedOutputRows[];
+  /** Check row keys submitted in source order. */
+  sentChecks?: readonly string[];
   /** The ids of the params in the save that is going on, in order. */
   sentParams?: readonly string[];
   selectedId: string;

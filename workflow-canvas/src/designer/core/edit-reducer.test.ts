@@ -672,6 +672,55 @@ describe('an edit made while a save is in flight', () => {
       },
       HELLO_VIEW.stages[1]!,
     ]);
+  const checkText = HELLO_TEXT.replace(
+    '    - id: readme-exists\n      file: README.md\n',
+    '    - id: a\n      file: A.md\n    - id: b\n      file: B.md\n',
+  );
+  const checkView = {
+    ...HELLO_VIEW,
+    intent: {
+      ...HELLO_VIEW.intent,
+      accept: [
+        { id: 'a', file: 'A.md' },
+        { id: 'b', file: 'B.md' },
+      ],
+    },
+  };
+  const checkSaving = (replacement: boolean) => {
+    const initial = openDocument({
+      ...HELLO_DOCUMENT,
+      text: checkText,
+      view: checkView,
+    });
+    if (!initial) throw new Error('The check sample cannot be edited.');
+    const a = initial.draft.checks![0]!;
+    const b = initial.draft.checks![1]!;
+    let changed = run(initial, { type: 'remove-check', key: a.key });
+    let c: NonNullable<typeof changed.draft.checks>[number] | undefined;
+    if (replacement) {
+      changed = run(changed, { type: 'add-check' });
+      c = changed.draft.checks!.at(-1)!;
+      changed = run(changed, {
+        type: 'set-check',
+        key: c.key,
+        check: { id: 'c', kind: 'file', file: 'C.md', run: [] },
+      });
+    }
+    return { saving: run(changed, { type: 'save' }), b, c };
+  };
+  const checkSaveResult = (withReplacement: boolean): SaveResult => ({
+    ...savedResult(),
+    view: {
+      ...HELLO_VIEW,
+      intent: {
+        ...HELLO_VIEW.intent,
+        accept: [
+          { id: 'b', file: 'B.md' },
+          ...(withReplacement ? [{ id: 'c', file: 'C.md' }] : []),
+        ],
+      },
+    },
+  });
   const saving = () =>
     run(
       opened(),
@@ -735,6 +784,62 @@ describe('an edit made while a save is in flight', () => {
     expect(saved.draft.stages.map(({ id }) => id)).toEqual(['s2']);
     expect(textOf(saved)).toContain('name: review');
     expect(textOf(saved)).not.toContain('name: draft');
+  });
+
+  it('keeps check identity for a scalar edit during a structural save', () => {
+    const { saving, b, c } = checkSaving(true);
+    const edited = run(saving, {
+      type: 'set-check',
+      key: b.key,
+      check: { id: 'b', kind: 'file', file: 'B2.md', run: [] },
+    });
+    const saved = run(edited, {
+      type: 'saved',
+      text: saving.submitted!.text,
+      result: checkSaveResult(true),
+    });
+
+    expect(saved.draft.checks).toEqual([
+      expect.objectContaining({ key: b.key, sourceIndex: 0, file: 'B2.md' }),
+      expect.objectContaining({ key: c!.key, sourceIndex: 1, file: 'C.md' }),
+    ]);
+    expect(textOf(saved)).toContain('file: B2.md');
+    expect(textOf(saved)).toContain('file: C.md');
+  });
+
+  it('keeps check identity after removal without replacement', () => {
+    const { saving, b } = checkSaving(false);
+    const edited = run(saving, {
+      type: 'set-check',
+      key: b.key,
+      check: { id: 'b', kind: 'file', file: 'B2.md', run: [] },
+    });
+    const saved = run(edited, {
+      type: 'saved',
+      text: saving.submitted!.text,
+      result: checkSaveResult(false),
+    });
+
+    expect(saved.draft.checks).toEqual([
+      expect.objectContaining({ key: b.key, sourceIndex: 0, file: 'B2.md' }),
+    ]);
+    expect(textOf(saved)).toContain('file: B2.md');
+  });
+
+  it('keeps the surviving check identity after removal during a save', () => {
+    const { saving, b, c } = checkSaving(true);
+    const edited = run(saving, { type: 'remove-check', key: b.key });
+    const saved = run(edited, {
+      type: 'saved',
+      text: saving.submitted!.text,
+      result: checkSaveResult(true),
+    });
+
+    expect(saved.draft.checks).toEqual([
+      expect.objectContaining({ key: c!.key, sourceIndex: 1 }),
+    ]);
+    expect(textOf(saved)).not.toContain('id: b');
+    expect(textOf(saved)).toContain('id: c');
   });
 
   it('takes no Add or indexed insertion while a form save is held', () => {

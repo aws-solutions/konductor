@@ -307,6 +307,7 @@ function savedAs(
         state.sentOutputs ?? [],
       ),
       result.view.intent.accept ?? [],
+      state.sentChecks ?? [],
     ),
     saved: {
       ...state.saved,
@@ -318,6 +319,7 @@ function savedAs(
     bases: state.sent ?? idsOf(state.draft),
     paramBases: state.sentParams ?? state.draft.params.map((param) => param.id),
     sent: undefined,
+    sentChecks: undefined,
     sentOutputs: undefined,
     sentParams: undefined,
     save: { phase: 'saved' },
@@ -444,6 +446,7 @@ function step(
             ...state,
             save: { phase: 'saving' },
             sent: idsOf(state.draft),
+            sentChecks: (state.draft.checks ?? []).map(({ key }) => key),
             sentOutputs: state.draft.stages.map((stage) => ({
               stageId: stage.id,
               outputIds: (stage.outputs ?? []).map(({ id }) => id),

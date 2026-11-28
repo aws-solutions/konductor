@@ -173,23 +173,26 @@ export function rebaseOutputSources(
   };
 }
 
-/** Rebinds rows that exactly match the saved acceptance checks. */
+/** Rebinds submitted check keys to their positions in the saved response. */
 export function rebaseCheckSources(
   draft: Draft,
   checks: readonly EditableCheck[],
+  submittedKeys: readonly string[],
 ): Draft {
   return {
     ...draft,
-    checks: (draft.checks ?? []).map((check, index) => {
-      const saved = checks[index];
-      const savedKind = saved?.run === undefined ? 'file' : 'run';
-      return saved &&
-        check.id === saved.id &&
-        check.kind === savedKind &&
-        check.file === (saved.file ?? '') &&
-        check.run.join('\0') === (saved.run ?? []).join('\0')
-        ? { ...check, sourceIndex: index }
-        : check;
+    checks: (draft.checks ?? []).map((check) => {
+      const sourceIndex = submittedKeys.indexOf(check.key);
+      if (sourceIndex >= 0 && sourceIndex < checks.length) {
+        return { ...check, sourceIndex };
+      }
+      return {
+        key: check.key,
+        id: check.id,
+        kind: check.kind,
+        file: check.file,
+        run: check.run,
+      };
     }),
   };
 }
