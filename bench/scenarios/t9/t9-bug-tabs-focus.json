@@ -113,7 +113,38 @@
         "verdict": "pass",
         "note": "All hidden tests are derivable from the request and existing documentation. The request specifies the repair should be in 'shared behavior' and both sections and toolbar should benefit - this correctly guides to the roving.js module. Tests use the same API (reconcileRoving) exposed by the module."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-28",
+      "version": 2,
+      "pin": "342341522fba51f4d987f1789e2f5a01bbc38d24",
+      "source": "DEBT D-284: result R3.json (kept outside the repo, reports/debt-paid/D-284/results)",
+      "verdict": "pass",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes bug but doesn't prescribe method; no misleading hints away from real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains buggy implementation and basic tests but doesn't reveal specific fix or finished behavior hidden tests check."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check behaviors described in prompt; checks include specific test for the bug fix; all referenced names/paths exist in fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer could identify bug in reconcileRoving and fix it; alternative correct implementations would pass tests."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

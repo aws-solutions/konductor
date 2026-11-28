@@ -103,27 +103,31 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-28",
+      "version": 3,
+      "pin": "342341522fba51f4d987f1789e2f5a01bbc38d24",
+      "source": "DEBT D-284: result R2.json (kept outside the repo, reports/debt-paid/D-284/results)",
+      "verdict": "pass",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt describes bug without prescribing method; no misleading hints pointing away from real problem."
+          "note": "Prompt describes bug without prescribing solution method or framework, only constraints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture shows current implementation but doesn't reveal solution; no comments/docs describe finished behavior."
+          "note": "Fixture contains buggy router.js without hints about popstate event listener needed for Back/Forward fix."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests match fixture structure and request; after edit fixes, tests properly exercise popstate/hashchange behavior."
+          "note": "Hidden tests check Back/Forward behavior matching request; rubric is empty; edits.md only mentions timeout changes."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can add popstate/hashchange listeners; multiple correct approaches exist as confirmed in edits.md."
+          "note": "Competent developer can identify missing popstate handler for browser navigation from existing pushState usage and activate/showFromLocation functions."
         }
       ]
     }

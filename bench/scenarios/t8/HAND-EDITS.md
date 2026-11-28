@@ -288,4 +288,4 @@ Version 3 to 4. Cause: an agent's own test that waits forever on the original co
 | --- | --- | --- | --- |
 | t8-bug-retry-storm | 2026-11-26 | `regress-kit/config.json`: cmd `node --test --test-timeout=5000 test/` (was `node --test test/`), `timeoutSec` 20 (was 60); new test `bench/scenarios/t8/test/regress-hang.test.js` (fails before: "0/25 ... unparsed: timed out"; passes after) | a test that hangs on the original code is a failing suite, so the proof counts it as caught and every other hidden test still counts. Key, prompt and checks unchanged. Free gates unchanged: reference 100, stub 10, lazy 35.7, alt 100 |
 
-Recheck: none due. The change is a time limit in the scoring harness; the request, answer key and rubric are untouched, so the 2026-11-20 deepseek-3.2 recheck still covers them.
+Recheck: none due. The change is a time limit in the scoring harness; the request, answer key and rubric are untouched, so the 2026-11-20 deepseek-3.2 recheck still covers them. `scenarios ready` still asks for a recheck of the version, so deepseek-3.2 rechecked v4 on 2026-11-28 (DEBT D-284): four items pass, recorded in `review.recheck` (`version` 4).
