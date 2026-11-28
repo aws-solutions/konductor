@@ -235,6 +235,73 @@ test('opens the dialog near the prompt limit for a shorter output name', async (
   );
 });
 
+test('refuses invalid source identities and existing output paths', async ({
+  designer,
+}) => {
+  const panel = designer.page.getByRole('tabpanel', { name: 'Properties' });
+  const link = async () => {
+    await panel.getByRole('button', { name: 'Link output to...' }).click();
+    await designer.page.getByRole('menuitem', { name: 'review' }).click();
+  };
+
+  await designer.rename('Bad_Name');
+  await link();
+  await expect(designer.page.getByTestId('link-message')).toContainText(
+    'Fix the source stage name',
+  );
+  await expect(designer.page.getByTestId('link-output-dialog')).toHaveCount(0);
+
+  await designer.rename('run');
+  await link();
+  await expect(designer.page.getByTestId('link-message')).toContainText(
+    'reserved stage name',
+  );
+
+  await designer.rename('review');
+  await link();
+  await expect(designer.page.getByTestId('link-message')).toContainText(
+    'Stage names must be unique',
+  );
+
+  await designer.rename('draft');
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  await panel.getByRole('textbox', { name: 'Output name 1' }).fill('design');
+  await panel.getByRole('textbox', { name: 'Output path 1' }).fill('../bad');
+  await link();
+  await expect(designer.page.getByTestId('link-message')).toContainText(
+    'Use a relative path',
+  );
+  await expect(dataEdge(designer, 'design')).toHaveCount(0);
+});
+
+test('disables keyboard linking while stage editing is frozen', async ({
+  designer,
+}) => {
+  await designer.openYaml();
+  const yaml = designer.page.getByTestId('yaml-text');
+  await yaml.fill(`${await yaml.inputValue()}# pending\n`);
+  await designer.page.getByRole('tab', { name: 'Properties' }).click();
+  await expect(
+    designer.page.getByRole('button', { name: 'Link output to...' }),
+  ).toBeDisabled();
+});
+
+test('disables keyboard linking for a server read-only workflow', async ({
+  designer,
+}) => {
+  await designer.page.route('**/api/workflow', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as Record<string, unknown>;
+    await route.fulfill({ response, json: { ...body, read_only: true } });
+  });
+  await designer.page.reload();
+  await designer.openProperties();
+  await designer.stage('draft').click();
+  await expect(
+    designer.page.getByRole('button', { name: 'Link output to...' }),
+  ).toBeDisabled();
+});
+
 test('refused drops show a reason and leave the draft unchanged', async ({
   designer,
 }) => {

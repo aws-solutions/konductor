@@ -47,6 +47,8 @@ export interface LayoutStage {
   readonly doneWhenDisabledReason?: string;
   readonly doneWhenError?: string;
   readonly linkTargets?: readonly { id: string; name: string }[];
+  readonly linkDisabled?: boolean;
+  readonly linkDisabledReason?: string;
   /** The `agent` of the stage when it was loaded, before any edit. */
   readonly originalAgent?: string;
   /** The keys that cannot be changed yet; they are shown as they are. */
@@ -264,6 +266,8 @@ export function DesignerLayout({
             id: target.id,
             text: target.name,
           }))}
+          disabled={stage.linkDisabled}
+          disabledReason={stage.linkDisabledReason}
           onItemClick={({ detail }) => onLinkOutput(detail.id)}
         >
           Link output to...

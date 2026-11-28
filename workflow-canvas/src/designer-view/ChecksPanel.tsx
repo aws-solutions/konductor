@@ -7,8 +7,8 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Textarea from '@cloudscape-design/components/textarea';
 import { useLayoutEffect, useRef } from 'react';
 import type { DraftCheck } from '../designer/core/draft';
+import { pathValueError } from '../designer/core/link-validation';
 import { CHECK_RUN_ERROR, checkIdError } from '../designer/core/checks-spots';
-import { pathValueError } from './OutputsPanel';
 
 /** Field errors for one acceptance-check row. */
 export interface CheckRowErrors {

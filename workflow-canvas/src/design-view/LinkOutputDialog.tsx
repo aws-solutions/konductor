@@ -8,8 +8,8 @@ import Select from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useEffect } from 'react';
 import type { DraftOutput } from '../designer/core/draft';
+import { pathValueError } from '../designer/core/link-validation';
 import { outputNameError } from '../designer/core/outputs-text';
-import { pathValueError } from '../designer-view/OutputsPanel';
 
 /** The values collected before a data link changes the draft. */
 export interface LinkDialogValues {

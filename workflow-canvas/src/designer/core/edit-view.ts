@@ -15,6 +15,11 @@ import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 import { paramsInPlaceBlocker, withParams } from './param-text';
 import { outputEditBlocker, withOutputs } from './outputs-text';
+import {
+  declaredOutputLinkError,
+  linkSourceNameError,
+  outputLinkValueError,
+} from './link-validation';
 import { checkCollectionBlocker, withAcceptanceChecks } from './checks-spots';
 import { doneWhenEditBlocker, withDoneWhen } from './done-when-text';
 
@@ -340,6 +345,8 @@ export function dataLinkStructureBlocker(
   const source = state.draft.stages.find(({ id }) => id === sourceId);
   const target = state.draft.stages.find(({ id }) => id === targetId);
   if (!source || !target) return 'The output link does not fit these stages.';
+  const sourceNameError = linkSourceNameError(state.draft, sourceId);
+  if (sourceNameError) return sourceNameError;
   const prompt = promptFieldOf(state, target);
   if (prompt.kind === 'file' || prompt.kind === 'both') {
     return 'A stage with prompt_file cannot take a data link.';
@@ -387,6 +394,10 @@ export function dataLinkBlocker(
     newOutput !== undefined,
   );
   if (blocked) return blocked;
+  const valueError = newOutput
+    ? outputLinkValueError(newOutput.name, newOutput.path)
+    : declaredOutputLinkError(state.draft, sourceId, outputName);
+  if (valueError) return valueError;
   const promptError = outputLinkPromptError(
     state.draft,
     sourceId,

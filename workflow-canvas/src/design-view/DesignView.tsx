@@ -658,6 +658,8 @@ export function DesignView({
     linkTargets: state.draft.stages
       .slice(state.draft.stages.indexOf(picked) + 1)
       .map((target) => ({ id: target.id, name: target.name })),
+    linkDisabled: frozen !== undefined,
+    linkDisabledReason: frozen,
     rules,
     values,
     // The agent the file names, which stays on offer even when the list of

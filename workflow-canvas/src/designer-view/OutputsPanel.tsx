@@ -6,7 +6,10 @@ import Input, { type InputProps } from '@cloudscape-design/components/input';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useLayoutEffect, useRef } from 'react';
 import type { DraftOutput } from '../designer/core/draft';
+import { pathValueError } from '../designer/core/link-validation';
 import { outputNameError } from '../designer/core/outputs-text';
+
+export { pathValueError } from '../designer/core/link-validation';
 
 /** A change to one output declaration. */
 export interface OutputChange {
@@ -21,22 +24,6 @@ export interface OutputRowErrors {
 }
 
 const DUPLICATE_ERROR = 'Output names must be unique in a stage.';
-const PATH_ERROR =
-  'Use a relative path inside the project, with / between its parts.';
-
-export function pathValueError(path: string): string | undefined {
-  if (
-    path === '' ||
-    path.startsWith('/') ||
-    /^[A-Za-z]:/.test(path) ||
-    path.includes('\\') ||
-    /[\u0000-\u001F\u007F-\u009F]/.test(path) ||
-    path.split('/').some((part) => part === '' || part === '.' || part === '..')
-  ) {
-    return PATH_ERROR;
-  }
-  return undefined;
-}
 
 /** Field errors for every output row, keyed by stable row id. */
 export function outputRowErrors(
