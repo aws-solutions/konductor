@@ -10,7 +10,7 @@ const { loadObserved } = require('../../judge/observed-cost.js');
 const { paidJson, ledgerSpent, PaidCallRefused, WORST_PER_CALL } = require('../../cap/paidcall.js');
 const { readJsonl } = require('../../core/spend.js');
 const { spent: runsSpent } = require('./study.js');
-const { expectationsFor, checkReview, panelCallUsd, readManifest, sha256, PANEL, MANIFEST } = require('./reply-check.js');
+const { expectationsFor, checkReview, panelCallUsd, readManifest, sha256, PANEL, MANIFEST } = require('./reply-manifest.js');
 
 class Refused extends Error {}
 

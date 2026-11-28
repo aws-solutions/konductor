@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
 // Free helper for run-lite-konductor.sh and run-lite-judge.sh. No model call; reads files only.
 //   node lite-helper.js gate R COST_JSON TASK,TASK...   which tasks may run, the skipped ones and why, ceilings per batch
 //   node lite-helper.js spent R DIR                     real agent credits charged under DIR (every credit-ledger.jsonl)
@@ -11,6 +12,8 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+// Spend is summed by this checkout's bench, not R's: R may be pinned before sumLedgers existed.
+const { sumLedgers } = require('../../runner/lib/credit-ledger.js');
 
 const [cmd, R, ...rest] = process.argv.slice(2);
 const need = (m) => require(path.join(R, m));
@@ -20,19 +23,6 @@ const RUN_LIMIT = { t1: 23, t2: 23, t3: 23, t4: 30, t5: 23, t6: 68, t7: 15, t8: 
 const KRATIO = 1.5; // konductor run cost over plain, the highest Kiro ratio of the 2x2 study
 const MARGIN = 1.5; // per-batch ceiling over the expected spend of one replicate
 const CLAUDE = /claude|anthropic/i;
-
-function ledgers(dir) {
-  const out = [];
-  const walk = (d) => {
-    let es; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of es) {
-      if (e.isDirectory() && e.name !== 'workspace' && e.name !== 'node_modules') walk(path.join(d, e.name));
-      else if (e.name === 'credit-ledger.jsonl') out.push(d);
-    }
-  };
-  walk(dir);
-  return out;
-}
 
 function gate(costFile, ids) {
   const { readiness } = need('bench/scenarios/ready.js');
@@ -72,10 +62,8 @@ function gate(costFile, ids) {
 }
 
 function spent(dir) {
-  const { readLedger } = need('bench/runner/lib/credit-ledger.js');
-  let total = 0; let unknown = 0;
-  for (const d of ledgers(dir)) { const t = readLedger(d).totals; total += t.run; unknown += t.unknown; }
-  return { credits: Math.round(total * 100) / 100, unknown };
+  const { credits, unknown } = sumLedgers(dir);
+  return { credits, unknown };
 }
 
 // Rows per run directory, merged so a later directory's row replaces an earlier one for the same arm, task and rep.
@@ -142,15 +130,8 @@ function codeOnly(pack) {
   return all.filter((t) => own.has(t.id) && !(judgedRubric(t.rubric, t.expertKey) || []).length).map((t) => t.id);
 }
 
-function judgeSpent(dir) {
-  let usd = 0;
-  for (const d of ledgers(dir)) {
-    for (const line of fs.readFileSync(path.join(d, 'credit-ledger.jsonl'), 'utf8').split('\n')) {
-      try { const e = JSON.parse(line); if (e.unit === 'usd' && Number.isFinite(e.usd)) usd += e.usd; } catch { /* partial line */ }
-    }
-  }
-  return Math.round(usd * 10000) / 10000;
-}
+// A USD line of unknown cost counts at its floor (credit-ledger.js UNKNOWN_USD_FLOOR), as everywhere else in bench.
+const judgeSpent = (dir) => sumLedgers(dir).usd;
 
 try {
   if (cmd === 'gate') console.log(JSON.stringify(gate(rest[0], rest[1].split(',').filter(Boolean)), null, 2));

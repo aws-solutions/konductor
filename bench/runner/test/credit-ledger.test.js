@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp } = require('./helpers.js');
-const { openLedger, readLedger, guardState, LEDGER_FILE, SOFT_STOP } = require('../lib/credit-ledger.js');
+const { openLedger, readLedger, guardState, LEDGER_FILE, SOFT_STOP, UNKNOWN_FLOOR, sumLedgers } = require('../lib/credit-ledger.js');
 
 const lines = (dir) => fs.readFileSync(path.join(dir, LEDGER_FILE), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
 
@@ -125,6 +125,21 @@ test('readLedger tolerates a missing file and counts lines it cannot read', () =
     const r = readLedger(dir);
     assert.equal(r.bad, 1);
     assert.deepEqual([r.totals.run, r.totals.other, r.totals.total], [2, 1, 3]);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('sumLedgers: run credits, unknown entries and USD over every ledger under a dir; workspace and node_modules are skipped', () => {
+  const dir = tmp();
+  try {
+    const put = (rel, ...es) => { fs.mkdirSync(path.join(dir, rel), { recursive: true }); fs.writeFileSync(path.join(dir, rel, LEDGER_FILE), es.map((e) => `${JSON.stringify(e)}\n`).join('')); };
+    put('a', { kind: 'run', credits: 1.234 }, { kind: 'judge', credits: 5 });
+    put('b/c', { kind: 'run', credits: 2.001 }, { kind: 'run' });
+    put('b/c/d', { kind: 'judge', unit: 'usd', credits: 0, usd: 0.01234 });
+    put('a/workspace', { kind: 'run', credits: 100 });
+    put('node_modules/x', { kind: 'run', credits: 100 });
+    // the unknown run counts at UNKNOWN_FLOOR or the highest cost seen in its own ledger (2.001)
+    assert.deepEqual(sumLedgers(dir), { credits: Math.round((1.234 + 2.001 + Math.max(2.001, UNKNOWN_FLOOR)) * 100) / 100, unknown: 1, usd: 0.0123 });
+    assert.deepEqual(sumLedgers(path.join(dir, 'missing')), { credits: 0, unknown: 0, usd: 0 });
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

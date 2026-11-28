@@ -68,6 +68,30 @@ function readLedger(dir) {
   return out;
 }
 
+/** Every directory under `dir` that holds a ledger file, depth first. An agent's `workspace` and `node_modules` are
+ * skipped (their files are not this study's spend); an absent or unreadable directory yields nothing. */
+function ledgerDirs(dir) {
+  const out = [];
+  const walk = (d) => {
+    let es;
+    try { es = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of es) {
+      if (e.isDirectory() && e.name !== 'workspace' && e.name !== 'node_modules') walk(path.join(d, e.name));
+      else if (e.name === LEDGER_FILE) out.push(d);
+    }
+  };
+  if (dir) walk(dir);
+  return out;
+}
+
+/** The spend of every ledger under `dir`: { credits (run credits, 2 decimals), unknown (credit entries of unknown cost),
+ * usd (USD lines, 4 decimals, an unknown one at its floor) }. */
+function sumLedgers(dir) {
+  let credits = 0; let unknown = 0; let usd = 0;
+  for (const d of ledgerDirs(dir)) { const t = readLedger(d).totals; credits += t.run; unknown += t.unknown; usd += t.usd || 0; }
+  return { credits: Math.round(credits * 100) / 100, unknown, usd: Math.round(usd * 10000) / 10000 };
+}
+
 const fmt = (v) => v.toFixed(2);
 
 /**
@@ -120,4 +144,4 @@ function openLedger({ dir, budget = null, budgetUnit = 'credits', create = true,
   };
 }
 
-module.exports = { openLedger, readLedger, guardState, LEDGER_FILE, SOFT_STOP, UNKNOWN_FLOOR, UNKNOWN_USD_FLOOR };
+module.exports = { openLedger, readLedger, sumLedgers, ledgerDirs, guardState, LEDGER_FILE, SOFT_STOP, UNKNOWN_FLOOR, UNKNOWN_USD_FLOOR };

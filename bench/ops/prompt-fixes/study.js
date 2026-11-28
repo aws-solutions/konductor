@@ -21,7 +21,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { EXPECT } = require('../../runner/lib/plan-call.js');
-const { readLedger } = require('../../runner/lib/credit-ledger.js');
+const { sumLedgers, ledgerDirs } = require('../../runner/lib/credit-ledger.js');
 const { makeSplitReader } = require('../../runner/lib/credit-watch.js');
 
 const ARMS = ['vanilla', 'konductor-adaptive', 'konductor-coordinator'];
@@ -126,14 +126,10 @@ function forecast(runsDir = '/var/tmp/konductor-standard-v2/runs') {
   return { steps, judge: { panel: PANEL, mid: Math.round(mid * 100) / 100, high: Math.round(high * 100) / 100, capUsd: Math.ceil(high) } };
 }
 
-function ledgerDirs(dir) {
-  return filesNamed(dir, 'credit-ledger.jsonl').map((f) => path.dirname(f));
-}
-
+/** Run credits charged under DIR and the count of entries of unknown cost: { credits, unknown }. */
 function spent(dir) {
-  let credits = 0; let unknown = 0;
-  for (const d of ledgerDirs(dir)) { const t = readLedger(d).totals; credits += t.run; unknown += t.unknown; }
-  return { credits: Math.round(credits * 100) / 100, unknown };
+  const { credits, unknown } = sumLedgers(dir);
+  return { credits, unknown };
 }
 
 /** Results under DIR: [{ task, arm, credits }] from every result.json. */
@@ -174,9 +170,7 @@ function gate(dir) {
 
 /** USD the judge calls under DIR were charged (ledger lines in unit usd). */
 function usdSpent(dir) {
-  let usd = 0;
-  for (const d of ledgerDirs(dir)) usd += readLedger(d).totals.usd || 0;
-  return Math.round(usd * 10000) / 10000;
+  return sumLedgers(dir).usd;
 }
 
 /** Null when one more run of TASK may be judged under CAP_USD (spend plus that run's high estimate), else the reason. */
