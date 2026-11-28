@@ -159,7 +159,10 @@ plan for free. `cap unit-stage --controls-only` (env `KP_CONTROLS_ONLY` in `run-
 2. A deep-depth paid provider. The paid provider answers in one turn, so it runs quick depth only; deep depth needs
    full sessions per replicate.
 3. A live delegation run: the stub test reads streams the stub wrote; a live one needs the orchestrator to run each
-   request (paid).
+   request (paid). The request sets exist as drafts since 2026-11-28 (`unit-baselines/agent-<name>/delegation.json`,
+   4 requests to delegate and 4 to keep away for each of the 8 agents, written by one model, no reviewer): a second
+   family has to review them and a person sign off (`reviewedBy`) before a result reads as frozen
+   (`cap-delegation-sets.test.js`).
 
 ## Cost (dry-run estimates, no run made)
 

@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-tpm",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Write this week's status report for the platform program from the notes in notes/week-47.md, with risks and blockers." },
+    { "id": "d2", "expect": "delegate", "prompt": "Build a timeline for the three-team migration, with milestones and the dependencies between teams." },
+    { "id": "d3", "expect": "delegate", "prompt": "Set up a risk register for the data-center exit program and rate each risk by likelihood and impact." },
+    { "id": "d4", "expect": "delegate", "prompt": "Write a program-level decision document on whether to delay the launch by two weeks." },
+    { "id": "n1", "expect": "none", "prompt": "Implement the feature flag toggle on the settings page." },
+    { "id": "n2", "expect": "none", "prompt": "Write test cases for the login page." },
+    { "id": "n3", "expect": "none", "prompt": "Search the AWS docs for CloudWatch alarm limits." },
+    { "id": "n4", "expect": "none", "prompt": "What is a RACI chart? Answer in two sentences." }
+  ]
+}

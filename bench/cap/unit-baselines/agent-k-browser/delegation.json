@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-browser",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Open our staging site at the address in the README, sign in with the test account and take a screenshot of the dashboard page." },
+    { "id": "d2", "expect": "delegate", "prompt": "Fill in the signup form on the demo app with sample data and tell me whether the validation messages appear when a field is wrong." },
+    { "id": "d3", "expect": "delegate", "prompt": "Go through the checkout flow in a real browser and report any step that breaks." },
+    { "id": "d4", "expect": "delegate", "prompt": "Visit the public status page and capture a screenshot of every service tile, once at phone width and once at desktop width." },
+    { "id": "n1", "expect": "none", "prompt": "Read templates/signup.html and tell me which form fields have no label." },
+    { "id": "n2", "expect": "none", "prompt": "Find the documentation for the Playwright waitForURL option and explain its parameters." },
+    { "id": "n3", "expect": "none", "prompt": "Write unit tests for the cart total function in src/cart/total.js." },
+    { "id": "n4", "expect": "none", "prompt": "Explain what a CSS grid is and when to use it instead of flexbox." }
+  ]
+}

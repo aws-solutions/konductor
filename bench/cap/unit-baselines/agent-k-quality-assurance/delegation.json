@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-quality-assurance",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Analyze the test coverage of the payments module and list the untested paths that matter most." },
+    { "id": "d2", "expect": "delegate", "prompt": "Plan an end-to-end test strategy for our checkout and account flows: scenarios, test data and what to automate first." },
+    { "id": "d3", "expect": "delegate", "prompt": "Generate security tests for the file upload endpoint: oversize files, wrong types and path tricks in file names." },
+    { "id": "d4", "expect": "delegate", "prompt": "Check the text in the settings screens for typos and inconsistent wording." },
+    { "id": "n1", "expect": "none", "prompt": "Add the missing null check in the parser in src/parse/line.js." },
+    { "id": "n2", "expect": "none", "prompt": "Open the app in a browser and click through the signup, then tell me what you saw." },
+    { "id": "n3", "expect": "none", "prompt": "Write the requirements for a bulk-delete feature." },
+    { "id": "n4", "expect": "none", "prompt": "Design the API for a reporting service and write it up." }
+  ]
+}

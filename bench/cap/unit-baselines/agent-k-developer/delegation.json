@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-developer",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Add retry with backoff to the HTTP client in src/http/client.ts and update every caller that handles its errors." },
+    { "id": "d2", "expect": "delegate", "prompt": "Break the export-to-CSV feature into tasks, then build the backend endpoint and the button in the frontend." },
+    { "id": "d3", "expect": "delegate", "prompt": "Review the changes on my branch for bugs and style problems before I open a pull request." },
+    { "id": "d4", "expect": "delegate", "prompt": "Validate the CloudFormation template in infra/stack.yaml for mistakes and fix what you find." },
+    { "id": "n1", "expect": "none", "prompt": "Draft user stories for an in-app notification centre." },
+    { "id": "n2", "expect": "none", "prompt": "Design the data model for an audit-log service and write it up as a document." },
+    { "id": "n3", "expect": "none", "prompt": "Prepare the weekly status report for the platform program, with risks and the next milestones." },
+    { "id": "n4", "expect": "none", "prompt": "Read the attached architecture diagram image (docs/arch.png) and list the components it shows." }
+  ]
+}

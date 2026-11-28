@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-media-analyzer",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Here is a PDF of our vendor contract (docs/vendor-contract.pdf). Pull out the termination clause and the notice period." },
+    { "id": "d2", "expect": "delegate", "prompt": "Look at this photo of a whiteboard sketch (docs/whiteboard.jpg) and describe each box and arrow." },
+    { "id": "d3", "expect": "delegate", "prompt": "Extract the table on page 4 of the quarterly report (docs/q3-report.pdf) into a list of figures." },
+    { "id": "d4", "expect": "delegate", "prompt": "The file docs/system.png is an architecture diagram. Tell me which components it shows and how they connect." },
+    { "id": "n1", "expect": "none", "prompt": "Read README.md and summarise the setup steps." },
+    { "id": "n2", "expect": "none", "prompt": "Search the web for the latest release notes of Express and tell me what changed." },
+    { "id": "n3", "expect": "none", "prompt": "Open our staging site and take a screenshot of the login page." },
+    { "id": "n4", "expect": "none", "prompt": "Convert config/settings.json to YAML and keep the key order." }
+  ]
+}

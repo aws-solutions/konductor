@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-product-manager",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Write user stories with acceptance criteria for letting customers download their invoices as PDF." },
+    { "id": "d2", "expect": "delegate", "prompt": "Turn the meeting notes in notes/onboarding.md into a requirements summary for the new onboarding flow." },
+    { "id": "d3", "expect": "delegate", "prompt": "We must choose between building our own search and buying a hosted one. Research the decision and write it up as a decision record." },
+    { "id": "d4", "expect": "delegate", "prompt": "Turn the vague idea \"make checkout faster\" into clear requirements and a prioritised list of stories." },
+    { "id": "n1", "expect": "none", "prompt": "Implement pagination for the orders endpoint in src/api/orders.js." },
+    { "id": "n2", "expect": "none", "prompt": "Threat-model the payment flow and list the mitigations." },
+    { "id": "n3", "expect": "none", "prompt": "Write the timeline and the risk register for the data-center migration program." },
+    { "id": "n4", "expect": "none", "prompt": "Run the unit tests and tell me which ones fail." }
+  ]
+}

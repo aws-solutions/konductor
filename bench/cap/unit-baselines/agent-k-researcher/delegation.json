@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-researcher",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Look up the current AWS documentation on DynamoDB transactions and summarise the limits." },
+    { "id": "d2", "expect": "delegate", "prompt": "Search the web for how other teams move from REST to GraphQL and give me the main approaches, with sources." },
+    { "id": "d3", "expect": "delegate", "prompt": "Find what the official docs say about rotating Secrets Manager secrets for RDS and quote the key steps." },
+    { "id": "d4", "expect": "delegate", "prompt": "Research the message queue options on AWS and compare them, citing the documentation." },
+    { "id": "n1", "expect": "none", "prompt": "Find every use of the deprecated fetchUser function in this repository." },
+    { "id": "n2", "expect": "none", "prompt": "Fix the failing test in tests/orders.test.js." },
+    { "id": "n3", "expect": "none", "prompt": "Describe what is in this screenshot: docs/error-screen.png." },
+    { "id": "n4", "expect": "none", "prompt": "Write the steps to reset a password as user stories." }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "agent": "k-architect",
+  "writtenBy": "claude, 2026-11-28 (draft: no second-family review and no person's sign-off yet)",
+  "reviewedBy": null,
+  "requests": [
+    { "id": "d1", "expect": "delegate", "prompt": "Design the data model and the REST API for a multi-tenant invoicing service: tenants, invoices, line items and payments. I need an API spec and a data model document I can hand to the dev team." },
+    { "id": "d2", "expect": "delegate", "prompt": "We are adding sign-in through an external identity provider. Do a threat model of the login and token flow and list the mitigations for each threat." },
+    { "id": "d3", "expect": "delegate", "prompt": "Write an architecture document for moving our nightly batch reports onto an event-driven pipeline: components, data flow and the trade-offs against what we have." },
+    { "id": "d4", "expect": "delegate", "prompt": "Produce an OpenAPI spec for a bookings service with endpoints to create, list and cancel reservations, including the error responses." },
+    { "id": "n1", "expect": "none", "prompt": "Fix the off-by-one error in the pagination helper in src/utils/page.js." },
+    { "id": "n2", "expect": "none", "prompt": "Summarise what the pricing page of a competitor says, from this URL: https://example.com/pricing." },
+    { "id": "n3", "expect": "none", "prompt": "Write the user stories and acceptance criteria for a password reset feature." },
+    { "id": "n4", "expect": "none", "prompt": "What does the error ECONNRESET mean in Node.js, in two sentences?" }
+  ]
+}
