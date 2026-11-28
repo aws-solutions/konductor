@@ -6,7 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
+const { mkScratch } = require('./scratch.js');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { checkHarnessPlugin, checksOf, CHECKS } = require('../../kit/plugin/check.js');
@@ -18,7 +18,7 @@ const CHECK = path.join(BENCH, 'kit', 'plugin', 'check.js');
 
 /** A copy of the template under a new name in a temp dir; `edit(dir)` breaks it. */
 function brokenTemplate(t, edit) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-plugin-'));
+  const root = mkScratch('kit-plugin-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   // The copy sits two levels below a link to bench/sdk, as a plugin under bench/plugins/<name>/ does (B-013).
   fs.symlinkSync(path.join(BENCH, 'sdk'), path.join(root, 'sdk'));

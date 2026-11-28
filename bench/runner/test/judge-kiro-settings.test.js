@@ -6,12 +6,12 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
-const os = require('node:os');
+const { mkScratch } = require('./scratch.js');
 const path = require('node:path');
 const { makeKiroCaller } = require('../../judge/model.js');
 
 test('the kiro judge scratch home turns chat auto compaction off', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kbench-judge-settings-'));
+  const root = mkScratch('kbench-judge-settings-');
   try {
     const probe = path.join(root, 'seen-settings.json');
     const bin = path.join(root, 'kiro-cli');

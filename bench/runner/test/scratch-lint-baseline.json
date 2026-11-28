@@ -3,11 +3,7 @@
   "files": {
     "runner/test/cap-exposure.test.js": 2,
     "runner/test/cap-skillcli.test.js": 2,
-    "runner/test/harness-coupling.test.js": 1,
-    "runner/test/harness-run-options.test.js": 1,
     "runner/test/import-layers.test.js": 1,
-    "runner/test/judge-kiro-settings.test.js": 1,
-    "runner/test/kit-plugin.test.js": 1,
     "runner/test/kit-standard.test.js": 1,
     "runner/test/kp-baselines.test.js": 1,
     "runner/test/kp-doseladder.test.js": 1,

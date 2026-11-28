@@ -13,6 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 
 const BENCH = path.join(__dirname, '..', '..');
 const BASELINE = JSON.parse(fs.readFileSync(path.join(__dirname, 'harness-coupling-baseline.json'), 'utf8'));
@@ -50,7 +51,7 @@ function couplingOf(root) {
 }
 
 test('the scan finds a private import and counts runtime names', (t) => {
-  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'harness-coupling-'));
+  const root = mkScratch('harness-coupling-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'runner/lib/harness'), { recursive: true });
   fs.mkdirSync(path.join(root, 'judge'));

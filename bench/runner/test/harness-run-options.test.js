@@ -7,6 +7,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { HARNESSES } = require('../lib/harness/index.js');
+const { mkScratch } = require('./scratch.js');
 
 const cc = HARNESSES['claude-code'];
 const st = HARNESSES.strands;
@@ -44,7 +45,7 @@ test('opencode credentialsFile: --aws-creds-file is needed and must hold the pro
   const oc = HARNESSES.opencode;
   assert.throws(() => oc.credentialsFile({ opts: {} }), /--aws-creds-file is required for opencode arms/);
   const fs = require('node:fs');
-  const dir = fs.mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'oc-creds-'));
+  const dir = mkScratch('oc-creds-');
   const file = require('node:path').join(dir, 'credentials');
   fs.writeFileSync(file, '[bench]\naws_access_key_id = k\naws_secret_access_key = s\n');
   try {
