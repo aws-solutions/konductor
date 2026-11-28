@@ -376,6 +376,9 @@ test('capture the Design view when the file changed on disk', async ({
   );
   await designer.save.click();
   await expect(designer.conflict).toBeVisible();
+  await expect(designer.page.getByTestId('yaml-check-status')).toContainText(
+    'Flow valid',
+  );
 
   await saveFullPageScreenshot(designer.page, 'next-design-conflict');
 });
