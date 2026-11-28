@@ -3,7 +3,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const rc = require('../../ops/prompt-fixes/reply-check.js');
+const { parseStream } = require('../lib/stream.js');
 
 const upd = (update, sub = false) => ({ type: 'sessionUpdate', data: { sessionId: 's1', update: { ...update, ...(sub ? { _meta: { kiro: { kind: 'agent-subtask' } } } : {}) } } });
 const say = (text, sub) => upd({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } }, sub);
@@ -50,6 +53,25 @@ test('scoreRun: a Plan and Skills line written before the first act pass; after 
   assert.equal(met.E4, false);
   assert.equal(met.E6, null, 'an early-stopped run never reached its final reply');
   assert.equal(met.E7, null);
+});
+
+// Cut from the reply check's real stream candidate.t12-split-shared-file r2 (2026-11-28): the placeholder message ends
+// `Skills: none fit` with no line break and the next message, after a read-only tool call, opens `Plan: solo, because`.
+const fixtureEvents = (name) => parseStream(fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8')).events;
+
+test('scoreRun on a real stream: the placeholder then `Plan: solo, because ...` in the next message meets E1 to E4', () => {
+  const events = fixtureEvents('plan-line-t12-split-r2.stream.jsonl');
+  const s = rc.scoreRun({ events, orch: { makerSpawns: 0, reviewerSpawns: 0 }, taskId: 't12-split-shared-file', stopped: true });
+  const met = Object.fromEntries(s.checks.map((c) => [c.id, c.met]));
+  assert.deepEqual([met.E1, met.E2, met.E3, met.E4], [true, true, true, true]);
+  assert.match(s.checks[0].evidence, /^Plan: solo, because both tickets/);
+  assert.equal(s.checks.find((c) => c.id === 'E4').evidence, 'Skills: none fit');
+});
+
+test('scoreRun: E2 is judged where the solo or team line is, not where the placeholder is', () => {
+  const events = [say('Plan: after a read-only look\nSkills: none fit'), tool('Run Command', 'execute', { command: 'ls' }), tool('Edit', 'edit', { path: 'src/a.js' }), say('Plan: solo, because 1 file')];
+  const met = Object.fromEntries(rc.scoreRun({ events, orch: { makerSpawns: 0, reviewerSpawns: 0 }, taskId: 't1-bug-date-range', stopped: true }).checks.map((c) => [c.id, c.met]));
+  assert.deepEqual([met.E1, met.E2, met.E3, met.E4], [true, false, true, true]);
 });
 
 test('reviewPrompt: names every expectation id, carries the transcript, and asks for JSON only', () => {

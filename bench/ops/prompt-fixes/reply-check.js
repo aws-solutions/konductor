@@ -29,7 +29,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { parseStream } = require('../../runner/lib/stream.js');
 const crypto = require('node:crypto');
-const { linesOf, planWord, firstPlanLine, EXPECT } = require('../../runner/lib/plan-call.js');
+const { rootReply, linesOf, planWord, firstPlanLine, EXPECT } = require('../../runner/lib/plan-call.js');
 const { loadObserved, lookup } = require('../../judge/observed-cost.js');
 const { ledgerSpent } = require('../../cap/paidcall.js');
 const { spent: runsSpent } = require('./study.js');
@@ -62,26 +62,20 @@ function expectationsFor(taskId) {
   return out;
 }
 
-const isSub = (u) => u?._meta?.kiro?.kind === 'agent-subtask' || Boolean(u?._meta?.kiro?.agentSubtaskId);
 // shortcut: a shell command is an act when it matches common write verbs; a write this misses only makes E2 and E4
 // lenient. Upgrade to the sandbox's file diff when a run needs exact first-write timing.
 const SHELL_WRITE = /(^|[;&|]\s*)(sed\s+-i|tee\b|mv\b|cp\b|rm\b|mkdir\b|touch\b|git\s+(commit|merge|worktree\s+add|checkout\s+-b|switch\s+-c|apply|am)\b|tmux\s+new)|[^<>2&]>{1,2}\s*[^&\s]/;
 
-/** The root session in order: its reply text, and its tool calls with whether each is an act (write, edit or spawn). */
+/** The root session in order (rootReply, one message per line start): its reply text, and its tool calls with whether
+ * each is an act (write, edit or spawn). */
 function timeline(events) {
-  let text = '';
-  const tools = [];
-  for (const ev of events ?? []) {
-    const u = ev.data?.update;
-    if (ev.type !== 'sessionUpdate' || !u || isSub(u)) continue;
-    if (u.sessionUpdate === 'agent_message_chunk' && typeof u.content?.text === 'string') text += u.content.text;
-    else if (u.sessionUpdate === 'tool_call') {
-      const spawn = String(u.toolCallId ?? '').startsWith('invoke_subagent') || /^Sub-agent/.test(u.title ?? '');
-      const cmd = u.rawInput?.command;
-      const act = !spawn && (['edit', 'delete', 'move'].includes(u.kind) || (typeof cmd === 'string' && SHELL_WRITE.test(cmd)));
-      tools.push({ at: text.length, title: u.title ?? '', input: u.rawInput ?? null, act, spawn });
-    }
-  }
+  const { text, tools: calls } = rootReply(events);
+  const tools = calls.map(({ at, update: u }) => {
+    const spawn = String(u.toolCallId ?? '').startsWith('invoke_subagent') || /^Sub-agent/.test(u.title ?? '');
+    const cmd = u.rawInput?.command;
+    const act = !spawn && (['edit', 'delete', 'move'].includes(u.kind) || (typeof cmd === 'string' && SHELL_WRITE.test(cmd)));
+    return { at, title: u.title ?? '', input: u.rawInput ?? null, act, spawn };
+  });
   const first = tools.find((t) => t.act || t.spawn);
   return { text, tools, firstActAt: first ? first.at : null };
 }

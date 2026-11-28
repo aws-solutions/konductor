@@ -3,12 +3,38 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { mainText, planCall, EXPECT } = require('../../report/plan-call.js');
+const { parseStream } = require('../lib/stream.js');
 
 const chunk = (text, sub = false) => ({ type: 'sessionUpdate', data: { sessionId: 's1', update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text }, _meta: { kiro: sub ? { kind: 'agent-subtask', agentSubtaskId: 'x' } : {} } } } });
 
 test('mainText: the root session text only, chunks joined', () => {
   assert.equal(mainText([chunk('Orchestration: auto ('), chunk('default)\nPlan: so'), chunk('child text', true), chunk('lo, because 1 part')]), 'Orchestration: auto (default)\nPlan: solo, because 1 part');
+});
+
+test('mainText: each message starts on a new line (a new replayId, or text after a tool call); one message split over chunks stays one line', () => {
+  const say = (text, replayId) => ({ type: 'sessionUpdate', data: { sessionId: 's1', update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text }, _meta: { kiro: { replayId } } } } });
+  const tool = { type: 'sessionUpdate', data: { sessionId: 's1', update: { sessionUpdate: 'tool_call', toolCallId: 'run_1', title: 'Run Command', kind: 'execute' } } };
+  assert.equal(mainText([say('Skills', 'a'), say(': none fit', 'a'), tool, say('Pl', 'b'), say('an: solo', 'b')]), 'Skills: none fit\nPlan: solo');
+  assert.equal(mainText([say('one.', 'a'), say('Two.', 'b')]), 'one.\nTwo.', 'a new message with no tool call between');
+  assert.equal(mainText([say('one.\n', 'a'), tool, say('Two.', 'b')]), 'one.\nTwo.', 'no second line break');
+});
+
+// Cut from the reply check's real streams (2026-11-28): the placeholder message ends `Skills: none fit` with no line
+// break, a read-only tool call follows, and the next message opens `Plan: solo, because ...`.
+const fixture = (name) => parseStream(fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8')).events;
+
+test('planCall on a real stream: the placeholder, then `Plan: solo, because ...` in the next message, is the plan; Skills reads alone', () => {
+  const p = planCall({ text: mainText(fixture('plan-line-t12-split-r2.stream.jsonl')), orch: { makerSpawns: 0, reviewerSpawns: 0 }, expect: EXPECT.tasks['t12-split-shared-file'] });
+  assert.match(p.planLine, /^Plan: solo, because both tickets are small edits/);
+  assert.equal(p.plan, 'solo');
+  assert.equal(p.planRight, true);
+  assert.equal(p.skillsLine, 'Skills: none fit');
+  const q = planCall({ text: mainText(fixture('plan-line-t1-r3.stream.jsonl')), orch: null, expect: null });
+  assert.equal(q.plan, null, '`Plan stays solo: ...` is not the asked-for line');
+  assert.equal(q.skillsLine, 'Skills: verification');
 });
 
 test('planCall: reads the Plan, Plan changed, Skills and Review gate lines and scores them against the expectation', () => {

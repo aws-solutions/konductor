@@ -18,18 +18,40 @@ const { parseStream } = require('./stream.js');
 const EXPECT_FILE = path.join(__dirname, '..', '..', 'scenarios', 'konductor', 'prompt-fix', 'expect.json');
 const EXPECT = JSON.parse(fs.readFileSync(EXPECT_FILE, 'utf8'));
 
-/** The root session's reply text: every agent_message_chunk that is not a subagent's, joined in order. */
-function mainText(events) {
-  let out = '';
+/** Whether a session update is a subagent's rather than the root session's. */
+const isSubUpdate = (u) => u?._meta?.kiro?.kind === 'agent-subtask' || Boolean(u?._meta?.kiro?.agentSubtaskId);
+
+/**
+ * The root session's reply in order: `text`, every agent_message_chunk that is not a subagent's, and `tools`, each root
+ * tool_call update with the text offset it came at ({ at, update }). Each message starts on a new line: the stream sends
+ * no line break between two messages (a new replayId, or text after a tool call), so without one a placeholder message
+ * ending `Skills: none fit` and the next message `Plan: solo, because ...` read as the one line `Skills: none fitPlan: ...`.
+ */
+function rootReply(events) {
+  let text = '';
+  const tools = [];
+  let lastId = null;
+  let afterTool = false;
   for (const ev of events ?? []) {
     const u = ev.data?.update;
-    if (ev.type !== 'sessionUpdate' || u?.sessionUpdate !== 'agent_message_chunk') continue;
-    const k = u._meta?.kiro;
-    if (k?.kind === 'agent-subtask' || k?.agentSubtaskId) continue;
-    if (typeof u.content?.text === 'string') out += u.content.text;
+    if (ev.type !== 'sessionUpdate' || !u || isSubUpdate(u)) continue;
+    if (u.sessionUpdate === 'tool_call') {
+      tools.push({ at: text.length, update: u });
+      afterTool = true;
+    } else if (u.sessionUpdate === 'agent_message_chunk' && typeof u.content?.text === 'string') {
+      const id = u._meta?.kiro?.replayId ?? null;
+      const newMessage = afterTool || (id !== null && lastId !== null && id !== lastId);
+      if (newMessage && text && !text.endsWith('\n')) text += '\n';
+      text += u.content.text;
+      afterTool = false;
+      if (id !== null) lastId = id;
+    }
   }
-  return out;
+  return { text, tools };
 }
+
+/** The root session's reply text (rootReply), one message per line start. */
+const mainText = (events) => rootReply(events).text;
 
 // A line, with markdown bold or a list marker around it allowed: "**Plan: solo, because ...**", "- Review gate: ...".
 const lineRe = (label) => new RegExp(`^[ \\t>*_-]*${label}:[ \\t]*(.*?)[ \\t*_]*$`, 'gim');
@@ -81,4 +103,4 @@ function planCallFields(pc, taskId) {
   return { planCall: pc, planLine: pc.planLine, planRight: pc.planRight, writerSpawns: pc.writerSpawns, reviewGateLine: pc.reviewGateLine };
 }
 
-module.exports = { mainText, planCall, planCallOfRunDir, planCallFields, linesOf, planWord, firstPlanLine, EXPECT, EXPECT_FILE };
+module.exports = { rootReply, mainText, planCall, planCallOfRunDir, planCallFields, linesOf, planWord, firstPlanLine, EXPECT, EXPECT_FILE };

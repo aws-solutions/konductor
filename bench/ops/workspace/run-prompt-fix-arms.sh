@@ -545,7 +545,9 @@ rc_paid_mode() {
   mkdir -p "$RC_S/runs" "$RC_S/reviews"
   mapfile -t T < <(node -e 'console.log(require(process.argv[1]).SMOKE.join("\n"))' "$RCJS")
   for rep in $(seq 1 "$RC_REPS"); do for task in "${T[@]}"; do rc_cell "$task" "$rep"; done; done
-  node "$RCJS" prompts --runs "$RC_S/runs" --out "$RC_S/prompts" --arm "$RC_NAME" --prefix candidate --early yes > "$RC_S/prompts.log" 2>&1 || stop "prompts failed (see $RC_S/prompts.log)"
+  # No --early yes: each run's own earlyStopped flag (D-299) marks a stopped run, so a run that finished inside its
+  # 8 tool calls is scored to its end (D-300).
+  node "$RCJS" prompts --runs "$RC_S/runs" --out "$RC_S/prompts" --arm "$RC_NAME" --prefix candidate > "$RC_S/prompts.log" 2>&1 || stop "prompts failed (see $RC_S/prompts.log)"
   node "$RCJS" prompts --runs "$S/runs/smoke" --out "$RC_S/prompts" --arm konductor-adaptive --prefix smoke --tasks "$RC_SMOKE_PROMPTS" >> "$RC_S/prompts.log" 2>&1 || stop "smoke prompts failed (see $RC_S/prompts.log)"
   say "prompts: $(node -p "Object.keys(require('$RC_S/prompts/manifest.json').entries).length") frozen in $RC_S/prompts"
   R1=(review --prompts "$RC_S/prompts" --out "$RC_S/reviews" --claude "$REVIEWER" --cap "$RC_CAP" --runs "$RC_S/runs" --cap-usd "$RC_USD"
