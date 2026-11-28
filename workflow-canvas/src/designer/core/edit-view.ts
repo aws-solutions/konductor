@@ -213,6 +213,11 @@ export function writeBlocker(state: EditState): string | undefined {
   return written.ok ? undefined : written.reason;
 }
 
+/** Why parameter declarations cannot be changed now. */
+export function paramsBlocker(state: EditState): string | undefined {
+  return changeBlocker(state) ?? paramsInPlaceBlocker(state.saved.text);
+}
+
 /**
  * Why no change to the stages of the saved file can be written in place, or
  * `undefined`: a file-wide reason, known before any change is made.
@@ -221,8 +226,7 @@ export function fileBlocker(state: EditState): string | undefined {
   const { saved } = state;
   const kept = fileReasons.get(saved);
   if (kept) return kept.reason;
-  const reason =
-    inPlaceBlocker(saved.text, saved.view) ?? paramsInPlaceBlocker(saved.text);
+  const reason = inPlaceBlocker(saved.text, saved.view);
   fileReasons.set(saved, { reason });
   return reason;
 }

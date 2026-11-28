@@ -102,7 +102,7 @@ describe('withParams', () => {
       ok: true,
       text: text.replace(
         '  goal: {} # goal\r\n',
-        '  goal: # goal\r\n    description: Run it\r\n',
+        '  goal:  # goal\r\n    description: Run it\r\n',
       ),
     });
   });
@@ -122,16 +122,77 @@ describe('withParams', () => {
       text: 'params:\n  first:\n    description: Keep # bytes\n  param_1: {}\nstages:\n  - name: draft\n    agent: k-developer\n',
     });
   });
+  it('adds a declaration after an EOF item and keeps no final newline', () => {
+    const text =
+      'stages:\n  - name: draft\n    agent: k-developer\nparams:\n  goal: {}';
+
+    expect(
+      withParams(text, [
+        kept({ name: 'goal' }, 0),
+        { name: 'param_1', description: '', default: '', required: false },
+      ]),
+    ).toEqual({
+      ok: true,
+      text: `${text}\n  param_1: {}`,
+    });
+  });
+
+  it('adds a field after an EOF item and keeps no final newline', () => {
+    const text =
+      'stages:\n  - name: draft\n    agent: k-developer\nparams:\n  goal: {}';
+
+    expect(
+      withParams(text, [
+        changed({ name: 'goal' }, 0, { description: 'Run it' }),
+      ]),
+    ).toEqual({
+      ok: true,
+      text: text.replace('  goal: {}', '  goal: \n    description: Run it'),
+    });
+  });
+
+  it('removes only the empty mapping token when adding a field', () => {
+    const text =
+      'params:\n  goal:    {}    # keep comment spaces  \nstages:\n  - name: draft\n    agent: k-developer\n';
+
+    expect(
+      withParams(text, [
+        changed({ name: 'goal' }, 0, { description: 'Run it' }),
+      ]),
+    ).toEqual({
+      ok: true,
+      text: text.replace(
+        '  goal:    {}    # keep comment spaces  \n',
+        '  goal:        # keep comment spaces  \n    description: Run it\n',
+      ),
+    });
+  });
+
+  it('refuses a source-backed row when no params source plan exists', () => {
+    const text =
+      'format: konductor/1\nstages:\n  - name: draft\n    agent: k-developer\n';
+
+    expect(withParams(text, [kept({ name: 'goal' }, 0)])).toEqual({
+      ok: false,
+      reason: LAYOUT_REASON,
+    });
+  });
 });
 
 describe('params writer refusal boundary', () => {
   it.each([
     ['flow mapping', 'params: { goal: {} }\n', FLOW_REASON],
     ['quoted params key', '"params":\n  goal: {}\n', QUOTED_REASON],
+    ['escaped quoted params key', '"par\\x61ms":\n  goal: {}\n', QUOTED_REASON],
     ['quoted param key', 'params:\n  "goal": {}\n', QUOTED_REASON],
     [
       'quoted known field',
       'params:\n  goal:\n    "description": Reader\n',
+      QUOTED_REASON,
+    ],
+    [
+      'escaped quoted known field',
+      'params:\n  goal:\n    "descr\\x69ption": Reader\n',
       QUOTED_REASON,
     ],
     ['params anchor', 'params: &params\n  goal: {}\n', METADATA_REASON],

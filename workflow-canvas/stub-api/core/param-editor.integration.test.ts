@@ -2,7 +2,12 @@
 import { describe, expect, it } from 'vitest';
 import { HELLO_DOCUMENT, HELLO_VIEW } from '../../src/test-support/fixtures.ts';
 import { reduce } from '../../src/designer/core/edit-reducer.ts';
-import { isDirty, textOf } from '../../src/designer/core/edit-view.ts';
+import {
+  canSave,
+  fileBlocker,
+  isDirty,
+  textOf,
+} from '../../src/designer/core/edit-view.ts';
 import { checkWorkflowText } from './validator.ts';
 
 const TEXT = [
@@ -68,5 +73,52 @@ describe('parameter editing through check and save', () => {
     expect(isDirty(state)).toBe(false);
     expect(state.paramBases).toEqual(['p-goal', 'p1']);
     expect(state.saved.view.params).toHaveProperty('param_1');
+  });
+
+  it('saves a stage rename beside flow-style params without changing them', () => {
+    const text = [
+      'format: konductor/1',
+      'name: hello',
+      'version: 0.1.0',
+      'intent:',
+      '  outcome: Add a greeting',
+      'params: { goal: {} }',
+      'stages:',
+      '  - name: draft',
+      '    agent: k-developer',
+      '',
+    ].join('\n');
+    const opened = checkWorkflowText(text, 'hello');
+    expect(opened.errors).toBe(0);
+    let state = reduce(undefined, {
+      type: 'open',
+      document: { ...HELLO_DOCUMENT, text, view: opened.view! },
+    })!;
+
+    state = reduce(state, { type: 'rename', id: 's1', name: 'write' })!;
+    const written = textOf(state)!;
+    expect(fileBlocker(state)).toBeUndefined();
+    expect(written).toContain('params: { goal: {} }');
+    const checked = checkWorkflowText(written, 'hello');
+    expect(checked.errors).toBe(0);
+    state = reduce(state, {
+      type: 'checked',
+      revision: state.revision,
+      diagnostics: checked.diagnostics,
+    })!;
+    expect(canSave(state)).toBe(true);
+    state = reduce(state, { type: 'save' })!;
+    state = reduce(state, {
+      type: 'saved',
+      text: written,
+      result: {
+        hash: 'c'.repeat(64),
+        view: checked.view!,
+        diagnostics: checked.diagnostics,
+      },
+    })!;
+
+    expect(isDirty(state)).toBe(false);
+    expect(state.saved.text).toContain('params: { goal: {} }');
   });
 });

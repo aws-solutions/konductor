@@ -58,12 +58,29 @@ const QUOTED_PARAMS_KEY = /^(?:"params"|'params')[ \t]*:/;
 const STAGES_KEY = /^(?:stages|"stages"|'stages'):[ \t]*(?:#.*)?$/;
 const TOP_LEVEL = /^(?:[^\s#-]|---|\.\.\.)/;
 const PARAM_HEADER = /^  ([a-z][a-z0-9_]{0,63})[ \t]*:[ \t]*(.*)$/;
-const QUOTED_PARAM = /^  (?:"[^"\\]*"|'[^']*')[ \t]*:/;
+const QUOTED_PARAM = /^  (?:(?:"(?:\\.|[^"])*")|'[^']*')[ \t]*:/;
 const FIELD = /^    (type|description|default|required)[ \t]*:[ \t]*(.*)$/;
-const QUOTED_FIELD =
-  /^    (?:"(?:type|description|default|required)"|'(?:type|description|default|required)')[ \t]*:/;
+const QUOTED_FIELD = /^    (?:(?:"(?:\\.|[^"])*")|'[^']*')[ \t]*:/;
 const FILLER = /^[ \t]*(?:#.*)?$/;
 const METADATA = /^[ \t]*[&*!]/;
+
+function quotedTopLevelParams(text: string): boolean {
+  if (/^'params'[ \t]*:/.test(text)) return true;
+  const match = /^"((?:\\.|[^"])*)"[ \t]*:/.exec(text);
+  if (!match) return false;
+  const decoded = match[1]!
+    .replace(/\\x([0-9a-f]{2})/gi, (_, hex: string) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/\\U([0-9a-f]{8})/g, (_, hex: string) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/\\(["\\/])/g, '$1');
+  return decoded === 'params';
+}
 
 function linesOf(text: string): Line[] {
   const lines: Line[] = [];
@@ -175,6 +192,9 @@ function itemsOf(
 
 function planFor(text: string): Plan | string | undefined {
   const lines = linesOf(text);
+  if (lines.some((line) => quotedTopLevelParams(line.text))) {
+    return QUOTED_REASON;
+  }
   const candidates = lines.flatMap((line, index) =>
     ANY_PARAMS_KEY.test(line.text) ? [index] : [],
   );
@@ -219,6 +239,17 @@ function generated(param: ParamToWrite, eol: string): Line[] {
       ];
 }
 
+function appendLines(
+  target: Line[],
+  added: readonly Line[],
+  eol: string,
+): void {
+  if (added.length === 0) return;
+  const last = target.at(-1);
+  if (last?.eol === '') target[target.length - 1] = { ...last, eol };
+  target.push(...added);
+}
+
 function editItem(
   item: ParamItem,
   param: ParamToWrite,
@@ -256,14 +287,16 @@ function editItem(
   if (additions.length === 0) return lines;
   if (item.emptyFlow) {
     const header = lines[0]!;
+    const token = header.text.indexOf('{}');
     lines = [
       {
         ...header,
-        text: header.text.replace(/[ \t]*\{\}[ \t]*/, ' ').trimEnd(),
+        text: `${header.text.slice(0, token)}${header.text.slice(token + 2)}`,
       },
     ];
   }
-  return [...lines, ...additions];
+  appendLines(lines, additions, eol);
+  return lines;
 }
 
 /** The file-wide reason parameter declarations cannot be edited in place. */
@@ -280,6 +313,9 @@ export function withParams(
   const plan = planFor(text);
   if (typeof plan === 'string') return { ok: false, reason: plan };
   if (!plan) {
+    if (params.some((param) => param.from !== undefined)) {
+      return { ok: false, reason: LAYOUT_REASON };
+    }
     const lines = linesOf(text);
     const stages = lines.findIndex((line) => STAGES_KEY.test(line.text));
     if (stages < 0) return { ok: false, reason: LAYOUT_REASON };
@@ -300,7 +336,7 @@ export function withParams(
   const body: Line[] = [];
   for (const param of params) {
     if (param.from === undefined) {
-      body.push(...generated(param, plan.eol));
+      appendLines(body, generated(param, plan.eol), plan.eol);
       continue;
     }
     const item = plan.items[param.from];
@@ -310,17 +346,20 @@ export function withParams(
     claimed.add(param.from);
     const edited = editItem(item, param, plan.eol);
     if (typeof edited === 'string') return { ok: false, reason: edited };
-    body.push(...item.lead, ...edited);
+    appendLines(body, [...item.lead, ...edited], plan.eol);
+  }
+  const output = [
+    ...plan.lines.slice(0, plan.key + 1),
+    ...body,
+    ...plan.rest,
+    ...plan.lines.slice(plan.next),
+  ];
+  if (plan.next === plan.lines.length && plan.lines.at(-1)?.eol === '') {
+    const last = output.at(-1);
+    if (last) output[output.length - 1] = { ...last, eol: '' };
   }
   return {
     ok: true,
-    text: [
-      ...plan.lines.slice(0, plan.key + 1),
-      ...body,
-      ...plan.rest,
-      ...plan.lines.slice(plan.next),
-    ]
-      .map((line) => line.text + line.eol)
-      .join(''),
+    text: output.map((line) => line.text + line.eol).join(''),
   };
 }
