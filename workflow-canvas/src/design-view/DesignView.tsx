@@ -859,7 +859,6 @@ export function DesignView({
         >
           <Findings diagnostics={visibleFindings} />
         </div>
-        <Findings diagnostics={visibleFindings} />
         {linkMessage && (
           <Alert type="info" data-testid="link-message">
             {linkMessage}
