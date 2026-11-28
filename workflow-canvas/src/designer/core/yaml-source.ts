@@ -135,12 +135,16 @@ export function insertMapPair(
   }
   const first = textScalar(map.items[0]!.key);
   if (!first) return undefined;
-  const at = afterLine(text, contentEnd(last));
+  const lastEnd = contentEnd(last);
+  const at = afterLine(text, lastEnd);
   const eol = eolOf(text);
-  const prefix = at === text.length && !/[\r\n]$/.test(text) ? eol : '';
+  const hadLineBreak = at > lastEnd;
+  const prefix = hadLineBreak ? '' : eol;
+  const suffix = hadLineBreak ? eol : '';
+  const separator = value.startsWith(eol) ? '' : ' ';
   return {
     start: at,
     end: at,
-    text: `${prefix}${' '.repeat(columnOf(text, first.range[0]))}${key}: ${value}`,
+    text: `${prefix}${' '.repeat(columnOf(text, first.range[0]))}${key}:${separator}${value}${suffix}`,
   };
 }
