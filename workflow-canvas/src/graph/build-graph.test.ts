@@ -378,6 +378,31 @@ it('draws labelled data links for valid earlier output references', () => {
   );
 });
 
+it('routes same-stage data links around the stage card', () => {
+  const graph = buildGraph(
+    {
+      name: 'linked',
+      intent: { outcome: 'Ship it.' },
+      stages: [
+        {
+          id: 'a',
+          name: 'plan',
+          agent: 'k-architect',
+          outputs: { design: 'DESIGN.md' },
+          prompt: 'Read {plan.design}.',
+        },
+      ],
+    },
+    'kiro-cli',
+  );
+
+  expect(graph.edges.find((edge) => edge.output === 'design')).toMatchObject({
+    source: 'stage-a',
+    target: 'stage-a',
+    type: 'data-loop',
+  });
+});
+
 it.each([
   ['same-stage', 'Read {plan.design}.', 'plan', true],
   ['earlier-stage', 'Read {plan.design}.', 'build', true],

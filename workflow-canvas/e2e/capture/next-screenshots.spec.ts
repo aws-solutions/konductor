@@ -111,6 +111,9 @@ test('capture a drawn data link', async ({ canvas }) => {
   await panel.getByRole('button', { name: 'Add output' }).click();
   await panel.getByRole('textbox', { name: 'Output name 1' }).fill('design');
   await panel.getByRole('textbox', { name: 'Output path 1' }).fill('DESIGN.md');
+  await panel
+    .getByRole('textbox', { name: 'prompt', exact: true })
+    .fill('Read {draft.design}.');
   await canvas.page.getByTestId('node-stage-review').click();
   await panel
     .getByRole('textbox', { name: 'prompt', exact: true })
@@ -118,6 +121,11 @@ test('capture a drawn data link', async ({ canvas }) => {
   await expect(
     canvas.page.getByRole('group', {
       name: 'Output design from stage draft to stage review',
+    }),
+  ).toBeVisible();
+  await expect(
+    canvas.page.getByRole('group', {
+      name: 'Output design from stage draft to stage draft',
     }),
   ).toBeVisible();
 

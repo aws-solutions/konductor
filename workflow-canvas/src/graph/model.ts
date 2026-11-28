@@ -84,6 +84,8 @@ export interface GraphEdge {
   target: string;
   sourceHandle: typeof SEQUENCE_OUT | typeof DATA_OUT;
   targetHandle: typeof SEQUENCE_IN | typeof DATA_IN;
+  /** Same-stage data links use a path that clears the stage card. */
+  type?: 'data-loop';
   /** Data links carry an output reference; absent for run order. */
   output?: string;
   label?: string;

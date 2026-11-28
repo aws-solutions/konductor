@@ -165,6 +165,7 @@ function dataLinks(stages: readonly StageSpec[]): GraphEdge[] {
             targetHandle: DATA_IN,
             output,
             label: output,
+            ...(sourceIndex === targetIndex ? { type: 'data-loop' } : {}),
             ...(generated ? { generated: true } : {}),
           },
         ];

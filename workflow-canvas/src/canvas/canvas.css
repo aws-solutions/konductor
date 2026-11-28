@@ -65,6 +65,33 @@
   z-index: 6;
 }
 
+.wf-canvas .react-flow__edge-path {
+  stroke: var(--wf-edge);
+  stroke-width: 2.5px;
+}
+
+.wf-canvas .react-flow__edge.wf-data-edge .react-flow__edge-path {
+  stroke: var(--wf-port);
+}
+
+.wf-canvas .react-flow__edge.wf-data-edge .react-flow__edge-text {
+  fill: var(--wf-port);
+  font-weight: 700;
+}
+
+.wf-canvas
+  .react-flow__edge.wf-data-edge:is(.selected, :focus-visible)
+  .react-flow__edge-path {
+  stroke: var(--wf-focus);
+  stroke-width: 4px;
+}
+
+.wf-canvas
+  .react-flow__edge.wf-data-edge:is(.selected, :focus-visible)
+  .react-flow__edge-text {
+  fill: var(--wf-focus);
+}
+
 /*
  * The ring that shows which node the keyboard is on. It is drawn in the SVG
  * of the node (see nodes.tsx), around the outline, so it follows the rounded

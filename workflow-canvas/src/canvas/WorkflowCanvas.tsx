@@ -9,6 +9,8 @@ import {
   type Connection,
   type DefaultEdgeOptions,
   type Edge,
+  type EdgeChange,
+  type EdgeTypes,
   type NodeChange,
   type NodeTypes,
 } from '@xyflow/react';
@@ -26,6 +28,7 @@ import type { CanvasGraph, GraphEdge } from '../graph';
 import './canvas.css';
 import { AGENT_DRAG_TYPE } from './agent-drag';
 import { READ_ONLY_ARIA_LABELS, SELECTABLE_ARIA_LABELS } from './aria-labels';
+import { DataLoopEdge } from './DataLoopEdge';
 import { FitWhenGrown } from './FitWhenGrown';
 import { IntentNode, StageNode } from './nodes';
 import { markSelectable } from './selection';
@@ -36,9 +39,12 @@ const NODE_TYPES: NodeTypes = {
   stage: StageNode,
 };
 
+const EDGE_TYPES: EdgeTypes = {
+  'data-loop': DataLoopEdge,
+};
+
 const EDGE_OPTIONS: DefaultEdgeOptions = {
   type: 'straight',
-  style: { stroke: 'var(--wf-edge)', strokeWidth: 2.5 },
   markerEnd: {
     type: MarkerType.ArrowClosed,
     color: 'var(--wf-edge)',
@@ -183,11 +189,11 @@ export function WorkflowCanvas({
         edge.output
           ? {
               ...edge,
+              className: 'wf-data-edge',
               deletable: deleteReason(edge) === undefined,
               focusable: true,
               selectable: true,
-              style: { stroke: 'var(--wf-port)', strokeWidth: 2.5 },
-              labelStyle: { fill: 'var(--wf-port)', fontWeight: 700 },
+              selected: edge.id === selectedEdgeId,
             }
           : {
               ...edge,
@@ -196,7 +202,7 @@ export function WorkflowCanvas({
               selectable: false,
             },
       ),
-    [deleteReason, graph.edges],
+    [deleteReason, graph.edges, selectedEdgeId],
   );
   const nodes = useMemo(
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
@@ -258,6 +264,17 @@ export function WorkflowCanvas({
     },
     [onProblems, onSelect, removeLink, selectedLink],
   );
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setSelectedEdgeId((current) => {
+      let next = current;
+      for (const change of changes) {
+        if (change.type !== 'select') continue;
+        if (change.selected) next = change.id;
+        else if (next === change.id) next = undefined;
+      }
+      return next;
+    });
+  }, []);
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       for (const change of changes) {
@@ -319,6 +336,13 @@ export function WorkflowCanvas({
     },
     [graph.edges, removeLink],
   );
+  const onEdgeClick = useCallback((_event: MouseEvent, edge: Edge) => {
+    setSelectedEdgeId(edge.id);
+  }, []);
+  const onEdgeContextMenu = useCallback((event: MouseEvent, edge: Edge) => {
+    event.preventDefault();
+    setSelectedEdgeId(edge.id);
+  }, []);
 
   const selectedDeleteReason = deleteReason(selectedLink);
 
@@ -354,6 +378,7 @@ export function WorkflowCanvas({
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         defaultEdgeOptions={EDGE_OPTIONS}
         nodesDraggable={false}
         nodesConnectable={linking?.onLink !== undefined}
@@ -361,8 +386,10 @@ export function WorkflowCanvas({
         edgesFocusable={linking !== undefined}
         edgesReconnectable={false}
         onConnect={onConnect}
+        onEdgesChange={onEdgesChange}
         onEdgesDelete={onEdgesDelete}
-        onEdgeClick={(_, edge) => setSelectedEdgeId(edge.id)}
+        onEdgeClick={onEdgeClick}
+        onEdgeContextMenu={onEdgeContextMenu}
         onNodesChange={onNodesChange}
         ariaLabelConfig={
           onSelect ? SELECTABLE_ARIA_LABELS : READ_ONLY_ARIA_LABELS

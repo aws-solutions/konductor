@@ -102,14 +102,45 @@ test('deletes generated links with Backspace', async ({ designer }) => {
   );
 });
 
-test('deletes generated links from the edge menu', async ({ designer }) => {
+test('opens the edge menu from the keyboard and deletes the link', async ({
+  designer,
+}) => {
   await saveYaml(designer, (text) =>
     withReference(text, 'Read {draft.design}.'),
   );
-  await edge(designer).click();
+  const link = edge(designer);
+  const path = link.locator('.react-flow__edge-path');
+  const idleStyle = await path.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      stroke: style.stroke,
+      width: Number.parseFloat(style.strokeWidth),
+    };
+  });
+
+  await link.focus();
+  await designer.page.keyboard.press('Shift+Tab');
+  await designer.page.keyboard.press('Tab');
+  await expect(link).toBeFocused();
+  const focusedStyle = await path.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      stroke: style.stroke,
+      width: Number.parseFloat(style.strokeWidth),
+    };
+  });
+  expect(focusedStyle.stroke).not.toBe(idleStyle.stroke);
+  expect(focusedStyle.width).toBeGreaterThan(idleStyle.width);
+
+  await designer.page.keyboard.press('Enter');
+  await expect(link).toHaveClass(/selected/);
+  await expect(
+    designer.page.getByRole('button', { name: 'Link actions' }),
+  ).toBeVisible();
+  await expectNoAccessibilityViolations(designer.page);
   await designer.page.getByRole('button', { name: 'Link actions' }).click();
   await designer.page.getByRole('menuitem', { name: 'Delete link' }).click();
-  await expect(edge(designer)).toHaveCount(0);
+  await expect(link).toHaveCount(0);
 });
 
 test('blocks deletion when the target prompt writer refuses it', async ({
@@ -147,11 +178,22 @@ test('draws a same-stage reference decoded from an escaped scalar', async ({
       `${DRAFT_OUTCOME}    outputs:\n      design: DESIGN.md\n    prompt: "Read \\u007bdraft.design\\u007d."\n`,
     ),
   );
-  await expect(
-    designer.page.getByRole('group', {
-      name: 'Output design from stage draft to stage draft',
-    }),
-  ).toBeVisible();
+  const link = designer.page.getByRole('group', {
+    name: 'Output design from stage draft to stage draft',
+  });
+  await expect(link).toBeVisible();
+  const linkBounds = await link.locator('.react-flow__edge-path').boundingBox();
+  const labelBounds = await link
+    .locator('.react-flow__edge-text')
+    .boundingBox();
+  const stageBounds = await designer.stage('draft').boundingBox();
+  if (!linkBounds || !labelBounds || !stageBounds) {
+    throw new Error('The same-stage link geometry is unavailable.');
+  }
+  expect(linkBounds.y + linkBounds.height).toBeGreaterThan(
+    stageBounds.y + stageBounds.height + 10,
+  );
+  expect(labelBounds.x).toBeGreaterThan(stageBounds.x + stageBounds.width);
 });
 
 test('keeps deletion blocked while raw YAML is pending', async ({
