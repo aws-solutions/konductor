@@ -132,6 +132,27 @@ test('capture a drawn data link', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-links-draw');
 });
 
+test('capture the data-link creation dialog', async ({ canvas }) => {
+  await canvas.page.getByTestId('node-stage-review').click();
+  await canvas.page.getByTestId('node-stage-draft').click();
+  await canvas.page.getByRole('button', { name: 'Link output to...' }).click();
+  await canvas.page.getByRole('menuitem', { name: 'review' }).click();
+  const dialog = canvas.page.getByTestId('link-output-dialog');
+  await dialog.getByRole('textbox', { name: 'Output name' }).fill('design');
+  await dialog.getByRole('textbox', { name: 'Output path' }).fill('DESIGN.md');
+  await saveFullPageScreenshot(canvas.page, 'next-design-link-dialog');
+  await dialog
+    .getByRole('button', { name: 'Link output', exact: true })
+    .click();
+  await expect(
+    canvas.page.getByRole('group', {
+      name: 'Output design from stage draft to stage review',
+    }),
+  ).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-links');
+});
+
 test('capture the Design view with acceptance checks', async ({ canvas }) => {
   await canvas.page
     .getByRole('button', { name: /checks 1, edit acceptance checks/ })

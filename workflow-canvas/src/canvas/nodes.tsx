@@ -34,7 +34,7 @@ function SequenceIn() {
       type="target"
       position={Position.Top}
       id={SEQUENCE_IN}
-      isConnectable
+      isConnectable={false}
       className="wf-port wf-port-in"
     />
   );
@@ -47,7 +47,7 @@ function SequenceOut() {
       type="source"
       position={Position.Bottom}
       id={SEQUENCE_OUT}
-      isConnectable
+      isConnectable={false}
       className="wf-port wf-port-out"
     />
   );

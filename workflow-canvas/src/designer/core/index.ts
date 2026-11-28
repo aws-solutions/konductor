@@ -40,6 +40,7 @@ export {
   dataUnlinkBlocker,
   doneWhenBlocker,
   canSave,
+  dataLinkBlocker,
   fileBlocker,
   formTextOf,
   insertionBlocker,

@@ -13,6 +13,7 @@ import {
   canRemoveStage,
   idsOf,
   insertStage,
+  linkOutput,
   neighbourOf,
   rebaseCheckSources,
   rebaseOutputSources,
@@ -444,6 +445,18 @@ function step(
       return checkRemoved(state, event.key);
     case 'set-done-when':
       return doneWhenSet(state, event.stageId, event.keys);
+    case 'link-output':
+      return edited(
+        state,
+        linkOutput(
+          state.draft,
+          event.sourceId,
+          event.targetId,
+          event.outputName,
+          event.newOutput,
+        ),
+        state.selectedId,
+      );
     case 'unlink-output':
       return edited(
         state,

@@ -2,6 +2,7 @@
 import type { EditableDocument, EditState } from './edit-state';
 import {
   doneWhenIds,
+  linkOutput,
   sameStages,
   stagesOf,
   unlinkOutput,
@@ -324,6 +325,29 @@ export function writtenOf(state: EditState): Written {
       : withCompletionChecks;
   written.set(draft, { saved, bases, result });
   return result;
+}
+
+/** Why a proposed data link cannot be written without changing the draft. */
+export function dataLinkBlocker(
+  state: EditState,
+  sourceId: string,
+  targetId: string,
+  outputName: string,
+  newOutput?: { readonly name: string; readonly path: string },
+): string | undefined {
+  const blocked = changeBlocker(state);
+  if (blocked) return blocked;
+  const draft = linkOutput(
+    state.draft,
+    sourceId,
+    targetId,
+    outputName,
+    newOutput,
+  );
+  if (draft === state.draft)
+    return 'The output link does not fit these stages.';
+  const written = writtenOf({ ...state, draft });
+  return written.ok ? undefined : written.reason;
 }
 
 /**

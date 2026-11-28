@@ -24,7 +24,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
-import type { CanvasGraph, GraphEdge } from '../graph';
+import { DATA_IN, DATA_OUT, type CanvasGraph, type GraphEdge } from '../graph';
 import './canvas.css';
 import { AGENT_DRAG_TYPE } from './agent-drag';
 import { READ_ONLY_ARIA_LABELS, SELECTABLE_ARIA_LABELS } from './aria-labels';
@@ -322,7 +322,13 @@ export function WorkflowCanvas({
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (connection.source && connection.target) {
+      if (
+        connection.source &&
+        connection.target &&
+        connection.sourceHandle === DATA_OUT &&
+        connection.targetHandle === DATA_IN &&
+        linking?.disabledReason === undefined
+      ) {
         linking?.onLink?.(connection.source, connection.target);
       }
     },
@@ -381,7 +387,9 @@ export function WorkflowCanvas({
         edgeTypes={EDGE_TYPES}
         defaultEdgeOptions={EDGE_OPTIONS}
         nodesDraggable={false}
-        nodesConnectable={linking?.onLink !== undefined}
+        nodesConnectable={
+          linking?.onLink !== undefined && linking.disabledReason === undefined
+        }
         elementsSelectable={onSelect !== undefined}
         edgesFocusable={linking !== undefined}
         edgesReconnectable={false}

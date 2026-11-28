@@ -51,6 +51,7 @@ import {
   checksBlocker,
   dataUnlinkBlocker,
   doneWhenBlocker,
+  dataLinkBlocker,
   DEFAULT_AGENT,
   fileBlocker,
   insertionBlocker,
@@ -91,11 +92,18 @@ import {
 } from './view-stage';
 import { useInitialCheck } from './use-initial-check';
 import { useStageSources } from './use-stage-sources';
+import { LinkOutputDialog, type LinkDialogValues } from './LinkOutputDialog';
 
 /** The editable keys of a stage, by kind, as `stage_fields` gives them. */
 export type StageFieldsByKind = Readonly<
   Record<string, readonly StageFieldRule[]>
 >;
+
+interface LinkRequest {
+  readonly sourceId: string;
+  readonly targetId: string;
+  readonly values: LinkDialogValues;
+}
 
 const EARLIER_TEXT_NOTE =
   'YAML shows an earlier version of the stage edits. The drawing and Properties show the current stage edits, which Save writes; press Redo to come back.';
@@ -429,6 +437,7 @@ export function DesignView({
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const findingsRef = useRef<HTMLDivElement>(null);
   const [linkMessage, setLinkMessage] = useState<string>();
+  const [linkRequest, setLinkRequest] = useState<LinkRequest>();
   const showLinkMessage = useCallback((message: string) => {
     setLinkMessage(message);
     setAnnouncement(({ count }) => ({ text: message, count: count + 1 }));
@@ -636,6 +645,9 @@ export function DesignView({
     doneWhenDisabled: doneWhenSourceBlocker !== undefined,
     doneWhenDisabledReason: doneWhenSourceBlocker,
     doneWhenError: pickedDoneWhenError,
+    linkTargets: state.draft.stages
+      .slice(state.draft.stages.indexOf(picked) + 1)
+      .map((target) => ({ id: target.id, name: target.name })),
     rules,
     values,
     // The agent the file names, which stays on offer even when the list of
@@ -747,6 +759,7 @@ export function DesignView({
           sources: state.draft.stages.map((one) => sources.of(one.id)),
         })
       : undefined;
+
   const stageIdFromNode = useCallback(
     (nodeId: string) =>
       state.draft.stages.find(
@@ -770,6 +783,114 @@ export function DesignView({
     },
     [frozen, stageIdFromNode, state],
   );
+  const linkStages = useCallback(
+    (sourceNodeId: string, targetNodeId: string) => {
+      const sourceId = stageIdFromNode(sourceNodeId) ?? sourceNodeId;
+      const targetId = stageIdFromNode(targetNodeId) ?? targetNodeId;
+      const sourceIndex = state.draft.stages.findIndex(
+        (stage) => stage.id === sourceId,
+      );
+      const targetIndex = state.draft.stages.findIndex(
+        (stage) => stage.id === targetId,
+      );
+      const source = state.draft.stages[sourceIndex];
+      const target = state.draft.stages[targetIndex];
+      if (!source || !target) {
+        showLinkMessage('The output link no longer matches these stages.');
+        return;
+      }
+      if (sourceIndex === targetIndex) {
+        showLinkMessage('A stage cannot link an output to itself.');
+        return;
+      }
+      if (targetIndex < sourceIndex) {
+        showLinkMessage('An output can link only to a later stage.');
+        return;
+      }
+      const targetPrompt = promptFieldOf(state, target);
+      if (targetPrompt.kind !== 'text') {
+        showLinkMessage(
+          targetPrompt.kind === 'file' || targetPrompt.kind === 'both'
+            ? 'A stage with prompt_file cannot take a data link.'
+            : targetPrompt.reason,
+        );
+        return;
+      }
+      const outputs = source.outputs ?? [];
+      const candidate = outputs[0] ?? {
+        name: 'output',
+        path: 'OUTPUT.md',
+      };
+      const blocker = dataLinkBlocker(
+        state,
+        sourceId,
+        targetId,
+        candidate.name,
+        outputs.length === 0 ? candidate : undefined,
+      );
+      if (blocker) {
+        showLinkMessage(blocker);
+        return;
+      }
+      setLinkMessage(undefined);
+      if (outputs.length === 1) {
+        editor.linkOutput(sourceId, targetId, candidate.name);
+        return;
+      }
+      setLinkRequest({
+        sourceId,
+        targetId,
+        values: { outputName: '', outputPath: '' },
+      });
+    },
+    [editor, showLinkMessage, stageIdFromNode, state],
+  );
+  const confirmLink = useCallback(() => {
+    if (!linkRequest) return;
+    const source = state.draft.stages.find(
+      (stage) => stage.id === linkRequest.sourceId,
+    );
+    const target = state.draft.stages.find(
+      (stage) => stage.id === linkRequest.targetId,
+    );
+    if (!source || !target) {
+      setLinkRequest(undefined);
+      showLinkMessage('The output link no longer matches these stages.');
+      return;
+    }
+    const outputs = source.outputs ?? [];
+    const newOutput =
+      outputs.length === 0
+        ? {
+            name: linkRequest.values.outputName,
+            path: linkRequest.values.outputPath,
+          }
+        : undefined;
+    const blocker = dataLinkBlocker(
+      state,
+      source.id,
+      target.id,
+      linkRequest.values.outputName,
+      newOutput,
+    );
+    if (blocker) {
+      setLinkRequest(undefined);
+      showLinkMessage(blocker);
+      return;
+    }
+    editor.linkOutput(
+      source.id,
+      target.id,
+      linkRequest.values.outputName,
+      newOutput,
+    );
+    setLinkRequest(undefined);
+    setLinkMessage(undefined);
+    setAnnouncement(({ count }) => ({
+      text: `Linked ${source.name}.${linkRequest.values.outputName} to ${target.name}.`,
+      count: count + 1,
+    }));
+  }, [editor, linkRequest, showLinkMessage, state]);
   const deleteLink = useCallback(
     (
       sourceNodeId: string,
@@ -870,6 +991,7 @@ export function DesignView({
               graph={graph}
               selection={selection}
               linking={{
+                onLink: linkStages,
                 onDelete: deleteLink,
                 deleteBlocker: deleteLinkBlocker,
                 disabledReason: frozen,
@@ -921,6 +1043,9 @@ export function DesignView({
           }}
           onCheckRemove={(key) => {
             if (checkStructuralBlocker === undefined) editor.removeCheck(key);
+          }}
+          onLinkOutput={(targetId) => {
+            if (picked) linkStages(picked.id, targetId);
           }}
           onDoneWhenChange={(ids) => {
             if (picked && doneWhenSourceBlocker === undefined) {
@@ -1041,6 +1166,30 @@ export function DesignView({
           </SpaceBetween>
         </DesignerLayout>
       </SpaceBetween>
+      {linkRequest &&
+        (() => {
+          const source = state.draft.stages.find(
+            (stage) => stage.id === linkRequest.sourceId,
+          );
+          const target = state.draft.stages.find(
+            (stage) => stage.id === linkRequest.targetId,
+          );
+          return source && target ? (
+            <LinkOutputDialog
+              sourceName={source.name}
+              targetName={target.name}
+              outputs={source.outputs ?? []}
+              values={linkRequest.values}
+              onChange={(values) =>
+                setLinkRequest((request) =>
+                  request ? { ...request, values } : request,
+                )
+              }
+              onCancel={() => setLinkRequest(undefined)}
+              onConfirm={confirmLink}
+            />
+          ) : null;
+        })()}
     </section>
   );
 }

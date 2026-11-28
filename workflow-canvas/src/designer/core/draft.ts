@@ -465,6 +465,53 @@ export function doneWhenIds(
   );
 }
 
+/** Adds one chosen output reference to a later stage's prompt. */
+export function linkOutput(
+  draft: Draft,
+  sourceId: string,
+  targetId: string,
+  outputName: string,
+  newOutput?: { readonly name: string; readonly path: string },
+): Draft {
+  const sourceIndex = draft.stages.findIndex((stage) => stage.id === sourceId);
+  const targetIndex = draft.stages.findIndex((stage) => stage.id === targetId);
+  if (sourceIndex < 0 || targetIndex <= sourceIndex) return draft;
+  const source = draft.stages[sourceIndex]!;
+  const target = draft.stages[targetIndex]!;
+  const outputs = source.outputs ?? [];
+  const created =
+    outputs.length === 0 &&
+    newOutput?.name === outputName &&
+    newOutput.path !== ''
+      ? {
+          id: `${source.id}-o${source.nextOutputId ?? 1}`,
+          name: newOutput.name,
+          path: newOutput.path,
+        }
+      : undefined;
+  const output =
+    outputs.find((candidate) => candidate.name === outputName) ?? created;
+  if (!output) return draft;
+  const line = `Read {${source.name}.${output.name}}.`;
+  const prompt =
+    target.prompt === ''
+      ? line
+      : `${target.prompt}${target.prompt.endsWith('\n') ? '' : '\n'}${line}`;
+  return {
+    ...draft,
+    stages: draft.stages.map((stage) => {
+      if (stage.id === sourceId && created) {
+        return {
+          ...stage,
+          outputs: [created],
+          nextOutputId: (stage.nextOutputId ?? 1) + 1,
+        };
+      }
+      return stage.id === targetId ? { ...stage, prompt } : stage;
+    }),
+  };
+}
+
 /** Removes only a line created by the data-link action. */
 export function unlinkOutput(
   draft: Draft,
