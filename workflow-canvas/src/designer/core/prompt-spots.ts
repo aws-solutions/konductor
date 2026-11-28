@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
+  afterLine,
+  columnOf,
   isAlias,
   isMap,
-  isNode,
   isScalar,
   isSeq,
+  nodeEnd,
+  pairNamed,
   parseDocument,
   visit,
   type Document,
   type Pair,
-} from 'yaml';
+} from './yaml-source';
 
 /**
  * Where the `prompt` of each stage is in a workflow text, as the `yaml` parser
@@ -72,31 +75,6 @@ const ALIAS_OR_TAG =
 const TWICE = (key: string) => `This stage has two \`${key}\` keys.`;
 const MERGE_KEY = 'This file uses a `<<` merge key.';
 
-const isBreak = (ch: string | undefined) => ch === '\n' || ch === '\r';
-
-function columnOf(text: string, offset: number): number {
-  let start = offset;
-  while (start > 0 && !isBreak(text[start - 1])) start -= 1;
-  return offset - start;
-}
-
-// The start of the line after the one that holds the byte before `offset`.
-function afterLine(text: string, offset: number): number {
-  if (offset > 0 && isBreak(text[offset - 1])) return offset;
-  let at = offset;
-  while (at < text.length && !isBreak(text[at])) at += 1;
-  if (text[at] === '\r' && text[at + 1] === '\n') return at + 2;
-  return Math.min(at + 1, text.length);
-}
-
-// Where a node ends, or 0 for no node.
-function endOf(node: unknown): number {
-  return isNode(node) ? (node.range?.[1] ?? 0) : 0;
-}
-
-const isKey = (pair: Pair, name: string) =>
-  isScalar(pair.key) && pair.key.value === name;
-
 /** The span of the value of the `prompt` pair, or why it is not text. */
 function valueOf(
   pair: Pair,
@@ -127,13 +105,13 @@ function spotOf(item: unknown, text: string): PromptSpot {
   const column =
     isScalar(first) && first.range ? columnOf(text, first.range[0]) : 0;
   for (const key of ['prompt', 'prompt_file']) {
-    if (item.items.filter((p) => isKey(p, key)).length > 1) {
+    if (item.items.filter((p) => pairNamed(p, key)).length > 1) {
       return blocked(TWICE(key), flow);
     }
   }
-  const at = item.items.findIndex((pair) => isKey(pair, 'prompt'));
+  const at = item.items.findIndex((pair) => pairNamed(pair, 'prompt'));
   const pair = item.items[at];
-  const filePair = item.items.find((p) => isKey(p, 'prompt_file'));
+  const filePair = item.items.find((p) => pairNamed(p, 'prompt_file'));
   const file =
     filePair &&
     isScalar(filePair.value) &&
@@ -141,7 +119,7 @@ function spotOf(item: unknown, text: string): PromptSpot {
       ? filePair.value.value
       : undefined;
   const last = item.items.at(-1);
-  const lastEnd = Math.max(endOf(last?.key), endOf(last?.value));
+  const lastEnd = Math.max(nodeEnd(last?.key), nodeEnd(last?.value));
   const base = {
     flow,
     column,
@@ -196,7 +174,7 @@ export function promptSpots(text: string): PromptSpot[] | undefined {
   const doc = parseDocument(text, { uniqueKeys: false });
   const root = doc.contents;
   if (doc.errors.length > 0 || !isMap(root)) return undefined;
-  if (root.items.filter((pair) => isKey(pair, 'stages')).length !== 1) {
+  if (root.items.filter((pair) => pairNamed(pair, 'stages')).length !== 1) {
     return undefined;
   }
   const stages = root.get('stages', true);

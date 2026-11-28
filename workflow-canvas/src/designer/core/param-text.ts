@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { scalar } from './scalar-text';
+import {
+  linesOf,
+  scalarSpan as sourceScalarSpan,
+  type SourceLine,
+} from './source-lines';
 import type { Written } from './stage-text';
 
 interface ParamSnapshot {
@@ -19,7 +24,7 @@ export interface ParamToWrite {
   readonly before?: ParamSnapshot;
 }
 
-type Line = { text: string; eol: string };
+type Line = SourceLine;
 type Field = { line: number; start: number; end: number };
 
 interface ParamItem {
@@ -93,47 +98,12 @@ function quotedTopLevelParams(text: string): boolean {
   return decoded === 'params';
 }
 
-function linesOf(text: string): Line[] {
-  const lines: Line[] = [];
-  let end = 0;
-  for (const match of text.matchAll(/([^\r\n]*)(\r\n|\r|\n)/g)) {
-    lines.push({ text: match[1] ?? '', eol: match[2] ?? '' });
-    end = match.index + match[0].length;
-  }
-  if (end < text.length) lines.push({ text: text.slice(end), eol: '' });
-  return lines;
-}
+const PARAM_SCALAR_RULE = {
+  forbiddenFirst: /[|>&*!{}[\]%@`,?]/,
+};
 
-function closingQuote(text: string, start: number): number {
-  const quote = text[start];
-  for (let index = start + 1; index < text.length; index += 1) {
-    if (quote === '"' && text[index] === '\\') index += 1;
-    else if (text[index] === quote) {
-      if (quote === "'" && text[index + 1] === "'") index += 1;
-      else return index + 1;
-    }
-  }
-  return -1;
-}
-
-function scalarSpan(
-  text: string,
-  from: number,
-): { start: number; end: number } | undefined {
-  const start = from + /^[ \t]*/.exec(text.slice(from))![0].length;
-  const first = text[start];
-  if (first === undefined || /[|>&*!{}[\]%@`,?]/.test(first)) return undefined;
-  if (first === '"' || first === "'") {
-    const end = closingQuote(text, start);
-    return end > 0 && /^[ \t]*(?:#.*)?$/.test(text.slice(end))
-      ? { start, end }
-      : undefined;
-  }
-  const comment = text.slice(start).search(/[ \t]#/);
-  let end = comment < 0 ? text.length : start + comment;
-  while (end > start && /[ \t]/.test(text[end - 1]!)) end -= 1;
-  return end > start ? { start, end } : undefined;
-}
+const scalarSpan = (text: string, from: number) =>
+  sourceScalarSpan(text, from, PARAM_SCALAR_RULE);
 
 function fieldsOf(
   body: readonly Line[],

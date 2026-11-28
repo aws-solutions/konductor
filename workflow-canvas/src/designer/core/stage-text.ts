@@ -2,6 +2,11 @@
 import type { StageKeys } from '../../api/types';
 import { withPrompts, type Written } from './prompt-text';
 import { scalar } from './scalar-text';
+import {
+  linesOf,
+  scalarSpan as sourceScalarSpan,
+  type SourceLine,
+} from './source-lines';
 
 /** The stages of a view: all the writer reads of it. */
 export interface ViewStages {
@@ -24,25 +29,8 @@ export interface StageToWrite extends StageKeys {
   prompt?: string;
 }
 
-/** One line of a file and the line break that ends it (empty at the end). */
-interface Line {
-  text: string;
-  eol: string;
-  /** Set on a line that the writer made, as opposed to one the file had. */
-  made?: true;
-}
-
-// The contract takes `\r\n`, `\n` and a lone `\r` as line breaks.
-function linesOf(text: string): Line[] {
-  const lines: Line[] = [];
-  let end = 0;
-  for (const match of text.matchAll(/([^\r\n]*)(\r\n|\r|\n)/g)) {
-    lines.push({ text: match[1] ?? '', eol: match[2] ?? '' });
-    end = match.index + match[0].length;
-  }
-  if (end < text.length) lines.push({ text: text.slice(end), eol: '' });
-  return lines;
-}
+/** One line of a file and the line break that ends it. */
+type Line = SourceLine;
 
 const BOM = '\uFEFF';
 // The `stages:` key of the top level, quoted or not, with an optional comment.
@@ -179,41 +167,12 @@ function columnOf(item: Item): number | undefined {
     : undefined;
 }
 
-// The span of a scalar that starts at `from` and ends on the same line:
-// plain, or quoted and closed. `undefined` for anything else, such as a value
-// on the next line, a block scalar, a flow collection, an anchor or a tag.
-function scalarSpan(
-  text: string,
-  from: number,
-): { start: number; end: number } | undefined {
-  const start = from + /^[ \t]*/.exec(text.slice(from))![0].length;
-  const first = text[start];
-  if (first === undefined || /[#|>&*!{}[\]%@`,?]/.test(first)) return undefined;
-  let end: number;
-  if (first === '"' || first === "'") {
-    end = closingQuote(text, start);
-    if (end < 0) return undefined;
-    if (!/^[ \t]*(?:#.*)?$/.test(text.slice(end))) return undefined;
-  } else {
-    const comment = text.slice(start).search(/[ \t]#/);
-    end = comment < 0 ? text.length : start + comment;
-    while (end > start && /[ \t]/.test(text[end - 1]!)) end -= 1;
-  }
-  return { start, end };
-}
+const STAGE_SCALAR_RULE = {
+  forbiddenFirst: /[#|>&*!{}[\]%@`,?]/,
+};
 
-// The index after the quote that closes the quoted scalar at `start`, or -1.
-function closingQuote(text: string, start: number): number {
-  const quote = text[start];
-  for (let i = start + 1; i < text.length; i += 1) {
-    if (quote === '"' && text[i] === '\\') i += 1;
-    else if (text[i] === quote) {
-      if (quote === "'" && text[i + 1] === "'") i += 1;
-      else return i + 1;
-    }
-  }
-  return -1;
-}
+const scalarSpan = (text: string, from: number) =>
+  sourceScalarSpan(text, from, STAGE_SCALAR_RULE);
 
 // What YAML reads the scalar text as, or `undefined` for a double-quoted text
 // with an escape that JSON does not share; such a value is left alone.

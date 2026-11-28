@@ -3,8 +3,7 @@
  * Checks that the core of the Designer's editing does no IO and imports no
  * UI: it may import its own modules, the wire types, the message helper of
  * the API client and the scheduler port of the run core, and nothing else.
- * The one exception is `yaml`, which only the module that finds the ranges of
- * the prompts may import. Time and the calls of the API come in through its
+ * The one exception is `yaml`, imported only by the shared source-range module. Time and the calls of the API come in through its
  * ports.
  */
 import { fileURLToPath } from 'node:url';
@@ -23,7 +22,7 @@ const RULES: PurityRules = {
     '../../api/message-of',
     '../../execution/core',
   ]),
-  allowedPackagesIn: { 'prompt-spots.ts': new Set(['yaml']) },
+  allowedPackagesIn: { 'yaml-source.ts': new Set(['yaml']) },
   allowedNames: {},
 };
 
@@ -47,21 +46,21 @@ describe('the editing core', () => {
     ['a package other than yaml', "import { parse } from 'jsonc-parser';"],
   ])('rejects an import of %s', (_, line) => {
     expect(problemsIn('x.ts', line, RULES)).not.toEqual([]);
-    expect(problemsIn('prompt-spots.ts', line, RULES)).not.toEqual([]);
+    expect(problemsIn('yaml-source.ts', line, RULES)).not.toEqual([]);
   });
 
-  it('lets only the module that finds the ranges of the prompts import yaml', () => {
+  it('lets only the shared source-range module import yaml', () => {
     const line = "import { parseDocument } from 'yaml';";
 
-    expect(problemsIn('prompt-spots.ts', line, RULES)).toEqual([]);
+    expect(problemsIn('yaml-source.ts', line, RULES)).toEqual([]);
     expect(problemsIn('prompt-text.ts', line, RULES)).not.toEqual([]);
-    expect(problemsIn('sub/prompt-spots.ts', line, RULES)).not.toEqual([]);
+    expect(problemsIn('sub/yaml-source.ts', line, RULES)).not.toEqual([]);
   });
 
   it('still rejects the clock and the network in the module that imports yaml', () => {
     const source = "import { parseDocument } from 'yaml';\nDate.now();";
 
-    expect(problemsIn('prompt-spots.ts', source, RULES)).not.toEqual([]);
+    expect(problemsIn('yaml-source.ts', source, RULES)).not.toEqual([]);
   });
 
   it.each([
