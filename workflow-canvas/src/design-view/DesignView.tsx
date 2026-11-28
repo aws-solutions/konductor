@@ -723,7 +723,12 @@ export function DesignView({
           <CheckLine status={draft.status} failure={draft.failure} />
         )}
         <EditAlerts state={state} onReload={editor.reload} />
-        <div ref={findingsRef} tabIndex={-1} aria-label="Workflow findings">
+        <div
+          ref={findingsRef}
+          tabIndex={-1}
+          role="region"
+          aria-label="Workflow findings"
+        >
           <Findings diagnostics={visibleFindings} />
         </div>
         <DesignerLayout
