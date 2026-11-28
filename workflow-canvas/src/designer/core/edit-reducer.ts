@@ -5,14 +5,17 @@ import type {
   WorkflowDocument,
 } from '../../api/types';
 import {
+  addParam,
   addStage,
   canAddStage,
   canRemoveStage,
   idsOf,
   neighbourOf,
+  removeParam,
   removeStage,
   renameStage,
   setAgent,
+  setParam,
   setPrompt,
   type Draft,
 } from './draft';
@@ -29,6 +32,8 @@ import {
   changeBlocker,
   formTextOf,
   isDirty,
+  paramIdsForWrite,
+  paramsDirty,
   rawTextOf,
   textBlocker,
   textOf,
@@ -84,6 +89,25 @@ function promptSet(state: EditState, id: string, prompt: string): EditState {
   const stage = state.draft.stages.find((candidate) => candidate.id === id);
   if (!stage || stage.prompt === prompt) return state;
   return edited(state, setPrompt(state.draft, id, prompt), state.selectedId);
+}
+
+function paramSet(
+  state: EditState,
+  id: string,
+  change: Extract<EditEvent, { type: 'set-param' }>['change'],
+): EditState {
+  const param = state.draft.params.find((candidate) => candidate.id === id);
+  if (!param) return state;
+  const draft = setParam(state.draft, id, change);
+  return edited(state, draft, state.selectedId);
+}
+
+function paramAdded(state: EditState): EditState {
+  return edited(state, addParam(state.draft), state.selectedId);
+}
+
+function paramRemoved(state: EditState, id: string): EditState {
+  return edited(state, removeParam(state.draft, id), state.selectedId);
 }
 
 function selected(state: EditState, id: string): EditState {
@@ -215,7 +239,9 @@ function savedAs(
       diagnostics: result.diagnostics,
     },
     bases: state.sent ?? idsOf(state.draft),
+    paramBases: state.sentParams ?? state.draft.params.map((param) => param.id),
     sent: undefined,
+    sentParams: undefined,
     save: { phase: 'saved' },
   };
   // What was saved is what the findings of the save are about; if the draft
@@ -308,6 +334,12 @@ function step(
       return agentSet(state, event.id, event.agent);
     case 'set-prompt':
       return promptSet(state, event.id, event.prompt);
+    case 'set-param':
+      return paramSet(state, event.id, event.change);
+    case 'add-param':
+      return paramAdded(state);
+    case 'remove-param':
+      return paramRemoved(state, event.id);
     case 'set-text':
       return textSet(state, event.text);
     case 'remove':
@@ -320,6 +352,11 @@ function step(
             ...state,
             save: { phase: 'saving' },
             sent: idsOf(state.draft),
+            sentParams: paramsDirty(state)
+              ? paramIdsForWrite(state)
+              : state.paramBases.filter((id) =>
+                  state.draft.params.some((param) => param.id === id),
+                ),
             submitted: submissionOf(state),
           }
         : state;

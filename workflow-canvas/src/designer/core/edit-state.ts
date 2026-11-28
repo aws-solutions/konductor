@@ -5,7 +5,7 @@ import type {
   WorkflowDocument,
   WorkflowView,
 } from '../../api/types';
-import { draftOf, idsOf, type Draft } from './draft';
+import { draftOf, idsOf, sourceParamIds, type Draft } from './draft';
 import { checkOf, type Check } from './problems';
 import { savedPrompts } from './saved-prompts';
 
@@ -57,8 +57,12 @@ export interface EditState {
    * values in place. A stage that was deleted from the draft keeps its id.
    */
   bases: readonly string[];
+  /** The id of each parameter declaration in `saved.view`, in order. */
+  paramBases: readonly string[];
   /** The ids of the draft stages in the save that is going on, in order. */
   sent?: readonly string[];
+  /** The ids of the params in the save that is going on, in order. */
+  sentParams?: readonly string[];
   selectedId: string;
   /**
    * Counts the changes of the draft; a check answers for one revision. A
@@ -109,6 +113,18 @@ export type EditEvent =
   | { type: 'rename'; id: string; name: string }
   | { type: 'set-agent'; id: string; agent: string }
   | { type: 'set-prompt'; id: string; prompt: string }
+  | {
+      type: 'set-param';
+      id: string;
+      change: Partial<
+        Pick<
+          Draft['params'][number],
+          'name' | 'description' | 'default' | 'required'
+        >
+      >;
+    }
+  | { type: 'add-param' }
+  | { type: 'remove-param'; id: string }
   /** The whole text was typed over, so the stages of the draft are stale. */
   | { type: 'set-text'; text: string }
   | { type: 'remove'; id: string }
@@ -147,11 +163,12 @@ export function openDocument(
 ): EditState | undefined {
   if (!isEditable(document)) return undefined;
   const prompts = savedPrompts(document)?.map((spot) => spot.text);
-  const draft = draftOf(document.view.stages, prompts);
+  const draft = draftOf(document.view.stages, prompts, document.view.params);
   return {
     saved: document,
     draft,
     bases: idsOf(draft),
+    paramBases: sourceParamIds(draft),
     selectedId: draft.stages[0]?.id ?? '',
     revision,
     check: checkOf(revision, document.diagnostics, draft),

@@ -3,9 +3,9 @@ import { ApiError } from './api';
 import type {
   CheckResult,
   DiagnosticView,
-  GoalParamView,
   Harness,
   LineRange,
+  ParamView,
   RunStageView,
   RunStatus,
   RunSummary,
@@ -99,28 +99,33 @@ function uniqueByName(stages: StageView[]): StageView[] {
   return names.size === stages.length ? stages : fail();
 }
 
-// A string the file gives, or nothing: a value of another type is left out,
-// as the page has no use for it.
-function optionalString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+function optionalString(holder: Json, key: string): string | undefined {
+  return Object.hasOwn(holder, key) ? stringOf(holder[key]) : undefined;
 }
 
-function parseGoalParam(value: unknown): GoalParamView {
+function parseParam(value: unknown): ParamView {
   const param = objectOf(value);
-  const parsed: GoalParamView = {};
-  const description = optionalString(param.description);
-  const fallback = optionalString(param.default);
+  const parsed: ParamView = {};
+  const type = optionalString(param, 'type');
+  const description = optionalString(param, 'description');
+  const fallback = optionalString(param, 'default');
+  if (type !== undefined) parsed.type = type;
   if (description !== undefined) parsed.description = description;
   if (fallback !== undefined) parsed.default = fallback;
+  if (param.required !== undefined) parsed.required = booleanOf(param.required);
   return parsed;
 }
 
-// The key is left out when the reply has none, as the contract leaves out a
-// key the file does not have.
+// The key is left out when the reply has none. Object entry order is the
+// declaration order the server read from the file.
 function parseParams(value: unknown): Pick<WorkflowView, 'params'> {
   if (value === undefined) return {};
-  const goal = objectOf(value).goal;
-  return { params: goal === undefined ? {} : { goal: parseGoalParam(goal) } };
+  const params = objectOf(value);
+  return {
+    params: Object.fromEntries(
+      Object.entries(params).map(([name, param]) => [name, parseParam(param)]),
+    ),
+  };
 }
 
 function parseView(value: unknown): WorkflowView | null {

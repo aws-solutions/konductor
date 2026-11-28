@@ -4,6 +4,7 @@ import { sameStages, stagesOf, type Draft, type DraftStage } from './draft';
 import { hasErrors, withEchoes, type Problem } from './problems';
 import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
+import { paramsInPlaceBlocker, withParams } from './param-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
 export const READ_ONLY_REASON = 'The workflow is read-only.';
@@ -66,9 +67,53 @@ export function textBlocker(state: EditState): string | undefined {
   return state.save.phase === 'saving' ? SAVING_REASON : undefined;
 }
 
-// Whether the stages or the prompts of the draft differ from the file.
+function emptyGoal(param: Draft['params'][number]): boolean {
+  return (
+    param.isGoal &&
+    param.description === '' &&
+    param.default === '' &&
+    !param.required
+  );
+}
+
+/** Whether the parameter draft differs from the saved view. */
+export function paramsDirty(state: EditState): boolean {
+  const saved = Object.entries(state.saved.view.params ?? {});
+  if (saved.length !== state.paramBases.length) return true;
+  for (const [index, [name, value]] of saved.entries()) {
+    const id = state.paramBases[index];
+    const param = state.draft.params.find((candidate) => candidate.id === id);
+    if (
+      !param ||
+      name !== param.name ||
+      (value.description ?? '') !== param.description ||
+      (value.default ?? '') !== param.default ||
+      (value.required ?? false) !== param.required
+    ) {
+      return true;
+    }
+  }
+  const sourceIds = new Set(state.paramBases);
+  return state.draft.params.some(
+    (param) => !sourceIds.has(param.id) && !emptyGoal(param),
+  );
+}
+
+function paramsForWrite(state: EditState): Draft['params'] {
+  return state.draft.params.filter(
+    (param) => state.paramBases.includes(param.id) || !emptyGoal(param),
+  );
+}
+
+/** Parameter ids written by a parameter-changing submission. */
+export function paramIdsForWrite(state: EditState): string[] {
+  return paramsForWrite(state).map((param) => param.id);
+}
+
+// Whether the stages, params or prompts of the draft differ from the file.
 function formDirty(state: EditState): boolean {
   if (!sameStages(stagesOf(state.draft), state.saved.view.stages)) return true;
+  if (paramsDirty(state)) return true;
   // A file whose prompts cannot be read has none that the draft could change.
   const spots = savedPrompts(state.saved);
   return (
@@ -114,7 +159,38 @@ export function writtenOf(state: EditState): Written {
     const changed = prompt !== (spots?.[from]?.text ?? '');
     return changed ? { name, agent, from, prompt } : { name, agent, from };
   });
-  const result = withStages(saved.text, saved.view, stages);
+  const staged = withStages(saved.text, saved.view, stages);
+  const result =
+    staged.ok && paramsDirty(state)
+      ? withParams(
+          staged.text,
+          paramsForWrite(state).map((param) => {
+            const from = state.paramBases.indexOf(param.id);
+            const original =
+              from < 0
+                ? undefined
+                : Object.entries(saved.view.params ?? {})[from];
+            return {
+              name: param.name,
+              description: param.description,
+              default: param.default,
+              required: param.required,
+              ...(from < 0 ? {} : { from }),
+              ...(original
+                ? {
+                    before: {
+                      name: original[0],
+                      description: original[1].description,
+                      default: original[1].default,
+                      required: original[1].required,
+                    },
+                  }
+                : {}),
+            };
+          }),
+          saved.view.params !== undefined,
+        )
+      : staged;
   written.set(draft, { saved, bases, result });
   return result;
 }
@@ -147,6 +223,17 @@ export function writeBlocker(state: EditState): string | undefined {
   if (rawTextOf(state) !== undefined) return undefined;
   const written = writtenOf(state);
   return written.ok ? undefined : written.reason;
+}
+
+/** Why parameter declarations cannot be changed now. */
+export function paramsBlocker(state: EditState): string | undefined {
+  return (
+    changeBlocker(state) ??
+    paramsInPlaceBlocker(
+      state.saved.text,
+      state.saved.view.params !== undefined,
+    )
+  );
 }
 
 /**

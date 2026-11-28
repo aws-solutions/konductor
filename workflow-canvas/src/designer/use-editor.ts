@@ -28,6 +28,17 @@ export interface Editor {
   rename(id: string, name: string): void;
   setAgent(id: string, agent: string): void;
   setPrompt(id: string, prompt: string): void;
+  setParam(
+    id: string,
+    change: Partial<
+      Pick<
+        EditState['draft']['params'][number],
+        'name' | 'description' | 'default' | 'required'
+      >
+    >,
+  ): void;
+  addParam(): void;
+  removeParam(id: string): void;
   /** Types the whole text over, so the stages of the draft go stale. */
   setText(text: string): void;
   remove(id: string): void;
@@ -114,6 +125,9 @@ export function useEditor(
         rename: (id, name) => dispatch({ type: 'rename', id, name }),
         setAgent: (id, agent) => dispatch({ type: 'set-agent', id, agent }),
         setPrompt: (id, prompt) => dispatch({ type: 'set-prompt', id, prompt }),
+        setParam: (id, change) => dispatch({ type: 'set-param', id, change }),
+        addParam: () => dispatch({ type: 'add-param' }),
+        removeParam: (id) => dispatch({ type: 'remove-param', id }),
         setText: (text) => dispatch({ type: 'set-text', text }),
         remove: (id) => dispatch({ type: 'remove', id }),
         save,
