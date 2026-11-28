@@ -99,6 +99,30 @@ describe('DesignerLayout', () => {
     ).toBeTruthy();
   });
 
+  it('groups editable and server-listed read-only fields in the stage panel', () => {
+    renderLayout({
+      ...STAGE,
+      rules: [
+        ...STAGE.rules,
+        { key: 'prompt', type: 'text', required: false },
+        { key: 'outcome', type: 'text', required: false },
+      ],
+      values: {
+        ...STAGE.values,
+        prompt: 'Write it',
+        outcome: 'A document',
+      },
+      readOnlyKeys: ['outcome'],
+    });
+    fireEvent.click(tab('Properties'));
+
+    expect(within(shownPanel()).getByText('Stage fields')).toBeTruthy();
+    expect(within(shownPanel()).getByText('Other fields')).toBeTruthy();
+    expect(
+      screen.getByRole('textbox', { name: 'outcome' }).hasAttribute('readonly'),
+    ).toBe(true);
+  });
+
   it('keeps both panels mounted, so neither starts over on a switch', () => {
     renderLayout(STAGE);
     const yamlPanel = shownPanel();

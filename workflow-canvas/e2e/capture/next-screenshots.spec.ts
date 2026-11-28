@@ -83,6 +83,18 @@ test('capture the Design view with the keys of a stage', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-properties');
 });
 
+test('capture the stage panel in the dark mode', async ({ canvas }) => {
+  await canvas.switchTheme();
+  await canvas.page.getByRole('tab', { name: 'Properties' }).click();
+  await expect(
+    canvas.page
+      .getByRole('tabpanel', { name: 'Properties' })
+      .getByText('Other fields'),
+  ).toBeVisible();
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-properties-dark');
+});
+
 test('capture the Design view with workflow parameters', async ({ canvas }) => {
   await canvas.page
     .getByRole('button', {

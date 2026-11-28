@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import Box from '@cloudscape-design/components/box';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
@@ -130,34 +131,48 @@ export function FieldForm({
     const next = withValue(values, key, text);
     onChange({ values: next, errors: fieldErrors(rules, next) });
   };
+  const renderField = (rule: StageFieldRule) => {
+    const error = textOf(errors, rule.key);
+    const readOnly = readOnlyKeys.includes(rule.key);
+    return (
+      <FormField
+        key={rule.key}
+        label={rule.key}
+        constraintText={readOnly ? READ_ONLY_HINT : fieldHint(rule)}
+        errorText={readOnly ? undefined : error}
+      >
+        <Control
+          rule={rule}
+          value={textOf(values, rule.key)}
+          invalid={!readOnly && error !== undefined}
+          readOnly={readOnly}
+          agents={agents}
+          originalAgent={originalAgent}
+          onText={(text) => edit(rule.key, text)}
+        />
+      </FormField>
+    );
+  };
+  const editableRules = rules.filter(
+    (rule) => !readOnlyKeys.includes(rule.key),
+  );
+  const readOnlyRules = rules.filter((rule) => readOnlyKeys.includes(rule.key));
   return (
     <form
       aria-label={`Keys of ${stageName}`}
       onSubmit={(event) => event.preventDefault()}
     >
       <SpaceBetween size="m">
-        {rules.map((rule) => {
-          const error = textOf(errors, rule.key);
-          const readOnly = readOnlyKeys.includes(rule.key);
-          return (
-            <FormField
-              key={rule.key}
-              label={rule.key}
-              constraintText={readOnly ? READ_ONLY_HINT : fieldHint(rule)}
-              errorText={readOnly ? undefined : error}
-            >
-              <Control
-                rule={rule}
-                value={textOf(values, rule.key)}
-                invalid={!readOnly && error !== undefined}
-                readOnly={readOnly}
-                agents={agents}
-                originalAgent={originalAgent}
-                onText={(text) => edit(rule.key, text)}
-              />
-            </FormField>
-          );
-        })}
+        <Box className="wf-panel-section-label" variant="awsui-key-label">
+          Stage fields
+        </Box>
+        {editableRules.map(renderField)}
+        {readOnlyRules.length > 0 && (
+          <Box className="wf-panel-section-label" variant="awsui-key-label">
+            Other fields
+          </Box>
+        )}
+        {readOnlyRules.map(renderField)}
       </SpaceBetween>
     </form>
   );
