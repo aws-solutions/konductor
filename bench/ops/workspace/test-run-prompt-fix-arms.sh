@@ -31,6 +31,8 @@ const path = require('node:path');
 const a = process.argv.slice(2);
 const opt = (k) => a[a.indexOf(k) + 1];
 fs.appendFileSync(process.env.STUB_CALLS, `${a.join(' ')}\n`);
+// STUB_SWAP=FILE STUB_SWAP_AT=N: the Nth call changes FILE, as kiro-cli updating itself in place did on 2026-11-28.
+if (process.env.STUB_SWAP && fs.readFileSync(process.env.STUB_CALLS, 'utf8').trim().split('\n').length === Number(process.env.STUB_SWAP_AT)) fs.appendFileSync(process.env.STUB_SWAP, '# updated\n');
 if (a[0] === 'judge') {
   fs.appendFileSync(path.join(opt('--run'), 'credit-ledger.jsonl'), `${JSON.stringify({ kind: 'judge', unit: 'usd', usd: 0.01, credits: 0 })}\n`);
   process.exit(0);
@@ -76,6 +78,9 @@ line('runFinished', { status: 'success', stopReason: 'end_turn', finalText: JSON
 EOF
 chmod +x "$T/fake-kiro.js"
 echo fake > "$T/auth.sqlite3"
+# The pinned kiro-cli: a script that prints its version; PIN is its sha256. kbin7 is a copy a test changes mid-step.
+printf '#!/bin/sh\necho "kiro-cli 3.7.0"\n' > "$T/kbin"; chmod +x "$T/kbin"; cp "$T/kbin" "$T/kbin7"
+PIN=$(sha256sum "$T/kbin" | cut -d' ' -f1)
 cat > "$T/panel.js" <<'EOF'
 'use strict';
 exports.makeCaller = () => async ({ prompt }) => {
@@ -87,7 +92,7 @@ EOF
 run() {  # run S ARGS...: the script with the stub overrides; sets code and writes $T/log
   local s=$1; shift
   code=0
-  KONDUCTOR_WS=$T/ws S=$s R=$REPO RC_REPO=$REPO CACHE=$s/cache BENCH_JS=$T/bench.js ADAPTIVE_ARM=konductor-adaptive=dir:$T/tree \
+  KONDUCTOR_WS=$T/ws S=$s R=$REPO KBIN=${KBIN_T:-$T/kbin} KBIN_PIN=${PIN_T:-$PIN} RC_REPO=$REPO CACHE=$s/cache BENCH_JS=$T/bench.js ADAPTIVE_ARM=konductor-adaptive=dir:$T/tree \
     CANDIDATE_ARM=konductor-adaptive-p12=dir:$T/tree REVIEW_KIRO_BIN=$T/fake-kiro.js REVIEW_AUTH_DB=$T/auth.sqlite3 PANEL_MODULE=$T/panel.js \
     HOST_CHECK=0 GIT_CHECK=0 NO_FETCH=1 WAIT_MAX=0 HEAVY_LOCK=$T/heavy.lock LITE_LOCK=$T/lite.lock OWN_LOCK=$T/own.lock \
     STUB_CALLS=$T/calls.log bash "$T/w/run.sh" "$@" > "$T/log" 2>&1 || code=$?
@@ -103,6 +108,9 @@ run "$S1" --plan
   && grep -q 'CardDemo Pattern key: NOT signed off' "$T/log"; } \
   && ok "--plan prints 12 smoke and 81 A runs, batch C at 2 reps, the judge cost and the sign-off state, and calls no bench run" || bad "--plan (exit $code): $(tail -3 "$T/log")"
 
+PIN_T=feedbeef run "$S1" --plan
+{ [ "$code" = 1 ] && grep -q "is not the pinned kiro-cli (sha256 feedbeef)" "$T/log"; } && ok "--plan stops on a kiro-cli that is not the pin" || bad "--plan pin check (exit $code): $(tail -2 "$T/log")"
+
 run "$S1" A --foreground
 { [ "$code" = 1 ] && grep -q 'smoke gate has not passed' "$T/log" && [ "$(calls)" = 0 ]; } && ok "A refuses before a smoke run" || bad "A before smoke (exit $code): $(tail -2 "$T/log")"
 
@@ -117,6 +125,8 @@ run "$S1" smoke --foreground
 grep -q -- '--arms konductor-coordinator=c042c7ba7520a3332f1151e3f9733f7033557e65 --arm-config konductor-coordinator=orchestration.mode=coordinator' "$T/calls.log" \
   && ok "the coordinator arm gets orchestration.mode=coordinator" || bad "coordinator arm args"
 [ "$(grep -c -- '--run-credit-limit 25' "$T/calls.log")" = 12 ] && ok "every smoke run has the 25-credit run limit" || bad "smoke run limit"
+[ "$(node -p "const k = require('$S1/plan.json').kiroCli; [k.path, k.sha256, k.version].join(' ')")" = "$T/kbin $PIN kiro-cli 3.7.0" ] \
+  && ok "the frozen plan records the kiro-cli path, sha256 and version" || bad "plan kiroCli: $(node -p "JSON.stringify(require('$S1/plan.json').kiroCli)")"
 run "$S1" smoke --foreground
 [ "$code" = 0 ] && [ "$(calls)" = 12 ] && ok "a rerun skips finished runs" || bad "rerun (exit $code, $(calls) calls)"
 
@@ -202,6 +212,27 @@ run "$S4" rebook --yes
 : > "$T/calls.log"
 run "$S4" smoke --foreground
 { [ "$code" = 0 ] && [ "$(calls)" = 12 ] && [ -s "$U4/credit-ledger.jsonl" ]; } && ok "the next smoke run runs the re-booked cell again" || bad "smoke after rebook (exit $code, $(calls) calls): $(tail -3 "$T/log")"
+
+# Pin before every run (D-305): the binary changes during the first smoke run, so the second run must not start; a plan
+# frozen before pins were recorded ran kiro-cli 3.5.0 and stops on any other binary; the review stops too.
+S7=$(mktemp -d /var/tmp/pfa-s7.XXXX); S8=$(mktemp -d /var/tmp/pfa-s8.XXXX); S9=$(mktemp -d /var/tmp/pfa-s9.XXXX)
+trap 'find "$T" "$S1" "$S2" "$S3" "$S4" "$S5" "$S6" "$S7" "$S8" "$S9" -mindepth 1 -delete; rmdir "$T" "$S1" "$S2" "$S3" "$S4" "$S5" "$S6" "$S7" "$S8" "$S9"' EXIT
+: > "$T/calls.log"
+STUB_SWAP=$T/kbin7 STUB_SWAP_AT=1 KBIN_T=$T/kbin7 run "$S7" smoke --foreground
+{ [ "$code" = 1 ] && [ "$(calls)" = 1 ] && grep -q "$T/kbin7 is not the pinned kiro-cli" "$T/log"; } \
+  && ok "a kiro-cli that changes during a step stops the step before its next run" || bad "mid-step swap (exit $code, $(calls) calls): $(tail -2 "$T/log")"
+# plan_copy SRC DEST [KBIN]: SRC's plan with kiroCli.path set to KBIN, or with no kiroCli at all when KBIN is empty.
+plan_copy() { node -e 'const [s, d, k] = process.argv.slice(1); const p = require(s); if (k) p.kiroCli.path = k; else delete p.kiroCli; require("fs").writeFileSync(d, JSON.stringify(p));' "$@"; }
+plan_copy "$S1/plan.json" "$S8/plan.json" ""
+: > "$T/calls.log"
+run "$S8" smoke --foreground
+{ [ "$code" = 1 ] && [ "$(calls)" = 0 ] && grep -q '/var/tmp/k2x2/bin/kiro-cli-3.5.0/kiro-cli is not the pinned kiro-cli (sha256 e1bf38eb89e0)' "$T/log"; } \
+  && ok "a plan frozen before pins were recorded keeps the 3.5.0 pin" || bad "legacy plan pin (exit $code, $(calls) calls): $(tail -2 "$T/log")"
+plan_copy "$S1/plan.json" "$S9/plan.json" "$T/kbin7"; mkdir -p "$S9/runs"; cp -r "$S1/runs/smoke" "$S9/runs/smoke"; cp "$T/kbin" "$T/kbin7"
+: > "$T/calls.log"
+STUB_SWAP=$T/kbin7 STUB_SWAP_AT=12 KBIN_T=$T/kbin7 run "$S9" reply-check --foreground
+{ [ "$code" = 1 ] && [ "$(calls)" = 12 ] && grep -q "$T/kbin7 is not the pinned kiro-cli" "$T/log" && [ ! -d "$S9/reply-check/reviews/claude-opus-5.5" ]; } \
+  && ok "a kiro-cli that changes during the last reply-check run stops the step before the review" || bad "reply-check swap (exit $code, $(calls) calls): $(tail -2 "$T/log")"
 
 # Batch C: refused until the CardDemo Pattern key is signed off; then 2 reps x 3 arms from the git copy, soft caps.
 run "$S1" C --foreground

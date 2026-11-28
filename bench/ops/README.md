@@ -131,7 +131,7 @@ is the docs owner's page and points here.
 | `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
 | `test-run-standard-quality-pack.sh` | Stub test of `run-standard-quality-pack.sh`. Free. |
-| `test-run-prompt-fix-arms.sh` | Stub test of `run-prompt-fix-arms.sh` with a fake bench.js: plan, smoke gate, coordinator config, run limit, resume, cap, batch C sign-off and soft caps, rebook, judge cap and passes, and the reply check (plan, reviewer check, stub reviewers, rerun, run cap). Free. |
+| `test-run-prompt-fix-arms.sh` | Stub test of `run-prompt-fix-arms.sh` with a fake bench.js: plan, smoke gate, coordinator config, run limit, resume, cap, batch C sign-off and soft caps, rebook, judge cap and passes, the reply check (plan, reviewer check, stub reviewers, rerun, run cap), and the kiro-cli pin (a wrong pin, the pin frozen in plan.json, a change mid-step or before the review, a plan from before pins were frozen). Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-overnight-stub.sh` | Stub test of `run-overnight.sh`: step order, the stop at a failing step, the give-up after the wait limit. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |

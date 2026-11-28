@@ -27,7 +27,8 @@ process.exit(1);
     const call = makeKiroCaller({ authDb, timeoutMs: 20000, scratchRoot: root, kiroBin: bin });
     const out = await call({ model: 'stub', prompt: 'hi' });
     assert.match(out.error, /kiro-cli exit 1/);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(probe, 'utf8')), { 'chat.disableAutoCompaction': true });
+    // The auth copy adds app.disableAutoupdates to every scratch HOME (D-305) and keeps the judge's own setting.
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(probe, 'utf8')), { 'chat.disableAutoCompaction': true, 'app.disableAutoupdates': true });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

@@ -49,3 +49,24 @@ test('removeAuthCopy does not delete through a data folder the agent replaced wi
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+// 2026-11-28: a paid reviewer call in a scratch HOME let kiro-cli 3.5.0 update itself to 3.7.0 in place, over the
+// pinned binary. Every scratch HOME gets the auth copy, so the copy also turns automatic updates off (D-305).
+test('copyAuthDb turns kiro-cli automatic updates off in the scratch HOME and keeps settings already there', () => {
+  const root = tmp();
+  try {
+    const src = path.join(root, 'src.sqlite3');
+    fs.writeFileSync(src, 'auth');
+    const home = path.join(root, 'home');
+    const settings = path.join(home, '.kiro/settings/cli.json');
+    fs.mkdirSync(path.dirname(settings), { recursive: true });
+    fs.writeFileSync(settings, JSON.stringify({ 'chat.disableAutoCompaction': true, 'chat.defaultAgent': 'konductor' }));
+    copyAuthDb(src, home, 'linux');
+    assert.deepEqual(JSON.parse(fs.readFileSync(settings, 'utf8')), { 'chat.disableAutoCompaction': true, 'chat.defaultAgent': 'konductor', 'app.disableAutoupdates': true });
+    const bare = path.join(root, 'bare');
+    copyAuthDb(src, bare, 'linux');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(bare, '.kiro/settings/cli.json'), 'utf8')), { 'app.disableAutoupdates': true });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

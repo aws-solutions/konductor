@@ -204,7 +204,22 @@ function kiroDataDir(home, platform = process.platform) {
   return path.join(home, platform === 'darwin' ? 'Library/Application Support/kiro-cli' : '.local/share/kiro-cli');
 }
 
+/**
+ * Sets kiro-cli's documented `app.disableAutoupdates` in `home`'s ~/.kiro/settings/cli.json, keeping the keys already
+ * there. Without it a kiro-cli launched in a scratch HOME can replace its own binary with a newer release, which on
+ * 2026-11-28 overwrote the pinned 3.5.0 file with 3.7.0 in the middle of a study (D-305).
+ */
+function disableAutoUpdate(home) {
+  const file = path.join(home, '.kiro', 'settings', 'cli.json');
+  let settings = {};
+  try { settings = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* no settings yet */ }
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify({ ...settings, 'app.disableAutoupdates': true }, null, 2)}\n`);
+}
+
+/** Copies the sign-in database into `home` and turns automatic updates off there: every bench kiro-cli HOME gets both. */
 function copyAuthDb(src, home, platform = process.platform) {
+  disableAutoUpdate(home);
   const destDir = kiroDataDir(home, platform);
   fs.mkdirSync(destDir, { recursive: true });
   const dest = path.join(destDir, 'data.sqlite3');
@@ -334,6 +349,6 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
 
 module.exports = {
   KIRO_BIN,
-  prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, kiroDataDir, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
+  prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, kiroDataDir, disableAutoUpdate, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
   exportRef, exportArm, readyMatches, buildDirOf, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, isNativeBinary, launcherExecutable, SHARED_LAUNCHER, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };

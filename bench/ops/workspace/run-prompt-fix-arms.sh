@@ -54,9 +54,11 @@
 # ADAPTIVE_WITH=p1p2 builds the adaptive arm with P1 and P2 too: only for a new study (a new S and R), since a frozen
 # plan keeps its own arm.
 # Needs (defaults in brackets): S [/var/tmp/konductor-prompt-fix], R [$KONDUCTOR_WS/worktrees/prompt-fix, made from the
-# ops checkout on the first --plan], KBIN [the pinned kiro-cli 3.5.0], PY312 [mise Python 3.12], CACHE [$S/cache],
+# ops checkout on the first --plan], KBIN and KBIN_PIN [the pinned kiro-cli 3.7.0 and its sha256; a frozen plan keeps the
+# pin it was frozen with, and a plan from before pins were frozen keeps 3.5.0], PY312 [mise Python 3.12], CACHE [$S/cache],
 # AWS_PROFILE_NAME [default] for the judge.
-# Test overrides: BENCH_JS, ADAPTIVE_ARM, CANDIDATE_ARM, REVIEW_KIRO_BIN, REVIEW_AUTH_DB, PANEL_MODULE, HOST_CHECK=0 (no host, binary, login, credential or namespace check),
+# Test overrides: BENCH_JS, ADAPTIVE_ARM, CANDIDATE_ARM, REVIEW_KIRO_BIN, REVIEW_AUTH_DB, PANEL_MODULE, HOST_CHECK=0 (no host, login, credential or namespace check;
+# the kiro-cli pin check always runs),
 # GIT_CHECK=0 (no worktree or pin check), NO_FETCH=1, WAIT_MAX, WAIT_STEP, HEAVY_LOCK, LITE_LOCK, OWN_LOCK.
 set -u
 
@@ -64,8 +66,11 @@ WS=${KONDUCTOR_WS:-}
 S=${S:-/var/tmp/konductor-prompt-fix}
 R=${R:-$WS/worktrees/prompt-fix}
 OPS=${KONDUCTOR_OPS:-$WS/worktrees/ops}
-KBIN=${KBIN:-/var/tmp/k2x2/bin/kiro-cli-3.5.0/kiro-cli}
-KBIN_PIN=${KBIN_PIN:-e1bf38eb89e06d90ffb872565f3f191590e148c2da0b68e5d5ac31b7ca49a70e}
+KBIN=${KBIN:-/var/tmp/k2x2/bin/kiro-cli-3.7.0/kiro-cli}
+KBIN_PIN=${KBIN_PIN:-0ce273779a370e22d5ea1809a373d320c64c00dba0409a0ed9e9def2ab587874}
+# The pin of a plan frozen before plans recorded one (the first study, S=/var/tmp/konductor-prompt-fix, ran 3.5.0).
+KBIN_35=/var/tmp/k2x2/bin/kiro-cli-3.5.0/kiro-cli
+KBIN_PIN_35=e1bf38eb89e06d90ffb872565f3f191590e148c2da0b68e5d5ac31b7ca49a70e
 PY312=${PY312:-}
 CACHE=${CACHE:-$S/cache}
 BENCH_REF=${BENCH_REF:-origin/feat/bench-pilot-nk}
@@ -127,14 +132,30 @@ wait_quiet() {
 # namespaces: true when this shell may make user namespaces (--isolate unshare and the read view need them).
 namespaces() { [ "$HOST_CHECK" = 0 ] || unshare -Urm true 2>/dev/null; }
 
-# tools: the pinned kiro-cli, Python 3.12 and the login (HOST_CHECK=0 skips all three).
+# pin_ok: stops unless KBIN is the pinned kiro-cli. It runs before every paid run and the review, not only at plan
+# time: on 2026-11-28 a kiro-cli in a scratch HOME replaced the pinned file with a newer release mid-study (D-305).
+pin_ok() {
+  [ -x "$KBIN" ] || stop "no kiro-cli at $KBIN"
+  [ "$(sha256sum "$KBIN" | cut -d' ' -f1)" = "$KBIN_PIN" ] || stop "$KBIN is not the pinned kiro-cli (sha256 ${KBIN_PIN:0:12}); the study stops so no step mixes versions"
+}
+
+# kiro_pin PLAN: uses the kiro-cli pin PLAN was frozen with (3.5.0 for a plan from before pins were frozen), then checks it.
+kiro_pin() {
+  KBIN=$(node -p "(require('$1').kiroCli || {}).path || '$KBIN_35'")
+  KBIN_PIN=$(node -p "(require('$1').kiroCli || {}).sha256 || '$KBIN_PIN_35'")
+  pin_ok
+}
+
+# kiro_json: the kiro-cli pin as plan.json records it.
+kiro_json() { node -e 'const [p, s, v] = process.argv.slice(1); console.log(JSON.stringify({ path: p, sha256: s, version: v }));' "$KBIN" "$KBIN_PIN" "$("$KBIN" --version 2>/dev/null || echo unknown)"; }
+
+# tools: the pinned kiro-cli, Python 3.12 and the login (HOST_CHECK=0 skips all but the pin).
 tools() {
   local paid=$1
+  pin_ok
   [ "$HOST_CHECK" = 0 ] && return 0
   [ -n "$PY312" ] || PY312=$(ls -d "$HOME"/.local/share/mise/installs/python/3.12.*/bin/python3.12 2>/dev/null | sort -V | tail -1)
   [ -x "$PY312" ] || stop "no Python 3.12: set PY312"
-  [ -x "$KBIN" ] || stop "no kiro-cli at $KBIN"
-  [ "$(sha256sum "$KBIN" | cut -d' ' -f1)" = "$KBIN_PIN" ] || stop "$KBIN is not the pinned kiro-cli 3.5.0"
   if "$KBIN" whoami >/dev/null 2>&1; then say "kiro login: ok"
   elif [ "$paid" = 1 ]; then stop "Kiro login expired or missing: run '$KBIN login', then this script again"
   else say "kiro login: NOT signed in (a paid step would stop: $KBIN login)"; fi
@@ -232,6 +253,7 @@ plan_mode() {
     console.log(`batch C: ${c.reps} reps (3 arms x 3 reps would forecast ${Math.round(c.total / c.reps * 3 * 10) / 10}, over the cap ${c.cap}); per-run cap ${c.runLimit} soft; the per-run check lets ${c.startable} of ${c.runs} runs start at the forecast costs`);
     console.log(`judge: ${f.judge.panel.join(", ")}; rubric in the read view, quality pack in the bundle view; forecast USD ${f.judge.mid} (high ${f.judge.high}); cap USD ${process.env.JUDGE_CAP_USD || f.judge.capUsd}`);
     console.log("forecast: measured STANDARD v2 means for vanilla and konductor, times the inferred ratios in study.js; worst case is runs x per-run limit, which the cap stops long before");'
+  say "kiro-cli: $KBIN, $("$KBIN" --version 2>/dev/null || echo 'version unknown'), sha256 ${KBIN_PIN:0:12}; the forecast credits come from kiro-cli 3.5.0 runs, so they are less certain for another version"
   if namespaces; then say "read view: can run here (user namespaces available)"
   else say "read view: CANNOT run in this shell (no user namespaces): the judge step will stop for every run; it does not fall back to the bundle view"; fi
   if signed; then say "CardDemo Pattern key: signed off ($SIGNOFF)"
@@ -251,15 +273,16 @@ freeze() {
     ARM_ADAPTIVE=$(node -p "require('$PLAN').adaptiveArm"); ARM_HASH=$(node -p "require('$PLAN').adaptiveHash")
     [ "$(node -p "require('$PLAN').expectSha256")" = "$expect" ] || stop "expect.json changed since the plan was frozen"
     [ -d "${ARM_ADAPTIVE#konductor-adaptive=dir:}" ] || stop "the frozen adaptive arm tree is gone: ${ARM_ADAPTIVE#konductor-adaptive=dir:}"
-    say "frozen plan: bench ${sha:0:8}, adaptive ${ARM_HASH:0:12}"
+    kiro_pin "$PLAN"
+    say "frozen plan: bench ${sha:0:8}, adaptive ${ARM_HASH:0:12}, kiro-cli $KBIN (${KBIN_PIN:0:12})"
     return 0
   fi
   worktree ""
   adaptive_arm
   sha=$( [ "$GIT_CHECK" = 0 ] && echo test || git -C "$R" rev-parse HEAD )
   mkdir -p "$S"
-  node -e 'const [f, b, a, h, e, k] = process.argv.slice(1); require("fs").writeFileSync(f, JSON.stringify({ created: new Date().toISOString(), benchSha: b, konductorSha: k, adaptiveArm: a, adaptiveHash: h, expectSha256: e }, null, 2) + "\n");' \
-    "$PLAN" "$sha" "$ARM_ADAPTIVE" "$ARM_HASH" "$expect" "$KSHA"
+  node -e 'const [f, b, a, h, e, k, c] = process.argv.slice(1); require("fs").writeFileSync(f, JSON.stringify({ created: new Date().toISOString(), benchSha: b, konductorSha: k, adaptiveArm: a, adaptiveHash: h, expectSha256: e, kiroCli: JSON.parse(c) }, null, 2) + "\n");' \
+    "$PLAN" "$sha" "$ARM_ADAPTIVE" "$ARM_HASH" "$expect" "$KSHA" "$(kiro_json)"
   say "plan frozen: $PLAN"
 }
 
@@ -271,6 +294,7 @@ run_cell() {
   [ -e "$U.done" ] && return 0
   why=$(node "$STUDY" may-start "$S/runs/$step" "$step") || stop "$why"
   wait_quiet
+  pin_ok
   [ "$HOST_CHECK" = 0 ] || "$KBIN" whoami >/dev/null 2>&1 || stop "Kiro login expired: run '$KBIN login', then this script again (it resumes)"
   [ "$GIT_CHECK" = 0 ] || [ "$(git -C "$R" rev-parse HEAD)" = "$(node -p "require('$PLAN').benchSha")" ] || stop "$R moved off the frozen bench pin during the step"
   read -r here unknown < <(node "$STUDY" spent "$S/runs/$step")
@@ -436,6 +460,7 @@ rc_freeze() {
     ARM_RC=$(node -p "require('$f').arm"); RC_HASH=$(node -p "require('$f').armHash")
     [ "$(node -p "require('$f').reviewer")" = "$REVIEWER" ] || stop "the reply check was frozen with REVIEWER=$(node -p "require('$f').reviewer"); rerun with that"
     [ -d "${ARM_RC#*=dir:}" ] || stop "the frozen candidate arm tree is gone: ${ARM_RC#*=dir:}"
+    kiro_pin "$f"
     say "reply check plan: bench $(node -p "require('$f').benchSha.slice(0, 8)"), candidate ${RC_HASH:0:12}, reviewer $REVIEWER"
     return 0
   fi
@@ -443,8 +468,8 @@ rc_freeze() {
   rc_arm
   sha=$( [ "$GIT_CHECK" = 0 ] && echo test || git -C "$RC_REPO" rev-parse HEAD )
   mkdir -p "$RC_S"
-  node -e 'const [f, b, a, h, r] = process.argv.slice(1); require("fs").writeFileSync(f, JSON.stringify({ created: new Date().toISOString(), benchSha: b, arm: a, armHash: h, reviewer: r, capCredits: 300, runCap: 72, capUsd: 0.5 }, null, 2) + "\n");' \
-    "$f" "$sha" "$ARM_RC" "$RC_HASH" "$REVIEWER"
+  node -e 'const [f, b, a, h, r, c] = process.argv.slice(1); require("fs").writeFileSync(f, JSON.stringify({ created: new Date().toISOString(), benchSha: b, arm: a, armHash: h, reviewer: r, capCredits: 300, runCap: 72, capUsd: 0.5, kiroCli: JSON.parse(c) }, null, 2) + "\n");' \
+    "$f" "$sha" "$ARM_RC" "$RC_HASH" "$REVIEWER" "$(kiro_json)"
   say "reply check plan frozen: $f"
 }
 
@@ -513,6 +538,7 @@ rc_cell() {
   why=$(node "$RCJS" may-run --runs "$RC_S/runs" --ledger "$RC_S/reviews/claude-ledger.jsonl" --cap "$RC_CAP" --run-cap "$RC_RUN_CAP" --run-limit "$RC_RUN_LIMIT") || stop "$why"
   left=${why#left }
   wait_quiet
+  pin_ok
   [ "$HOST_CHECK" = 0 ] || "$KBIN" whoami >/dev/null 2>&1 || stop "Kiro login expired: run '$KBIN login', then this script again (it resumes)"
   [ "$GIT_CHECK" = 0 ] || [ "$(git -C "$RC_REPO" rev-parse HEAD)" = "$(node -p "require('$RC_S/plan.json').benchSha")" ] || stop "$RC_REPO moved off the reply check's bench pin"
   A=(--arms "$ARM_RC" --suite pack --tasks "$task" --replicates 1 --replicate-offset $((rep - 1)) --parallel 1 --repo-root "$RC_REPO" --hide "$RC_REPO"
@@ -550,6 +576,7 @@ rc_paid_mode() {
   node "$RCJS" prompts --runs "$RC_S/runs" --out "$RC_S/prompts" --arm "$RC_NAME" --prefix candidate > "$RC_S/prompts.log" 2>&1 || stop "prompts failed (see $RC_S/prompts.log)"
   node "$RCJS" prompts --runs "$S/runs/smoke" --out "$RC_S/prompts" --arm konductor-adaptive --prefix smoke --tasks "$RC_SMOKE_PROMPTS" >> "$RC_S/prompts.log" 2>&1 || stop "smoke prompts failed (see $RC_S/prompts.log)"
   say "prompts: $(node -p "Object.keys(require('$RC_S/prompts/manifest.json').entries).length") frozen in $RC_S/prompts"
+  pin_ok
   R1=(review --prompts "$RC_S/prompts" --out "$RC_S/reviews" --claude "$REVIEWER" --cap "$RC_CAP" --runs "$RC_S/runs" --cap-usd "$RC_USD"
     --work "$RC_S/work" --kiro-bin "${REVIEW_KIRO_BIN:-$KBIN}" --aws-export-profile "$PROFILE" --cache "$CACHE")
   [ -n "${REVIEW_AUTH_DB:-}" ] && R1+=(--auth-db "$REVIEW_AUTH_DB")
