@@ -93,14 +93,19 @@ export function scalarSequencePatches(
     const lastItem = source.items[last]!;
     const next = source.items[last + 1];
     if (source.items.length === removed) {
+      const end = source.flow
+        ? lastItem.range[1]
+        : afterLine(text, lastItem.range[1]);
+      const atEofWithoutBreak =
+        !source.flow && end === text.length && !/[\r\n]$/.test(text);
       patches.push({
         start: source.flow
           ? firstItem.range[0]
           : lineStart(text, firstItem.range[0]),
-        end: source.flow
-          ? lastItem.range[1]
-          : afterLine(text, lastItem.range[1]),
-        text: source.flow ? '' : `${source.indent}[]${eolOf(text)}`,
+        end,
+        text: source.flow
+          ? ''
+          : `${source.indent}[]${atEofWithoutBreak ? '' : eolOf(text)}`,
       });
     } else if (source.flow) {
       patches.push(
