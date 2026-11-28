@@ -555,7 +555,7 @@ describe('DesignView, a read-only workflow', () => {
     ).toBe(true);
 
     const controls = ['Save', 'Delete stage'];
-    const add = screen.getByRole('button', { name: /^Add / });
+    const add = screen.getByRole('button', { name: /^Add agent-/ });
     expect(isOff(add)).toBe(true);
     for (const label of controls) expect(isOff(button(label))).toBe(true);
 
@@ -1853,7 +1853,7 @@ describe('DesignView, typing over the whole text', () => {
 
     expect(nameInput().readOnly).toBe(true);
     const add = screen.getByRole('button', {
-      name: /^Add /,
+      name: /^Add agent-/,
     }) as HTMLButtonElement;
     expect(isOff(add)).toBe(true);
   });
@@ -2191,7 +2191,7 @@ describe('DesignView, saving while the text is typed over', () => {
   const addButton = () =>
     wrapper()
       .findAllButtons()
-      .find((one) => /^Add /.test(one.getElement().textContent ?? ''))!;
+      .find((one) => /^Add agent-/.test(one.getElement().textContent ?? ''))!;
 
   it('says why Add is off while the text is typed over', async () => {
     drawn();
