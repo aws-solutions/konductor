@@ -181,7 +181,7 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
         )}
         {data.problem && (
           <div className="wf-stage-problem" title={data.problem}>
-            Needs attention
+            {data.problem}
           </div>
         )}
       </div>

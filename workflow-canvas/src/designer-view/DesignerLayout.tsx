@@ -32,6 +32,8 @@ export interface LayoutStage {
   readonly outputs?: readonly DraftOutput[];
   readonly outputsDisabled?: boolean;
   readonly outputsDisabledReason?: string;
+  readonly outputsStructuralDisabled?: boolean;
+  readonly outputsStructuralDisabledReason?: string;
   /** The `agent` of the stage when it was loaded, before any edit. */
   readonly originalAgent?: string;
   /** The keys that cannot be changed yet; they are shown as they are. */
@@ -172,6 +174,8 @@ export function DesignerLayout({
           outputs={stage.outputs ?? []}
           disabled={stage.outputsDisabled}
           disabledReason={stage.outputsDisabledReason}
+          structuralDisabled={stage.outputsStructuralDisabled}
+          structuralDisabledReason={stage.outputsStructuralDisabledReason}
           onChange={onOutputChange}
           onAdd={onOutputAdd}
           onRemove={onOutputRemove}

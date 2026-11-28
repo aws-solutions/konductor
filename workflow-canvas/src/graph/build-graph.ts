@@ -44,7 +44,8 @@ function stageLabel(
   place: { at: number; of: number } | undefined,
 ): string {
   const where = place ? ` (${place.at} of ${place.of})` : '';
-  return `Stage ${stage.name}${where}, agent ${stage.agent}, harness ${harness}`;
+  const problem = stage.problem ? `, problem: ${stage.problem}` : '';
+  return `Stage ${stage.name}${where}, agent ${stage.agent}, harness ${harness}${problem}`;
 }
 
 // The place of the stage, only when another stage has its name.

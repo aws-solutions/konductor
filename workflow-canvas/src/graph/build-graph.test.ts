@@ -294,3 +294,25 @@ describe('buildGraph, for stages that share a name', () => {
     ]);
   });
 });
+
+it('puts a stage problem in graph data and the accessible label', () => {
+  const problem = 'The reference {plan.missing} names no output.';
+  const graph = buildGraph(
+    {
+      name: 'broken',
+      intent: { outcome: 'Fix it.' },
+      stages: [
+        {
+          name: 'plan',
+          agent: 'k-architect',
+          problem,
+        },
+      ],
+    },
+    'kiro-cli',
+  );
+  expect(graph.nodes[1]).toMatchObject({
+    ariaLabel: expect.stringContaining(problem),
+    data: { problem },
+  });
+});
