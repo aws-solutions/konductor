@@ -440,10 +440,11 @@ The rest wraps the core, so the rules can be tested without a browser:
   draw: loading, error, or empty (no file yet, or a file with errors, with
   their messages). Once there is one, the Design and Run views draw it (next section).
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
-  (`@xyflow/react`). Nodes cannot be moved or connected; the view can be
-  panned, and zoomed with the controls. A stage can be selected, with a click
-  or with Enter or Space on the node; only the Design view draws the graph.
-  Each node can be reached with the Tab key and has a name for
+  (`@xyflow/react`). Nodes cannot be moved, and run-order handles cannot be
+  connected. In the Design view, dedicated data handles create output links.
+  The view can be panned and zoomed with the controls. A stage can be selected,
+  with a click or with Enter or Space on the node; only the Design view draws
+  the graph. Each node can be reached with the Tab key and has a name for
   screen readers, which ends with "selected" for the selected stage. The view
   fits the graph again when a stage is added or deleted. The view starts zoomed out
   far enough to show the longest workflow the API allows (40 stages), where the
@@ -468,7 +469,7 @@ server-listed fields, which stay read-only. `outcome` is included there when
 the stage declares it. **Delete stage** stays at the bottom. A stage may also
 have a `prompt_file`, which the page shows as a read-only path and a save
 keeps. The stages run in the order they are listed, and there is no way to
-link or reorder them yet.
+reorder them yet.
 
 The **YAML** pane edits the whole file. Typing over it freezes Add and every
 stage field until that raw edit is saved or typed back. **Save** writes the
@@ -503,6 +504,7 @@ including when the editor already holds a different raw text.
   `prompt` keys, and for a file that uses a `<<` merge key.
 - **Outputs** edits each `stages[].outputs` declaration as a name and path row. Add and remove change only that stage's output mapping. Output names are checked against the contract before the writer runs. The writer changes scalar ranges in place, supports block and flow mappings, and refuses structural edits that could move a comment, anchor, alias, tag or duplicate key.
 - **Checks** opens from the intent card and edits `intent.accept` file and run checks. Run arguments use one line each. A stage's **done_when** picker lists the declared check ids. Both writers change only their source ranges and refuse comments or YAML metadata they cannot keep safely.
+- **Data links** draw each valid `{stage.output}` reference as a labelled green edge. Dragging between stage data ports or choosing **Link output to...** appends a `Read {stage.output}.` line to a later editable prompt. A source with no output first asks for a valid output name and path; a source with several asks which output to use. Cancel changes nothing. A link to the same or an earlier stage, a `prompt_file`, or a prompt whose bytes cannot be preserved shows its reason. Delete, Backspace or the selected edge's menu removes only a line created by the link action. An authored reference stays in the prompt and opens that stage for editing.
 - **Delete stage** removes the stage, selects the one before it (or the next,
   for the first) and moves focus to its name. A workflow keeps at least one
   stage, so it is off for the last.

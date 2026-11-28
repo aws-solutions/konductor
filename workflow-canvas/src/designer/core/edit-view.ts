@@ -2,6 +2,8 @@
 import type { EditableDocument, EditState } from './edit-state';
 import {
   doneWhenIds,
+  linkOutput,
+  outputLinkPromptError,
   sameStages,
   stagesOf,
   unlinkOutput,
@@ -13,6 +15,11 @@ import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 import { paramsInPlaceBlocker, withParams } from './param-text';
 import { outputEditBlocker, withOutputs } from './outputs-text';
+import {
+  declaredOutputLinkError,
+  linkSourceNameError,
+  outputLinkValueError,
+} from './link-validation';
 import { checkCollectionBlocker, withAcceptanceChecks } from './checks-spots';
 import { doneWhenEditBlocker, withDoneWhen } from './done-when-text';
 
@@ -324,6 +331,91 @@ export function writtenOf(state: EditState): Written {
       : withCompletionChecks;
   written.set(draft, { saved, bases, result });
   return result;
+}
+
+/** Why source and target YAML cannot carry a proposed data link. */
+export function dataLinkStructureBlocker(
+  state: EditState,
+  sourceId: string,
+  targetId: string,
+  createsOutput: boolean,
+): string | undefined {
+  const blocked = changeBlocker(state);
+  if (blocked) return blocked;
+  const source = state.draft.stages.find(({ id }) => id === sourceId);
+  const target = state.draft.stages.find(({ id }) => id === targetId);
+  if (!source || !target) return 'The output link does not fit these stages.';
+  const sourceNameError = linkSourceNameError(state.draft, sourceId);
+  if (sourceNameError) return sourceNameError;
+  const prompt = promptFieldOf(state, target);
+  if (prompt.kind === 'file' || prompt.kind === 'both') {
+    return 'A stage with prompt_file cannot take a data link.';
+  }
+  if (prompt.kind === 'blocked') return prompt.reason;
+  const outputs = source.outputs ?? [];
+  const existing = outputs.reduce<(typeof outputs)[number] | undefined>(
+    (shortest, output) =>
+      !shortest || output.name.length < shortest.name.length
+        ? output
+        : shortest,
+    undefined,
+  );
+  const candidate = createsOutput ? { name: 'x', path: 'X' } : existing;
+  if (!candidate) return 'The output link does not fit these stages.';
+  const draft = linkOutput(
+    state.draft,
+    sourceId,
+    targetId,
+    candidate.name,
+    createsOutput ? candidate : undefined,
+  );
+  if (draft === state.draft) {
+    return (
+      outputLinkPromptError(state.draft, sourceId, targetId, candidate.name) ??
+      'The output link does not fit these stages.'
+    );
+  }
+  const written = writtenOf({ ...state, draft });
+  return written.ok ? undefined : written.reason;
+}
+
+/** Why a proposed data link cannot be written without changing the draft. */
+export function dataLinkBlocker(
+  state: EditState,
+  sourceId: string,
+  targetId: string,
+  outputName: string,
+  newOutput?: { readonly name: string; readonly path: string },
+): string | undefined {
+  const blocked = dataLinkStructureBlocker(
+    state,
+    sourceId,
+    targetId,
+    newOutput !== undefined,
+  );
+  if (blocked) return blocked;
+  const valueError = newOutput
+    ? outputLinkValueError(newOutput.name, newOutput.path)
+    : declaredOutputLinkError(state.draft, sourceId, outputName);
+  if (valueError) return valueError;
+  const promptError = outputLinkPromptError(
+    state.draft,
+    sourceId,
+    targetId,
+    outputName,
+  );
+  if (promptError) return promptError;
+  const draft = linkOutput(
+    state.draft,
+    sourceId,
+    targetId,
+    outputName,
+    newOutput,
+  );
+  if (draft === state.draft)
+    return 'The output link does not fit these stages.';
+  const written = writtenOf({ ...state, draft });
+  return written.ok ? undefined : written.reason;
 }
 
 /**

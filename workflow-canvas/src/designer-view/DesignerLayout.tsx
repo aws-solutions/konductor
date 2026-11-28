@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import Button from '@cloudscape-design/components/button';
+import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import FormField from '@cloudscape-design/components/form-field';
 import Multiselect from '@cloudscape-design/components/multiselect';
@@ -45,6 +46,9 @@ export interface LayoutStage {
   readonly doneWhenDisabled?: boolean;
   readonly doneWhenDisabledReason?: string;
   readonly doneWhenError?: string;
+  readonly linkTargets?: readonly { id: string; name: string }[];
+  readonly linkDisabled?: boolean;
+  readonly linkDisabledReason?: string;
   /** The `agent` of the stage when it was loaded, before any edit. */
   readonly originalAgent?: string;
   /** The keys that cannot be changed yet; they are shown as they are. */
@@ -101,6 +105,7 @@ export function DesignerLayout({
   onCheckAdd,
   onCheckRemove,
   onDoneWhenChange,
+  onLinkOutput,
   onStageChange,
   onOutputChange,
   onOutputAdd,
@@ -141,6 +146,7 @@ export function DesignerLayout({
   onCheckAdd?: () => void;
   onCheckRemove?: (key: string) => void;
   onDoneWhenChange?: (ids: readonly string[]) => void;
+  onLinkOutput?: (targetId: string) => void;
   onStageChange: (change: FieldFormChange) => void;
   onOutputChange?: (id: string, change: OutputChange) => void;
   onOutputAdd?: () => void;
@@ -253,6 +259,19 @@ export function DesignerLayout({
             }
           />
         </FormField>
+      )}
+      {onLinkOutput && (stage.linkTargets?.length ?? 0) > 0 && (
+        <ButtonDropdown
+          items={stage.linkTargets!.map((target) => ({
+            id: target.id,
+            text: target.name,
+          }))}
+          disabled={stage.linkDisabled}
+          disabledReason={stage.linkDisabledReason}
+          onItemClick={({ detail }) => onLinkOutput(detail.id)}
+        >
+          Link output to...
+        </ButtonDropdown>
       )}
       {onStageDelete && (
         <Button
