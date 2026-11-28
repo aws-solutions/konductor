@@ -26,13 +26,21 @@ Steps (about 1 to 2 hours, most of it the image build and the login):
 export QH_CHECKOUT=<a konductor worktree of feat/bench-pilot-nk for the run>     # not the ops checkout
 export QH_CS=<workspace>/plant-counted-set
 export QH_NORMAL=<workspace>/plant-release-r2/tasks
-export QH_KIRO=$HOME/.toolbox/tools/kiro-cli/3.5.0/kiro-cli
+export QH_KIRO=<the native kiro-cli binary whose sha256 the release pins>  # `print` and `start` stop when it is another build
 bash $QH_CHECKOUT/bench/ops/quiet-host/quiet-host.sh print     # free: shows every docker command
 bash $QH_CHECKOUT/bench/ops/quiet-host/quiet-host.sh build     # about 5 minutes
 bash $QH_CHECKOUT/bench/ops/quiet-host/quiet-host.sh start
 bash $QH_CHECKOUT/bench/ops/quiet-host/quiet-host.sh login     # kiro-cli device-code sign-in, once
 bash $QH_CHECKOUT/bench/ops/quiet-host/quiet-host.sh check     # free: must print sandbox-ok and end with YES
 ```
+
+The release pins the kiro-cli build by sha256 (`versions.kiroCli.sha256` in `$QH_R/release/manifest.json`). Toolbox
+removes old versions, so keep a copy of the pinned binary outside it, and check it with `sha256sum`. The container mounts
+its folder read-only, so the binary cannot update itself (D-305). If no copy is left, cut a new release that pins the build
+you have, with your key and the wave dir's `fields.json`, which keeps the seeds.
+
+Wave 4 cuts and signs its own release, and the container does not hold your signing key. When `wave 4` stops at
+the signing step, sign the release yourself (the script prints the exact command) and run it again.
 
 Then the waves, in order (section "The counted run" below). `quiet-host.sh stop` removes the container; the wave dir
 and its results stay on the host. Stop Kiro Crew's own heavy jobs first: the load gate reads the host's load.

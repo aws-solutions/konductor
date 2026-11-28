@@ -38,7 +38,19 @@ inputs_ok() {
   [ -n "$CS" ] && [ -d "$CS/release/tasks" ] || stop "set QH_CS to the private counted-set folder (it must hold release/tasks)"
   [ -n "$NORMAL" ] && compgen -G "$NORMAL/plant-n*.json" >/dev/null || stop "set QH_NORMAL to a folder of plant-n*.json normal tasks (for example the plant-r2 release tasks)"
   [ -d "$R/release" ] && [ -f "$R/release.sha256" ] || stop "QH_R ($R) must hold the signed release/ and release.sha256 from wave 0"
-  [ -n "$KIRO" ] && [ -f "$KIRO" ] && [ -x "$KIRO" ] || stop "set QH_KIRO to the native pinned kiro-cli binary (a file, for example ~/.toolbox/tools/kiro-cli/3.5.0/kiro-cli)"
+  [ -n "$KIRO" ] && [ -f "$KIRO" ] && [ -x "$KIRO" ] || stop "set QH_KIRO to the native pinned kiro-cli binary (a file; the one whose sha256 the release pins)"
+  kiro_pin_ok
+}
+
+# The release pins the kiro-cli build by sha256. Stop here, not after the image build and the login, when QH_KIRO is
+# another build (toolbox removes old versions, and kiro-cli 3.5.0 once updated itself over its own file: D-305).
+kiro_pin_ok() {
+  local want have
+  [ -f "$R/release/manifest.json" ] || stop "$R/release/manifest.json is missing, so the kiro-cli pin cannot be read"
+  want=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).versions?.kiroCli?.sha256 ?? "")' "$R/release/manifest.json")
+  [ -n "$want" ] || stop "the release at $R/release pins no kiro-cli (manifest versions.kiroCli.sha256)"
+  have=$(sha256sum "$KIRO" | cut -d' ' -f1)
+  [ "$have" = "$want" ] || stop "QH_KIRO ($KIRO) is not the pinned kiro-cli: its sha256 is $have, the release pins $want. Find that build (sha256sum each candidate) or cut a new release that pins the build you have"
 }
 
 # The container's own network namespace has no listeners, which the quiet-host gate needs. The two security options let

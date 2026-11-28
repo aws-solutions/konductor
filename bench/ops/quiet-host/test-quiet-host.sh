@@ -15,6 +15,9 @@ mkdir -p "$T/co/bench/runner" "$T/cs/release/tasks" "$T/normal" "$T/r/release" "
 touch "$T/co/bench/runner/bench.js" "$T/normal/plant-n1-target-speed.v01.json" "$T/r/release.sha256"
 printf '#!/bin/sh\necho kiro-cli 3.5.0\n' > "$T/kiro/kiro-cli"; chmod +x "$T/kiro/kiro-cli"
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s"\n' "$T/docker.log" > "$T/docker"; chmod +x "$T/docker"
+# The release pins the kiro-cli build by sha256 (manifest versions.kiroCli.sha256); the stub kiro-cli is that build.
+kiro_sha=$(sha256sum "$T/kiro/kiro-cli" | cut -d' ' -f1)
+printf '{"versions":{"kiroCli":{"version":"kiro-cli 3.5.0","sha256":"%s"}}}\n' "$kiro_sha" > "$T/r/release/manifest.json"
 export QH_DOCKER="$T/docker" QH_CHECKOUT="$T/co" QH_CS="$T/cs" QH_NORMAL="$T/normal" QH_R="$T/r" QH_KIRO="$T/kiro/kiro-cli"
 qh() { bash "$HERE/quiet-host.sh" "$@"; }
 
@@ -23,6 +26,15 @@ qh 2>/dev/null && fail "no subcommand should exit non-zero"
 QH_CS=/no/such qh start 2>"$T/err" && fail "a missing counted set should stop"
 grep -q 'QH_CS' "$T/err" || fail "the stop should name QH_CS"
 QH_KIRO="$T/kiro" qh start 2>"$T/err" && fail "a kiro-cli that is not a file should stop"
+# a kiro-cli that is not the pinned build stops start and print before any docker command (the pin drifted once: D-305)
+printf '#!/bin/sh\necho kiro-cli 3.7.1\n' > "$T/kiro/other"; chmod +x "$T/kiro/other"
+QH_KIRO="$T/kiro/other" qh start 2>"$T/err" && fail "a kiro-cli that is not the pinned build should stop start"
+grep -q 'not the pinned kiro-cli' "$T/err" || fail "the stop should say the build is not the pinned one: $(cat "$T/err")"
+QH_KIRO="$T/kiro/other" qh print 2>/dev/null && fail "print should stop on a wrong kiro-cli too"
+printf '{"versions":{}}\n' > "$T/r/release/manifest.json"
+qh start 2>"$T/err" && fail "a release with no kiroCli pin should stop start"
+grep -q 'pins no kiro-cli' "$T/err" || fail "the stop should say the release pins no kiro-cli: $(cat "$T/err")"
+printf '{"versions":{"kiroCli":{"sha256":"%s"}}}\n' "$kiro_sha" > "$T/r/release/manifest.json"
 [ ! -e "$T/docker.log" ] || fail "docker ran before the refusals passed"
 echo "case 1 ok: refusals"
 
