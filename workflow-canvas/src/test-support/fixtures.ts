@@ -22,7 +22,10 @@ export function stageViewOf(name: string, agent: string): StageView {
 /** The workflow that the stub serves: a draft stage, then a review stage. */
 export const HELLO_VIEW: WorkflowView = {
   name: 'hello',
-  intent: { outcome: 'Add a greeting to the README' },
+  intent: {
+    outcome: 'Add a greeting to the README',
+    accept: [{ id: 'readme-exists', file: 'README.md' }],
+  },
   params: {
     goal: {
       description: 'What the workflow should accomplish.',

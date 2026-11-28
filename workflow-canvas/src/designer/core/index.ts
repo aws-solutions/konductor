@@ -16,6 +16,7 @@ export {
   insertStage,
   nextStageName,
   type Draft,
+  type DraftCheck,
   type DraftOutput,
   type DraftStage,
 } from './draft';

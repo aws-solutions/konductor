@@ -51,7 +51,10 @@ describe('the wire types of the page read GET /api/workflow', () => {
       readOnly: false,
       view: {
         name: 'hello',
-        intent: { outcome: 'Add a greeting to the README' },
+        intent: {
+          outcome: 'Add a greeting to the README',
+          accept: [{ id: 'readme-exists', file: 'README.md' }],
+        },
         params: {
           goal: {
             description: 'What the workflow should accomplish.',

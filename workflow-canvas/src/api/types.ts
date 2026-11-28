@@ -60,10 +60,17 @@ export interface ParamView {
 /** The `goal` parameter uses description and default only. */
 export type GoalParamView = Pick<ParamView, 'description' | 'default'>;
 
+/** One editable acceptance check. */
+export interface EditableCheck {
+  readonly id: string;
+  readonly file?: string;
+  readonly run?: readonly string[];
+}
+
 /** The parsed workflow, ready to draw. */
 export interface WorkflowView {
   name: string;
-  intent: { outcome: string };
+  intent: { outcome: string; accept?: EditableCheck[] };
   /** The params of the file, in declaration order. */
   params?: Record<string, ParamView>;
   stages: StageView[];
@@ -78,6 +85,8 @@ export interface CheckDeclaration {
   readonly id: string;
   /** Whether the check reads a file or runs a command. */
   readonly kind: 'file' | 'run';
+  readonly file?: string;
+  readonly run?: readonly string[];
 }
 
 /** The checks a workflow declares, and which stage waits for each. */

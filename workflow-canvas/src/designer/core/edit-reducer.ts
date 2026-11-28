@@ -5,6 +5,7 @@ import type {
   WorkflowDocument,
 } from '../../api/types';
 import {
+  addCheck,
   addOutput,
   addParam,
   addStage,
@@ -13,12 +14,15 @@ import {
   idsOf,
   insertStage,
   neighbourOf,
+  rebaseCheckSources,
   rebaseOutputSources,
+  removeCheck,
   removeOutput,
   removeParam,
   removeStage,
   renameStage,
   setAgent,
+  setCheck,
   setOutput,
   setParam,
   setPrompt,
@@ -135,6 +139,25 @@ function outputRemoved(
     removeOutput(state.draft, stageId, outputId),
     state.selectedId,
   );
+}
+
+function checkSet(
+  state: EditState,
+  event: Extract<EditEvent, { type: 'set-check' }>,
+): EditState {
+  return edited(
+    state,
+    setCheck(state.draft, event.key, event.check),
+    state.selectedId,
+  );
+}
+
+function checkAdded(state: EditState): EditState {
+  return edited(state, addCheck(state.draft), state.selectedId);
+}
+
+function checkRemoved(state: EditState, key: string): EditState {
+  return edited(state, removeCheck(state.draft, key), state.selectedId);
 }
 
 function paramSet(
@@ -277,10 +300,13 @@ function savedAs(
   // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
-    draft: rebaseOutputSources(
-      state.draft,
-      result.view.stages,
-      state.sentOutputs ?? [],
+    draft: rebaseCheckSources(
+      rebaseOutputSources(
+        state.draft,
+        result.view.stages,
+        state.sentOutputs ?? [],
+      ),
+      result.view.intent.accept ?? [],
     ),
     saved: {
       ...state.saved,
@@ -394,6 +420,12 @@ function step(
       return outputAdded(state, event.stageId);
     case 'remove-output':
       return outputRemoved(state, event.stageId, event.outputId);
+    case 'set-check':
+      return checkSet(state, event);
+    case 'add-check':
+      return checkAdded(state);
+    case 'remove-check':
+      return checkRemoved(state, event.key);
     case 'set-param':
       return paramSet(state, event.id, event.change);
     case 'add-param':

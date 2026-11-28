@@ -140,12 +140,33 @@ function parseParams(value: unknown): Pick<WorkflowView, 'params'> {
   };
 }
 
+function parseCheck(value: unknown) {
+  const check = objectOf(value);
+  const id = stringOf(check.id);
+  const hasFile = Object.hasOwn(check, 'file');
+  const hasRun = Object.hasOwn(check, 'run');
+  if (hasFile === hasRun) fail();
+  return hasFile
+    ? { id, file: stringOf(check.file) }
+    : { id, run: arrayOf(check.run).map(stringOf) };
+}
+
+function parseIntent(value: unknown): WorkflowView['intent'] {
+  const intent = objectOf(value);
+  return {
+    outcome: stringOf(intent.outcome),
+    ...(intent.accept === undefined
+      ? {}
+      : { accept: arrayOf(intent.accept).map(parseCheck) }),
+  };
+}
+
 function parseView(value: unknown): WorkflowView | null {
   if (value === null) return null;
   const view = objectOf(value);
   return {
     name: stringOf(view.name),
-    intent: { outcome: stringOf(objectOf(view.intent).outcome) },
+    intent: parseIntent(view.intent),
     ...parseParams(view.params),
     stages: uniqueByName(arrayOf(view.stages).map(parseStage)),
   };

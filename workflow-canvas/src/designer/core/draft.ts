@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ParamView, StageKeys } from '../../api/types';
+import type { EditableCheck, ParamView, StageKeys } from '../../api/types';
 
 /** A parameter declaration being edited. */
 export interface DraftParam {
@@ -10,6 +10,16 @@ export interface DraftParam {
   readonly description: string;
   readonly default: string;
   readonly required: boolean;
+}
+
+/** One editable acceptance check. */
+export interface DraftCheck {
+  readonly key: string;
+  readonly sourceIndex?: number;
+  readonly id: string;
+  readonly kind: 'file' | 'run';
+  readonly file: string;
+  readonly run: readonly string[];
 }
 
 /** One editable output declaration. */
@@ -39,9 +49,11 @@ export interface DraftStage {
 export interface Draft {
   stages: readonly DraftStage[];
   params: readonly DraftParam[];
+  checks?: readonly DraftCheck[];
   /** The number that the next new stage takes for its `id`. */
   nextId: number;
   nextParamId: number;
+  nextCheckId?: number;
 }
 
 /** The most stages a workflow may have, as the API allows. */
@@ -65,6 +77,7 @@ export function draftOf(
   stages: readonly StageKeys[],
   prompts: readonly string[] = [],
   params: Readonly<Record<string, ParamView>> = {},
+  checks: readonly EditableCheck[] = [],
 ): Draft {
   const declarations = Object.entries(params);
   let nextParamId = 1;
@@ -108,8 +121,17 @@ export function draftOf(
       nextOutputId: Object.keys(stage.outputs ?? {}).length + 1,
     })),
     params: draftParams,
+    checks: checks.map((check, index) => ({
+      key: `c${index + 1}`,
+      sourceIndex: index,
+      id: check.id,
+      kind: check.run === undefined ? 'file' : 'run',
+      file: check.file ?? '',
+      run: check.run ?? [],
+    })),
     nextId: stages.length + 1,
     nextParamId,
+    nextCheckId: checks.length + 1,
   };
 }
 
@@ -147,6 +169,27 @@ export function rebaseOutputSources(
           };
         }),
       };
+    }),
+  };
+}
+
+/** Rebinds rows that exactly match the saved acceptance checks. */
+export function rebaseCheckSources(
+  draft: Draft,
+  checks: readonly EditableCheck[],
+): Draft {
+  return {
+    ...draft,
+    checks: (draft.checks ?? []).map((check, index) => {
+      const saved = checks[index];
+      const savedKind = saved?.run === undefined ? 'file' : 'run';
+      return saved &&
+        check.id === saved.id &&
+        check.kind === savedKind &&
+        check.file === (saved.file ?? '') &&
+        check.run.join('\0') === (saved.run ?? []).join('\0')
+        ? { ...check, sourceIndex: index }
+        : check;
     }),
   };
 }
@@ -300,6 +343,56 @@ export function removeOutput(
   return outputs.length === before.length
     ? draft
     : change(draft, stageId, { outputs });
+}
+
+/** Changes one acceptance check. */
+export function setCheck(
+  draft: Draft,
+  key: string,
+  check: Omit<DraftCheck, 'key' | 'sourceIndex'>,
+): Draft {
+  if (!(draft.checks ?? []).some((candidate) => candidate.key === key)) {
+    return draft;
+  }
+  return {
+    ...draft,
+    checks: (draft.checks ?? []).map((candidate) =>
+      candidate.key === key ? { ...candidate, ...check } : candidate,
+    ),
+  };
+}
+
+/** Adds a file check with a free id. */
+export function addCheck(draft: Draft): Draft {
+  const checks = draft.checks ?? [];
+  let number = 1;
+  const ids = new Set(checks.map((check) => check.id));
+  while (ids.has(`check-${number}`)) number += 1;
+  const next = draft.nextCheckId ?? 1;
+  return {
+    ...draft,
+    checks: [
+      ...checks,
+      {
+        key: `c${next}`,
+        id: `check-${number}`,
+        kind: 'file',
+        file: '',
+        run: [],
+      },
+    ],
+    nextCheckId: next + 1,
+  };
+}
+
+/** Removes one acceptance check. */
+export function removeCheck(draft: Draft, key: string): Draft {
+  const checks = draft.checks ?? [];
+  if (!checks.some((check) => check.key === key)) return draft;
+  return {
+    ...draft,
+    checks: checks.filter((check) => check.key !== key),
+  };
 }
 
 /** Gives a parameter field the value as typed. */
