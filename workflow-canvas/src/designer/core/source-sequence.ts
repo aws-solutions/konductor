@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { scalar } from './scalar-text';
-import { afterLine, eolOf, lineStart, type SourcePatch } from './yaml-source';
+import {
+  afterLine,
+  columnOf,
+  eolOf,
+  hasComment,
+  isSeq,
+  lineStart,
+  textScalar,
+  type SourcePatch,
+} from './yaml-source';
 
 export interface ScalarSequenceItem {
   readonly text: string;
@@ -18,6 +27,25 @@ export interface ScalarSequenceSource {
 export interface SequencePatchResult {
   readonly patches?: readonly SourcePatch[];
   readonly structuralComment?: true;
+}
+
+export function scalarSequenceSource(
+  text: string,
+  value: unknown,
+): ScalarSequenceSource | undefined {
+  if (!isSeq(value) || !value.range || value.anchor || value.tag) {
+    return undefined;
+  }
+  const items = value.items.map(textScalar);
+  if (items.some((item) => item === undefined)) return undefined;
+  return {
+    flow: value.flow === true,
+    close: value.range[1] - 1,
+    indent: ' '.repeat(columnOf(text, value.range[0])),
+    items: items as readonly ScalarSequenceItem[],
+    hasComments:
+      hasComment(value) || value.items.some((item) => hasComment(item)),
+  };
 }
 
 /** Patches the smallest changed middle of a scalar sequence. */

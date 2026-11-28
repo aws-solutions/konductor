@@ -84,6 +84,16 @@ export function hasComment(value: unknown): boolean {
   );
 }
 
+export function hasMapComments(map: YAMLMap): boolean {
+  return (
+    hasComment(map) ||
+    map.items.some(
+      (pair) =>
+        hasComment(pair) || hasComment(pair.key) || hasComment(pair.value),
+    )
+  );
+}
+
 export const pairNamed = (pair: Pair, name: string) =>
   isScalar(pair.key) && pair.key.value === name;
 
