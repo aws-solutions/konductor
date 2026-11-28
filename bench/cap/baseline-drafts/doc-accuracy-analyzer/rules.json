@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "skill_md_sha256": "7a54e70064e71a3651a75682154c071c0fb5d103138e719faf336bf6065e081e",
+  "request_context": "A request to fact-check the claims in a design document against the evidence given, and say which are right, wrong, stretched or unproven.",
+  "rules": [
+    {
+      "id": "doc-accuracy-analyzer-r01",
+      "source_quote": "CONFIRMED: N | INCORRECT: N | OVERSTATED: N",
+      "class": "style",
+      "outcome": "The report has a summary line counting claims in each class.",
+      "why": "",
+      "scenario_hint": "Any fact-check report."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r02",
+      "source_quote": "are the highest-risk claim types",
+      "class": "useful",
+      "outcome": "Picks out every already built and needs only configuration claim and checks it hardest against the code or config given.",
+      "why": "These claims hide most unplanned work.",
+      "scenario_hint": "A doc saying a feature is already implemented."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r03",
+      "source_quote": "Do not accept the document's assertion as evidence.",
+      "class": "useful",
+      "outcome": "Judges each claim against the evidence given (code, metrics, docs), never against the document repeating it.",
+      "why": "A doc cannot prove itself.",
+      "scenario_hint": "A doc whose claims are restated in its own appendix."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r04",
+      "source_quote": "Contradicted by primary source",
+      "class": "useful",
+      "outcome": "Marks a claim the evidence contradicts as INCORRECT, the most serious class, and says the text must be corrected.",
+      "why": "Wrong facts break designs.",
+      "scenario_hint": "A doc stating a limit the evidence contradicts."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r05",
+      "source_quote": "True but exaggerated",
+      "class": "useful",
+      "outcome": "Marks a claim that is partly true but overstated (all regions, unlimited, already handles) as OVERSTATED, a significant class, not as confirmed or wrong.",
+      "why": "Stretched claims mislead without being false.",
+      "scenario_hint": "A doc saying unlimited where a quota exists."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r06",
+      "source_quote": "It is rated SUGGESTION, because new services and internal facts often have no public source.",
+      "class": "useful",
+      "outcome": "Marks a claim with no evidence either way as UNVERIFIED, a minor class, and asks for a callout saying what was checked, instead of calling it wrong.",
+      "why": "Lack of proof is not disproof.",
+      "scenario_hint": "Internal team facts with no source given."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r07",
+      "source_quote": "True but incomplete without qualifier",
+      "class": "useful",
+      "outcome": "Marks a claim that is true only with a missing condition as MISSING CONTEXT and names the qualifier.",
+      "why": "Missing conditions cause wrong use.",
+      "scenario_hint": "A limit that holds only in one mode."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r08",
+      "source_quote": "For each INCORRECT or OVERSTATED finding, provide:",
+      "class": "useful",
+      "outcome": "For each wrong or stretched claim, gives the original text, a corrected text and the source of the correction.",
+      "why": "Authors can fix the text directly.",
+      "scenario_hint": "Any doc with a wrong claim."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r09",
+      "source_quote": "0 INCORRECT (CRITICAL) findings remain, including the routed AWS claims.",
+      "class": "useful",
+      "outcome": "Gives an overall PASS or FAIL: FAIL while any INCORRECT claim remains uncorrected, PASS otherwise when stretched claims are fixed or flagged.",
+      "why": "The result is a gate.",
+      "scenario_hint": "Docs with and without wrong claims."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r10",
+      "source_quote": "Identify any step that assumes a capability not confirmed in Steps 2 and 3",
+      "class": "useful",
+      "outcome": "Traces the design's flow end to end and flags any step that relies on a capability the evidence does not confirm.",
+      "why": "Feasibility gaps hide between true facts.",
+      "scenario_hint": "A flow that needs a feature nobody confirmed."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r11",
+      "source_quote": "Implementation claims require a file path or commit reference",
+      "class": "useful",
+      "outcome": "Asks for a file path or commit for each claim that something is implemented, and does not confirm it without one.",
+      "why": "Code claims need code evidence.",
+      "scenario_hint": "A doc saying retry logic exists, with no path."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r12",
+      "source_quote": "Scan the document and extract all verifiable claims by category",
+      "class": "generic",
+      "outcome": "Lists the claims it checked.",
+      "why": "Any fact-check lists what it checked.",
+      "scenario_hint": "Any fact-check."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r13",
+      "source_quote": "Only a concrete existing solution makes one INCORRECT",
+      "class": "useful",
+      "outcome": "Treats claims that nothing like this exists as UNVERIFIED unless a concrete existing solution is named, and as INCORRECT only then.",
+      "why": "Absence claims are hard to disprove.",
+      "scenario_hint": "A doc saying no team has built this."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r14",
+      "source_quote": "Reclassify a CONFIRMED row as OVERSTATED or MISSING CONTEXT when the document's wording goes further than the cited page",
+      "class": "useful",
+      "outcome": "Downgrades a claim that cites a real fact but words it more strongly than the source to OVERSTATED or MISSING CONTEXT.",
+      "why": "A true source can be overstated.",
+      "scenario_hint": "A doc that cites the right page but says always where the page says by default."
+    }
+  ],
+  "source": {
+    "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+    "tree": "150d45fd5262e6362da273d50262ce9de83c86f5",
+    "subject": {
+      "sha256": "dbd3d7dc635d8b9ff530c400c52e9e1580387e59cf78d37a630e667cd58b7893",
+      "paths": [
+        "doc-accuracy-analyzer/SKILL.md"
+      ],
+      "unresolved": []
+    }
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-design-review",
+  "skill_md_sha256": "ecb6b13ca4ec9f5dab27aaf442bb6a74b831a9dfc38be03779b96eb5da7227e4",
+  "request_context": "A request to attack the decisions and trade-offs of a design document as a skeptical reviewer, with findings sorted by how serious they are.",
+  "rules": [
+    {
+      "id": "adversarial-design-review-r01",
+      "source_quote": "N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N SUGGESTION",
+      "class": "style",
+      "outcome": "Ends with a count of findings in each severity class.",
+      "why": "",
+      "scenario_hint": "Any adversarial review."
+    },
+    {
+      "id": "adversarial-design-review-r02",
+      "source_quote": "Wrong architecture choice for the stated requirements",
+      "class": "useful",
+      "outcome": "Rates a design that contradicts a stated requirement (a synchronous call where the requirement says async) as CRITICAL architectural.",
+      "why": "A design that breaks its own requirement cannot ship.",
+      "scenario_hint": "A sync design for an async requirement."
+    },
+    {
+      "id": "adversarial-design-review-r03",
+      "source_quote": "Missing security boundary (no auth, no encryption at rest/transit where PII is involved)",
+      "class": "useful",
+      "outcome": "Rates personal data handled with no stated encryption or access control as CRITICAL architectural.",
+      "why": "Missing boundaries on PII are launch blockers.",
+      "scenario_hint": "A design storing personal data with no encryption stated."
+    },
+    {
+      "id": "adversarial-design-review-r04",
+      "source_quote": "Single point of failure with no stated mitigation",
+      "class": "useful",
+      "outcome": "Rates a single component whose loss stops the system, with no mitigation stated, as CRITICAL architectural.",
+      "why": "Unmitigated single points break availability goals.",
+      "scenario_hint": "One instance or one region with no failover."
+    },
+    {
+      "id": "adversarial-design-review-r05",
+      "source_quote": "Incorrect technical claim about a service or technology",
+      "class": "useful",
+      "outcome": "Rates a false claim about a service (a wrong limit, a feature that does not exist) as CRITICAL factual.",
+      "why": "False facts make the design not work.",
+      "scenario_hint": "A doc citing a wrong service limit."
+    },
+    {
+      "id": "adversarial-design-review-r06",
+      "source_quote": "Contradictory requirements (two requirements that cannot both be satisfied)",
+      "class": "useful",
+      "outcome": "Rates two requirements that cannot both hold as CRITICAL factual and names both.",
+      "why": "No design can meet both.",
+      "scenario_hint": "Requirements for strong consistency and no cross-region latency at once."
+    },
+    {
+      "id": "adversarial-design-review-r07",
+      "source_quote": "Missing alternative in a decision that has obvious alternatives",
+      "class": "useful",
+      "outcome": "Rates a significant decision with no alternatives considered, or an obvious alternative left out, as IMPORTANT.",
+      "why": "A choice with no alternatives cannot be judged.",
+      "scenario_hint": "An ADR naming one option only."
+    },
+    {
+      "id": "adversarial-design-review-r08",
+      "source_quote": "Incomplete trade-off (dimensions missing: cost, latency, complexity, scalability, operability)",
+      "class": "useful",
+      "outcome": "Rates a trade-off that leaves out key dimensions as IMPORTANT and names the missing ones.",
+      "why": "Missing dimensions hide costs.",
+      "scenario_hint": "A trade-off table with only cost and latency."
+    },
+    {
+      "id": "adversarial-design-review-r09",
+      "source_quote": "Flag any identified fallacy as IMPORTANT with the fallacy name and the affected section.",
+      "class": "useful",
+      "outcome": "Names the fallacy in a justification (false dichotomy, circular reasoning, appeal to authority) and rates it IMPORTANT.",
+      "why": "Faulty arguments hide weak decisions.",
+      "scenario_hint": "A justification that cites a big company as proof."
+    },
+    {
+      "id": "adversarial-design-review-r10",
+      "source_quote": "Do not raise a CRITICAL because a design looks risky.",
+      "class": "useful",
+      "outcome": "Keeps unsourced load figures and unproven dependencies at IMPORTANT, and saves CRITICAL for broken requirements, missing required boundaries, unmitigated single points and false facts.",
+      "why": "Inflated severity blocks good designs.",
+      "scenario_hint": "A risky-looking but requirement-consistent design."
+    },
+    {
+      "id": "adversarial-design-review-r11",
+      "source_quote": "Name the requirement (e.g., R2) the finding breaks.",
+      "class": "useful",
+      "outcome": "Each CRITICAL finding names the requirement it breaks by its label.",
+      "why": "Authors know what to fix.",
+      "scenario_hint": "Any doc with numbered requirements."
+    },
+    {
+      "id": "adversarial-design-review-r12",
+      "source_quote": "Do not add requirements, regulations, services, or numbers the document does not state",
+      "class": "useful",
+      "outcome": "Does not invent requirements, laws or numbers the doc does not state, and adds no generic checklist items with no anchor in the text.",
+      "why": "Invented findings waste author time.",
+      "scenario_hint": "A doc with no regulatory scope."
+    },
+    {
+      "id": "adversarial-design-review-r13",
+      "source_quote": "Every finding, SUGGESTION included, gets a concrete `Rebuttal needed` line",
+      "class": "useful",
+      "outcome": "Each finding says what evidence, alternative or change would answer it.",
+      "why": "Authors need a way to close each finding.",
+      "scenario_hint": "Any finding list."
+    },
+    {
+      "id": "adversarial-design-review-r14",
+      "source_quote": "the document does not advance to PE review with any CRITICAL finding present",
+      "class": "useful",
+      "outcome": "Says the doc does not advance while any CRITICAL finding stands, and states the advance condition.",
+      "why": "The review is a gate.",
+      "scenario_hint": "Any readiness question."
+    },
+    {
+      "id": "adversarial-design-review-r15",
+      "source_quote": "HIGH requires multi-axis corroboration and is unavailable when the panel is declined",
+      "class": "useful",
+      "outcome": "In a single-voice review (no panel), gives no finding HIGH confidence and says the review was single-voice.",
+      "why": "Confidence must match how the review was done.",
+      "scenario_hint": "A user asking for a quick single pass."
+    },
+    {
+      "id": "adversarial-design-review-r16",
+      "source_quote": "Every finding cites the section and the text it challenges.",
+      "class": "generic",
+      "outcome": "Each finding points to the section it challenges.",
+      "why": "Any good review points to the place.",
+      "scenario_hint": "Any review."
+    },
+    {
+      "id": "adversarial-design-review-r17",
+      "source_quote": "When a finding relies on outside knowledge (a service limit, a pricing figure), say so in the challenge.",
+      "class": "useful",
+      "outcome": "Says when a challenge rests on outside knowledge, such as a service limit, rather than on the doc.",
+      "why": "Authors can check the outside fact.",
+      "scenario_hint": "A finding about a service limit the doc does not state."
+    }
+  ],
+  "source": {
+    "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+    "tree": "035af650477d071de67323ab5384d4fab2e9b1f2",
+    "subject": {
+      "sha256": "0fa1973611992e5c21bc6abf4756b4fcae716337dede698295bbad5f9fab30d3",
+      "paths": [
+        "adversarial-design-review/SKILL.md"
+      ],
+      "unresolved": []
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "batch": "pilot-a",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "d3776f3552dd97006256d19d1aec81e3c3ca238bd6339a34da8a5c5a56e32c27",
+  "scenarios": [
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-1",
+      "title": "Already-built auth claim against a code excerpt",
+      "target_section": "Step 1: Extract Verifiable Claims",
+      "prompt": "Before review, check the claims in section 3 of our design doc. I pasted the code it refers to.\n\nDoc, section 3: \"Token refresh is already implemented in src/auth/refresh.ts and needs only configuration to support the new partner app. Refresh tokens rotate on every use.\"\n\nsrc/auth/refresh.ts (whole file):\n```ts\nexport async function refresh(token: string) {\n  const session = await store.get(token);\n  if (!session) throw new Error('expired');\n  return issueAccessToken(session.userId); // same refresh token is reused\n}\n```\nThere is no partner app config anywhere in the repo (I grepped for partner).",
+      "rubric": [
+        "Singles out the already implemented and needs only configuration wording as the riskiest claims.",
+        "Marks refresh tokens rotate on every use as INCORRECT, since the code reuses the same token.",
+        "Marks needs only configuration as OVERSTATED or INCORRECT, since no partner config exists and the code has no partner path.",
+        "Gives corrected text for each wrong claim, citing src/auth/refresh.ts.",
+        "Gives an overall FAIL.",
+        "Lists each claim it checked."
+      ],
+      "why_skill_matters": "Code claims checked against a code excerpt; the skill's push on already built claims is the point."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-2",
+      "title": "AWS limits stated in an ingest design",
+      "target_section": "Step 2: Route AWS Claims to aws-service-validator",
+      "prompt": "A reviewer said some numbers in my design are off. Please go through them.\n\nFrom docs/ingest.md:\n1. \"Each Kinesis shard accepts up to 10,000 records per second for writes.\"\n2. \"DynamoDB items can be up to 4 MB, so we store the full raw payload in the item.\"\n3. \"Lambda functions can run for up to 15 minutes, which covers our longest batch (9 minutes, measured in run B-17).\"\n4. \"S3 gives strong read-after-write consistency for new objects, so the loader can read right after the write.\"\n\nPlease tell me which ones I need to fix before the review.",
+      "rubric": [
+        "Marks claim 1 as INCORRECT: a shard accepts up to 1,000 records per second (or 1 MB per second) for writes.",
+        "Marks claim 2 as INCORRECT: the DynamoDB item size limit is 400 KB, and says storing the payload in the item breaks.",
+        "Says claim 2's error breaks the design step that stores the raw payload in the item, not only the sentence.",
+        "Gives corrected text with the source for each wrong claim, such as the service quotas page.",
+        "Gives an overall FAIL while claims 1 and 2 stand.",
+        "Confirms claims 3 and 4 as correct."
+      ],
+      "why_skill_matters": "Two wrong AWS limits and two right ones; the classes and the effect on the design matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-3",
+      "title": "Unlimited where a quota exists",
+      "target_section": "Step 4: Classify Findings",
+      "prompt": "Fact-check this paragraph from our proposal before my manager reads it:\n\n\"API Gateway gives us unlimited requests per second, so the burst from the Black Friday campaign is not a concern. As AWS documents, the default account throttle is 10,000 requests per second per Region, and we have used about 2,000 at our past peak (CloudWatch dashboard CW-api-peak). Our team is the first in the company to put API Gateway in front of a mainframe.\"\n\nI want to know what to change, with the reason.",
+      "rubric": [
+        "Marks unlimited requests per second as OVERSTATED or INCORRECT, since the same paragraph cites a 10,000 per second default throttle.",
+        "Treats the cited 10,000 default as confirmed, and the unlimited wording as going further than that source.",
+        "Marks the first in the company claim as UNVERIFIED, not INCORRECT, since no existing solution is named.",
+        "Gives corrected text, such as a default throttle of 10,000 per second that can be raised, with the source.",
+        "Gives a result that matches the classes found."
+      ],
+      "why_skill_matters": "A paragraph that cites a quota and then overstates it, plus an absence claim."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-4",
+      "title": "Internal throughput claim with no evidence",
+      "target_section": "Pass Condition",
+      "prompt": "Check the claims in this section of our design for the search team:\n\n\"Our order service already handles 5,000 requests per second in production. Retry logic is built on top of the existing SDK middleware. The service was load tested last year.\"\n\nI couldn't find the load test report, and I don't have dashboard access right now. The repo has src/retry/ with a file backoff.ts that wraps the AWS SDK's retry strategy (I checked that one). What do I need to do before the doc can pass?",
+      "rubric": [
+        "Marks the 5,000 requests per second claim as UNVERIFIED, not INCORRECT, since no evidence either way is given.",
+        "Asks for an UNVERIFIED callout in the doc saying what was looked for.",
+        "Confirms the retry claim only with the file path src/retry/backoff.ts as its evidence.",
+        "Does not accept the load tested last year sentence as evidence on its own.",
+        "Says the doc can pass once callouts are added, since nothing is INCORRECT."
+      ],
+      "why_skill_matters": "Unproven internal facts should be flagged, not failed; the pass rule depends on that."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-5",
+      "title": "End-to-end flow assumes an unconfirmed feature",
+      "target_section": "Step 5: Assess Approach Feasibility",
+      "prompt": "Can you verify this design actually works as written? The flow:\n\n1. Clients upload CSVs to S3.\n2. S3 triggers a Lambda for each object.\n3. The Lambda sends each row to an SQS FIFO queue, and the queue automatically sorts rows by the customer_id column across the whole queue.\n4. A consumer reads rows in customer order and writes them to Postgres.\n\nThe doc says step 3 is how we guarantee per-customer order. Everything else was built before by the team.",
+      "rubric": [
+        "Traces the flow and flags step 3 as relying on a capability not confirmed: FIFO queues keep order within a message group, they do not sort by a column.",
+        "Marks the automatic sort claim as INCORRECT.",
+        "Gives a correction, such as using customer_id as the message group id, with the source.",
+        "Flags built before by the team as an implementation claim with no evidence.",
+        "Gives an overall FAIL."
+      ],
+      "why_skill_matters": "The facts are mostly right but one step depends on a feature that does not exist; only a flow trace catches it."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-6",
+      "title": "Doc evidence appendix that restates claims",
+      "target_section": "Step 3: Investigate the Remaining Claims",
+      "prompt": "Please fact-check this. The author says every claim is backed by the appendix.\n\nSection 2: \"Our cache hit rate is 97%. Cold reads take 300 ms. The cache cluster costs $400 a month.\"\n\nAppendix A (Evidence): \"As stated above, the hit rate is 97%, cold reads take 300 ms and cost is $400 a month.\"\n\nThe team's metrics export, which I pasted from Grafana: hit rate last 30 days 81%; cold read p50 290 ms; invoice line for the cache cluster: $412.",
+      "rubric": [
+        "Does not accept Appendix A as evidence, since it only repeats the claims.",
+        "Marks the 97% hit rate as INCORRECT against the 81% metrics export.",
+        "Confirms the cold read and cost claims as roughly right against the export and invoice.",
+        "Gives corrected text for the hit rate, citing the Grafana export.",
+        "Gives an overall FAIL until the hit rate is fixed."
+      ],
+      "why_skill_matters": "A doc citing itself as evidence; the skill says only the primary source counts."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-7",
+      "title": "True limit missing its condition",
+      "target_section": "Step 4: Classify Findings",
+      "prompt": "Check these two statements in our Lambda design:\n\n1. \"Lambda gives each function up to 10,240 MB of memory, so we can load the whole 6 GB model into memory.\"\n2. \"Lambda's /tmp storage is 512 MB, so we can't unpack the model to disk.\"\n\nOur team lead says statement 2 is outdated. Just tell me which are right and what to write instead.",
+      "rubric": [
+        "Confirms statement 1's 10,240 MB memory maximum.",
+        "Marks statement 2 as MISSING CONTEXT or INCORRECT: 512 MB is the default, and ephemeral storage can be set up to 10,240 MB.",
+        "Gives the corrected text for statement 2 with the source.",
+        "Says the claim about not unpacking to disk no longer holds once storage is raised.",
+        "Gives a result that matches the classes found."
+      ],
+      "why_skill_matters": "A true default stated as a hard limit; the right class is about the missing condition."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-a-8",
+      "title": "Landscape claim with a named counterexample",
+      "target_section": "Step 3: Investigate the Remaining Claims",
+      "prompt": "Fact-check the motivation section of this proposal for the platform council:\n\n\"No team in the company has built a shared feature-flag service, so every team runs its own. Building one is novel work.\"\n\nA colleague just told me the payments team runs flags.internal, a shared flag service that 14 teams already use (she linked me the wiki page go/flags-internal, which lists those teams). The proposal also says \"AWS recommends AppConfig for feature flags\" with no link.",
+      "rubric": [
+        "Marks the no team has built claim as INCORRECT, since a concrete existing shared service is named.",
+        "Gives corrected text that mentions flags.internal, citing go/flags-internal.",
+        "Marks the AWS recommends claim as UNVERIFIED until a documentation link is given.",
+        "Gives an overall FAIL.",
+        "Lists each claim it checked."
+      ],
+      "why_skill_matters": "An absence claim that a named solution disproves, unlike the earlier first in the company case."
+    }
+  ]
+}

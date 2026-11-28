@@ -1,0 +1,128 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "batch": "pilot-a",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "b74d0c40d8a559297e7dbbec763a63b7378253b98e24caee109a2f9fbc8eb863",
+  "scenarios": [
+    {
+      "id": "design-quality-check-pilot-a-1",
+      "title": "Fan-out redesign with no requirements and no decision record",
+      "target_section": "Steps",
+      "prompt": "Can you look over this design doc before I send it to the architecture group? Tell me if it's ready.\n\n# Notification Fan-out Redesign\n\n## Context\nOur push sender is one cron job on one host. During promotions it falls behind by up to an hour, and late-notification tickets doubled last quarter.\n\n## Proposed Approach\nReplace the cron job with an SQS-backed worker pool on ECS.\n\n## How It Works\nProducers write each notification to the queue. Workers (2 to 20, autoscaled) pull batches of 10, call FCM and APNs, and record delivery status in DynamoDB. See diagram fanout-flow.png.\n\n## Rollout\nWeek 1 build, week 2 shadow traffic, week 3 cut over.\n\n## Expected Impact\nThis will cut delivery latency by 40% and keep costs under $100/month.",
+      "rubric": [
+        "Names the absent requirements part (nothing says what the system must meet) as a significant gap.",
+        "Names the absent decision record (why SQS and ECS over other options) as a significant gap.",
+        "Flags the 40% latency claim and the under $100/month cost claim as unsupported and asks for a measurement or estimate.",
+        "Gives a score of 1, since there are three or more significant issues and parts are missing.",
+        "Says the doc should not advance yet and needs revision first.",
+        "Points each issue to its place in the doc, such as the Expected Impact part."
+      ],
+      "why_skill_matters": "A clean short doc with two missing parts and two unsourced numbers, so missing parts, evidence, score and gate all matter."
+    },
+    {
+      "id": "design-quality-check-pilot-a-2",
+      "title": "Circular reasons and a plugin layer in a cache design",
+      "target_section": "Slop detection",
+      "prompt": "Please grade this doc. My manager wants it under review by Friday.\n\n# Product Cache Layer\n\n## Problem\nProduct page reads hit Aurora directly; p99 read time is 180 ms at peak (dashboard link: go/prod-read-p99).\n\n## Requirements\nR1: p99 product reads under 50 ms. R2: cache must invalidate within 5 s of a price change.\n\n## Solution Overview\nAdd ElastiCache Redis in front of Aurora, plus a pluggable cache-provider framework so we can swap in Memcached, Hazelcast or a custom store later.\n\n## How It Works\nReads go through the provider interface to Redis; misses fall through to Aurora. Price updates publish an invalidation event. Diagram: cache-flow.svg.\n\n## Plan\nTwo sprints.\n\n## Decisions\nADR-1: We chose Redis because Redis is the best choice for caching.",
+      "rubric": [
+        "Flags the reason for Redis (chosen because it is the best choice) as circular and says what real reason to give, such as fit to R1 or R2.",
+        "Flags the pluggable provider framework as over-building, since no requirement asks to swap stores.",
+        "Gives each significant issue a concrete fix, such as dropping the framework or adding alternatives to ADR-1.",
+        "Gives a score of 3, since there are one or two significant issues and no part is missing.",
+        "Says the doc can advance, with revision notes.",
+        "Says where each issue is, such as the Solution Overview or ADR-1."
+      ],
+      "why_skill_matters": "Every part is present and the latency figure has a source, so only circular reasoning and over-building should count."
+    },
+    {
+      "id": "design-quality-check-pilot-a-3",
+      "title": "Short complete doc with accurate ranges",
+      "target_section": "Pitfalls",
+      "prompt": "Quick readiness check please, I kept it short on purpose.\n\n# Thumbnail Lambda\n\n## Problem\nUploads wait on a synchronous resize in the API, adding 1.2 s per upload (load test LT-311).\n\n## Requirements\nR1: upload API returns in under 300 ms. R2: thumbnails ready within 10 s.\n\n## Overview\nMove resizing to a Lambda triggered by S3 events.\n\n## How It Works\nS3 PUT event, Lambda resizes, writes to the thumbs/ prefix. Diagram: thumb-flow.png. Lambda cold starts typically add 100 to 500 ms, well inside R2.\n\n## Plan\nOne sprint, feature flag, then remove the old path.\n\n## ADR-1\nLambda over an ECS worker: no idle cost at our 2k uploads/day, and R2 tolerates cold starts.",
+      "rubric": [
+        "Does not flag the cold start range (typically 100 to 500 ms) as a hedge.",
+        "Does not lower the score for the doc being short.",
+        "Treats the Overview part as the solution overview even though its heading differs.",
+        "Gives a high score (4 or 5), since no significant issue is present.",
+        "Says the doc is ready to advance."
+      ],
+      "why_skill_matters": "A short complete doc that tempts a reviewer to call ranges hedges and brevity a flaw."
+    },
+    {
+      "id": "design-quality-check-pilot-a-4",
+      "title": "Hedge words and filler in an otherwise complete doc",
+      "target_section": "Slop detection",
+      "prompt": "Is this good enough to send around? I feel the writing is mushy but I can't say why.\n\n# Audit Log Export\n\n## Background\nIt is worth noting that auditors ask for logs by email today, which could potentially take days.\n\n## Requirements\nR1: export a tenant's audit log for a date range as CSV. R2: exports finish within 15 minutes for 10M rows (measured baseline: 4 min for 1M rows, run AE-7).\n\n## Solution Overview\nA Step Functions job that might query Athena and somewhat likely writes to S3.\n\n## How It Works\nIn order to start, the user clicks Export. Needless to say, the job queries Athena and writes a presigned link. Diagram: export.png.\n\n## Plan\nTwo sprints.\n\n## ADR-1\nAthena over a DynamoDB scan: Athena reads the existing S3 log archive, so no copy is needed.",
+      "rubric": [
+        "Points to the filler phrases (it is worth noting, in order to, needless to say) and the hedges (could potentially, might, somewhat likely) with a plain rewrite for each.",
+        "Gives a score of 3, since there are more than three minor issues and no significant one.",
+        "Says the doc can advance with revision notes.",
+        "Does not report any required part as missing.",
+        "Does not flag the 15-minute export target as unsupported, since it cites a measured run.",
+        "Says where each wording issue is, by part."
+      ],
+      "why_skill_matters": "Only minor wording issues, so the score and gate depend on counting them as minor, not significant."
+    },
+    {
+      "id": "design-quality-check-pilot-a-5",
+      "title": "Doc that asks for no decision and has no requirements",
+      "target_section": "Structural completeness check",
+      "prompt": "This is an explainer doc for how our existing billing retry works, so new hires can read it. Is it ready to circulate to the team?\n\n# How Billing Retries Work Today\n\n## Background\nCard charges fail about 3% of the time (finance dashboard FD-12). We retry them.\n\n## Overview\nA nightly job re-charges failed cards up to three times over seven days.\n\n## How It Works\nThe job reads failed charges from the payments table, calls the processor, and marks each row. Diagram: retry-today.png.\n\n## Operations\nRunbook: go/billing-retry-runbook. Alarms page the payments on-call.\n\n## Implementation Notes\nCode lives in billing/retry/. The schedule is in infra/cron.tf.",
+      "rubric": [
+        "Does not flag a missing decision-requested part, since the doc asks reviewers to settle nothing.",
+        "Does not flag missing requirements as a gap, since the doc describes an existing system and states no requirements.",
+        "Counts the Implementation Notes part as the implementation part despite its heading.",
+        "Gives a high score, since nothing significant is missing or wrong.",
+        "Says it is ready to circulate."
+      ],
+      "why_skill_matters": "Conditional parts should not be flagged here; a checklist reader would flag them anyway."
+    },
+    {
+      "id": "design-quality-check-pilot-a-6",
+      "title": "Missing diagram file and a broken link",
+      "target_section": "Pitfalls",
+      "prompt": "Final check before review. The doc references a diagram I forgot to attach, but otherwise I think it's done.\n\n# Search Reindex Pipeline\n\n## Problem\nFull reindex of the catalogue takes 9 hours (job history, run SR-88), so schema changes wait a day.\n\n## Requirements\nR1: full reindex under 2 hours. R2: no read downtime.\n\n## Solution Overview\nParallel reindex into a new OpenSearch index, then alias swap.\n\n## How It Works\nA Step Functions map state splits the catalogue into 64 shards of work. See reindex-flow.png (not attached). Alias swap details: see go/os-alias-howto.\n\n## Plan\nOne sprint, dry run on staging.\n\n## ADR-1\nAlias swap over in-place reindex: in-place blocks reads during mapping changes, which breaks R2.",
+      "rubric": [
+        "Mentions the unattached diagram as a note that does not lower the score.",
+        "Gives a high score (4 or 5), since no scored issue is present.",
+        "Says the doc can go to review.",
+        "Does not flag the 9-hour figure as unsupported, since it cites a run.",
+        "Says where the note applies (the How It Works part)."
+      ],
+      "why_skill_matters": "A clean doc where the only problem is outside the scored types, so it should be a note, not a deduction."
+    },
+    {
+      "id": "design-quality-check-pilot-a-7",
+      "title": "Three significant issues and no missing part",
+      "target_section": "Score",
+      "prompt": "We need a 3 or better to get on the review calendar. Can you grade this and tell me what's dragging it down?\n\n# Tenant Rate Limits\n\n## Problem\nOne noisy tenant took down the shared API twice in October.\n\n## Requirements\nR1: limit each tenant to its plan's requests per second. R2: limits change without deploys.\n\n## Solution Overview\nA token bucket per tenant in Redis, with an optional ML model that predicts bursts and pre-scales buckets.\n\n## How It Works\nThe API gateway calls a limiter service before each request. Diagram: limiter.png. This adds under 1 ms per call.\n\n## Plan\nThree sprints.\n\n## ADR-1\nRedis because Redis is the right tool for rate limiting.",
+      "rubric": [
+        "Flags the under 1 ms claim as unsupported and asks for a measurement.",
+        "Flags the burst-prediction model as over-building, since no requirement needs it.",
+        "Flags ADR-1's reason as circular.",
+        "Gives a score of 2: three significant issues and no missing part.",
+        "Says the doc does not reach the needed 3 and must be revised before review.",
+        "Gives a concrete fix for each of the three issues."
+      ],
+      "why_skill_matters": "Exactly three significant issues with every part present, so the score boundary between 1, 2 and 3 matters."
+    },
+    {
+      "id": "design-quality-check-pilot-a-8",
+      "title": "Long verbose doc with gaps versus a team norm",
+      "target_section": "Pitfalls",
+      "prompt": "My doc is long because I wanted to be thorough. Reviewers bounced it last time for being thin, so this time I added a lot. Is it ready?\n\n# Event Bus Migration\n\n## Background\nIn today's world of event-driven systems, teams increasingly realise that events matter. Our services publish events in many ways. Some use SNS. Some use direct HTTP calls. It is worth noting that this has grown over five years. Many engineers have opinions on this. There is a long history here, described in the next three paragraphs. [three more paragraphs of history follow]\n\n## Solution Overview\nMove every publisher to EventBridge with a schema registry.\n\n## Implementation Plan\nTen phases over two quarters, each team migrating its own publishers.",
+      "rubric": [
+        "Flags the missing requirements part as significant.",
+        "Flags the missing how-it-works part (with a diagram) and the missing decision record as significant.",
+        "Says length does not make the doc better, and the extra history does not fill the gaps.",
+        "Gives a score of 1 or 2 that matches the gaps and issue count, not a middle score for effort.",
+        "Says the doc should not advance yet.",
+        "Says concretely what to add, such as requirements and a decision record for EventBridge."
+      ],
+      "why_skill_matters": "A long doc built to look thorough that still misses parts; the skill should not reward length."
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "format_version": 1,
+  "skill": "threat-modeling",
+  "batch": "pilot-a",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "ec9e746c1d1255cfa9ed6469db9f067262c03e39fa66bbc4987778874284810c",
+  "scenarios": [
+    {
+      "id": "threat-modeling-pilot-a-1",
+      "title": "Document sharing with presigned links",
+      "target_section": "Step 7: Identify Threats",
+      "prompt": "Do the STRIDE analysis for our document-sharing service. Don't ask me questions, just note your assumptions.\n\nDesign: users sign in with Cognito. API Gateway calls a Lambda that creates an S3 presigned GET URL (valid 7 days) for a shared document and emails the link to the recipient through SES. Each share is recorded in DynamoDB (owner, recipient, document key). The Lambda logs each request event, including the full generated URL, to CloudWatch.",
+      "rubric": [
+        "Traces the presigned URL and flags its leak in the CloudWatch logs and the email, not only in S3.",
+        "Flags the 7-day validity as widening the window for a leaked link.",
+        "Does not credit controls the design does not state, such as a WAF or KMS keys.",
+        "Lists its assumptions in a table with what changes if each is wrong.",
+        "Rates each threat's likelihood and impact and derives its priority.",
+        "Gives concrete mitigations, such as removing the URL from logs and shortening the expiry."
+      ],
+      "why_skill_matters": "The secret leaks through logs and email, which the skill's tracing step targets."
+    },
+    {
+      "id": "threat-modeling-pilot-a-2",
+      "title": "Webhook intake from a payment provider",
+      "target_section": "Step 7: Identify Threats",
+      "prompt": "What could go wrong security-wise with this architecture? No questions please, make assumptions and say what they are.\n\nWebhooks come in from Stripe over the internet to a public ALB. An ECS service parses the event, writes the payment row to RDS Postgres and pushes a message to SQS for the fulfilment worker. The design doc does not mention signature checks on the webhook. The fulfilment worker ships goods when it sees a paid message.",
+      "rubric": [
+        "Names the internet to ALB webhook entry as an external trust boundary and flags missing webhook signature checks as spoofing.",
+        "Does not assume a signature check exists because Stripe offers one.",
+        "Maps each threat to at least one mitigation.",
+        "Addresses encryption in transit and at rest for RDS and SQS, flagging where the design is silent.",
+        "Gives a concrete mitigation such as verifying the Stripe-Signature header in the ECS service.",
+        "Says which mitigations must ship before launch."
+      ],
+      "why_skill_matters": "A spoofable external entry that leads straight to shipping goods."
+    },
+    {
+      "id": "threat-modeling-pilot-a-3",
+      "title": "Change-only model for a new upload endpoint",
+      "target_section": "Change-Only Threat Models",
+      "prompt": "We added a public file-upload endpoint to an existing design that already has a threat model (threats T-001 to T-020, mitigations M-001 to M-018). Update the risk analysis for the change only, starting at T-021 and M-019. Don't ask questions.\n\nChange: a new POST /upload on the existing API Gateway, open to unauthenticated users, writes files up to 50 MB straight into the existing reports bucket, which internal staff open in the browser.",
+      "rubric": [
+        "Models only the new endpoint and its new trust boundary, not the whole system again.",
+        "Starts threat numbers at T-021 and mitigation numbers at M-019.",
+        "Flags the unauthenticated public entry as a new external trust boundary.",
+        "Gives a test table with concrete inputs (for example an HTML file with script, an oversized file) mapped to threat ids.",
+        "Gives concrete mitigations, such as a separate upload bucket and content-type checks.",
+        "Lists its assumptions with what changes if each is wrong."
+      ],
+      "why_skill_matters": "A change to an existing model, with numbering and scope rules."
+    },
+    {
+      "id": "threat-modeling-pilot-a-4",
+      "title": "IoT pipeline with no stated encryption",
+      "target_section": "Security Assessment Principles",
+      "prompt": "Run a STRIDE pass on our IoT telemetry pipeline. Don't invent components that aren't in the design. No questions, just note assumptions.\n\nDesign: devices connect to AWS IoT Core with X.509 certificates. An IoT rule writes messages to a Kinesis stream. A Lambda reads the stream and writes readings to Timestream. Dashboards read Timestream through Grafana with a shared admin login. Nothing else is in the design doc.",
+      "rubric": [
+        "Does not add components or controls the design does not list (VPC endpoints, KMS keys, a WAF).",
+        "Gives a coverage matrix of IoT Core, Kinesis, Lambda, Timestream and Grafana against the six categories.",
+        "Marks encryption at rest for Kinesis and Timestream as Unknown or Not implemented, not Implemented.",
+        "Flags the shared Grafana admin login as an authentication and repudiation threat.",
+        "Maps each threat to at least one mitigation.",
+        "Keeps to the stated pipeline."
+      ],
+      "why_skill_matters": "A sparse design that tempts the writer to invent and credit controls."
+    },
+    {
+      "id": "threat-modeling-pilot-a-5",
+      "title": "Compliance audit on documented boundaries only",
+      "target_section": "Step 8: Define Mitigations",
+      "prompt": "We need to document trust boundaries, threat actors and baseline security controls for our compliance audit. Only the internal admin API is in scope. Don't ask questions.\n\nDesign: staff reach the admin API through the corporate VPN. The API runs on ECS and calls the customer database (RDS) with a single database user that has full rights. Admin actions are not logged. TLS is used from the VPN to the load balancer; the doc says nothing about TLS to the database.",
+      "rubric": [
+        "Keeps to the admin API scope and does not model the customer-facing app.",
+        "Names the boundary from VPN users to the admin API and analyses authentication and authorization threats there.",
+        "Marks TLS to the database as Unknown, not Implemented.",
+        "Rates likelihood and impact for each threat.",
+        "Gives concrete mitigations, such as per-role database users and an audit log of admin actions.",
+        "Maps every threat to a mitigation."
+      ],
+      "why_skill_matters": "A scoped compliance model with full-rights credentials and no audit trail."
+    },
+    {
+      "id": "threat-modeling-pilot-a-6",
+      "title": "Data export feature abuse",
+      "target_section": "Step 7: Identify Threats",
+      "prompt": "Security analysis for our export my data feature: who could abuse it, how, and what mitigations we have or need. Don't ask questions.\n\nDesign: a signed-in user clicks Export. A Lambda builds a ZIP of their data, stores it in S3 and emails a download link built as https://exports.example.com/dl?file=<user_id>.zip. The download handler serves the file named in the file parameter. Links do not expire.",
+      "rubric": [
+        "Traces the download link and flags that it carries a guessable user id and never expires, and travels by email.",
+        "Flags the download handler serving any file named in the parameter as an authorization threat.",
+        "Rates the guessable link threat high in likelihood and impact.",
+        "Gives concrete mitigations, such as random file keys, an owner check in the handler and short expiry.",
+        "Gives a test table with a concrete input such as another user's id in the file parameter.",
+        "Says which mitigations must ship first."
+      ],
+      "why_skill_matters": "An insecure direct object reference hidden in a link that travels by email."
+    },
+    {
+      "id": "threat-modeling-pilot-a-7",
+      "title": "SSO integration with every HIGH risk mitigated",
+      "target_section": "Quality Gate",
+      "prompt": "Our CISO wants to see that every HIGH risk in the new SSO integration has a mitigation. Produce the threat and mitigation document. No questions, assume where you must.\n\nDesign: the app accepts SAML assertions from the corporate IdP at /sso/acs. The app maps the NameID to a local account, creating it if missing. Sessions are cookies valid for 30 days. The doc does not say whether assertions are signature-checked or whether the cookie is marked Secure.",
+      "rubric": [
+        "Maps every threat, and every HIGH one in particular, to at least one mitigation.",
+        "Does not assume assertion signatures are checked.",
+        "Rates each threat and shows which are HIGH from likelihood and impact.",
+        "Marks the Secure cookie flag and signature check as Unknown, not Implemented.",
+        "Lists assumptions with what changes if each is wrong.",
+        "Gives residual risks and which mitigations must ship first."
+      ],
+      "why_skill_matters": "The CISO's ask matches the skill's every-threat-mitigated rule and its status honesty."
+    },
+    {
+      "id": "threat-modeling-pilot-a-8",
+      "title": "Security tests tied to threats",
+      "target_section": "Step 8: Define Mitigations",
+      "prompt": "Before launch, analyze the GraphQL gateway design for spoofing, repudiation, info disclosure, DoS and privilege escalation, and tell us how we'd test each mitigation. No questions.\n\nDesign: a public GraphQL endpoint on API Gateway with a Lambda resolver. Clients send an API key in a header. Queries can nest without a depth limit. Introspection is on in production. Errors return full stack traces.",
+      "rubric": [
+        "Gives a test table with test id, type, concrete input (a deeply nested query, an introspection query), expected result and threat ids.",
+        "Covers the gateway and resolver against all six categories, including tampering, which the request leaves out.",
+        "Gives concrete mitigations, such as a depth limit, turning off introspection and generic errors.",
+        "Traces the API key in headers and flags where it could be logged.",
+        "Maps every threat to a mitigation."
+      ],
+      "why_skill_matters": "A request focused on tests, which the skill ties to threat ids."
+    }
+  ]
+}

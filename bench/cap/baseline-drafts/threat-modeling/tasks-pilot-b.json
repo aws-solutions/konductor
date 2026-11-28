@@ -1,0 +1,128 @@
+{
+  "format_version": 1,
+  "skill": "threat-modeling",
+  "batch": "pilot-b",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "ec9e746c1d1255cfa9ed6469db9f067262c03e39fa66bbc4987778874284810c",
+  "scenarios": [
+    {
+      "id": "threat-modeling-pilot-b-1",
+      "title": "AppSec review document",
+      "target_section": "Threat Model Template",
+      "prompt": "AppSec review is in 3 weeks for the payments-ledger service. Write the threat model they expect: scope, architecture, assets, threats, mitigations, testing strategy. No questions.\n\nDesign: an internal API on ECS behind a private ALB records ledger entries in Aurora Postgres. A nightly job exports the ledger to an S3 bucket shared with the finance team's account. Service-to-service calls use IAM SigV4.",
+      "rubric": [
+        "States in-scope and out-of-scope parts explicitly.",
+        "Names the cross-account S3 share as an external trust boundary and analyses its authorization.",
+        "Addresses encryption at rest for Aurora and the export bucket, and in transit, flagging where the design is silent.",
+        "Includes a test table tied to threat ids.",
+        "Lists assumptions with what changes if each is wrong.",
+        "Ends with residual risks and a launch recommendation."
+      ],
+      "why_skill_matters": "A full document request where the template parts matter."
+    },
+    {
+      "id": "threat-modeling-pilot-b-2",
+      "title": "Multi-tenant admin portal",
+      "target_section": "Step 7: Identify Threats",
+      "prompt": "Identify the security threats for the new multi-tenant admin portal and document controls for each, with T-xxx and M-xxx ids. Don't ask me questions.\n\nDesign: tenant admins sign in with Cognito. The portal's API reads the tenant id from a custom header the browser sends and queries a shared DynamoDB table by that id. Support staff use the same portal with a super-admin Cognito group.",
+      "rubric": [
+        "Flags trusting a browser-sent tenant header as an authorization and elevation threat at the external boundary.",
+        "Rates the cross-tenant read threat high in likelihood and impact.",
+        "Gives a concrete mitigation: take the tenant id from the signed token, not a header.",
+        "Maps every threat to a mitigation.",
+        "Gives a coverage matrix for the portal API, Cognito and DynamoDB.",
+        "Does not assume per-tenant IAM conditions exist."
+      ],
+      "why_skill_matters": "A cross-tenant authorization hole in a common pattern."
+    },
+    {
+      "id": "threat-modeling-pilot-b-3",
+      "title": "Tokens forwarded to a third party",
+      "target_section": "Step 7: Identify Threats",
+      "prompt": "Threat-model this integration. No questions, note assumptions.\n\nDesign: our API receives the user's OAuth access token in the Authorization header. To fetch the user's calendar, it forwards the same token as a query parameter to a partner API (https://partner.example/cal?token=...). Requests and responses, URLs included, are logged to our log pipeline, which three other teams can read. Errors are emailed to the on-call alias with the request URL.",
+      "rubric": [
+        "Traces the access token and flags leaks in the partner URL, the shared logs and the error emails.",
+        "Names the partner API call as an external trust boundary and flags token forwarding as an elevation and disclosure risk.",
+        "Gives concrete mitigations, such as a token exchange for a scoped partner token and stripping tokens from logs.",
+        "Rates likelihood and impact for each threat.",
+        "Lists assumptions with what changes if each is wrong."
+      ],
+      "why_skill_matters": "A credential that leaks through URLs, logs and email."
+    },
+    {
+      "id": "threat-modeling-pilot-b-4",
+      "title": "Scope narrower than the system",
+      "target_section": "Step 1: Clarify Threat Model Scope",
+      "prompt": "Only the password reset flow is in scope for this threat model; the rest of the auth service had its own review. No questions.\n\nFlow: a user enters their email; the service creates a reset token, stores it in Redis for 24 hours and emails a link with the token in the URL. The reset page posts the token and new password. There is no rate limit on the email request. The login API, MFA and session handling exist but are out of scope.",
+      "rubric": [
+        "Keeps to the reset flow and does not model login, MFA or sessions.",
+        "Traces the reset token through the email, the URL and any logs or referrers.",
+        "Analyses authentication threats in the reset flow, such as account takeover with a stolen link.",
+        "Gives concrete mitigations, such as single-use tokens, shorter expiry and a rate limit.",
+        "Maps every threat to a mitigation.",
+        "Gives a test table tied to threat ids."
+      ],
+      "why_skill_matters": "A narrow scope that the skill must respect while tracing the token."
+    },
+    {
+      "id": "threat-modeling-pilot-b-5",
+      "title": "Design credited with defaults it does not state",
+      "target_section": "Step 8: Define Mitigations",
+      "prompt": "Write the mitigations table for this design with an implementation status for each mitigation. We're presenting it to the security council tomorrow, no questions please.\n\nDesign: a Lambda reads customer orders from an SQS queue and writes them to a DynamoDB table and an S3 bucket. The design doc says the S3 bucket blocks public access. It says nothing else about encryption, IAM scoping or logging.",
+      "rubric": [
+        "Marks block public access as Implemented and marks encryption, IAM scoping and logging as Unknown or Not implemented, not Implemented.",
+        "Does not credit KMS encryption or least-privilege roles the doc does not state.",
+        "Addresses encryption at rest for SQS, DynamoDB and S3 and in transit.",
+        "States each mitigation as a concrete change to a named component.",
+        "Maps each threat to a mitigation."
+      ],
+      "why_skill_matters": "A status column that is easy to fill with assumed defaults."
+    },
+    {
+      "id": "threat-modeling-pilot-b-6",
+      "title": "Threat list with no ratings from a teammate",
+      "target_section": "Quality Gate",
+      "prompt": "A teammate wrote this threat list for our public URL shortener. Can you turn it into a proper threat model section? No questions.\n\nTheir list: 1) someone could spam the create endpoint, 2) links could point to malware, 3) someone could guess short codes for private links, 4) the stats page shows the creator's email.\n\nDesign: API Gateway, a Lambda, DynamoDB. Short codes are 4 characters. Private links are just unlisted.",
+      "rubric": [
+        "Adds likelihood and impact to each threat and derives its priority.",
+        "Maps each threat to at least one mitigation.",
+        "Places the threats in a STRIDE matrix against the components, with none found where it applies.",
+        "Gives concrete mitigations, such as longer codes, a create rate limit and removing the email from stats.",
+        "Gives a test table tied to threat ids.",
+        "Names the public API as an external trust boundary."
+      ],
+      "why_skill_matters": "An unrated list the skill turns into rated threats with a matrix and tests."
+    },
+    {
+      "id": "threat-modeling-pilot-b-7",
+      "title": "Admin console behind a shared VPN account",
+      "target_section": "Step 7: Identify Threats",
+      "prompt": "Identify threats for our warehouse admin console before launch. No questions, assume where needed.\n\nDesign: warehouse staff reach the console over a site VPN using one shared VPN account per warehouse. The console lets staff change stock counts and approve returns. Actions are written to a log with the warehouse id but no user id. The console talks to an internal API over plain HTTP inside the VPC.",
+      "rubric": [
+        "Flags shared VPN accounts as an authentication and repudiation threat, since actions cannot be tied to a person.",
+        "Flags plain HTTP inside the VPC as an encryption-in-transit gap.",
+        "Rates likelihood and impact for each threat.",
+        "Says which mitigations must ship before launch.",
+        "Gives concrete mitigations, such as per-user sign-in and TLS on the internal API."
+      ],
+      "why_skill_matters": "Repudiation and transit gaps in an internal tool that looks low risk."
+    },
+    {
+      "id": "threat-modeling-pilot-b-8",
+      "title": "Change to add a partner callback, numbering given",
+      "target_section": "Change-Only Threat Models",
+      "prompt": "Extend our existing threat model for one change only. The current model ends at T-014 and M-011; continue from there. No questions.\n\nChange: our order service will now accept status callbacks from a shipping partner at POST /partner/status over the internet, authenticated by a static shared secret in a header. The callback updates order status in the existing orders table. Nothing else changes.",
+      "rubric": [
+        "Starts threat numbers at T-015 and mitigation numbers at M-012.",
+        "Models only the callback and its new boundary, not the existing order service.",
+        "Traces the shared secret in the header and flags where it could be logged or leaked.",
+        "Names the internet to callback entry as an external trust boundary.",
+        "Gives concrete mitigations, such as HMAC signing with timestamps and secret rotation.",
+        "Maps every new threat to a mitigation."
+      ],
+      "why_skill_matters": "A change model where numbering, scope and secret tracing all apply."
+    }
+  ]
+}

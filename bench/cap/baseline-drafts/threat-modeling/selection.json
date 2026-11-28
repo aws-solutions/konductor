@@ -1,0 +1,66 @@
+{
+  "format_version": 1,
+  "skill": "threat-modeling",
+  "requests": [
+    {
+      "id": "threat-modeling-sel-load-0",
+      "prompt": "System design for our document-sharing service is done (docs/design/doc-share.md: API Gateway, Lambda, S3 presigned URLs, DynamoDB, Cognito). Do the STRIDE analysis: threat actors, threats numbered, mitigations mapped to each.",
+      "expect": "load",
+      "note": "skill-evals queries.json #0"
+    },
+    {
+      "id": "threat-modeling-sel-load-2",
+      "prompt": "what could go wrong security-wise with this architecture? webhooks come in from stripe to an ALB, then an ECS service writes to RDS and pushes to SQS. go component by component, spoofing tampering etc",
+      "expect": "load",
+      "note": "skill-evals queries.json #2"
+    },
+    {
+      "id": "threat-modeling-sel-load-4",
+      "prompt": "We need to document trust boundaries, threat actors and baseline security controls for our compliance audit. The design is in docs/hld.md. Only the ingestion path is in scope.",
+      "expect": "load",
+      "note": "skill-evals queries.json #4"
+    },
+    {
+      "id": "threat-modeling-sel-load-5",
+      "prompt": "Run a STRIDE pass on our IoT telemetry pipeline (IoT Core -> Kinesis -> Lambda -> Timestream). Don't invent components that aren't in docs/iot-design.md.",
+      "expect": "load",
+      "note": "skill-evals queries.json #5"
+    },
+    {
+      "id": "threat-modeling-sel-load-9",
+      "prompt": "We added a public file-upload endpoint to the design. Update our risk analysis: new trust boundary, new threats, mitigations, and how we'd test them.",
+      "expect": "load",
+      "note": "skill-evals queries.json #9"
+    },
+    {
+      "id": "threat-modeling-sel-none-10",
+      "prompt": "Our scanner flagged CVE-2024-4068 in braces via micromatch. Write the remediation steps and verify the fix.",
+      "expect": "none",
+      "note": "skill-evals queries.json #10"
+    },
+    {
+      "id": "threat-modeling-sel-none-11",
+      "prompt": "Write least-privilege IAM policies for the Lambdas in docs/design/doc-share.md.",
+      "expect": "none",
+      "note": "skill-evals queries.json #11"
+    },
+    {
+      "id": "threat-modeling-sel-none-13",
+      "prompt": "Review src/auth/session.ts for security bugs: token handling, cookie flags, timing attacks.",
+      "expect": "none",
+      "note": "skill-evals queries.json #13"
+    },
+    {
+      "id": "threat-modeling-sel-none-14",
+      "prompt": "Check lib/stack.ts CDK for unencrypted buckets and wildcard IAM before we deploy.",
+      "expect": "none",
+      "note": "skill-evals queries.json #14"
+    },
+    {
+      "id": "threat-modeling-sel-none-17",
+      "prompt": "Explain what STRIDE stands for with one example each, for a lunch-and-learn slide.",
+      "expect": "none",
+      "note": "skill-evals queries.json #17"
+    }
+  ]
+}

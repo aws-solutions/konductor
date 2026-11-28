@@ -1,0 +1,66 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-design-review",
+  "requests": [
+    {
+      "id": "adversarial-design-review-sel-load-1",
+      "prompt": "Play devil's advocate on docs/design/payments-ledger-v2.md. We picked Aurora over DynamoDB and SQS over Kinesis and I'm not sure the justifications hold up. Classify whatever you find by how bad it is.",
+      "expect": "load",
+      "note": "skill-evals queries.json #1"
+    },
+    {
+      "id": "adversarial-design-review-sel-load-3",
+      "prompt": "I wrote an ADR choosing EventBridge for inter-service events (adr/0007-eventbridge.md). Argue against it as hard as you can - missing alternatives, weak warrants, any false dichotomy - and tell me what I'd need to rebut before the review.",
+      "expect": "load",
+      "note": "skill-evals queries.json #3"
+    },
+    {
+      "id": "adversarial-design-review-sel-load-4",
+      "prompt": "our team lead says the design for the image-resize pipeline (design/image-resize.md) is 'fine'. i dont trust that. stress test it against the NFRs it states (p99 < 200ms at 5k rps) and flag single points of failure",
+      "expect": "load",
+      "note": "skill-evals queries.json #4"
+    },
+    {
+      "id": "adversarial-design-review-sel-load-7",
+      "prompt": "Pretend you're the most skeptical principal engineer in the org. Read design/feature-flags-service.md and go after each architectural choice: sync vs async, the cache layer, the multi-AZ claim. What breaks at 10x load?",
+      "expect": "load",
+      "note": "skill-evals queries.json #7"
+    },
+    {
+      "id": "adversarial-design-review-sel-load-8",
+      "prompt": "the trade-off section in my design (design/cdc-pipeline.md section 4) lists only cost and latency. challenge it - what dimensions are missing and are any of the claims about Kinesis shard limits actually wrong?",
+      "expect": "load",
+      "note": "skill-evals queries.json #8"
+    },
+    {
+      "id": "adversarial-design-review-sel-none-10",
+      "prompt": "do an adversarial review of the diff on my branch feat/rate-limiter - look for info disclosure in error responses and non-atomic dynamo writes in src/limiter/*.ts",
+      "expect": "none",
+      "note": "skill-evals queries.json #10"
+    },
+    {
+      "id": "adversarial-design-review-sel-none-11",
+      "prompt": "check docs/design/rate-limiter.md for filler language, hedge words and passive voice before i send it out. just writing quality, not the architecture",
+      "expect": "none",
+      "note": "skill-evals queries.json #11"
+    },
+    {
+      "id": "adversarial-design-review-sel-none-14",
+      "prompt": "build a STRIDE threat model for the architecture in docs/design/tenant-isolation.md, with trust boundaries and mitigations per component",
+      "expect": "none",
+      "note": "skill-evals queries.json #14"
+    },
+    {
+      "id": "adversarial-design-review-sel-none-15",
+      "prompt": "fact-check the claims in design/cdc-pipeline.md against AWS docs - service limits, pricing numbers, feature availability. give me a list of which claims are accurate vs wrong",
+      "expect": "none",
+      "note": "skill-evals queries.json #15"
+    },
+    {
+      "id": "adversarial-design-review-sel-none-16",
+      "prompt": "We can't decide between Step Functions and a plain SQS worker for the export job. Can you lay out the options and recommend one? There's no doc yet, just this question.",
+      "expect": "none",
+      "note": "skill-evals queries.json #16"
+    }
+  ]
+}

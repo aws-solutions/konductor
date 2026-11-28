@@ -1,0 +1,62 @@
+{
+  "format_version": 1,
+  "files": {
+    "adversarial-design-review/rules.json": "dd75590b1cf3616a451784df6a0e07d0038441385aee9f603926dcdecc69b6e3",
+    "adversarial-design-review/tasks-pilot-a.json": "a8e04290bfef27d26ccbf8935d74ba754e5950b5d145c8fb20a4d1e8ebffe8c2",
+    "adversarial-design-review/tasks-pilot-a.buckets.json": "ffd2c0cc96037b1e974323e3226de32ebe4991e98894358e0ac224983a216d25",
+    "adversarial-design-review/tasks-pilot-b.json": "201cb2ef1032e71f0bc211c97469e46aa3b8f5485723a0ea11371ccd499fb1de",
+    "adversarial-design-review/tasks-pilot-b.buckets.json": "9e0559614e26b3c3c865a7febfe087bf42aac1b243c513ce6e5aca49a4c173f0",
+    "adversarial-design-review/selection.json": "948f34393d79fa60d111a1622f1f58ff029a3e2eaaa165e021ec30bfef08c60a",
+    "design-quality-check/rules.json": "b74d0c40d8a559297e7dbbec763a63b7378253b98e24caee109a2f9fbc8eb863",
+    "design-quality-check/tasks-pilot-a.json": "c197e868378eaa38b8f468dedbce5ae3d74685fe77cf0f6a1ef547a7a56fbf4e",
+    "design-quality-check/tasks-pilot-a.buckets.json": "f1257f8afb2f88875a95b3d923a9a6307a1b6ead7949dec1d72e3371f672cfd7",
+    "design-quality-check/tasks-pilot-b.json": "330259b36aa786d25f6533c72b68835fd5891f442f2bfe98e0de45e390b29d9e",
+    "design-quality-check/tasks-pilot-b.buckets.json": "6373cbc37e1267bb3cba445af311cc875e1b52f21cdd3251c93a94df7ae4fb0f",
+    "design-quality-check/selection.json": "0a087c8c220dfb57922e209c26d82490bda397c4fe910db78ad43ce330715815",
+    "doc-accuracy-analyzer/rules.json": "d3776f3552dd97006256d19d1aec81e3c3ca238bd6339a34da8a5c5a56e32c27",
+    "doc-accuracy-analyzer/tasks-pilot-a.json": "5e6ced894c4ea84fa214975f82ff9d72265ef9e8d90bcdcc05efd78b4781dc80",
+    "doc-accuracy-analyzer/tasks-pilot-a.buckets.json": "7e30120c37d0c2988745a41de35b0a5ecc4e922c9454a71293f8c35e74051016",
+    "doc-accuracy-analyzer/tasks-pilot-b.json": "802d56f022ae7179a2e8ec4ce8e1a25f314de99bcbce10b156708f758932dcd9",
+    "doc-accuracy-analyzer/tasks-pilot-b.buckets.json": "a334833413e99b9a87555772bfa1df6978df6d25a4d966caa0e3433e4ee0cd45",
+    "doc-accuracy-analyzer/selection.json": "50335474cd333a4c4abb53571d2283af842716b098f787a8b5b49601197937de",
+    "threat-modeling/rules.json": "ec9e746c1d1255cfa9ed6469db9f067262c03e39fa66bbc4987778874284810c",
+    "threat-modeling/tasks-pilot-a.json": "af194f743844b0c0debba204645f6c59e1fb906ff68295447182e1dfe1db6018",
+    "threat-modeling/tasks-pilot-a.buckets.json": "7ceadea77238f50b534c78245b8ebe3967306685c888dfa20562b848c6d9ef29",
+    "threat-modeling/tasks-pilot-b.json": "855553a5069a9fd29040e46456a51df69e7a2cc7901788d993e2589a43e8be4e",
+    "threat-modeling/tasks-pilot-b.buckets.json": "e4b4dc91230664480f387d335cd5565321985f951533eeb7443f0714ce9ddefc",
+    "threat-modeling/selection.json": "021be7e1e69e5b42eb941bddbe0f4b4ca8d63030f0d8708cdaa8601b2f273c03",
+    "verification/rules.json": "45edc7a5380747aa52c6d5e0eb7e89c8467d68ee6b79a8d6d7c31b777aa71659",
+    "verification/tasks-pilot-a.json": "31dd49d101b3fc5a43082c1b86b7b726213f12c4447b31cb91f12d2d4995fb63",
+    "verification/tasks-pilot-a.buckets.json": "f8e93d5b58fa7e33f2e72634c5aa10eabf52862b36c298f3201665025ade2acc",
+    "verification/tasks-pilot-b.json": "262be730da38ab05b8dd9fc425505f41867c4c39d1c2af809e03abc70514d092",
+    "verification/tasks-pilot-b.buckets.json": "92ef37a30ec3f548ea794d9ef3b3e1b85c480548df355f05cf0d587c23d89ad6",
+    "verification/selection.json": "8f36f3b1b7bec45dfe83396e79b3a2afd263d125eda3e1251da3cca496c6e076"
+  },
+  "sources": {
+    "adversarial-design-review": {
+      "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+      "tree": "035af650477d071de67323ab5384d4fab2e9b1f2",
+      "subject_sha256": "0fa1973611992e5c21bc6abf4756b4fcae716337dede698295bbad5f9fab30d3"
+    },
+    "design-quality-check": {
+      "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+      "tree": "301323dacb9733018a1a7d1c4dc9a02d2cd90c75",
+      "subject_sha256": "27a41aed283af7bbcad6b0c5c38b0d9259de0ba984508d709f58499aad09a4b3"
+    },
+    "doc-accuracy-analyzer": {
+      "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+      "tree": "150d45fd5262e6362da273d50262ce9de83c86f5",
+      "subject_sha256": "dbd3d7dc635d8b9ff530c400c52e9e1580387e59cf78d37a630e667cd58b7893"
+    },
+    "threat-modeling": {
+      "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+      "tree": "421fa586c7a3c84a1213b9e3d395085382511f6b",
+      "subject_sha256": "bdb51ae7e8565f6750692ebf3d8f75ea9ea90f982d54af775da294b425278a09"
+    },
+    "verification": {
+      "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+      "tree": "dc837553337f9beefc8dfc25523a9bc658f8230b",
+      "subject_sha256": "ecbd6a9bab6a79473916e9d6cb2924ce3d7236a4a7e29091db58df09139ac462"
+    }
+  }
+}

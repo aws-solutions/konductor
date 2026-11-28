@@ -1,0 +1,66 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "requests": [
+    {
+      "id": "design-quality-check-sel-load-0",
+      "prompt": "Here's my design doc at docs/design/notification-service.md. Before I send it for design review, is it ready? Score it and list whatever needs fixing.",
+      "expect": "load",
+      "note": "skill-evals queries.json #0"
+    },
+    {
+      "id": "design-quality-check-sel-load-1",
+      "prompt": "can you check docs/rfc/0042-cache-layer.md for filler language and hand-wavy claims? my last doc got bounced because reviewers said it was padded and had latency numbers with no source",
+      "expect": "load",
+      "note": "skill-evals queries.json #1"
+    },
+    {
+      "id": "design-quality-check-sel-load-3",
+      "prompt": "I think my design doc over-engineers things, there's a plugin system nobody asked for. Check docs/payments-v2-design.md for unjustified complexity and anything else that'd block review.",
+      "expect": "load",
+      "note": "skill-evals queries.json #3"
+    },
+    {
+      "id": "design-quality-check-sel-load-6",
+      "prompt": "Our team requires a doc quality score of at least 3 before design review. Grade docs/design/audit-log.md against that and tell me what's dragging it down, with a suggestion per issue.",
+      "expect": "load",
+      "note": "skill-evals queries.json #6"
+    },
+    {
+      "id": "design-quality-check-sel-load-8",
+      "prompt": "is docs/design/feature-flags.md review-ready? I want an objective score, not a rewrite.",
+      "expect": "load",
+      "note": "skill-evals queries.json #8"
+    },
+    {
+      "id": "design-quality-check-sel-none-10",
+      "prompt": "Rewrite the intro of docs/design/notification-service.md so it doesn't sound AI-generated. Keep the same content.",
+      "expect": "none",
+      "note": "skill-evals queries.json #10"
+    },
+    {
+      "id": "design-quality-check-sel-none-11",
+      "prompt": "Play devil's advocate on the decisions in docs/design/cache-layer.md - argue against using Redis over DynamoDB DAX and poke holes in the failover plan.",
+      "expect": "none",
+      "note": "skill-evals queries.json #11"
+    },
+    {
+      "id": "design-quality-check-sel-none-12",
+      "prompt": "Verify the factual claims in docs/design/s3-ingest.md against the code: does the handler really batch 25 items, is the retry count really 3?",
+      "expect": "none",
+      "note": "skill-evals queries.json #12"
+    },
+    {
+      "id": "design-quality-check-sel-none-13",
+      "prompt": "Write a design doc for a URL shortener service: problem, requirements, solution, diagrams, ADRs.",
+      "expect": "none",
+      "note": "skill-evals queries.json #13"
+    },
+    {
+      "id": "design-quality-check-sel-none-14",
+      "prompt": "Evaluate our full design package (system design, threat model, API spec, data model, IAM policies) for production readiness across all dimensions before handoff to implementation.",
+      "expect": "none",
+      "note": "skill-evals queries.json #14"
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-design-review",
+  "batch": "pilot-a",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "dd75590b1cf3616a451784df6a0e07d0038441385aee9f603926dcdecc69b6e3",
+  "scenarios": [
+    {
+      "id": "adversarial-design-review-pilot-a-1",
+      "title": "Sync design against an async requirement",
+      "target_section": "Calibrating Severity",
+      "prompt": "Attack the decisions in this design. Single pass is fine, no need for anything fancy.\n\n# Order Confirmation Emails\n\nR1: order placement must not wait on email delivery (async).\nR2: emails arrive within 2 minutes.\n\n## Design\nThe order API calls the email provider's HTTP API inline before returning 201 to the client. On provider timeout (10 s) the order call returns 500 and the client retries.\n\n## ADR-1\nInline call over a queue: fewer moving parts. Big retailers do it this way, so it is proven.",
+      "rubric": [
+        "Rates the inline email call as CRITICAL architectural, since it breaks R1's async requirement.",
+        "Names R1 as the requirement broken.",
+        "Names the appeal to authority (big retailers do it) in ADR-1 and rates it IMPORTANT.",
+        "Rates the missing alternative (a queue or event) as IMPORTANT, or folds it into the ADR-1 finding.",
+        "Says the doc does not advance while the CRITICAL stands.",
+        "Gives each finding a concrete rebuttal, such as moving email to a queue."
+      ],
+      "why_skill_matters": "A clear requirement break plus a fallacy; severity and naming the requirement are the point."
+    },
+    {
+      "id": "adversarial-design-review-pilot-a-2",
+      "title": "Personal data with no encryption stated",
+      "target_section": "Classification",
+      "prompt": "Be a hostile reviewer on this design, I'd rather hear it now. Quick single-voice pass please.\n\n# Patient Intake Forms\n\nR1: store intake forms (name, birth date, symptoms) for 7 years.\nR2: clinic staff can search forms by patient name.\n\n## Design\nForms are posted to an API Gateway endpoint, a Lambda writes them as JSON to an S3 bucket, and an OpenSearch domain indexes them for search. Staff use an internal web page that calls the search API.\n\n## ADR-1\nS3 over RDS: cheaper for 7-year retention and needs no patching. Compared: S3, RDS, DynamoDB on cost, durability and operations.",
+      "rubric": [
+        "Rates the missing encryption and access control for personal health data as CRITICAL architectural.",
+        "Points to the Design section as where the boundary is missing.",
+        "Does not invent named regulations or numbers the doc does not state as requirements.",
+        "Does not mark ADR-1 CRITICAL, since it compares options on several dimensions.",
+        "Says the review is single-voice and gives no finding HIGH confidence.",
+        "Gives a concrete rebuttal, such as stating encryption and staff authorization on each store."
+      ],
+      "why_skill_matters": "A missing boundary on personal data with an otherwise fair ADR; tests severity and staying in the doc."
+    },
+    {
+      "id": "adversarial-design-review-pilot-a-3",
+      "title": "Single region, single writer",
+      "target_section": "Architecture stress test",
+      "prompt": "Poke holes in this, especially the single region part. Just you, no panel.\n\n# Search Indexer HLD\n\nR1: search stays available during a single instance failure.\nR2: index updates visible within 60 s.\n\n## Design\nOne EC2 instance runs the indexer process, which reads change events from a Kinesis stream and writes to an OpenSearch domain with 3 data nodes across 3 AZs. All in us-east-1.\n\n## Why a single region\nMulti-region is expensive, so single region is the only sensible option.",
+      "rubric": [
+        "Rates the one indexer instance as a single point of failure with no stated mitigation, CRITICAL architectural.",
+        "Names R2 (updates visible within 60 s) as at risk when the indexer instance fails, without claiming R1 is broken, since the domain spans 3 AZs.",
+        "Names the false dichotomy in Why a single region (multi-region or single region only) and rates it IMPORTANT.",
+        "Does not rate single region itself CRITICAL, since no stated requirement asks for region failure.",
+        "Gives each finding a concrete rebuttal, such as two indexers with a lease.",
+        "Points each finding to its section."
+      ],
+      "why_skill_matters": "A real single point next to a risky-looking choice that breaks no requirement."
+    },
+    {
+      "id": "adversarial-design-review-pilot-a-4",
+      "title": "Wrong service limit used in sizing",
+      "target_section": "Classification",
+      "prompt": "Argue against this design as hard as you can. Single reviewer is fine.\n\n# Event Payload Store\n\nR1: store each event's full payload (up to 1.5 MB) for lookup by id.\n\n## Design\nEach event is written as one DynamoDB item. The doc says: \"DynamoDB items can be up to 2 MB, so 1.5 MB payloads fit with room to spare.\" Lookups use GetItem by event id.\n\n## ADR-1\nDynamoDB over S3: single-digit millisecond reads. Trade-off considered: latency.",
+      "rubric": [
+        "Rates the 2 MB item claim as CRITICAL factual: the item limit is 400 KB.",
+        "Says the 400 KB figure comes from outside knowledge of the service limit.",
+        "Names R1 as broken, since 1.5 MB payloads do not fit an item.",
+        "Rates ADR-1's trade-off as IMPORTANT for weighing latency only.",
+        "Says the doc does not advance.",
+        "Gives a rebuttal, such as payloads in S3 with a pointer item."
+      ],
+      "why_skill_matters": "A false service limit that breaks the requirement; tests the factual class and the outside-knowledge note."
+    },
+    {
+      "id": "adversarial-design-review-pilot-a-5",
+      "title": "Contradictory requirements",
+      "target_section": "Classification",
+      "prompt": "Stress test this design against its NFRs. Single pass.\n\n# Global Inventory\n\nR1: every read in every region sees the latest write (strong consistency worldwide).\nR2: writes complete in under 10 ms from any region.\nR3: three regions: us-east-1, eu-west-1, ap-southeast-2.\n\n## Design\nAurora Global Database with a writer in us-east-1 and readers in the other two regions. Writes from other regions are forwarded to us-east-1.",
+      "rubric": [
+        "Rates R1 with R2 as contradictory requirements (CRITICAL factual): worldwide strong consistency cannot finish writes in 10 ms across these regions.",
+        "Names R1 and R2 by label.",
+        "Rates write forwarding to us-east-1 as breaking R2 for writes from other regions.",
+        "Says the latency reasoning rests on outside knowledge of cross-region round-trip times.",
+        "Gives a rebuttal, such as relaxing R1 for some reads or R2 for remote writes."
+      ],
+      "why_skill_matters": "Two requirements that cannot both hold; the class is factual, not a design flaw."
+    },
+    {
+      "id": "adversarial-design-review-pilot-a-6",
+      "title": "Risky-looking but sound design",
+      "target_section": "Calibrating Severity",
+      "prompt": "Be skeptical about this one. My lead says it's fine but I don't trust that. Quick single pass, no panel.\n\n# Image Resize Pipeline\n\nR1: thumbnails ready within 30 s of upload.\nR2: no lost uploads.\n\n## Design\nS3 upload event goes to an SQS queue (with a DLQ after 5 tries); a Lambda resizes and writes thumbnails. Expected load: 50 uploads a second at peak.\n\n## ADR-1\nSQS plus Lambda over an ECS worker and over Step Functions: compared on cost, latency, operations and scaling.",
+      "rubric": [
+        "Does not raise any CRITICAL, since no requirement is broken and no required boundary or single point is missing.",
+        "Rates the unsourced 50 uploads a second figure as IMPORTANT, asking where it comes from.",
+        "Does not invent extra requirements to criticise.",
+        "Says the review is single-voice and gives no finding HIGH confidence.",
+        "Gives each finding a concrete rebuttal.",
+        "Points each finding to its section."
+      ],
+      "why_skill_matters": "A design a reviewer might over-flag; calibration keeps it at IMPORTANT and below."
+    },
+    {
+      "id": "adversarial-design-review-pilot-a-7",
+      "title": "Trade-off table with two dimensions",
+      "target_section": "Review Checklist",
+      "prompt": "The trade-off section of my CDC design lists only cost and latency. Challenge it, single reviewer.\n\n# CDC Pipeline, section 4\n\nR1: replicate Postgres changes to the warehouse within 5 minutes.\n\n| Option | Cost | Latency |\n| DMS | $300/mo | 1 min |\n| Debezium on MSK | $900/mo | 10 s |\n\nDecision: DMS, cheaper and fast enough for R1.",
+      "rubric": [
+        "Rates the trade-off as IMPORTANT for leaving out complexity, scalability and operability.",
+        "Notes any obvious alternative left out (such as a managed CDC from the warehouse vendor) without inventing requirements.",
+        "Does not rate the DMS choice CRITICAL, since it meets R1.",
+        "Does not add numbers or requirements the doc does not state.",
+        "Gives a concrete rebuttal: add the missing dimensions to the table."
+      ],
+      "why_skill_matters": "A narrow trade-off on a choice that meets its requirement."
+    },
+    {
+      "id": "adversarial-design-review-pilot-a-8",
+      "title": "Panel not mentioned by the user",
+      "target_section": "Steps",
+      "prompt": "Before this goes to the principal engineer next week, I want someone to tear apart the architecture choices. Every decision, every trade-off. Assume it's wrong.\n\n# Notification Fan-out\n\nR1: deliver 1M notifications within 10 minutes.\n\n## Design\nA single Lambda reads the target list from S3 and calls SNS publish once per user, in a loop.\n\n## ADR-1\nLambda over ECS: serverless is always cheaper.",
+      "rubric": [
+        "Either offers the deliberation panel with its cost and the single-voice option, or, proceeding without confirmation, says it is a single-voice review and gives no HIGH confidence.",
+        "Rates one Lambda publishing 1M messages in a loop as unable to meet R1, CRITICAL architectural with R1 named, noting the 15-minute run limit and publish rate.",
+        "Says the limit reasoning rests on outside knowledge of Lambda or SNS limits.",
+        "Names the overgeneralisation in serverless is always cheaper and rates it IMPORTANT.",
+        "Gives each finding a concrete rebuttal."
+      ],
+      "why_skill_matters": "The consent step for the panel applies, plus a scale flaw and a fallacy."
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "skill": "verification",
+  "batch": "pilot-a",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "45edc7a5380747aa52c6d5e0eb7e89c8467d68ee6b79a8d6d7c31b777aa71659",
+  "scenarios": [
+    {
+      "id": "verification-pilot-a-1",
+      "title": "Done claim with no test output",
+      "target_section": "Anti-Patterns",
+      "prompt": "The slugify fix in src/utils/slug.ts is in. Here's the diff:\n\n```diff\n- return s.toLowerCase().replace(/ /g, '-');\n+ return s.toLowerCase().trim().replace(/\\s+/g, '-');\n```\n\nThe bug was that 'Hello  World ' became 'hello--world-'. The other dev says the tests should pass, the code looks right. Can I close the ticket? I haven't run anything.",
+      "rubric": [
+        "Says it cannot be called done on should pass or looks right, and that the tests must be run and shown.",
+        "Asks for a test with the bug's input ('Hello  World ') that fails before the fix and passes after.",
+        "Asks for the full suite to pass, with output, before closing the ticket.",
+        "Reads the diff and says whether it handles the stated input, without claiming the run result.",
+        "Names src/utils/slug.ts and the changed line."
+      ],
+      "why_skill_matters": "A done claim with only belief behind it; the skill's whole point."
+    },
+    {
+      "id": "verification-pilot-a-2",
+      "title": "Diff that deletes a failing test",
+      "target_section": "Quality Gate",
+      "prompt": "CI is green now, can you approve? I fixed the pagination change. The PR:\n\n```diff\n src/paginate.py\n- end = start + size + 1\n+ end = start + size\n tests/test_paginate.py\n- def test_last_page_has_remaining_items():\n-     assert paginate(list(range(25)), page=3, size=10) == [20, 21, 22, 23, 24]\n```\n\nThat test kept failing so I removed it, it was flaky anyway.",
+      "rubric": [
+        "Rejects removing the failing test to get green and says to fix the code instead.",
+        "Checks whether the code change would make the removed test pass, based on the diff, before calling it flaky.",
+        "Asks to restore the test and show it passing with the fix.",
+        "Asks for the full suite output after restoring.",
+        "Names tests/test_paginate.py and the removed test."
+      ],
+      "why_skill_matters": "Deleting a failing test is a stop condition in the skill."
+    },
+    {
+      "id": "verification-pilot-a-3",
+      "title": "Test-first request for a new function",
+      "target_section": "TDD Workflow",
+      "prompt": "Implement parseDuration in src/duration.js: '1h30m' should return 5400 (seconds), '45s' returns 45, '2h' returns 7200, and anything else throws. Do it properly, I want to see that the tests actually caught something. Show me the plan and the code, and the test run you would expect at each step.",
+      "rubric": [
+        "States the success criteria first (the four cases and the throw case).",
+        "Writes the tests first and says they must be run and seen failing before the code exists.",
+        "Includes a cleanup step with the tests run again and still passing.",
+        "Ends with running the full suite with its output.",
+        "Does not claim the tests pass without a run, and marks expected output as expected, not observed."
+      ],
+      "why_skill_matters": "A full red, green, refactor cycle is asked for."
+    },
+    {
+      "id": "verification-pilot-a-4",
+      "title": "Exit code without output",
+      "target_section": "Evidence Requirements",
+      "prompt": "My teammate added input validation to the createUser handler and wrote in the PR: \"Ran the tests, exit code 0, all good.\" There's no output pasted, and the PR adds a new file tests/createUser.validation.test.ts. Last time someone said that, the new test file wasn't even picked up by the runner. Is this enough to merge?",
+      "rubric": [
+        "Says exit code 0 alone is incomplete evidence and asks for the run output.",
+        "Asks for output showing the new test file actually ran (its test names in the output).",
+        "Asks for the full suite output.",
+        "Does not approve the merge on the teammate's word.",
+        "Names tests/createUser.validation.test.ts."
+      ],
+      "why_skill_matters": "Partial evidence, with a known way it can hide a test that never ran."
+    },
+    {
+      "id": "verification-pilot-a-5",
+      "title": "Refactor with behaviour kept",
+      "target_section": "TDD Workflow",
+      "prompt": "Refactor src/cart/total.ts to remove the duplicated tax logic between subtotalWithTax() and lineTax(). Behavior must not change. Here's the current test run before I touch it:\n\n```\n$ npm test -- cart\nPASS test/cart/total.test.ts (14 tests)\n```\n\nWrite the refactor and tell me what you'd show me after to prove nothing changed.",
+      "rubric": [
+        "Says the same tests must be run after the refactor and shown still passing, compared with the before run.",
+        "Asks for the full suite after, not only the cart tests.",
+        "States the success criterion: same results for every existing test.",
+        "Does not claim the after run passes without having it.",
+        "Names the functions and file it changes."
+      ],
+      "why_skill_matters": "A refactor whose proof is the before and after run."
+    },
+    {
+      "id": "verification-pilot-a-6",
+      "title": "Terraform change with no unit test",
+      "target_section": "TDD Workflow",
+      "prompt": "I added a lifecycle rule to infra/s3.tf to expire objects under tmp/ after 7 days. There's no unit test setup for the Terraform in this repo. Before I say it's done, what do I need to show? Here's the block:\n\n```hcl\nlifecycle_rule {\n  prefix  = \"tmp/\"\n  enabled = true\n  expiration { days = 7 }\n}\n```",
+      "rubric": [
+        "Does not force a unit test; asks for criteria then validation instead (terraform validate and plan, with output).",
+        "States what must be true: only tmp/ objects expire after 7 days.",
+        "Says plan output must be shown, not assumed.",
+        "Says a plan summary line alone is not enough; the plan output itself must be shown.",
+        "Reads the block and notes anything in it that the plan should confirm (for example the prefix)."
+      ],
+      "why_skill_matters": "An infrastructure change where the skill swaps the test cycle for validation."
+    },
+    {
+      "id": "verification-pilot-a-7",
+      "title": "Small change skipped",
+      "target_section": "Anti-Patterns",
+      "prompt": "It's a one-line change, just bumping the default timeout in config/http.js from 5000 to 8000 ms. I don't think it needs tests, it's trivial. Can you mark it done and write the PR description? The file has a test file next to it, config/http.test.js, which asserts the defaults.",
+      "rubric": [
+        "Does not skip checks because the change is small.",
+        "Points out that config/http.test.js asserts the defaults, so it will likely fail until updated.",
+        "Asks for the tests (and full suite) to run with output before marking it done.",
+        "Does not mark it done without a run.",
+        "Names config/http.js and config/http.test.js."
+      ],
+      "why_skill_matters": "A small change with a test that will break, which skipping hides."
+    },
+    {
+      "id": "verification-pilot-a-8",
+      "title": "Design doc presented without a checker",
+      "target_section": "Maker-Checker Integration",
+      "prompt": "Finish the design doc for the audit log export (draft below) and give it to me ready to send. Draft:\n\n# Audit Log Export\n## Problem\nAuditors wait days for logs.\n## Solution\nA Step Functions job writes CSVs to S3.\n\nI need it today, so just fill it out and send it back.",
+      "rubric": [
+        "Says the finished doc must pass its matching checker before it is presented, and runs or calls for that check.",
+        "Does not present the doc as ready without that check result.",
+        "States what done means for the doc (the needed parts) before filling it.",
+        "Includes the checker's score as part of the evidence when presenting the doc.",
+        "Fills the doc from what the draft says and does not invent facts as done."
+      ],
+      "why_skill_matters": "A generated document, where the skill requires a checker pass first."
+    }
+  ]
+}

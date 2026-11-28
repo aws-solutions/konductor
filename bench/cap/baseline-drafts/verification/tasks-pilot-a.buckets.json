@@ -1,0 +1,255 @@
+{
+  "format_version": 1,
+  "skill": "verification",
+  "batch": "pilot-a",
+  "rules": {
+    "verification-r01": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    },
+    "verification-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r12": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "verification-r13": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "verification-r14": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    }
+  },
+  "scenarios": {
+    "verification-pilot-a-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "verification-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r04"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "verification-r13"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "verification-r14"
+      }
+    },
+    "verification-pilot-a-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r06"
+      },
+      "2": {
+        "bucket": "guard",
+        "rule_id": "verification-r13"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "verification-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "verification-r14"
+      }
+    },
+    "verification-pilot-a-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "verification-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "verification-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "verification-r05"
+      }
+    },
+    "verification-pilot-a-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "verification-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "verification-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "verification-r14"
+      }
+    },
+    "verification-pilot-a-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "verification-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "verification-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "verification-r14"
+      }
+    },
+    "verification-pilot-a-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "verification-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "verification-r10"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "verification-r13"
+      }
+    },
+    "verification-pilot-a-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r12"
+      },
+      "2": {
+        "bucket": "guard",
+        "rule_id": "verification-r13"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "verification-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "verification-r14"
+      }
+    },
+    "verification-pilot-a-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "verification-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "verification-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "verification-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "verification-r07"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "verification-r13"
+      }
+    }
+  }
+}

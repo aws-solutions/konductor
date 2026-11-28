@@ -1,0 +1,124 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "batch": "pilot-b",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "b74d0c40d8a559297e7dbbec763a63b7378253b98e24caee109a2f9fbc8eb863",
+  "scenarios": [
+    {
+      "id": "design-quality-check-pilot-b-1",
+      "title": "Ingest pipeline with unsourced throughput and passive prose",
+      "target_section": "Slop detection",
+      "prompt": "Grade the writing of this doc before I share it with principal engineers. Be honest.\n\n# Clickstream Ingest\n\n## Problem\nClick events are lost when the collector restarts.\n\n## Requirements\nR1: no event loss on collector restart. R2: handle peak traffic.\n\n## Solution Overview\nKinesis Data Streams between the collector and the warehouse loader.\n\n## How It Works\nEvents are written by the collector. Shards are scaled by the autoscaler. Records are read by the loader and are written to Redshift. The stream handles 2 million events per second with sub-second lag. Diagram: ingest.png.\n\n## Plan\nTwo sprints.\n\n## ADR-1\nKinesis over SQS: Kinesis keeps order per shard, which the loader needs to dedupe.",
+      "rubric": [
+        "Flags the 2 million events per second and sub-second lag claims as unsupported and asks for a load test or source.",
+        "Points out the heavy passive voice in How It Works with an active rewrite.",
+        "Gives a score of 3, since there is one significant issue.",
+        "Says it can advance with revision notes.",
+        "Does not flag any required part as missing.",
+        "Points each issue to its part."
+      ],
+      "why_skill_matters": "One significant numeric claim plus minor passive voice; the score must follow the skill's scale."
+    },
+    {
+      "id": "design-quality-check-pilot-b-2",
+      "title": "Feature flag service with unusual headings",
+      "target_section": "Structural completeness check",
+      "prompt": "Is this review-ready? I want an objective score, not a rewrite.\n\n# Feature Flag Service\n\n## Why We Need This\nFlags live in config files; changing one needs a deploy that takes 40 minutes (deploy metrics DM-3).\n\n## What It Must Do\nF1: change a flag in under a minute without deploy. F2: per-tenant targeting.\n\n## The Short Version\nAppConfig-backed flags with a thin SDK wrapper.\n\n## Under the Hood\nThe SDK polls AppConfig every 45 s and caches flags in memory. Diagram: flags.png.\n\n## Getting It Built\nOne sprint for SDK, one for migration.\n\n## Choices We Made\nC1: AppConfig over LaunchDarkly: no new vendor contract and it already passes our security review.",
+      "rubric": [
+        "Matches each part by its content (Why We Need This as the problem, What It Must Do as requirements, Choices We Made as decision records) and does not flag them missing.",
+        "Gives a high score, since nothing significant is wrong.",
+        "Says the doc is review-ready.",
+        "Does not mark the doc down for being brief.",
+        "If it notes anything, it says where."
+      ],
+      "why_skill_matters": "A complete doc whose headings do not match the template, testing content-based matching."
+    },
+    {
+      "id": "design-quality-check-pilot-b-3",
+      "title": "Multi-region failover with one missing part and many hedges",
+      "target_section": "Score",
+      "prompt": "Check the slop level in this design before I share it.\n\n# Multi-Region Failover\n\n## Problem\nA us-east-1 outage last year took checkout down for 3 hours (incident INC-2207).\n\n## Requirements\nR1: checkout recovers in another region within 15 minutes.\n\n## Solution Overview\nWarm standby in us-west-2 with Route 53 failover. We might possibly also replicate carts, which could potentially be fairly useful.\n\n## How It Works\nAurora global database replicates to us-west-2; health checks flip DNS. Diagram: failover.png.\n\n## Plan\nThree sprints, then a game day.",
+      "rubric": [
+        "Flags the missing decision record (why warm standby over pilot light or active-active) as a significant gap.",
+        "Lists the hedges (might possibly, could potentially, fairly) with a firmer rewrite or a call to decide.",
+        "Gives a score that matches one significant issue plus minor ones (3), not 1, since 1 needs three or more significant issues.",
+        "Says it can advance with revision notes.",
+        "Points the hedges to the Solution Overview part."
+      ],
+      "why_skill_matters": "One missing part alone does not make a 1 on this scale; the score rule must be read exactly."
+    },
+    {
+      "id": "design-quality-check-pilot-b-4",
+      "title": "Over-built payments design with extension points",
+      "target_section": "Complexity scoring",
+      "prompt": "I think my design over-engineers things. Can you check it for unjustified complexity and score it?\n\n# Payments v2\n\n## Problem\nRefunds take 5 days because finance does them by hand (ticket stats FIN-40).\n\n## Requirements\nR1: refunds under $500 are automatic. R2: every refund has an audit record.\n\n## Solution Overview\nA refund service with a generic workflow engine, a rules DSL so finance can write their own policies, and a plugin system for future payment providers.\n\n## How It Works\nRefund requests run through the workflow engine, which evaluates the DSL and calls the card provider plugin. Diagram: refunds.png.\n\n## Plan\nFour sprints.\n\n## ADR-1\nCustom workflow engine over Step Functions: gives us more flexibility.",
+      "rubric": [
+        "Flags the generic workflow engine, the rules DSL and the plugin system as over-building, since R1 and R2 need none of them.",
+        "Flags more flexibility as a reason with no evidence or trade-off, asking what concrete need it serves.",
+        "Suggests the simpler design, such as a single threshold check and an audit table, as the fix.",
+        "Gives a score of 2, from three or more significant issues with no missing part.",
+        "Says the doc needs revision before advancing."
+      ],
+      "why_skill_matters": "Several abstractions with no requirement behind them; the skill's complexity check is the point."
+    },
+    {
+      "id": "design-quality-check-pilot-b-5",
+      "title": "Doc requesting a decision but missing that part",
+      "target_section": "Structural completeness check",
+      "prompt": "I need reviewers to pick between two options at the meeting. Can you check the doc is ready?\n\n# Session Store\n\n## Problem\nSessions live in app memory, so deploys log everyone out (support tickets ST-90, 300 per deploy).\n\n## Requirements\nR1: sessions survive deploys. R2: read under 5 ms p99.\n\n## Options\nA: ElastiCache Redis. B: DynamoDB with DAX.\n\n## How It Works\nFor either option, the app reads the session by cookie id from the store. Diagram: session.png.\n\n## Plan\nOne sprint after the choice.",
+      "rubric": [
+        "Flags that the doc wants reviewers to settle an open choice but has no part stating the decision requested and what each answer means.",
+        "Flags the missing decision record or comparison of A and B against R1 and R2 as significant.",
+        "Says concretely what the decision part should hold (the question, the options, the recommendation).",
+        "Gives a score consistent with the issues found.",
+        "Says whether it can go to the meeting yet."
+      ],
+      "why_skill_matters": "The conditional decision part applies here, the opposite of the explainer doc case."
+    },
+    {
+      "id": "design-quality-check-pilot-b-6",
+      "title": "Cost claim with source and latency claim without",
+      "target_section": "Slop detection",
+      "prompt": "Review the writing in this proposal. It's being compared against another team's.\n\n# Queue Migration\n\n## Problem\nOur self-run RabbitMQ cluster needs 2 engineer-days a month of patching (ops log OL-14).\n\n## Requirements\nR1: no self-run brokers. R2: at-least-once delivery.\n\n## Solution Overview\nMove to SQS.\n\n## How It Works\nPublishers switch to the SQS SDK; consumers poll. Diagram: queues.png.\n\n## Cost\nSQS costs $38/month at our 90M requests (pricing calculator export attached). This reduces p99 delivery time to under 50 ms.\n\n## Plan\nTwo sprints.\n\n## ADR-1\nSQS over Amazon MQ: removes broker patching entirely, which is R1.",
+      "rubric": [
+        "Flags only the under 50 ms p99 claim as unsupported, and accepts the cost figure because it cites a calculator export.",
+        "Suggests how to back the latency claim, such as a test run.",
+        "Gives a score of 3 for one significant issue.",
+        "Says it can advance with notes.",
+        "Points the issue to the Cost part."
+      ],
+      "why_skill_matters": "One numeric claim has a source and one does not; the checker must tell them apart."
+    },
+    {
+      "id": "design-quality-check-pilot-b-7",
+      "title": "Gate question for adversarial review",
+      "target_section": "Rubric",
+      "prompt": "Our process says a doc must pass the writing check before the hostile architecture review. Does this one pass?\n\n# Export Throttling\n\n## Problem\nLarge exports slow the database for everyone.\n\n## Solution Overview\nQueue exports and run at most 3 at once, which will make the database 60% faster.\n\n## How It Works\nExports go into SQS; a worker pool of 3 runs them.\n\n## Plan\nOne sprint.",
+      "rubric": [
+        "Flags the missing requirements part and the missing decision record.",
+        "Flags that How It Works has no diagram reference.",
+        "Flags the 60% faster claim as unsupported.",
+        "Gives a score of 1, from three or more significant issues plus missing parts.",
+        "Says the doc does not pass the gate to the next review and must be revised."
+      ],
+      "why_skill_matters": "A thin doc where the gate answer depends on the score threshold."
+    },
+    {
+      "id": "design-quality-check-pilot-b-8",
+      "title": "Doc whose reviewer wants a rewrite instead of a grade",
+      "target_section": "When to Use",
+      "prompt": "Grade this doc's quality for me. Don't rewrite it, I'll do that. I just want the score and the list.\n\n# Image CDN\n\n## Problem\nImages load slowly in Asia (RUM data, median 2.4 s).\n\n## Requirements\nR1: median image load under 800 ms in Asia.\n\n## Solution Overview\nCloudFront in front of the S3 bucket, plus an extensible transformation framework for future formats.\n\n## How It Works\nCloudFront caches images at the edge. Diagram: cdn.png.\n\n## Plan\nOne sprint.\n\n## ADR-1\nCloudFront over a third-party CDN: already under our AWS contract.",
+      "rubric": [
+        "Flags the extensible transformation framework as over-building with no requirement behind it.",
+        "Gives a score of 3, from one significant issue.",
+        "States the gate result (can advance with notes).",
+        "Gives a concrete fix for the issue (drop the framework until a format need appears).",
+        "Points the issue to the Solution Overview."
+      ],
+      "why_skill_matters": "The user asks for a grade only, and one over-building issue sets the score."
+    }
+  ]
+}

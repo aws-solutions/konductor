@@ -1,0 +1,66 @@
+{
+  "format_version": 1,
+  "skill": "verification",
+  "requests": [
+    {
+      "id": "verification-sel-load-0",
+      "prompt": "I think the slugify fix in src/utils/slug.ts is done. Before you tell me it's finished, prove it: add a test that would have caught the bug, show it failing first, then passing, then run the whole suite.",
+      "expect": "load",
+      "note": "skill-evals queries.json #0"
+    },
+    {
+      "id": "verification-sel-load-1",
+      "prompt": "fix the off by one in paginate() in lib/paginate.py and dont say its done unless you've actually run pytest and shown me the output",
+      "expect": "load",
+      "note": "skill-evals queries.json #1"
+    },
+    {
+      "id": "verification-sel-load-3",
+      "prompt": "last time an agent told me 'the tests should pass' and they didn't. add input validation to the createUser handler and this time actually build and run tests and paste the results",
+      "expect": "load",
+      "note": "skill-evals queries.json #3"
+    },
+    {
+      "id": "verification-sel-load-6",
+      "prompt": "Refactor src/cart/total.ts to remove the duplicated tax logic. Behavior must not change - run the tests before and after and show both outputs.",
+      "expect": "load",
+      "note": "skill-evals queries.json #6"
+    },
+    {
+      "id": "verification-sel-load-9",
+      "prompt": "You said you fixed the CSV export earlier. Before closing the ticket, verify it end to end: build, run tests, and generate a sample export so we can see the output.",
+      "expect": "load",
+      "note": "skill-evals queries.json #9"
+    },
+    {
+      "id": "verification-sel-none-10",
+      "prompt": "write an e2e test strategy for the checkout flow: which journeys, which tools, environments, and data setup",
+      "expect": "none",
+      "note": "skill-evals queries.json #10"
+    },
+    {
+      "id": "verification-sel-none-11",
+      "prompt": "analyze test coverage in this repo and tell me which modules have the biggest gaps and what tests to add first",
+      "expect": "none",
+      "note": "skill-evals queries.json #11"
+    },
+    {
+      "id": "verification-sel-none-12",
+      "prompt": "review the tests in test/ for quality: are assertions checking real values, are fixtures shared, any order dependence",
+      "expect": "none",
+      "note": "skill-evals queries.json #12"
+    },
+    {
+      "id": "verification-sel-none-14",
+      "prompt": "our CI is flaky - test/api.test.js passes locally but fails ~30% on github actions. help debug why",
+      "expect": "none",
+      "note": "skill-evals queries.json #14"
+    },
+    {
+      "id": "verification-sel-none-19",
+      "prompt": "check that the feature implementation matches the design: trace each requirement in requirements.md to code and tests",
+      "expect": "none",
+      "note": "skill-evals queries.json #19"
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "format_version": 1,
+  "skill": "threat-modeling",
+  "skill_md_sha256": "4bb3cb115462b0b88d621dcd2fe033d9e1bcc952c84817e699c1ec35c6276da0",
+  "request_context": "A request to find the security threats in a described system design and map controls to them, as a threat model a security reviewer can check.",
+  "rules": [
+    {
+      "id": "threat-modeling-r01",
+      "source_quote": "Use consistent threat numbering (T-001, T-002, etc.)",
+      "class": "style",
+      "outcome": "Numbers threats T-001 onward and mitigations M-001 onward.",
+      "why": "",
+      "scenario_hint": "Any threat model."
+    },
+    {
+      "id": "threat-modeling-r02",
+      "source_quote": "Never assume or infer the existence of security controls, services, or architecture components not clearly specified",
+      "class": "useful",
+      "outcome": "Does not add components or controls the design does not state (a WAF, a VPC, encryption) and does not credit them.",
+      "why": "Invented controls give false comfort.",
+      "scenario_hint": "A design that lists few controls."
+    },
+    {
+      "id": "threat-modeling-r03",
+      "source_quote": "Leaks usually happen in URLs, headers, logs, and emails, not in the primary store",
+      "class": "useful",
+      "outcome": "Traces each token, secret and credential through the flow and flags where it leaks: in URLs, headers, logs or emails.",
+      "why": "Most leaks are in transit paths, not the database.",
+      "scenario_hint": "A flow with presigned links, tokens or API keys."
+    },
+    {
+      "id": "threat-modeling-r04",
+      "source_quote": "rating each threat's likelihood and impact and deriving its priority from both",
+      "class": "useful",
+      "outcome": "Gives each threat a likelihood and an impact rating, and a priority that follows from both.",
+      "why": "Priority without both ratings is a guess.",
+      "scenario_hint": "Any threat list."
+    },
+    {
+      "id": "threat-modeling-r05",
+      "source_quote": "Do not mark something Implemented because it is a common default",
+      "class": "useful",
+      "outcome": "Marks each mitigation Implemented only when the design documents it, and Not implemented or Unknown otherwise.",
+      "why": "Assumed defaults are a common gap.",
+      "scenario_hint": "A design silent on a usual default such as encryption."
+    },
+    {
+      "id": "threat-modeling-r06",
+      "source_quote": "State each mitigation as a concrete change to this design",
+      "class": "useful",
+      "outcome": "Writes each mitigation as a concrete change to a named component or setting, not consider X.",
+      "why": "Vague mitigations do not get built.",
+      "scenario_hint": "Any mitigation list."
+    },
+    {
+      "id": "threat-modeling-r07",
+      "source_quote": "Security testing strategy as a table: test ID, type, the concrete input or action, expected result, and the threat IDs it covers",
+      "class": "useful",
+      "outcome": "Gives a test table with test id, type, concrete input, expected result and the threat ids covered.",
+      "why": "Tests tied to threats prove mitigations work.",
+      "scenario_hint": "A request that asks how to test."
+    },
+    {
+      "id": "threat-modeling-r08",
+      "source_quote": "Ensure each threat has at least one mitigation",
+      "class": "useful",
+      "outcome": "Maps every threat to at least one mitigation.",
+      "why": "An unmitigated threat is an open risk.",
+      "scenario_hint": "Any threat list."
+    },
+    {
+      "id": "threat-modeling-r09",
+      "source_quote": "each in-scope component against the six categories",
+      "class": "useful",
+      "outcome": "Gives a coverage matrix of each in-scope component against the six STRIDE categories, with threat ids or none found in each cell.",
+      "why": "Shows nothing was skipped.",
+      "scenario_hint": "A design with several components."
+    },
+    {
+      "id": "threat-modeling-r10",
+      "source_quote": "record each one in the document's assumptions table with what changes if it is wrong",
+      "class": "useful",
+      "outcome": "When asked not to ask questions, makes small assumptions and lists each in an assumptions table with what changes if it is wrong.",
+      "why": "Reviewers check assumptions in one place.",
+      "scenario_hint": "A request saying do not ask me questions."
+    },
+    {
+      "id": "threat-modeling-r11",
+      "source_quote": "model only what the change adds or alters",
+      "class": "useful",
+      "outcome": "For a change to an existing design, models only the new or changed parts and trust boundaries.",
+      "why": "Re-modelling the whole system buries the change.",
+      "scenario_hint": "A new endpoint added to an existing design."
+    },
+    {
+      "id": "threat-modeling-r12",
+      "source_quote": "Continue the threat and mitigation numbering from where the user says to start.",
+      "class": "useful",
+      "outcome": "Starts threat and mitigation numbers where the user says.",
+      "why": "Keeps ids unique across the document.",
+      "scenario_hint": "A change model told to start at T-021."
+    },
+    {
+      "id": "threat-modeling-r13",
+      "source_quote": "External trust boundaries not identified",
+      "class": "useful",
+      "outcome": "Names the external trust boundaries (internet to API, third party callbacks) and analyses authentication and authorization threats at them.",
+      "why": "Missing boundaries is a must-fix gap.",
+      "scenario_hint": "A design with an internet-facing entry."
+    },
+    {
+      "id": "threat-modeling-r14",
+      "source_quote": "A launch recommendation: which mitigations must ship first",
+      "class": "useful",
+      "outcome": "Ends with residual risks and which mitigations must ship before launch.",
+      "why": "Owners need a launch call.",
+      "scenario_hint": "A pre-launch request."
+    },
+    {
+      "id": "threat-modeling-r15",
+      "source_quote": "Limit threat analysis to documented architecture within the defined scope boundaries",
+      "class": "generic",
+      "outcome": "Keeps the analysis to the stated scope.",
+      "why": "Any good analysis keeps to scope.",
+      "scenario_hint": "Any scoped request."
+    },
+    {
+      "id": "threat-modeling-r16",
+      "source_quote": "Data in transit and at rest encryption not addressed",
+      "class": "useful",
+      "outcome": "Addresses encryption in transit and at rest for each data store and link, flagging where the design is silent.",
+      "why": "Missing encryption analysis is a must-fix gap.",
+      "scenario_hint": "A design with stores and network links."
+    }
+  ],
+  "source": {
+    "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+    "tree": "421fa586c7a3c84a1213b9e3d395085382511f6b",
+    "subject": {
+      "sha256": "bdb51ae7e8565f6750692ebf3d8f75ea9ea90f982d54af775da294b425278a09",
+      "paths": [
+        "threat-modeling/SKILL.md"
+      ],
+      "unresolved": []
+    }
+  }
+}

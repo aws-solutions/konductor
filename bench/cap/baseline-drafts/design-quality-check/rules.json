@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "skill_md_sha256": "e37c2100076e1ce565bdc733d516bd88a356f1efab45d55857a98c67e9f91f76",
+  "request_context": "A request to judge whether a design document is ready for design review: its structure, its writing and whether it adds complexity nobody asked for.",
+  "rules": [
+    {
+      "id": "design-quality-check-r01",
+      "source_quote": "Report section count and approximate word count.",
+      "class": "style",
+      "outcome": "Opens by saying how many sections the document has and roughly how many words.",
+      "why": "",
+      "scenario_hint": "Any doc readiness check."
+    },
+    {
+      "id": "design-quality-check-r02",
+      "source_quote": "Flag each missing required section as an issue of type `missing_section`",
+      "class": "useful",
+      "outcome": "Names each expected part that is absent (problem, requirements, solution overview, how it works with a diagram, implementation plan, decision records) as a significant issue.",
+      "why": "Structural gaps go unnoticed when only prose is judged.",
+      "scenario_hint": "A well-written doc with no requirements or no decision record."
+    },
+    {
+      "id": "design-quality-check-r03",
+      "source_quote": "Performance/latency/cost assertions with no evidence URL or measurement",
+      "class": "useful",
+      "outcome": "Flags numeric speed, cost or throughput claims that have no measurement or source, as significant, and asks for evidence.",
+      "why": "Unbacked numbers mislead reviewers.",
+      "scenario_hint": "A doc promising 40% lower latency with no data."
+    },
+    {
+      "id": "design-quality-check-r04",
+      "source_quote": "Justification restates the claim without adding evidence",
+      "class": "useful",
+      "outcome": "Flags reasons that only restate the choice (we chose X because X is best) as significant and says what real reason to add.",
+      "why": "Circular reasons hide the trade-off.",
+      "scenario_hint": "A decision section that justifies a pick by repeating it."
+    },
+    {
+      "id": "design-quality-check-r05",
+      "source_quote": "Features, abstractions, or extensibility points not required by stated requirements",
+      "class": "useful",
+      "outcome": "Flags parts of the design no stated requirement needs (plugin systems, extra layers, future hooks) as significant over-building.",
+      "why": "Unneeded complexity costs build and run time.",
+      "scenario_hint": "A doc adding a plugin framework that no requirement asks for."
+    },
+    {
+      "id": "design-quality-check-r06",
+      "source_quote": "1: IMPORTANT issues (3+) AND one or more missing sections (structural gaps)",
+      "class": "useful",
+      "outcome": "Gives a 1 to 5 score that follows the skill's scale: 1 only for three or more significant issues plus a missing part, 2 for three or more with no missing part, 3 for one or two, 4 for only minor ones.",
+      "why": "A consistent scale lets teams gate on it.",
+      "scenario_hint": "Docs whose issue counts sit near a score boundary."
+    },
+    {
+      "id": "design-quality-check-r07",
+      "source_quote": "Score ≥ 3 required to advance to adversarial review.",
+      "class": "useful",
+      "outcome": "States whether the doc may advance: a score of 3 or more advances, under 3 needs revision first.",
+      "why": "The score is used as a gate.",
+      "scenario_hint": "Any request asking if a doc is ready to go on."
+    },
+    {
+      "id": "design-quality-check-r08",
+      "source_quote": "Do not flag technical hedging that is accurate",
+      "class": "useful",
+      "outcome": "Leaves accurate technical ranges and qualified statements (cold starts typically add 100 to 500 ms) alone instead of calling them hedges.",
+      "why": "Flagging honest ranges punishes precision.",
+      "scenario_hint": "A doc with accurate typical ranges beside real hedges."
+    },
+    {
+      "id": "design-quality-check-r09",
+      "source_quote": "Do not penalize brevity. A short, complete doc scores higher than a verbose, incomplete one.",
+      "class": "useful",
+      "outcome": "Does not lower the score of a short doc that has every needed part; ranks it above a long doc with gaps.",
+      "why": "Length is not quality.",
+      "scenario_hint": "Two docs, one short and complete, one long with gaps."
+    },
+    {
+      "id": "design-quality-check-r10",
+      "source_quote": "Every IMPORTANT issue has a concrete suggestion for resolution",
+      "class": "useful",
+      "outcome": "Gives each significant issue a concrete fix (what to add or change), not only a complaint.",
+      "why": "Authors need to know how to fix it.",
+      "scenario_hint": "Any doc with significant issues."
+    },
+    {
+      "id": "design-quality-check-r11",
+      "source_quote": "Match a section by its content, not its exact heading.",
+      "class": "useful",
+      "outcome": "Counts a part as present when its content is there under another heading (for example Why We Need This for the problem) and does not flag it missing.",
+      "why": "Heading-only matching gives false gaps.",
+      "scenario_hint": "A doc with all parts under unusual headings."
+    },
+    {
+      "id": "design-quality-check-r12",
+      "source_quote": "For each issue: location (section + approximate line), type, suggestion",
+      "class": "generic",
+      "outcome": "Each issue says where in the document it is.",
+      "why": "Any good review points to the place.",
+      "scenario_hint": "Any review."
+    },
+    {
+      "id": "design-quality-check-r13",
+      "source_quote": "Report anything else, such as a referenced diagram you cannot find, as an unscored note.",
+      "class": "useful",
+      "outcome": "Mentions problems outside the scored types (a diagram file that cannot be found, a broken link) as notes that do not change the score.",
+      "why": "Keeps the score tied to its stated rules.",
+      "scenario_hint": "A doc that references a diagram not included."
+    },
+    {
+      "id": "design-quality-check-r14",
+      "source_quote": "and a conditional one only when its condition holds",
+      "class": "useful",
+      "outcome": "Does not flag a missing decision-requested part or requirements part when the doc does not ask for a decision or has no requirements by its nature.",
+      "why": "Avoids false gaps for conditional parts.",
+      "scenario_hint": "A doc that asks reviewers for no open decision."
+    }
+  ],
+  "source": {
+    "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+    "tree": "301323dacb9733018a1a7d1c4dc9a02d2cd90c75",
+    "subject": {
+      "sha256": "27a41aed283af7bbcad6b0c5c38b0d9259de0ba984508d709f58499aad09a4b3",
+      "paths": [
+        "design-quality-check/SKILL.md"
+      ],
+      "unresolved": []
+    }
+  }
+}

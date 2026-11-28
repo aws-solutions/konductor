@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "skill": "verification",
+  "batch": "pilot-b",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "45edc7a5380747aa52c6d5e0eb7e89c8467d68ee6b79a8d6d7c31b777aa71659",
+  "scenarios": [
+    {
+      "id": "verification-pilot-b-1",
+      "title": "Off-by-one fix with pytest asked for",
+      "target_section": "TDD Workflow",
+      "prompt": "fix the off by one in paginate() in lib/paginate.py and dont say its done unless you've actually run pytest and shown me the output. Current code:\n\n```python\ndef paginate(items, page, size):\n    start = (page - 1) * size\n    return items[start:start + size + 1]\n```\n\nThere's tests/test_paginate.py with two tests for page 1 only.",
+      "rubric": [
+        "Adds a test that shows the bug (a page returns size + 1 items) and says to run it and see it fail first.",
+        "Identifies the + 1 in the slice from the code shown.",
+        "Asks for the full pytest run with output after the fix.",
+        "Does not say it is done without the output.",
+        "Names lib/paginate.py and the slice line."
+      ],
+      "why_skill_matters": "The user demands evidence; the skill adds the failing test first."
+    },
+    {
+      "id": "verification-pilot-b-2",
+      "title": "Manual check described as it works",
+      "target_section": "Evidence Requirements",
+      "prompt": "I added a --dry-run flag to scripts/cleanup.sh. I tested it by hand and it works. Can you write the evidence section for the PR? The script deletes files older than 30 days under /var/app/cache, and with --dry-run it should only print what it would delete.",
+      "rubric": [
+        "Asks for exact observations: the command run, what was printed, and that no files were deleted (for example a count before and after).",
+        "Does not write it works as evidence.",
+        "Says a pass claim with no printed output is not enough evidence.",
+        "States the success criteria: prints the list and deletes nothing in dry-run mode.",
+        "Does not skip the check because the flag is small."
+      ],
+      "why_skill_matters": "A vague manual test the skill rejects as evidence."
+    },
+    {
+      "id": "verification-pilot-b-3",
+      "title": "Rust fix with TDD and green build",
+      "target_section": "TDD Workflow",
+      "prompt": "The ledger crate allows negative balances. Fix it with TDD and confirm cargo build and cargo test are green at the end. The withdraw function:\n\n```rust\npub fn withdraw(&mut self, amount: u64) {\n    self.balance -= amount as i64;\n}\n```\n\nI want a clear record of each step for the change log.",
+      "rubric": [
+        "States the success criterion: withdrawing more than the balance is refused and the balance is unchanged.",
+        "Writes the failing test first and says to run it and see it fail.",
+        "Ends with cargo build and cargo test runs with their output.",
+        "Includes a cleanup step with tests rerun.",
+        "Marks expected outputs as expected, not observed, without a run."
+      ],
+      "why_skill_matters": "A full TDD cycle on a bug in a compiled language."
+    },
+    {
+      "id": "verification-pilot-b-4",
+      "title": "Ticket closure for an earlier fix",
+      "target_section": "Usage",
+      "prompt": "You said you fixed the CSV export earlier today. Before closing the ticket, verify it end to end. The ticket says exported dates came out as 2026-13-01 for January. The earlier change swapped 'YYYY-DD-MM' for 'YYYY-MM-DD' in src/export/format.ts. Nobody has run anything since. The customer who reported it is waiting for a reply from us.",
+      "rubric": [
+        "Does not close the ticket on the earlier claim, and calls for a build, the tests and a sample export.",
+        "Asks for a test with a January date that fails on the old format and passes on the new one.",
+        "Asks for the sample export's actual date values to be shown.",
+        "Asks for the full suite output.",
+        "Names src/export/format.ts."
+      ],
+      "why_skill_matters": "A done claim from earlier with no evidence, plus a manual end-to-end check."
+    },
+    {
+      "id": "verification-pilot-b-5",
+      "title": "Go retry wrapper, looks correct",
+      "target_section": "Anti-Patterns",
+      "prompt": "hey can you finish the retry wrapper in net/retry.go and confirm it works? i don't want 'looks correct', i want go test output. Current code:\n\n```go\nfunc Retry(n int, f func() error) error {\n    var err error\n    for i := 0; i < n; i++ {\n        if err = f(); err == nil { return nil }\n    }\n    return err\n}\n```\n\nIt should also wait 100ms, 200ms, 400ms between tries.",
+      "rubric": [
+        "States the success criteria: n tries, the stated waits, nil on first success, the last error otherwise.",
+        "Writes a test for the waits that fails on the current code, and says to run it first.",
+        "Does not claim the code works without go test output.",
+        "Asks for the full go test run with output.",
+        "Names net/retry.go and the loop it changes."
+      ],
+      "why_skill_matters": "The user rejects looks correct; the skill's test-first path applies."
+    },
+    {
+      "id": "verification-pilot-b-6",
+      "title": "Finding reported without reading the code",
+      "target_section": "Self-Validation Checklist",
+      "prompt": "Another agent reviewed our code and reported: \"The UserBuilder probably returns a mutable object, which will fail at runtime when shared across threads.\" Here is UserBuilder.build() from src/user/UserBuilder.java:\n\n```java\npublic User build() {\n    return new User(List.copyOf(roles), name);\n}\n```\n\nand User has only final fields and no setters. Should I file a bug?",
+      "rubric": [
+        "Reads the shown code and says the report assumed a pattern instead of reading it: build() copies roles and User is immutable.",
+        "Names the file and the line (List.copyOf) that answers the report.",
+        "Says a runtime failure claim needs a run or a test to show it, not a guess.",
+        "Says what would have to be true for the bug to exist.",
+        "Does not file the bug on the report alone."
+      ],
+      "why_skill_matters": "A finding built on an assumed pattern, which the skill's self-check catches."
+    },
+    {
+      "id": "verification-pilot-b-7",
+      "title": "Only the new test was run",
+      "target_section": "TDD Workflow",
+      "prompt": "I fixed the negative quantity bug in src/cart/add.ts and ran my new test:\n\n```\n$ npx jest test/cart/add.negative.test.ts\nPASS test/cart/add.negative.test.ts\n  ✓ rejects negative quantity (3 ms)\n```\n\nI'm going to say it's done in standup. Anything else? The rest of the cart module has about forty other tests that I did not run this time.",
+      "rubric": [
+        "Asks for the full suite run with output, not only the new test.",
+        "Asks whether the new test was seen failing before the fix.",
+        "Treats the single-test output as incomplete evidence for a done claim.",
+        "Does not agree to call it done in standup until the full run is shown.",
+        "Names src/cart/add.ts and the test file."
+      ],
+      "why_skill_matters": "Evidence for one test only, missing the red step and the full suite."
+    },
+    {
+      "id": "verification-pilot-b-8",
+      "title": "Spec-first leap year helper",
+      "target_section": "TDD Workflow",
+      "prompt": "Add a unit-tested isLeapYear to lib/dates.ts. Spec first: list the success criteria, then red/green/refactor, then the full suite. I'll paste your output into our TDD training doc, so be explicit about what output you saw versus what you expect to see. Our team uses Vitest for this package.",
+      "rubric": [
+        "Lists the criteria first (divisible by 4, not by 100 unless by 400, with examples such as 1900 and 2000).",
+        "Writes the tests first and says to run them and see them fail.",
+        "Includes a cleanup step with tests rerun and staying green.",
+        "Ends with the full suite run.",
+        "Marks every output it has not seen as expected, not observed."
+      ],
+      "why_skill_matters": "A spec-first cycle where the line between seen and expected output matters."
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "batch": "pilot-b",
+  "generated_at": "2026-11-28T19:00:00.000Z",
+  "model": "claude (Kiro Crew worker mate, hand-drafted 2026-11-28; second-family check pending)",
+  "skills_version": "konductor@535e3c47",
+  "rules_sha256": "d3776f3552dd97006256d19d1aec81e3c3ca238bd6339a34da8a5c5a56e32c27",
+  "scenarios": [
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-1",
+      "title": "Global tables in every Region",
+      "target_section": "Step 4: Classify Findings",
+      "prompt": "pls audit the claims in this paragraph before the review on Monday:\n\n\"DynamoDB global tables are available in all regions, including the new ones we plan to launch in. Replication is synchronous, so a write in one region is immediately readable in every other region. We confirmed this design with the AWS account team last year.\"\n\nThe regions we plan to launch in are not listed in the doc.",
+      "rubric": [
+        "Marks available in all regions as OVERSTATED or UNVERIFIED for the unnamed launch regions, asking to check the Region table.",
+        "Marks synchronous replication with immediate reads everywhere as INCORRECT for standard global tables, which replicate asynchronously.",
+        "Does not accept the account team conversation as evidence.",
+        "Gives corrected text for the replication claim with the source.",
+        "Gives an overall FAIL."
+      ],
+      "why_skill_matters": "An overstated availability claim and a wrong consistency claim in one paragraph."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-2",
+      "title": "Needs only configuration for a new region",
+      "target_section": "Step 1: Extract Verifiable Claims",
+      "prompt": "Fact-check our expansion doc. Main claim: \"Launching in eu-west-1 requires only configuration: set REGION=eu-west-1 and deploy.\"\n\nWhat I found in the repo:\n- infra/main.tf hardcodes the bucket name orders-us-east-1 and an ACM certificate ARN in us-east-1.\n- src/config.ts reads REGION but src/payments.ts calls a payment processor endpoint https://us.api.processor.example with no region switch.\n\nTell me what's true and what isn't.",
+      "rubric": [
+        "Treats requires only configuration as the riskiest claim and checks it against the repo excerpts.",
+        "Marks the claim as INCORRECT, since the bucket name, the certificate and the processor endpoint are hardcoded to the US.",
+        "Cites the file paths infra/main.tf and src/payments.ts as the evidence.",
+        "Gives corrected text listing the work needed beyond configuration.",
+        "Gives an overall FAIL."
+      ],
+      "why_skill_matters": "A configuration-only claim disproved by repo facts; the skill targets exactly this claim type."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-3",
+      "title": "Accuracy report on a mixed set of claims",
+      "target_section": "Step 7: Produce Report",
+      "prompt": "Produce an accuracy check for these claims from docs/design/search-v2.md:\n\n1. \"OpenSearch Serverless needs no capacity planning at all.\"\n2. \"Our index has 40M documents\" (the cluster stats I pasted say docs.count: 39,812,004).\n3. \"Reindexing is already scripted in tools/reindex.py\" (that file does not exist; tools/ has only backup.py).\n4. \"Search latency p99 is 120 ms\" (no data given).\n\nI need to know which are verified, wrong or unverifiable, with corrections.",
+      "rubric": [
+        "Marks claim 1 as OVERSTATED: serverless still has capacity units and limits to consider.",
+        "Confirms claim 2 against the cluster stats.",
+        "Marks claim 3 as INCORRECT, since tools/reindex.py does not exist.",
+        "Marks claim 4 as UNVERIFIED with a callout, not INCORRECT.",
+        "Gives corrected text for claims 1 and 3.",
+        "Gives an overall FAIL, from claim 3."
+      ],
+      "why_skill_matters": "One claim in each class, so the classes, corrections and result all show."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-4",
+      "title": "Correct claim worded past its source",
+      "target_section": "Step 4: Classify Findings",
+      "prompt": "Can you check the security section of our design?\n\n\"S3 encrypts every object automatically, so we never need to think about encryption, including for our KMS-managed customer keys. See the S3 encryption docs page.\"\n\nThe linked page says S3 applies server-side encryption with S3 managed keys (SSE-S3) as the base level for new objects, and that customer managed KMS keys must be configured per bucket or request.",
+      "rubric": [
+        "Confirms that S3 encrypts new objects by default, but says the doc's wording goes further than the cited page.",
+        "Marks never need to think about encryption, including KMS customer keys as OVERSTATED or INCORRECT, since KMS keys need setup.",
+        "Gives corrected text citing the page.",
+        "Gives a result that matches the classes found.",
+        "Lists the claims it checked."
+      ],
+      "why_skill_matters": "The cited page is right but the doc overstates it; the reclassify rule applies."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-5",
+      "title": "Bedrock capabilities oversold",
+      "target_section": "Step 4: Classify Findings",
+      "prompt": "My manager thinks our doc oversells what the model service can do out of the box. Claims:\n\n1. \"Bedrock Knowledge Bases ingest our PDFs and answer questions with citations.\"\n2. \"No fine-tuning or extra work is needed for answers to be 100% accurate on our policy documents.\"\n3. \"It already integrates with our Confluence\" (our team has not set up any connector; the doc gives no link or config).\n\nGo claim by claim and tell me where we're stretching the truth.",
+      "rubric": [
+        "Treats claim 1 as broadly confirmed (knowledge bases do retrieval with source citations), noting it needs setup.",
+        "Marks 100% accurate as OVERSTATED, since no retrieval system guarantees that.",
+        "Flags already integrates as an already built claim with no evidence.",
+        "Asks for the config or connector setup before claim 3 can be confirmed, and marks it unconfirmed or wrong given nobody set one up.",
+        "Gives corrected text for claims 2 and 3."
+      ],
+      "why_skill_matters": "A mix of a fair claim, an overstated one and an already built one with no evidence."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-6",
+      "title": "Strong consistency claim, used by an existing service",
+      "target_section": "Step 3: Investigate the Remaining Claims",
+      "prompt": "Is this statement in section 4 of docs/storage.md actually right?\n\n\"S3 is strongly consistent for all operations, including bucket listing after deletes and bucket configuration changes, and the upload service already relies on this in src/upload/finalize.ts.\"\n\nsrc/upload/finalize.ts reads the object with GetObject right after PutObject. It never lists the bucket. Please check it and tell me how to fix the text if needed.",
+      "rubric": [
+        "Confirms strong read-after-write consistency for objects and listings, but says bucket configuration changes are eventually consistent, so for all operations goes too far.",
+        "Marks the all operations wording as OVERSTATED or MISSING CONTEXT and names the qualifier.",
+        "Confirms the upload service claim with the file path, limited to GetObject after PutObject.",
+        "Gives corrected text for the section.",
+        "Gives a result that matches the classes found."
+      ],
+      "why_skill_matters": "A mostly true claim stretched to all operations, and a code claim that holds only in part."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-7",
+      "title": "Doc revised after review, recheck before resubmission",
+      "target_section": "When to Use",
+      "prompt": "We revised the doc after review. Recheck these claims before we resubmit:\n\n1. \"Step Functions Standard workflows can run for up to one year.\"\n2. \"SQS standard queues guarantee exactly-once delivery, so the consumer needs no dedupe.\"\n3. \"The dedupe table was dropped in the revision\" (the diff I pasted removes infra/dedupe.tf).\n\nThe reviewer's old comment said claim 2 was wrong; the author says it's fixed now.",
+      "rubric": [
+        "Confirms claim 1 (up to one year for Standard workflows).",
+        "Marks claim 2 as INCORRECT: standard queues give at-least-once delivery.",
+        "Flags that dropping the dedupe table (claim 3) breaks the flow, since the consumer still needs dedupe.",
+        "Does not accept the author's word that claim 2 is fixed.",
+        "Gives an overall FAIL."
+      ],
+      "why_skill_matters": "A wrong claim that survived a revision and a change that depends on it."
+    },
+    {
+      "id": "doc-accuracy-analyzer-pilot-b-8",
+      "title": "Best practice claim with no citation",
+      "target_section": "Guidelines",
+      "prompt": "Check these approach claims in our architecture doc before the council sees it:\n\n1. \"It is well known that a single shared VPC for all teams is the AWS best practice.\"\n2. \"AWS recommends one account per workload\" (the doc links the AWS multi-account strategy whitepaper, which recommends separate accounts to isolate workloads and environments).\n3. \"Our current shared VPC has had zero security incidents\" (no source).",
+      "rubric": [
+        "Does not accept it is well known as evidence for claim 1.",
+        "Marks claim 1 as UNVERIFIED or INCORRECT and asks for a documentation link.",
+        "Confirms claim 2 against the linked whitepaper.",
+        "Marks claim 3 as UNVERIFIED with a callout.",
+        "Gives a result that matches the classes found."
+      ],
+      "why_skill_matters": "Approach claims backed by phrasing only versus one with a real citation."
+    }
+  ]
+}

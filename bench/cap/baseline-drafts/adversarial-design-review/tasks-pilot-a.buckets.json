@@ -1,0 +1,290 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-design-review",
+  "batch": "pilot-a",
+  "rules": {
+    "adversarial-design-review-r01": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    },
+    "adversarial-design-review-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r12": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r13": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r14": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r15": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-design-review-r16": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "adversarial-design-review-r17": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    }
+  },
+  "scenarios": {
+    "adversarial-design-review-pilot-a-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r11"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r14"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      }
+    },
+    "adversarial-design-review-pilot-a-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r03"
+      },
+      "2": {
+        "bucket": "guard",
+        "rule_id": "adversarial-design-review-r16"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r12"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r15"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      }
+    },
+    "adversarial-design-review-pilot-a-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r11"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "adversarial-design-review-r16"
+      }
+    },
+    "adversarial-design-review-pilot-a-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r17"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r11"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r14"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      }
+    },
+    "adversarial-design-review-pilot-a-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r11"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r17"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      }
+    },
+    "adversarial-design-review-pilot-a-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r12"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r15"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "adversarial-design-review-r16"
+      }
+    },
+    "adversarial-design-review-pilot-a-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r10"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r12"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      }
+    },
+    "adversarial-design-review-pilot-a-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r15"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r17"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-design-review-r13"
+      }
+    }
+  }
+}

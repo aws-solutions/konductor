@@ -1,0 +1,293 @@
+{
+  "format_version": 1,
+  "skill": "threat-modeling",
+  "batch": "pilot-a",
+  "rules": {
+    "threat-modeling-r01": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    },
+    "threat-modeling-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r12": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r13": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r14": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "threat-modeling-r15": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "threat-modeling-r16": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    }
+  },
+  "scenarios": {
+    "threat-modeling-pilot-a-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r04"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r06"
+      }
+    },
+    "threat-modeling-pilot-a-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r13"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r16"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r14"
+      }
+    },
+    "threat-modeling-pilot-a-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r11"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r12"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r13"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r10"
+      }
+    },
+    "threat-modeling-pilot-a-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r13"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "threat-modeling-r15"
+      }
+    },
+    "threat-modeling-pilot-a-5": {
+      "1": {
+        "bucket": "guard",
+        "rule_id": "threat-modeling-r15"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r13"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r08"
+      }
+    },
+    "threat-modeling-pilot-a-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r13"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r06"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r07"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r14"
+      }
+    },
+    "threat-modeling-pilot-a-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r10"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r14"
+      }
+    },
+    "threat-modeling-pilot-a-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "threat-modeling-r08"
+      }
+    }
+  }
+}

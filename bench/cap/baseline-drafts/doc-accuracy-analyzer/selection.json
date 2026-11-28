@@ -1,0 +1,66 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "requests": [
+    {
+      "id": "doc-accuracy-analyzer-sel-load-0",
+      "prompt": "before I send docs/design/ingest-pipeline.md to the review group, can you check every factual claim in it? it says things like 'kinesis supports 10k records/sec per shard' and 'auth is already implemented' and I'm not sure all of it is true",
+      "expect": "load",
+      "note": "skill-evals queries.json #0"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-load-2",
+      "prompt": "fact-check this design doc for me: design/caching.md. especially the 'requires only configuration' bits, i suspect those are wishful thinking",
+      "expect": "load",
+      "note": "skill-evals queries.json #2"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-load-4",
+      "prompt": "pls audit the claims in proposal.md - 'DynamoDB global tables available in all regions', '99.999% SLA', 'step functions express supports 100k/sec'. which are accurate, which are overstated",
+      "expect": "load",
+      "note": "skill-evals queries.json #4"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-load-5",
+      "prompt": "My doc says our service already handles 5,000 RPS and that the retry logic is 'built on top of the existing SDK middleware'. Can you confirm those against the repo and load test results in perf/ before my design review Thursday?",
+      "expect": "load",
+      "note": "skill-evals queries.json #5"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-load-9",
+      "prompt": "Is the statement 'S3 is strongly consistent for all operations, already used by our upload service' in section 4 of docs/storage.md actually right? Please check the rest of the doc's claims too while you're at it.",
+      "expect": "load",
+      "note": "skill-evals queries.json #9"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-none-10",
+      "prompt": "Score docs/design/ingest.md for writing quality: filler phrases, hedge words, passive voice, structure. Is it ready to circulate?",
+      "expect": "none",
+      "note": "skill-evals queries.json #10"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-none-12",
+      "prompt": "Play devil's advocate against the architecture decisions in docs/hld.md. Challenge the trade-offs, I want CRITICAL/IMPORTANT/MINOR findings.",
+      "expect": "none",
+      "note": "skill-evals queries.json #12"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-none-16",
+      "prompt": "Evaluate this full design package (system design, threat model, API spec, data model) for production readiness before handoff",
+      "expect": "none",
+      "note": "skill-evals queries.json #16"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-none-17",
+      "prompt": "summarize the key decisions in docs/design/search-v2.md into 5 bullets for a status update",
+      "expect": "none",
+      "note": "skill-evals queries.json #17"
+    },
+    {
+      "id": "doc-accuracy-analyzer-sel-none-19",
+      "prompt": "review this PR's code changes for correctness and security, the design doc is fine already",
+      "expect": "none",
+      "note": "skill-evals queries.json #19"
+    }
+  ]
+}

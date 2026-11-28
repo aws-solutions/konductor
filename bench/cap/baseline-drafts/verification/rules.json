@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "verification",
+  "skill_md_sha256": "60b9146e9b00a43c720e9a456ad907fef67501edf022ad61d96933812386a67f",
+  "request_context": "A request to finish or sign off a change where the answer must prove the change works, with tests run before and after and the output shown.",
+  "rules": [
+    {
+      "id": "verification-r01",
+      "source_quote": "**Result:** PASS / FAIL",
+      "class": "style",
+      "outcome": "Puts evidence in a block with command, exit code, output and a PASS or FAIL result.",
+      "why": "",
+      "scenario_hint": "Any done claim."
+    },
+    {
+      "id": "verification-r02",
+      "source_quote": "Write a failing test. Run it. Confirm it FAILS. Show the output.",
+      "class": "useful",
+      "outcome": "For a bug fix or new code, writes a test first and requires seeing it fail before the fix, with the failing output.",
+      "why": "A test never seen failing may test nothing.",
+      "scenario_hint": "A bug fix request."
+    },
+    {
+      "id": "verification-r03",
+      "source_quote": "Define success criteria before implementation.",
+      "class": "useful",
+      "outcome": "States what must be true when done before writing code.",
+      "why": "Without criteria, done is a guess.",
+      "scenario_hint": "A feature request with loose wording."
+    },
+    {
+      "id": "verification-r04",
+      "source_quote": "Run the full test suite. Confirm all tests pass. Show the output.",
+      "class": "useful",
+      "outcome": "Requires the full suite, not only the new test, to pass with output before calling the change done.",
+      "why": "Fixes break other things.",
+      "scenario_hint": "A change where only one test was run."
+    },
+    {
+      "id": "verification-r05",
+      "source_quote": "Execute them and show output.",
+      "class": "useful",
+      "outcome": "Refuses to call work done on should pass or looks correct, and asks for or plans the actual run with its output.",
+      "why": "Belief is not evidence.",
+      "scenario_hint": "A user asking to confirm without any run."
+    },
+    {
+      "id": "verification-r06",
+      "source_quote": "fix the code, never delete the test",
+      "class": "useful",
+      "outcome": "Rejects deleting or skipping a failing test to get green, and fixes the code instead.",
+      "why": "Deleting tests hides bugs.",
+      "scenario_hint": "A diff that removes a failing test."
+    },
+    {
+      "id": "verification-r07",
+      "source_quote": "Checker must score PASS before presenting to user",
+      "class": "useful",
+      "outcome": "For a generated document, runs or calls for the matching checker and needs a PASS before presenting it.",
+      "why": "Artifacts need the same proof as code.",
+      "scenario_hint": "A request to finish a design doc."
+    },
+    {
+      "id": "verification-r08",
+      "source_quote": "For a document or infrastructure change with no test to write, keep SPEC, then build or validate the change instead of RED, GREEN and REFACTOR",
+      "class": "useful",
+      "outcome": "For infrastructure or docs, states criteria and validates (plan, lint, synth) instead of forcing a unit test.",
+      "why": "Some changes have no unit test.",
+      "scenario_hint": "A Terraform or config change."
+    },
+    {
+      "id": "verification-r09",
+      "source_quote": "Clean up code. Run tests again. Confirm they stay GREEN.",
+      "class": "useful",
+      "outcome": "After a refactor, reruns the tests and shows they still pass, before and after.",
+      "why": "Refactors must not change behavior.",
+      "scenario_hint": "A refactor request."
+    },
+    {
+      "id": "verification-r10",
+      "source_quote": "Evidence provided but incomplete (e.g., exit code shown but output omitted)",
+      "class": "useful",
+      "outcome": "Treats evidence with a missing piece (exit code without output, a summary without the run) as not enough and asks for the rest.",
+      "why": "Partial evidence can hide failures.",
+      "scenario_hint": "A report quoting exit 0 with no output."
+    },
+    {
+      "id": "verification-r11",
+      "source_quote": "Describe exactly what was observed",
+      "class": "useful",
+      "outcome": "For a manual check, asks for or gives exact observations (inputs, outputs, what was seen), not it works.",
+      "why": "Vague manual checks prove nothing.",
+      "scenario_hint": "A UI or script change tested by hand."
+    },
+    {
+      "id": "verification-r12",
+      "source_quote": "all changes need evidence",
+      "class": "useful",
+      "outcome": "Does not skip checks because the change is small.",
+      "why": "Small changes break things too.",
+      "scenario_hint": "A one-line change the user calls trivial."
+    },
+    {
+      "id": "verification-r13",
+      "source_quote": "Read implementations, don't assume patterns.",
+      "class": "generic",
+      "outcome": "Bases claims on the code or output shown, not on assumed patterns.",
+      "why": "Any careful answer reads the code.",
+      "scenario_hint": "Any code question."
+    },
+    {
+      "id": "verification-r14",
+      "source_quote": "I have exact file paths and line numbers",
+      "class": "useful",
+      "outcome": "Names the exact file and line for each issue or change it reports.",
+      "why": "Vague locations cannot be checked.",
+      "scenario_hint": "A report of a found bug."
+    }
+  ],
+  "source": {
+    "commit": "535e3c47c137f67cbe1dadf89a379b945930f679",
+    "tree": "dc837553337f9beefc8dfc25523a9bc658f8230b",
+    "subject": {
+      "sha256": "ecbd6a9bab6a79473916e9d6cb2924ce3d7236a4a7e29091db58df09139ac462",
+      "paths": [
+        "verification/SKILL.md"
+      ],
+      "unresolved": []
+    }
+  }
+}
