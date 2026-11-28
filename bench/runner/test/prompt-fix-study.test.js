@@ -4,11 +4,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 const { cells, forecast, mayStart, judgeMayStart, gate, rebook, spent, STEPS } = require('../../ops/prompt-fixes/study.js');
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'pfs-'));
+const tmp = () => mkScratch('pfs-');
 const ledger = (dir, credits) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'credit-ledger.jsonl'), `${JSON.stringify({ ts: '2026-11-27T00:00:00Z', kind: 'run', credits, armId: 'vanilla', taskId: 'x', replicate: 1 })}\n`); };
 const result = (dir, r) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'result.json'), JSON.stringify(r)); };
 

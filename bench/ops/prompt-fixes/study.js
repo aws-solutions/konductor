@@ -20,7 +20,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { EXPECT } = require('../../report/plan-call.js');
+const { EXPECT } = require('../../runner/lib/plan-call.js');
 const { readLedger } = require('../../runner/lib/credit-ledger.js');
 const { makeSplitReader } = require('../../runner/lib/credit-watch.js');
 
@@ -70,22 +70,29 @@ function cells(step) {
   return out;
 }
 
-function measured(runsDir) {
-  const m = new Map();
+/** Paths of every file called `name` under `dir`, depth first; [] when `dir` is absent. */
+function filesNamed(dir, name) {
+  const out = [];
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else if (e.name === 'result.json') {
-        const r = JSON.parse(fs.readFileSync(p, 'utf8'));
-        if (!EXPECT.tasks[r.taskId] || !Number.isFinite(r.credits)) continue;
-        const k = `${r.taskId}|${r.armId}`;
-        if (!m.has(k)) m.set(k, []);
-        m.get(k).push(r.credits);
-      }
+      else if (e.name === name) out.push(p);
     }
   };
-  if (runsDir && fs.existsSync(runsDir)) walk(runsDir);
+  if (dir && fs.existsSync(dir)) walk(dir);
+  return out;
+}
+
+function measured(runsDir) {
+  const m = new Map();
+  for (const p of filesNamed(runsDir, 'result.json')) {
+    const r = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!EXPECT.tasks[r.taskId] || !Number.isFinite(r.credits)) continue;
+    const k = `${r.taskId}|${r.armId}`;
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(r.credits);
+  }
   const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
   return (task, arm) => (m.has(`${task}|${arm}`) ? mean(m.get(`${task}|${arm}`)) : null);
 }
@@ -120,16 +127,7 @@ function forecast(runsDir = '/var/tmp/konductor-standard-v2/runs') {
 }
 
 function ledgerDirs(dir) {
-  const out = [];
-  const walk = (d) => {
-    if (!fs.existsSync(d)) return;
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      if (e.isDirectory()) walk(path.join(d, e.name));
-      else if (e.name === 'credit-ledger.jsonl') out.push(d);
-    }
-  };
-  walk(dir);
-  return out;
+  return filesNamed(dir, 'credit-ledger.jsonl').map((f) => path.dirname(f));
 }
 
 function spent(dir) {
@@ -140,17 +138,7 @@ function spent(dir) {
 
 /** Results under DIR: [{ task, arm, credits }] from every result.json. */
 function results(dir) {
-  const out = [];
-  const walk = (d) => {
-    if (!fs.existsSync(d)) return;
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name === 'result.json') out.push(JSON.parse(fs.readFileSync(p, 'utf8')));
-    }
-  };
-  walk(dir);
-  return out;
+  return filesNamed(dir, 'result.json').map((p) => JSON.parse(fs.readFileSync(p, 'utf8')));
 }
 
 /**
@@ -200,17 +188,7 @@ function judgeMayStart(dir, task, capUsd) {
 
 /** Every result.json under `dir`, as [{ file, result }]. */
 function resultFiles(dir) {
-  const out = [];
-  const walk = (d) => {
-    if (!fs.existsSync(d)) return;
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name === 'result.json') out.push({ file: p, result: JSON.parse(fs.readFileSync(p, 'utf8')) });
-    }
-  };
-  walk(dir);
-  return out;
+  return filesNamed(dir, 'result.json').map((file) => ({ file, result: JSON.parse(fs.readFileSync(file, 'utf8')) }));
 }
 
 const up3 = (x) => Math.ceil(x * 1000 - 1e-6) / 1000;
@@ -272,4 +250,4 @@ function main([cmd, a, b, c]) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { ARMS, STEPS, CX, PANEL, cells, forecast, spent, rebook, usdSpent, mayStart, judgeMayStart, judgePerRun, gate };
+module.exports = { ARMS, STEPS, CX, PANEL, filesNamed, cells, forecast, spent, rebook, usdSpent, mayStart, judgeMayStart, judgePerRun, gate };
