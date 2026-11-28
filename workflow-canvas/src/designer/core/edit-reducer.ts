@@ -27,6 +27,7 @@ import {
   setOutput,
   setParam,
   setPrompt,
+  unlinkOutput,
   type Draft,
 } from './draft';
 import {
@@ -443,6 +444,12 @@ function step(
       return checkRemoved(state, event.key);
     case 'set-done-when':
       return doneWhenSet(state, event.stageId, event.keys);
+    case 'unlink-output':
+      return edited(
+        state,
+        unlinkOutput(state.draft, event.sourceId, event.targetId, event.output),
+        state.selectedId,
+      );
     case 'set-param':
       return paramSet(state, event.id, event.change);
     case 'add-param':

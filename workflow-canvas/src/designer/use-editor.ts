@@ -41,6 +41,7 @@ export interface Editor {
   addCheck(): void;
   removeCheck(key: string): void;
   setDoneWhen(stageId: string, keys: readonly string[]): void;
+  unlinkOutput(sourceId: string, targetId: string, output: string): void;
   setParam(
     id: string,
     change: Partial<
@@ -149,6 +150,8 @@ export function useEditor(
         removeCheck: (key) => dispatch({ type: 'remove-check', key }),
         setDoneWhen: (stageId, keys) =>
           dispatch({ type: 'set-done-when', stageId, keys }),
+        unlinkOutput: (sourceId, targetId, output) =>
+          dispatch({ type: 'unlink-output', sourceId, targetId, output }),
         setParam: (id, change) => dispatch({ type: 'set-param', id, change }),
         addParam: () => dispatch({ type: 'add-param' }),
         removeParam: (id) => dispatch({ type: 'remove-param', id }),

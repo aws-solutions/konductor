@@ -2,6 +2,8 @@
 import { NODE_HEIGHT, NODE_WIDTH, stackDown } from './layout';
 import { withStopMarks } from './stop-marks';
 import {
+  DATA_IN,
+  DATA_OUT,
   SEQUENCE_IN,
   SEQUENCE_OUT,
   type CanvasGraph,
@@ -128,6 +130,49 @@ function chain(nodes: readonly GraphNode[]): GraphEdge[] {
   });
 }
 
+const REFERENCE = /\{([a-z0-9][a-z0-9-]*)\.([a-z][a-z0-9-]*)\}/g;
+
+function dataLinks(stages: readonly StageSpec[]): GraphEdge[] {
+  const places = new Map(stages.map((stage, index) => [stage.name, index]));
+  return stages.flatMap((target, targetIndex) => {
+    if (!target.prompt) return [];
+    return [...target.prompt.matchAll(REFERENCE)].flatMap(
+      (match, referenceIndex) => {
+        const sourceIndex = places.get(match[1]!);
+        const output = match[2]!;
+        const source =
+          sourceIndex === undefined ? undefined : stages[sourceIndex];
+        if (
+          sourceIndex === undefined ||
+          sourceIndex >= targetIndex ||
+          !Object.hasOwn(source?.outputs ?? {}, output)
+        )
+          return [];
+        const at = match.index ?? 0;
+        const lineStart = target.prompt!.lastIndexOf('\n', at - 1) + 1;
+        const nextBreak = target.prompt!.indexOf('\n', at);
+        const lineEnd = nextBreak < 0 ? target.prompt!.length : nextBreak;
+        const generated =
+          target.prompt!.slice(lineStart, lineEnd) ===
+          `Read {${source!.name}.${output}}.`;
+        return [
+          {
+            id: `data-${source!.id ?? source!.name}-${target.id ?? target.name}-${output}-${referenceIndex}`,
+            ariaLabel: `Output ${output} from stage ${source!.name} to stage ${target.name}`,
+            source: stageNodeId(source!.id ?? source!.name),
+            target: stageNodeId(target.id ?? target.name),
+            sourceHandle: DATA_OUT,
+            targetHandle: DATA_IN,
+            output,
+            label: output,
+            ...(generated ? { generated: true } : {}),
+          },
+        ];
+      },
+    );
+  });
+}
+
 /**
  * Turns a workflow into what the canvas draws: the intent and the stages in
  * list order, in one column, joined by run-order edges, with a stop mark on
@@ -140,5 +185,6 @@ export function buildGraph(spec: WorkflowSpec, harness: string): CanvasGraph {
       stageNode(stage, harness, placeOf(spec.stages, index)),
     ),
   ]);
-  return withStopMarks({ nodes, edges: chain(nodes) });
+  const ordered = withStopMarks({ nodes, edges: chain(nodes) });
+  return { ...ordered, edges: [...ordered.edges, ...dataLinks(spec.stages)] };
 }

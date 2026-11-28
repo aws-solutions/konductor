@@ -342,3 +342,66 @@ it('bounds a high-count stage problem summary', () => {
   });
   expect(graph.nodes[1]!.ariaLabel.length).toBeLessThan(150);
 });
+
+it('draws labelled data links for valid earlier output references', () => {
+  const graph = buildGraph(
+    {
+      name: 'linked',
+      intent: { outcome: 'Ship it.' },
+      stages: [
+        {
+          id: 'a',
+          name: 'plan',
+          agent: 'k-architect',
+          outputs: { design: 'DESIGN.md' },
+        },
+        {
+          id: 'b',
+          name: 'build',
+          agent: 'k-developer',
+          prompt: 'Read {plan.design}.',
+        },
+      ],
+    },
+    'kiro-cli',
+  );
+  expect(graph.edges).toContainEqual(
+    expect.objectContaining({
+      source: 'stage-a',
+      target: 'stage-b',
+      output: 'design',
+      label: 'design',
+      sourceHandle: 'data-out',
+      targetHandle: 'data-in',
+      generated: true,
+    }),
+  );
+});
+
+it('marks a reference inside other prompt text as authored text', () => {
+  const graph = buildGraph(
+    {
+      name: 'linked',
+      intent: { outcome: 'Ship it.' },
+      stages: [
+        {
+          id: 'a',
+          name: 'plan',
+          agent: 'k-architect',
+          outputs: { design: 'DESIGN.md' },
+        },
+        {
+          id: 'b',
+          name: 'build',
+          agent: 'k-developer',
+          prompt: 'Use {plan.design} as input.',
+        },
+      ],
+    },
+    'kiro-cli',
+  );
+
+  expect(
+    graph.edges.find((edge) => edge.output === 'design'),
+  ).not.toHaveProperty('generated');
+});

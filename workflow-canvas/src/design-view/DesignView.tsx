@@ -399,6 +399,9 @@ export function DesignView({
           name: stage.name,
           agent: stage.agent,
           ...(source?.outcome === undefined ? {} : { outcome: source.outcome }),
+          outputs: Object.fromEntries(
+            (stage.outputs ?? []).map((output) => [output.name, output.path]),
+          ),
           ...(source?.prompt_file === undefined
             ? { prompt: stage.prompt }
             : { prompt_file: source.prompt_file }),
@@ -424,6 +427,11 @@ export function DesignView({
   const [checkOpens, setCheckOpens] = useState(0);
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const findingsRef = useRef<HTMLDivElement>(null);
+  const [linkMessage, setLinkMessage] = useState<string>();
+  const showLinkMessage = useCallback((message: string) => {
+    setLinkMessage(message);
+    setAnnouncement(({ count }) => ({ text: message, count: count + 1 }));
+  }, []);
   const paramNameErrors = useMemo(
     () =>
       Object.fromEntries(
@@ -738,6 +746,36 @@ export function DesignView({
           sources: state.draft.stages.map((one) => sources.of(one.id)),
         })
       : undefined;
+  const stageIdFromNode = useCallback(
+    (nodeId: string) =>
+      state.draft.stages.find(
+        (candidate) => stageNodeId(candidate.id) === nodeId,
+      )?.id,
+    [state.draft.stages],
+  );
+  const deleteLink = useCallback(
+    (
+      sourceNodeId: string,
+      targetNodeId: string,
+      output: string,
+      generated: boolean,
+    ) => {
+      const sourceId = stageIdFromNode(sourceNodeId);
+      const targetId = stageIdFromNode(targetNodeId);
+      if (!sourceId || !targetId) return;
+      if (generated) {
+        editor.unlinkOutput(sourceId, targetId, output);
+        setLinkMessage(undefined);
+        return;
+      }
+      select(targetId);
+      setOpens((count) => count + 1);
+      showLinkMessage(
+        'This reference lives in the prompt text. Edit the prompt to remove it.',
+      );
+    },
+    [editor, select, showLinkMessage, stageIdFromNode],
+  );
 
   return (
     <section className="wf-design-view" aria-labelledby={headingId}>
@@ -803,11 +841,18 @@ export function DesignView({
         >
           <Findings diagnostics={visibleFindings} />
         </div>
+        <Findings diagnostics={visibleFindings} />
+        {linkMessage && (
+          <Alert type="info" data-testid="link-message">
+            {linkMessage}
+          </Alert>
+        )}
         <DesignerLayout
           drawing={
             <WorkflowCanvas
               graph={graph}
               selection={selection}
+              linking={{ onDelete: deleteLink }}
               insertion={{
                 ...(insertDisabledReason === undefined
                   ? {}

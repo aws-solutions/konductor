@@ -13,6 +13,7 @@ export interface StageSpec {
   outcome?: string;
   prompt?: string;
   prompt_file?: string;
+  outputs?: Readonly<Record<string, string>>;
   /** Check findings placed on this stage card. */
   problems?: readonly string[];
 }
@@ -74,15 +75,20 @@ export type Unplaced<N extends GraphNode> = Omit<N, 'position'>;
 /** Any kind of node, not placed yet. */
 export type UnplacedNode = Unplaced<IntentGraphNode> | Unplaced<StageGraphNode>;
 
-/** Run order from the sequence-out port of one node to the next one's in. */
+/** A run-order edge or a labelled stage-output edge. */
 export interface GraphEdge {
   id: string;
   /** What a screen reader says for the edge. */
   ariaLabel: string;
   source: string;
   target: string;
-  sourceHandle: typeof SEQUENCE_OUT;
-  targetHandle: typeof SEQUENCE_IN;
+  sourceHandle: typeof SEQUENCE_OUT | typeof DATA_OUT;
+  targetHandle: typeof SEQUENCE_IN | typeof DATA_IN;
+  /** Data links carry an output reference; absent for run order. */
+  output?: string;
+  label?: string;
+  /** True when the reference occupies the exact line created by the link action. */
+  generated?: boolean;
 }
 
 /** What to draw: the intent, the stages under it, and the order edges. */
@@ -95,3 +101,7 @@ export interface CanvasGraph {
 export const SEQUENCE_OUT = 'sequence-out';
 /** The id of the port where the previous node's run order arrives. */
 export const SEQUENCE_IN = 'sequence-in';
+/** The id of a stage's output-link source port. */
+export const DATA_OUT = 'data-out';
+/** The id of a stage's output-link target port. */
+export const DATA_IN = 'data-in';

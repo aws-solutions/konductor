@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
+import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 import {
   Background,
   BackgroundVariant,
   Controls,
   MarkerType,
   ReactFlow,
+  type Connection,
   type DefaultEdgeOptions,
+  type Edge,
   type NodeChange,
   type NodeTypes,
 } from '@xyflow/react';
@@ -13,11 +16,12 @@ import '@xyflow/react/dist/style.css';
 import {
   useCallback,
   useMemo,
+  useState,
   type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
-import type { CanvasGraph } from '../graph';
+import type { CanvasGraph, GraphEdge } from '../graph';
 import './canvas.css';
 import { AGENT_DRAG_TYPE } from './agent-drag';
 import { READ_ONLY_ARIA_LABELS, SELECTABLE_ARIA_LABELS } from './aria-labels';
@@ -59,7 +63,17 @@ export interface CanvasSelection {
   onChecks?(): void;
 }
 
-/** Adds an agent stage at the drop position. */
+/** Creates and removes data links between stages. */
+export interface CanvasLinking {
+  onLink?(sourceNodeId: string, targetNodeId: string): void;
+  onDelete(
+    sourceNodeId: string,
+    targetNodeId: string,
+    output: string,
+    generated: boolean,
+  ): void;
+}
+
 export interface CanvasInsertion {
   disabledReason?: string;
   onInsert(index: number, agent: string): void;
@@ -96,25 +110,65 @@ function markDrop(root: HTMLElement, index?: number): void {
 
 /**
  * Draws a workflow graph. The view can be panned and zoomed, but nodes
- * cannot be moved or connected. With `selection`, a stage can be chosen by a
- * click, or with the keyboard, Enter or Space on the node; without it the
- * canvas is read-only. Each node can be reached with the Tab key, which also
- * brings it into view.
+ * cannot be moved. With `linking`, stage data ports can be connected and
+ * selected data edges can be deleted. With `selection`, a stage can be chosen
+ * by a click, Enter or Space; without it the canvas is read-only. Each node
+ * can be reached with the Tab key, which also brings it into view.
  */
 export function WorkflowCanvas({
   graph,
   selection,
   insertion,
+  linking,
 }: {
   graph: CanvasGraph;
   selection?: CanvasSelection;
   insertion?: CanvasInsertion;
+  linking?: CanvasLinking;
 }) {
   const selectedId = selection?.selectedId;
   const onSelect = selection?.onSelect;
   const onProblems = selection?.onProblems;
   const onParams = selection?.onParams;
   const onChecks = selection?.onChecks;
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string>();
+  const selectedLink = graph.edges.find(
+    (edge) => edge.id === selectedEdgeId && edge.output !== undefined,
+  );
+  const removeLink = useCallback(
+    (edge: GraphEdge | undefined) => {
+      if (!edge?.output) return;
+      linking?.onDelete(
+        edge.source,
+        edge.target,
+        edge.output,
+        edge.generated === true,
+      );
+      setSelectedEdgeId(undefined);
+    },
+    [linking],
+  );
+  const edges = useMemo(
+    () =>
+      graph.edges.map((edge) =>
+        edge.output
+          ? {
+              ...edge,
+              deletable: true,
+              focusable: true,
+              selectable: true,
+              style: { stroke: 'var(--wf-port)', strokeWidth: 2.5 },
+              labelStyle: { fill: 'var(--wf-port)', fontWeight: 700 },
+            }
+          : {
+              ...edge,
+              deletable: false,
+              focusable: false,
+              selectable: false,
+            },
+      ),
+    [graph.edges],
+  );
   const nodes = useMemo(
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
     [graph.nodes, onSelect, selectedId],
@@ -147,6 +201,14 @@ export function WorkflowCanvas({
   // also when it is the selected one already.
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
+      if (
+        selectedLink &&
+        (event.key === 'Delete' || event.key === 'Backspace')
+      ) {
+        event.preventDefault();
+        removeLink(selectedLink);
+        return;
+      }
       const node = event.target;
       if (!(node instanceof HTMLElement)) return;
       if (
@@ -165,7 +227,7 @@ export function WorkflowCanvas({
       event.preventDefault();
       onSelect(node.dataset.id ?? '');
     },
-    [onProblems, onSelect],
+    [onProblems, onSelect, removeLink, selectedLink],
   );
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -211,6 +273,24 @@ export function WorkflowCanvas({
     },
     [insertion],
   );
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (connection.source && connection.target) {
+        linking?.onLink?.(connection.source, connection.target);
+      }
+    },
+    [linking],
+  );
+  const onEdgesDelete = useCallback(
+    (deleted: Edge[]) => {
+      for (const edge of deleted) {
+        removeLink(graph.edges.find((candidate) => candidate.id === edge.id));
+      }
+    },
+    [graph.edges, removeLink],
+  );
+
   return (
     <div
       className="wf-canvas"
@@ -224,16 +304,32 @@ export function WorkflowCanvas({
       onDrop={onDrop}
       title={insertion?.disabledReason}
     >
+      {selectedLink && (
+        <div className="wf-link-menu">
+          <ButtonDropdown
+            items={[{ id: 'delete', text: 'Delete link' }]}
+            onItemClick={({ detail }) => {
+              if (detail.id === 'delete') removeLink(selectedLink);
+            }}
+          >
+            Link actions
+          </ButtonDropdown>
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
-        edges={graph.edges}
+        edges={edges}
         nodeTypes={NODE_TYPES}
         defaultEdgeOptions={EDGE_OPTIONS}
         nodesDraggable={false}
-        nodesConnectable={false}
+        nodesConnectable={linking?.onLink !== undefined}
         elementsSelectable={onSelect !== undefined}
+        edgesFocusable={linking !== undefined}
+        edgesReconnectable={false}
+        onConnect={onConnect}
+        onEdgesDelete={onEdgesDelete}
+        onEdgeClick={(_, edge) => setSelectedEdgeId(edge.id)}
         onNodesChange={onNodesChange}
-        edgesFocusable={false}
         ariaLabelConfig={
           onSelect ? SELECTABLE_ARIA_LABELS : READ_ONLY_ARIA_LABELS
         }
