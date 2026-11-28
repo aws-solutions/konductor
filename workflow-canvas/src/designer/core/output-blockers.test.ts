@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it } from 'vitest';
+import type { WorkflowDocument } from '../../api/types';
 import { HELLO_DOCUMENT } from '../../test-support/fixtures';
 import { reduce } from './edit-reducer';
 import { openDocument } from './edit-state';
@@ -21,7 +22,7 @@ stages:
     outputs: {note: NOTE.md}
 `;
 
-const DOCUMENT = {
+const DOCUMENT: WorkflowDocument = {
   ...HELLO_DOCUMENT,
   text: TEXT,
   view: {
