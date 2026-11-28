@@ -13,6 +13,18 @@ async function describedText(input: Locator): Promise<string> {
   );
 }
 
+async function expectReannouncement(
+  live: Locator,
+  change: () => Promise<void>,
+): Promise<void> {
+  const prior = await live.locator('span').elementHandle();
+  if (!prior) throw new Error('The live region has no announcement node.');
+  await change();
+  await expect
+    .poll(() => prior.evaluate((element) => element.isConnected))
+    .toBe(false);
+}
+
 test('adds, validates, saves, reloads and removes a stage output', async ({
   designer,
 }) => {
@@ -82,7 +94,45 @@ test('adds, validates, saves, reloads and removes a stage output', async ({
   );
 });
 
-test('shows a bad output reference on the stage card and accessible name', async ({
+test('announces the same output error for each edited field', async ({
+  designer,
+}) => {
+  const panel = designer.page.getByRole('tabpanel', { name: 'Properties' });
+  const live = designer.page.getByTestId('designer-live');
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  const firstName = panel.getByRole('textbox', { name: 'Output name 1' });
+  const firstPath = panel.getByRole('textbox', { name: 'Output path 1' });
+  await firstName.fill('first');
+  await firstPath.fill('FIRST.md');
+  await firstPath.fill('../first');
+  await expect(live).toContainText('Use a relative path');
+
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  const secondName = panel.getByRole('textbox', { name: 'Output name 2' });
+  const secondPath = panel.getByRole('textbox', { name: 'Output path 2' });
+  await secondName.fill('second');
+  await secondPath.fill('SECOND.md');
+  await expectReannouncement(live, () => secondPath.fill('../second'));
+  await expect(live).toContainText('Use a relative path');
+
+  await firstPath.fill('FIRST.md');
+  await secondPath.fill('SECOND.md');
+  await firstName.fill('Bad_First');
+  await expect(live).toContainText('An output name must start');
+  await expectReannouncement(live, () => secondName.fill('Bad_Second'));
+  await expect(live).toContainText('An output name must start');
+
+  await designer.stage('review').click();
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  const reviewName = panel.getByRole('textbox', { name: 'Output name 1' });
+  const reviewPath = panel.getByRole('textbox', { name: 'Output path 1' });
+  await reviewName.fill('review-file');
+  await reviewPath.fill('REVIEW.md');
+  await expectReannouncement(live, () => reviewName.fill('Bad_Review'));
+  await expect(live).toContainText('An output name must start');
+});
+
+test('shows every bad output reference on the stage card and accessible name', async ({
   designer,
 }) => {
   const panel = designer.page.getByRole('tabpanel', { name: 'Properties' });
@@ -90,14 +140,18 @@ test('shows a bad output reference on the stage card and accessible name', async
   await panel.getByRole('textbox', { name: 'Output name 1' }).fill('design');
   await panel.getByRole('textbox', { name: 'Output path 1' }).fill('DESIGN.md');
   await designer.stage('review').click();
-  await designer.prompt.fill('Read {draft.missing}.');
+  await designer.prompt.fill('Read {draft.missing} and {draft.other}.');
 
+  const card = designer.stage('review');
   await expect(
-    designer.stage('review').getByText(/names an output.*does not declare/),
+    card.getByText(/missing.*names an output.*does not declare/),
+  ).toBeVisible();
+  await expect(
+    card.getByText(/other.*names an output.*does not declare/),
   ).toBeVisible();
   await expect(
     designer.page.getByRole('group', {
-      name: /Stage review.*problem:.*names an output.*does not declare/,
+      name: /Stage review.*problem:.*missing.*other/,
     }),
   ).toBeVisible();
 });

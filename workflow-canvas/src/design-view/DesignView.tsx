@@ -44,6 +44,7 @@ import {
   DEFAULT_AGENT,
   fileBlocker,
   insertionBlocker,
+  joinMessages,
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
@@ -59,6 +60,7 @@ import {
 } from '../designer/core';
 import { EditAlerts } from '../designer/EditAlerts';
 import { SaveControls } from '../designer/SaveControls';
+import type { DraftStage } from '../designer/core/draft';
 import type { Editor } from '../designer/use-editor';
 import type { LoadedWorkflow } from '../workflow/load-workflow';
 import type { Scheduler } from '../execution/core/ports';
@@ -108,6 +110,39 @@ const STATUS_KIND: Readonly<Record<DraftStatus, StatusIndicatorProps.Type>> = {
 };
 
 const count = (n: number) => n.toLocaleString('en-US');
+
+type OutputField = 'name' | 'path';
+
+interface OutputFieldFailure {
+  readonly key: string;
+  readonly stageId: string;
+  readonly outputId: string;
+  readonly field: OutputField;
+  readonly message: string;
+}
+
+function outputFailuresOf(
+  stages: readonly DraftStage[],
+): readonly OutputFieldFailure[] {
+  const failures: OutputFieldFailure[] = [];
+  for (const stage of stages) {
+    const errors = outputRowErrors(stage.outputs ?? []);
+    for (const output of stage.outputs ?? []) {
+      for (const field of ['name', 'path'] as const) {
+        const message = errors[output.id]?.[field];
+        if (message === undefined) continue;
+        failures.push({
+          key: JSON.stringify([stage.id, output.id, field, message]),
+          stageId: stage.id,
+          outputId: output.id,
+          field,
+          message,
+        });
+      }
+    }
+  }
+  return failures;
+}
 
 /**
  * What the check found wrong with the text, worst first. A text may hold
@@ -356,9 +391,11 @@ export function DesignView({
             ? { prompt: stage.prompt }
             : { prompt_file: source.prompt_file }),
           ...(() => {
-            const problem = stageProblems.find(
-              (candidate) => candidate.stageId === stage.id,
-            )?.message;
+            const problem = joinMessages(
+              stageProblems.filter(
+                (candidate) => candidate.stageId === stage.id,
+              ),
+            );
             return problem === undefined ? {} : { problem };
           })(),
         };
@@ -390,14 +427,11 @@ export function DesignView({
     [state.draft.params],
   );
   const parameterNameFailure = Object.values(paramNameErrors)[0];
-  const outputFieldFailure = state.draft.stages
-    .flatMap((stage) =>
-      Object.values(outputRowErrors(stage.outputs ?? [])).flatMap((errors) => [
-        errors.name,
-        errors.path,
-      ]),
-    )
-    .find((error) => error !== undefined);
+  const outputFieldFailures = useMemo(
+    () => outputFailuresOf(state.draft.stages),
+    [state.draft.stages],
+  );
+  const outputFieldFailure = outputFieldFailures[0]?.message;
   const announcedNameFailure = useRef(false);
   useEffect(() => {
     if (parameterNameFailure === undefined) {
@@ -411,19 +445,36 @@ export function DesignView({
       count: count + 1,
     }));
   }, [parameterNameFailure]);
-  const announcedOutputFailure = useRef<string | undefined>(undefined);
+  const activeOutputFailures = useRef<ReadonlySet<string>>(new Set());
+  const changedOutputField = useRef<
+    | {
+        readonly stageId: string;
+        readonly outputId: string;
+        readonly field: OutputField;
+      }
+    | undefined
+  >(undefined);
   useEffect(() => {
-    if (outputFieldFailure === undefined) {
-      announcedOutputFailure.current = undefined;
-      return;
-    }
-    if (announcedOutputFailure.current === outputFieldFailure) return;
-    announcedOutputFailure.current = outputFieldFailure;
+    const previous = activeOutputFailures.current;
+    activeOutputFailures.current = new Set(
+      outputFieldFailures.map(({ key }) => key),
+    );
+    const added = outputFieldFailures.filter(({ key }) => !previous.has(key));
+    const changed = changedOutputField.current;
+    changedOutputField.current = undefined;
+    const failure =
+      added.find(
+        ({ stageId, outputId, field }) =>
+          stageId === changed?.stageId &&
+          outputId === changed.outputId &&
+          field === changed.field,
+      ) ?? added[0];
+    if (!failure) return;
     setAnnouncement(({ count }) => ({
-      text: outputFieldFailure,
+      text: failure.message,
       count: count + 1,
     }));
-  }, [outputFieldFailure]);
+  }, [outputFieldFailures]);
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -709,6 +760,16 @@ export function DesignView({
           onParamRemove={editor.removeParam}
           onOutputChange={(id, change) => {
             if (picked && outputSourceBlocker === undefined) {
+              const output = picked.outputs?.find(
+                (candidate) => candidate.id === id,
+              );
+              if (output) {
+                changedOutputField.current = {
+                  stageId: picked.id,
+                  outputId: id,
+                  field: output.name === change.name ? 'path' : 'name',
+                };
+              }
               editor.setOutput(picked.id, id, change);
             }
           }}
