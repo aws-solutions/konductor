@@ -187,13 +187,13 @@ test('draws a same-stage reference decoded from an escaped scalar', async ({
     .locator('.react-flow__edge-text')
     .boundingBox();
   const stageBounds = await designer.stage('draft').boundingBox();
-  if (!linkBounds || !labelBounds || !stageBounds) {
-    throw new Error('The same-stage link geometry is unavailable.');
-  }
-  expect(linkBounds.y + linkBounds.height).toBeGreaterThan(
-    stageBounds.y + stageBounds.height + 10,
+  expect(linkBounds).not.toBeNull();
+  expect(labelBounds).not.toBeNull();
+  expect(stageBounds).not.toBeNull();
+  expect(linkBounds!.y + linkBounds!.height).toBeGreaterThan(
+    stageBounds!.y + stageBounds!.height + 10,
   );
-  expect(labelBounds.x).toBeGreaterThan(stageBounds.x + stageBounds.width);
+  expect(labelBounds!.x).toBeGreaterThan(stageBounds!.x + stageBounds!.width);
 });
 
 test('keeps deletion blocked while raw YAML is pending', async ({
