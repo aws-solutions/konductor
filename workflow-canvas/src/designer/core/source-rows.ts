@@ -61,6 +61,7 @@ export function sourceRowPatches({
   currentCount,
   render,
   commentReason,
+  emptyText = '{}',
 }: {
   text: string;
   source: SourceRows;
@@ -68,6 +69,7 @@ export function sourceRowPatches({
   currentCount: number;
   render: (current: number) => string;
   commentReason: string;
+  emptyText?: string;
 }): readonly SourcePatch[] | string {
   const structural =
     matches.length !== currentCount || matches.length !== source.rows.length;
@@ -82,7 +84,7 @@ export function sourceRowPatches({
     patches.push({
       start: source.rows[0]!.start,
       end: source.rows.at(-1)!.contentEnd,
-      text: source.flow ? '' : '{}',
+      text: source.flow ? '' : emptyText,
     });
   } else {
     for (const group of indexGroups(removed)) {
