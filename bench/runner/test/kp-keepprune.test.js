@@ -9,8 +9,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 const { spawnSync } = require('node:child_process');
 
 const { loadBaseline, loadConvention, loadDoseLadder } = require('../../cap/frozen.js');
@@ -23,7 +23,7 @@ const { LABELS, VERDICTS } = require('../../cap/labels.js');
 const REPO = path.resolve(__dirname, '..', '..', '..');
 const PILOT = 'plan-review';
 const tmp = (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kp-'));
+  const dir = mkScratch('kp-');
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 };

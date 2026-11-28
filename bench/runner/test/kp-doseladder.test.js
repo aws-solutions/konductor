@@ -681,11 +681,11 @@ test('the audit reports every problem at once instead of stopping at the first',
 
 test('cap reads the ladder with his checked reader: a repeated key is refused, not silently overwritten', () => {
   const fs = require('node:fs');
-  const os = require('node:os');
+  const { mkScratch } = require('./scratch.js');
   const { parseJson } = require('../../cap/checkedjson.js');
   assert.throws(() => parseJson('{"a": 1, "b": {"c": 1, "c": 2}}', 'x.json'), /has the key "c" twice in b \(line 1\)/);
   assert.deepEqual(parseJson('\uFEFF{"a": [1, {"a": 2}]}', 'x.json'), { a: [1, { a: 2 }] }, 'the same key in different objects is fine');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kpl-'));
+  const dir = mkScratch('kpl-');
   try {
     const file = path.join(dir, 'ladder.json');
     fs.writeFileSync(file, '{"set": "a", "set": "b", "doses": {}, "tasks": []}');

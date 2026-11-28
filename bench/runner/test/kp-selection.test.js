@@ -9,8 +9,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 
 const sel = require('../../cap/selection.js');
 const { runSelect } = require('../../cap/selectrun.js');
@@ -21,7 +21,7 @@ const { verifyBaselines } = require('../../cap/baselineverify.js');
 const REPO = path.resolve(__dirname, '..', '..', '..');
 const PILOT = 'plan-review';
 const tmp = (t) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kps-'));
+  const dir = mkScratch('kps-');
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 };
