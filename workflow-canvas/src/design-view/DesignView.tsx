@@ -765,7 +765,8 @@ export function DesignView({
       if (!sourceId || !targetId) return;
       if (generated) {
         editor.unlinkOutput(sourceId, targetId, output);
-        setLinkMessage(undefined);
+        select(targetId);
+        showLinkMessage(`Link ${output} removed.`);
         return;
       }
       select(targetId);
@@ -852,7 +853,7 @@ export function DesignView({
             <WorkflowCanvas
               graph={graph}
               selection={selection}
-              linking={{ onDelete: deleteLink }}
+              linking={{ onDelete: deleteLink, disabledReason: frozen }}
               insertion={{
                 ...(insertDisabledReason === undefined
                   ? {}

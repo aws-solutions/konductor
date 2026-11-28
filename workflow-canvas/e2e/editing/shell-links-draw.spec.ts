@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/editing-fixtures';
 import type { DesignerPage } from '../support/designer-page';
 
@@ -53,12 +54,47 @@ test('draws and deletes only generated reference lines', async ({
   ).toBeVisible();
 
   await edge(designer).click();
+  await expectNoAccessibilityViolations(designer.page);
+  await designer.page.getByRole('button', { name: /^Theme:/ }).click();
+  await expectNoAccessibilityViolations(designer.page);
+  await edge(designer).click();
   await designer.page.keyboard.press('Delete');
   await expect(edge(designer)).toHaveCount(0);
-  await designer.openYaml();
-  await expect(designer.page.getByTestId('yaml-text')).not.toHaveValue(
-    /Read \{draft\.design\}\./,
+  await expect(designer.page.getByTestId('designer-live')).toHaveText(
+    'Link design removed.',
   );
+  await expect(
+    designer.page.getByRole('group', { name: /Stage review.*selected/ }),
+  ).toBeFocused();
+  await designer.expectSaveEnabled(true);
+  const undo = designer.page.getByRole('button', { name: 'Undo' });
+  await expect(undo).toBeEnabled();
+
+  await undo.click();
+  const yaml = designer.page.getByTestId('yaml-text');
+  await expect(yaml).toHaveValue(/Read \{draft\.design\}\./);
+  await designer.page.getByRole('button', { name: 'Redo' }).click();
+  await expect(yaml).not.toHaveValue(/Read \{draft\.design\}\./);
+  await expect(edge(designer)).toHaveCount(0);
+});
+
+test('keeps deletion blocked while raw YAML is pending', async ({
+  designer,
+}) => {
+  await saveYaml(designer, (text) =>
+    withReference(text, 'Read {draft.design}.'),
+  );
+  await designer.openYaml();
+  const yaml = designer.page.getByTestId('yaml-text');
+  await yaml.fill(`${await yaml.inputValue()}# pending\n`);
+
+  await edge(designer).click();
+  await expect(
+    designer.page.getByRole('button', { name: 'Link actions' }),
+  ).toBeDisabled();
+  await designer.page.keyboard.press('Delete');
+  await expect(edge(designer)).toBeVisible();
+  await expect(yaml).toHaveValue(/# pending/);
 });
 
 test('keeps authored references and opens their stage', async ({

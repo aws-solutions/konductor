@@ -144,7 +144,7 @@ function dataLinks(stages: readonly StageSpec[]): GraphEdge[] {
           sourceIndex === undefined ? undefined : stages[sourceIndex];
         if (
           sourceIndex === undefined ||
-          sourceIndex >= targetIndex ||
+          sourceIndex > targetIndex ||
           !Object.hasOwn(source?.outputs ?? {}, output)
         )
           return [];

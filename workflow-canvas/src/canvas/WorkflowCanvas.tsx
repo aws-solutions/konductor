@@ -16,6 +16,7 @@ import '@xyflow/react/dist/style.css';
 import {
   useCallback,
   useMemo,
+  useRef,
   useState,
   type DragEvent,
   type KeyboardEvent,
@@ -65,6 +66,7 @@ export interface CanvasSelection {
 
 /** Creates and removes data links between stages. */
 export interface CanvasLinking {
+  disabledReason?: string;
   onLink?(sourceNodeId: string, targetNodeId: string): void;
   onDelete(
     sourceNodeId: string,
@@ -131,13 +133,14 @@ export function WorkflowCanvas({
   const onProblems = selection?.onProblems;
   const onParams = selection?.onParams;
   const onChecks = selection?.onChecks;
+  const root = useRef<HTMLDivElement>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string>();
   const selectedLink = graph.edges.find(
     (edge) => edge.id === selectedEdgeId && edge.output !== undefined,
   );
   const removeLink = useCallback(
     (edge: GraphEdge | undefined) => {
-      if (!edge?.output) return;
+      if (!edge?.output || linking?.disabledReason) return;
       linking?.onDelete(
         edge.source,
         edge.target,
@@ -145,6 +148,13 @@ export function WorkflowCanvas({
         edge.generated === true,
       );
       setSelectedEdgeId(undefined);
+      if (edge.generated) {
+        requestAnimationFrame(() => {
+          stageElements(root.current ?? document.body)
+            .find((stage) => stage.dataset.id === edge.target)
+            ?.focus();
+        });
+      }
     },
     [linking],
   );
@@ -154,7 +164,7 @@ export function WorkflowCanvas({
         edge.output
           ? {
               ...edge,
-              deletable: true,
+              deletable: linking?.disabledReason === undefined,
               focusable: true,
               selectable: true,
               style: { stroke: 'var(--wf-port)', strokeWidth: 2.5 },
@@ -167,7 +177,7 @@ export function WorkflowCanvas({
               selectable: false,
             },
       ),
-    [graph.edges],
+    [graph.edges, linking?.disabledReason],
   );
   const nodes = useMemo(
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
@@ -293,6 +303,7 @@ export function WorkflowCanvas({
 
   return (
     <div
+      ref={root}
       className="wf-canvas"
       role="region"
       aria-label="Workflow graph"
@@ -308,6 +319,8 @@ export function WorkflowCanvas({
         <div className="wf-link-menu">
           <ButtonDropdown
             items={[{ id: 'delete', text: 'Delete link' }]}
+            disabled={linking?.disabledReason !== undefined}
+            disabledReason={linking?.disabledReason}
             onItemClick={({ detail }) => {
               if (detail.id === 'delete') removeLink(selectedLink);
             }}
