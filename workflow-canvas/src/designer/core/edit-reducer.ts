@@ -13,6 +13,7 @@ import {
   idsOf,
   insertStage,
   neighbourOf,
+  rebaseOutputSources,
   removeOutput,
   removeParam,
   removeStage,
@@ -276,6 +277,7 @@ function savedAs(
   // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
+    draft: rebaseOutputSources(state.draft, result.view.stages),
     saved: {
       ...state.saved,
       text,

@@ -7,6 +7,7 @@ import {
   outputEditBlocker,
   outputNameError,
   withOutputs,
+  type OutputToWrite,
 } from './outputs-text';
 
 const head = (eol = '\n') =>
@@ -24,9 +25,28 @@ const stage = (body: string, eol = '\n') =>
 
 const write = (
   text: string,
-  outputs: readonly { readonly name: string; readonly path: string }[],
+  outputs: readonly OutputToWrite[],
   before: Readonly<Record<string, string>> = { design: 'DESIGN.md' },
-) => withOutputs(text, [{ outputs, before }]);
+) => {
+  const entries = Object.entries(before);
+  return withOutputs(text, [
+    {
+      outputs: outputs.map((output) => {
+        if (output.source !== undefined) return output;
+        const source = entries.findIndex(([name]) => name === output.name);
+        return {
+          ...output,
+          ...(source >= 0
+            ? { source }
+            : outputs.length === 1 && entries.length === 1
+              ? { source: 0 }
+              : {}),
+        };
+      }),
+      before,
+    },
+  ]);
+};
 
 function value(written: ReturnType<typeof write>): string {
   expect(written.ok).toBe(true);
@@ -145,6 +165,68 @@ describe('withOutputs structural edits preserve surviving bytes', () => {
     expect(
       value(write(text, outputs, before as Readonly<Record<string, string>>)),
     ).toBe(expected);
+  });
+  it.each([
+    [
+      'block',
+      stage(`    outputs:
+      a: A.md
+      b: B.md
+`),
+    ],
+    [
+      'flow',
+      stage(`    outputs: {a: A.md, b: B.md}
+`),
+    ],
+  ])('keeps remove-first add-last order in %s form', (_, text) => {
+    const written = value(
+      write(
+        text,
+        [
+          { name: 'b', path: 'B.md', source: 1 },
+          { name: 'c', path: 'C.md' },
+        ],
+        { a: 'A.md', b: 'B.md' },
+      ),
+    );
+    expect(Object.keys(parse(written).stages[0].outputs)).toEqual(['b', 'c']);
+  });
+
+  it('refuses a pure row reorder', () => {
+    const text = stage(`    outputs: {a: A.md, b: B.md}
+`);
+    expect(
+      write(
+        text,
+        [
+          { name: 'b', path: 'B.md', source: 1 },
+          { name: 'a', path: 'A.md', source: 0 },
+        ],
+        { a: 'A.md', b: 'B.md' },
+      ),
+    ).toEqual({ ok: false, reason: 'Output rows cannot be reordered here.' });
+  });
+
+  it('keeps a block stage inline comment with its field', () => {
+    const text = stage('').replace(
+      '    agent: k-architect',
+      '    agent: k-architect # keep with agent',
+    );
+    const written = value(write(text, [more], {}));
+    expect(written).toContain(`    agent: k-architect # keep with agent
+    outputs:
+      more: MORE.md`);
+  });
+
+  it('refuses absent-output insertion in a commented flow stage', () => {
+    const text = `${head()}  - {name: plan, agent: k-architect # keep
+  }
+`;
+    expect(write(text, [more], {})).toEqual({
+      ok: false,
+      reason: OUTPUT_COMMENTS_REASON,
+    });
   });
 });
 

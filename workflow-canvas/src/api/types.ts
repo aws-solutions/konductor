@@ -43,8 +43,6 @@ export interface StageView {
   prompt_file?: string;
   /** Output files declared by name, in source order. */
   outputs?: Record<string, string>;
-  /** Check ids that must pass before this stage completes. */
-  done_when?: string[];
   range: LineRange;
 }
 

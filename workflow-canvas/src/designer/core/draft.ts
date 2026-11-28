@@ -15,6 +15,7 @@ export interface DraftParam {
 /** One editable output declaration. */
 export interface DraftOutput {
   readonly id: string;
+  readonly sourceIndex?: number;
   readonly name: string;
   readonly path: string;
 }
@@ -99,6 +100,7 @@ export function draftOf(
       outputs: Object.entries(stage.outputs ?? {}).map(
         ([name, path], outputIndex) => ({
           id: `${idOf(index + 1)}-o${outputIndex + 1}`,
+          sourceIndex: outputIndex,
           name,
           path,
         }),
@@ -108,6 +110,27 @@ export function draftOf(
     params: draftParams,
     nextId: stages.length + 1,
     nextParamId,
+  };
+}
+
+/** Rebinds rows that exactly match the saved output order. */
+export function rebaseOutputSources(
+  draft: Draft,
+  stages: readonly StageKeys[],
+): Draft {
+  return {
+    ...draft,
+    stages: draft.stages.map((stage, stageIndex) => {
+      const saved = Object.entries(stages[stageIndex]?.outputs ?? {});
+      return {
+        ...stage,
+        outputs: (stage.outputs ?? []).map((output, index) =>
+          saved[index]?.[0] === output.name && saved[index]?.[1] === output.path
+            ? { ...output, sourceIndex: index }
+            : output,
+        ),
+      };
+    }),
   };
 }
 

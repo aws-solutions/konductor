@@ -1,38 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { SourceRow, SourceRows } from './source-rows';
 import {
+  afterLine,
+  columnOf,
+  hasComment,
   isAlias,
   isMap,
-  isScalar,
   isSeq,
+  lineStart,
+  pairNamed,
   parseDocument,
+  textScalar,
   type Pair,
-  type Scalar,
   type YAMLMap,
-} from 'yaml';
+} from './yaml-source';
 
-/** One scalar output pair and its source ranges. */
-export interface OutputPairSpot {
+export interface OutputPairSpot extends SourceRow {
   readonly name: string;
   readonly path: string;
   readonly key: readonly [number, number];
   readonly value: readonly [number, number];
-  readonly lineStart: number;
-  readonly lineEnd: number;
 }
 
-/** The source ranges needed to edit one stage's outputs. */
 export interface OutputsSpot {
-  readonly stageFlow: boolean;
-  readonly stageClose?: number;
-  readonly insertAt?: number;
-  readonly keyIndent: string;
-  readonly outputs?: {
-    readonly flow: boolean;
-    readonly close: number;
-    readonly indent: string;
-    readonly pairs: readonly OutputPairSpot[];
-    readonly hasComments: boolean;
+  readonly stage: YAMLMap;
+  readonly outputs?: SourceRows & {
+    readonly rows: readonly OutputPairSpot[];
   };
+  readonly stageHasComments: boolean;
   readonly reason?: string;
 }
 
@@ -43,56 +38,6 @@ const METADATA_REASON =
 const DUPLICATE_REASON =
   'The outputs of this stage contain a duplicate key, so the editor cannot change them safely. Change them in the YAML tab.';
 
-const pairNamed = (pair: Pair, name: string) =>
-  isScalar(pair.key) && pair.key.value === name;
-
-function textScalar(node: unknown): node is Scalar<string> {
-  return (
-    isScalar(node) &&
-    typeof node.value === 'string' &&
-    node.range !== undefined &&
-    node.range !== null &&
-    node.anchor === undefined &&
-    node.tag === undefined
-  );
-}
-
-function lineStart(text: string, offset: number): number {
-  let start = offset;
-  while (start > 0 && text[start - 1] !== '\n' && text[start - 1] !== '\r') {
-    start -= 1;
-  }
-  return start;
-}
-
-function columnOf(text: string, offset: number): number {
-  return offset - lineStart(text, offset);
-}
-
-function afterLine(text: string, offset: number): number {
-  let end = offset;
-  while (end < text.length && text[end] !== '\n' && text[end] !== '\r') {
-    end += 1;
-  }
-  if (text[end] === '\r' && text[end + 1] === '\n') return end + 2;
-  return end < text.length ? end + 1 : end;
-}
-
-function endOf(pair: Pair | undefined): number {
-  const key = pair?.key as Scalar | null | undefined;
-  const value = pair?.value as Scalar | YAMLMap | null | undefined;
-  return Math.max(key?.range?.[1] ?? 0, value?.range?.[1] ?? 0);
-}
-
-function hasComment(value: unknown): boolean {
-  if (!value || typeof value !== 'object') return false;
-  const node = value as { comment?: unknown; commentBefore?: unknown };
-  return (
-    (typeof node.comment === 'string' && node.comment !== '') ||
-    (typeof node.commentBefore === 'string' && node.commentBefore !== '')
-  );
-}
-
 function outputMapSpot(
   text: string,
   pair: Pair,
@@ -101,42 +46,40 @@ function outputMapSpot(
     isAlias(pair.value) ||
     !isMap(pair.value) ||
     pair.value.anchor ||
-    pair.value.tag
+    pair.value.tag ||
+    !pair.value.range
   ) {
     return METADATA_REASON;
   }
-  const map = pair.value;
-  if (!map.range) return LAYOUT_REASON;
   const names = new Set<string>();
   const pairs: OutputPairSpot[] = [];
-  for (const item of map.items) {
-    if (!textScalar(item.key) || !textScalar(item.value)) {
-      return METADATA_REASON;
-    }
-    if (names.has(item.key.value)) return DUPLICATE_REASON;
-    names.add(item.key.value);
-    const key = item.key.range!;
-    const value = item.value.range!;
+  for (const item of pair.value.items) {
+    const key = textScalar(item.key);
+    const value = textScalar(item.value);
+    if (!key || !value) return METADATA_REASON;
+    if (names.has(key.text)) return DUPLICATE_REASON;
+    names.add(key.text);
     pairs.push({
-      name: item.key.value,
-      path: item.value.value,
-      key: [key[0], key[1]],
-      value: [value[0], value[1]],
-      lineStart: lineStart(text, key[0]),
-      lineEnd: afterLine(text, value[1]),
+      name: key.text,
+      path: value.text,
+      key: key.range,
+      value: value.range,
+      start: key.range[0],
+      contentEnd: value.range[1],
+      lineStart: lineStart(text, key.range[0]),
+      lineEnd: afterLine(text, value.range[1]),
     });
   }
-  const first = map.items[0]?.key as Scalar | null | undefined;
-  if (pairs.length > 0 && !first?.range) return LAYOUT_REASON;
+  const first = pairs[0];
   return {
-    flow: map.flow === true,
-    close: map.range[1] - 1,
-    indent: first?.range ? ' '.repeat(columnOf(text, first.range[0])) : '',
-    pairs,
+    flow: pair.value.flow === true,
+    close: pair.value.range[1] - 1,
+    indent: first ? ' '.repeat(columnOf(text, first.key[0])) : '',
+    rows: pairs,
     hasComments:
       hasComment(pair.key) ||
-      hasComment(map) ||
-      map.items.some(
+      hasComment(pair.value) ||
+      pair.value.items.some(
         (item) =>
           hasComment(item) || hasComment(item.key) || hasComment(item.value),
       ),
@@ -144,37 +87,26 @@ function outputMapSpot(
 }
 
 function stageSpot(text: string, stage: YAMLMap): OutputsSpot {
-  if (!stage.range || stage.items.length === 0) {
-    return { stageFlow: false, keyIndent: '', reason: LAYOUT_REASON };
-  }
-  const first = stage.items[0]?.key as Scalar | null | undefined;
-  if (!first?.range) {
-    return { stageFlow: false, keyIndent: '', reason: LAYOUT_REASON };
-  }
-  const keyIndent = ' '.repeat(columnOf(text, first.range[0]));
   const pairs = stage.items.filter((pair) => pairNamed(pair, 'outputs'));
   if (pairs.length > 1) {
-    return {
-      stageFlow: stage.flow === true,
-      keyIndent,
-      reason: DUPLICATE_REASON,
-    };
+    return { stage, stageHasComments: false, reason: DUPLICATE_REASON };
   }
   const outputs = pairs[0] ? outputMapSpot(text, pairs[0]) : undefined;
   if (typeof outputs === 'string') {
-    return { stageFlow: stage.flow === true, keyIndent, reason: outputs };
+    return { stage, stageHasComments: false, reason: outputs };
   }
+  const last = stage.items.at(-1);
   return {
-    stageFlow: stage.flow === true,
-    keyIndent,
-    ...(stage.flow
-      ? { stageClose: endOf(stage.items.at(-1)) }
-      : { insertAt: endOf(stage.items.at(-1)) }),
+    stage,
     ...(outputs ? { outputs } : {}),
+    stageHasComments:
+      hasComment(stage) ||
+      (!!last &&
+        (hasComment(last) || hasComment(last.key) || hasComment(last.value))),
   };
 }
 
-/** Finds source ranges for every stage's outputs, or why the file cannot be mapped. */
+/** Finds output source ranges for every stage. */
 export function outputSpots(text: string): readonly OutputsSpot[] | string {
   const document = parseDocument(text, { uniqueKeys: false });
   if (document.errors.length > 0 || !isMap(document.contents)) {

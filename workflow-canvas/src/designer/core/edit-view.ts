@@ -140,7 +140,11 @@ function outputRequests(state: EditState) {
   return state.draft.stages.map((stage) => {
     const from = state.bases.indexOf(stage.id);
     return {
-      outputs: (stage.outputs ?? []).map(({ name, path }) => ({ name, path })),
+      outputs: (stage.outputs ?? []).map(({ name, path, sourceIndex }) => ({
+        name,
+        path,
+        ...(sourceIndex === undefined ? {} : { source: sourceIndex }),
+      })),
       before: from < 0 ? {} : (state.saved.view.stages[from]?.outputs ?? {}),
     };
   });
