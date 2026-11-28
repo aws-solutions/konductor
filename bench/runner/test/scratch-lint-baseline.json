@@ -1,13 +1,9 @@
 {
   "_comment": "Raw mkdtemp / mkdtempSync calls that scratch-lint.test.js tolerates, per bench test file (DEBT D-303). It only shrinks: move a file to mkScratch and lower or drop its count.",
   "files": {
-    "runner/test/arm-venv-preflight.test.js": 1,
     "runner/test/cap-exposure.test.js": 2,
     "runner/test/cap-skillcli.test.js": 2,
-    "runner/test/core-load-run.test.js": 1,
-    "runner/test/cx-carddemo-relax.test.js": 1,
     "runner/test/harness-coupling.test.js": 1,
-    "runner/test/harness-plugins-move.test.js": 1,
     "runner/test/harness-run-options.test.js": 1,
     "runner/test/import-layers.test.js": 1,
     "runner/test/judge-kiro-settings.test.js": 1,

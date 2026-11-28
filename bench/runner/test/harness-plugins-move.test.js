@@ -7,7 +7,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
+const { mkScratch } = require('./scratch.js');
 const path = require('node:path');
 const { createRegistry, folderHash } = require('../../core/registry.js');
 const { REGISTRY, PLUGINS_DIR } = require('../lib/harness/descriptors.js');
@@ -19,7 +19,7 @@ const { checksOf } = require('../../kit/plugin/check.js');
 const MOVED = ['kiro-cli', 'opencode', 'claude-code', 'strands'];
 
 test('createRegistry puts the parts named in `order` first, in that order, and the rest after in their own order', (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'registry-order-'));
+  const root = mkScratch('registry-order-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const meta = (id) => Object.freeze({ id });
   const r = createRegistry({ builtins: [{ kind: 'harness', meta: meta('k') }, { kind: 'harness', meta: meta('c') }, { kind: 'harness', meta: meta('z') }], pluginRoots: [root], order: ['k', 'o', 'c'] });

@@ -8,6 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
+const { mkScratch } = require('./scratch.js');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { checkGatewayModules, rebuildHint } = require('../lib/python-pin.js');
@@ -17,7 +18,7 @@ const ARM_TASK = { environment: { kind: 'arm-sim' } };
 
 /** A venv in a temp dir whose bin/python is a link to a base Python that is gone. */
 function brokenVenv(t) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'arm-venv-'));
+  const root = mkScratch('arm-venv-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'venv', 'bin'), { recursive: true });
   fs.symlinkSync(path.join(root, 'gone', 'python3.12'), path.join(root, 'venv', 'bin', 'python'));

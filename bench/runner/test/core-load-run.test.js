@@ -6,12 +6,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
+const { mkScratch } = require('./scratch.js');
 const path = require('node:path');
 const { makeRunLoader } = require('../../core/load-run.js');
 
 function runDir(results) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'core-load-run-'));
+  const dir = mkScratch('core-load-run-');
   for (const [arm, harness] of results) {
     fs.mkdirSync(path.join(dir, arm, 't1', '1'), { recursive: true });
     fs.writeFileSync(path.join(dir, arm, 't1', '1', 'result.json'), JSON.stringify({ harness }));

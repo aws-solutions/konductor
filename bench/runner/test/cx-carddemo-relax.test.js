@@ -8,7 +8,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
+const { mkScratch } = require('./scratch.js');
 const path = require('node:path');
 const cd = require('../../scenarios/lib/hidden/carddemo-cd.js');
 
@@ -58,7 +58,7 @@ test('the lowest card of each account comes from the cross reference, CRLF or LF
 });
 
 test('output files are read with CRLF as LF, and every other byte still counts', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cdrelax-'));
+  const dir = mkScratch('cdrelax-');
   try {
     const script = path.join(dir, 'w.js');
     fs.writeFileSync(script, "require('fs').writeFileSync(process.argv[2], 'a\\r\\nb\\n c\\r\\n');\n");
