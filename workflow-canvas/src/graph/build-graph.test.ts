@@ -45,6 +45,7 @@ describe('buildGraph', () => {
     expect(intent?.data).toEqual({
       outcome: 'Add a greeting to the README',
       paramCount: 0,
+      checkCount: 0,
     });
   });
 

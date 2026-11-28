@@ -23,6 +23,13 @@ import {
   parameterNameError,
 } from '../designer/core/param-text';
 import { ComponentsTray } from '../designer-view/ComponentsTray';
+import { checkRowErrors } from '../designer-view/ChecksPanel';
+import {
+  CHECK_DUPLICATE_ERROR,
+  CHECK_ID_ERROR,
+  CHECK_RUN_ERROR,
+} from '../designer/core/checks-spots';
+import { CHECK_REFERENCE_ERROR } from '../designer/core/done-when-text';
 import {
   OUTPUT_DUPLICATE_ERROR,
   OUTPUT_NAME_ERROR,
@@ -41,6 +48,8 @@ import {
   canEdit,
   canRemoveStage,
   changeBlocker,
+  checksBlocker,
+  doneWhenBlocker,
   DEFAULT_AGENT,
   fileBlocker,
   insertionBlocker,
@@ -378,6 +387,7 @@ export function DesignView({
       name: state.saved.view.name,
       intent: state.saved.view.intent,
       paramCount: shownParamCount,
+      checkCount: (state.draft.checks ?? []).length,
       stages: state.draft.stages.map((stage) => {
         const from = state.bases.indexOf(stage.id);
         const source = from < 0 ? undefined : state.saved.view.stages[from];
@@ -402,6 +412,7 @@ export function DesignView({
       state.draft.stages,
       state.saved.view,
       shownParamCount,
+      state.draft.checks,
     ],
   );
   const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
@@ -410,6 +421,7 @@ export function DesignView({
   // column opens its keys each time, as the drawing says it will.
   const [opens, setOpens] = useState(0);
   const [paramOpens, setParamOpens] = useState(0);
+  const [checkOpens, setCheckOpens] = useState(0);
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const findingsRef = useRef<HTMLDivElement>(null);
   const paramNameErrors = useMemo(
@@ -428,6 +440,20 @@ export function DesignView({
     [state.draft.stages],
   );
   const outputFieldFailure = outputFieldFailures[0]?.message;
+  const checkErrors = checkRowErrors(state.draft.checks ?? []);
+  const checkFieldFailure = Object.values(checkErrors)
+    .flatMap(({ id, file, run }) => [id, file, run])
+    .find((error) => error !== undefined);
+  const declaredCheckKeys = new Set(
+    (state.draft.checks ?? []).map(({ key }) => key),
+  );
+  const doneWhenFailure = state.draft.stages
+    .flatMap((stage) => stage.doneWhen ?? [])
+    .some(
+      (reference) => 'id' in reference || !declaredCheckKeys.has(reference.key),
+    )
+    ? CHECK_REFERENCE_ERROR
+    : undefined;
   const announcedNameFailure = useRef(false);
   useEffect(() => {
     if (parameterNameFailure === undefined) {
@@ -471,6 +497,20 @@ export function DesignView({
       count: count + 1,
     }));
   }, [outputFieldFailures]);
+  const announcedCheckFailure = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const failure = checkFieldFailure ?? doneWhenFailure;
+    if (failure === undefined) {
+      announcedCheckFailure.current = undefined;
+      return;
+    }
+    if (announcedCheckFailure.current === failure) return;
+    announcedCheckFailure.current = failure;
+    setAnnouncement(({ count }) => ({
+      text: failure,
+      count: count + 1,
+    }));
+  }, [checkFieldFailure, doneWhenFailure]);
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -491,6 +531,7 @@ export function DesignView({
         select(stage.id);
         requestAnimationFrame(() => findingsRef.current?.focus());
       },
+      onChecks: () => setCheckOpens((count) => count + 1),
     }),
     [state.selectedId, state.draft.stages, select],
   );
@@ -509,15 +550,30 @@ export function DesignView({
   const pickedHasOutputError = Object.values(pickedOutputErrors).some(
     ({ name, path }) => name !== undefined || path !== undefined,
   );
-  const visibleFindings = pickedHasOutputError
-    ? findings.filter(({ path }) => {
-        const index = state.draft.stages.indexOf(picked!);
-        return !(
-          path.startsWith(`stages[${index}].outputs`) ||
-          path.startsWith(`stages.${picked!.name}.outputs`)
-        );
-      })
-    : findings;
+  const pickedDoneWhenError = picked?.doneWhen?.some(
+    (reference) => 'id' in reference || !declaredCheckKeys.has(reference.key),
+  )
+    ? CHECK_REFERENCE_ERROR
+    : undefined;
+  const pickedIndex = picked ? state.draft.stages.indexOf(picked) : -1;
+  const visibleFindings = findings.filter(({ path }) => {
+    if (checkFieldFailure && path.startsWith('intent.accept')) return false;
+    if (
+      pickedDoneWhenError &&
+      (path.startsWith(`stages[${pickedIndex}].done_when`) ||
+        path.startsWith(`stages.${picked!.name}.done_when`))
+    ) {
+      return false;
+    }
+    if (
+      pickedHasOutputError &&
+      (path.startsWith(`stages[${pickedIndex}].outputs`) ||
+        path.startsWith(`stages.${picked!.name}.outputs`))
+    ) {
+      return false;
+    }
+    return true;
+  });
   // The keys of the picked stage come from the check of the file as it was
   // loaded: that is what the file holds. The stage is taken from the place it
   // was loaded from, which a rename or another stage being added or deleted
@@ -553,6 +609,11 @@ export function DesignView({
   const outputStructuralBlocker = picked
     ? outputsBlocker(state, picked.id, true)
     : undefined;
+  const checkSourceBlocker = checksBlocker(state);
+  const checkStructuralBlocker = checksBlocker(state, true);
+  const doneWhenSourceBlocker = picked
+    ? doneWhenBlocker(state, picked.id)
+    : undefined;
   const stage: LayoutStage | undefined = picked && {
     name: picked.name,
     outputs: picked.outputs ?? [],
@@ -560,6 +621,12 @@ export function DesignView({
     outputsDisabledReason: outputSourceBlocker,
     outputsStructuralDisabled: outputStructuralBlocker !== undefined,
     outputsStructuralDisabledReason: outputStructuralBlocker,
+    doneWhen: (picked.doneWhen ?? []).flatMap((reference) =>
+      'key' in reference ? [reference.key] : [],
+    ),
+    doneWhenDisabled: doneWhenSourceBlocker !== undefined,
+    doneWhenDisabledReason: doneWhenSourceBlocker,
+    doneWhenError: pickedDoneWhenError,
     rules,
     values,
     // The agent the file names, which stays on offer even when the list of
@@ -585,7 +652,12 @@ export function DesignView({
   const fieldRefusal =
     (refusal === PARAM_NAME_ERROR && parameterNameFailure !== undefined) ||
     ((refusal === OUTPUT_NAME_ERROR || refusal === OUTPUT_DUPLICATE_ERROR) &&
-      outputFieldFailure !== undefined);
+      outputFieldFailure !== undefined) ||
+    ((refusal === CHECK_ID_ERROR ||
+      refusal === CHECK_DUPLICATE_ERROR ||
+      refusal === CHECK_RUN_ERROR ||
+      refusal === CHECK_REFERENCE_ERROR) &&
+      (checkFieldFailure !== undefined || doneWhenFailure !== undefined));
   const pageRefusal = fieldRefusal ? undefined : refusal;
   const paramsMessage = paramsSourceBlocker ?? pageRefusal;
   const insertDisabledReason =
@@ -763,12 +835,32 @@ export function DesignView({
           agents={agents}
           openProperties={opens}
           openParams={paramOpens}
+          openChecks={checkOpens}
           params={state.draft.params}
+          checks={state.draft.checks ?? []}
+          checksDisabled={checkSourceBlocker !== undefined}
+          checksDisabledReason={checkSourceBlocker}
+          checksStructuralDisabled={checkStructuralBlocker !== undefined}
+          checksStructuralDisabledReason={checkStructuralBlocker}
           paramsDisabled={paramsSourceBlocker !== undefined}
           paramsDisabledReason={paramsMessage}
           onParamChange={(id, change) => editor.setParam(id, change)}
           onParamAdd={editor.addParam}
           onParamRemove={editor.removeParam}
+          onCheckChange={(key, check) => {
+            if (checkSourceBlocker === undefined) editor.setCheck(key, check);
+          }}
+          onCheckAdd={() => {
+            if (checkStructuralBlocker === undefined) editor.addCheck();
+          }}
+          onCheckRemove={(key) => {
+            if (checkStructuralBlocker === undefined) editor.removeCheck(key);
+          }}
+          onDoneWhenChange={(ids) => {
+            if (picked && doneWhenSourceBlocker === undefined) {
+              editor.setDoneWhen(picked.id, ids);
+            }
+          }}
           onOutputChange={(id, change) => {
             if (picked && outputSourceBlocker === undefined) {
               const output = picked.outputs?.find(

@@ -221,6 +221,7 @@
   line-clamp: 2;
 }
 
+.wf-intent-checks-position,
 .wf-intent-params-position {
   position: absolute !important;
   right: 14px !important;
@@ -229,6 +230,11 @@
   pointer-events: all !important;
 }
 
+.wf-intent-checks-position {
+  right: 106px !important;
+}
+
+.wf-intent-checks-control,
 .wf-intent-params-control {
   pointer-events: all !important;
 }

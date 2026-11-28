@@ -55,6 +55,8 @@ export interface CanvasSelection {
   onProblems?(nodeId: string): void;
   /** Opens the workflow parameter editor from the intent card. */
   onParams?(): void;
+  /** Opens the intent acceptance-check editor. */
+  onChecks?(): void;
 }
 
 /** Adds an agent stage at the drop position. */
@@ -112,6 +114,7 @@ export function WorkflowCanvas({
   const onSelect = selection?.onSelect;
   const onProblems = selection?.onProblems;
   const onParams = selection?.onParams;
+  const onChecks = selection?.onChecks;
   const nodes = useMemo(
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
     [graph.nodes, onSelect, selectedId],
@@ -128,11 +131,15 @@ export function WorkflowCanvas({
         onProblems(node?.dataset.id ?? '');
         return;
       }
+      if (onChecks && target.closest('[data-intent-checks="true"]')) {
+        onChecks();
+        return;
+      }
       if (onParams && target.closest('[data-intent-params="true"]')) {
         onParams();
       }
     },
-    [onParams, onProblems],
+    [onChecks, onParams, onProblems],
   );
   // The nodes carry React Flow's `nokey` class (see markSelectable), so it
   // leaves their keys alone: Escape no longer drops focus, and a key is not

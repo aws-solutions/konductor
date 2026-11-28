@@ -105,6 +105,33 @@ test('capture the Design view with a stage output', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-outputs');
 });
 
+test('capture the Design view with acceptance checks', async ({ canvas }) => {
+  await canvas.page
+    .getByRole('button', { name: /checks 1, edit acceptance checks/ })
+    .click();
+  await expect(
+    canvas.page
+      .getByRole('tabpanel', { name: 'Properties' })
+      .getByRole('textbox', { name: 'Check file 1' }),
+  ).toHaveValue('README.md');
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-checks');
+});
+
+test('capture the check editor in the dark mode', async ({ canvas }) => {
+  await canvas.switchTheme();
+  await canvas.page
+    .getByRole('button', { name: /checks 1, edit acceptance checks/ })
+    .click();
+  await expect(
+    canvas.page
+      .getByRole('tabpanel', { name: 'Properties' })
+      .getByRole('textbox', { name: 'Check file 1' }),
+  ).toHaveValue('README.md');
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-checks-dark');
+});
+
 test('capture the Design view with workflow parameters', async ({ canvas }) => {
   await canvas.page
     .getByRole('button', {
@@ -349,6 +376,9 @@ test('capture the Design view when the file changed on disk', async ({
   );
   await designer.save.click();
   await expect(designer.conflict).toBeVisible();
+  await expect(designer.page.getByTestId('yaml-check-status')).toContainText(
+    'Flow valid',
+  );
 
   await saveFullPageScreenshot(designer.page, 'next-design-conflict');
 });

@@ -24,7 +24,7 @@ const DUPLICATE_ERROR = 'Output names must be unique in a stage.';
 const PATH_ERROR =
   'Use a relative path inside the project, with / between its parts.';
 
-function outputPathError(path: string): string | undefined {
+export function pathValueError(path: string): string | undefined {
   if (
     path === '' ||
     path.startsWith('/') ||
@@ -53,8 +53,8 @@ export function outputRowErrors(
           : (counts.get(output.name) ?? 0) > 1
             ? { name: DUPLICATE_ERROR }
             : {}),
-        ...(outputPathError(output.path)
-          ? { path: outputPathError(output.path) }
+        ...(pathValueError(output.path)
+          ? { path: pathValueError(output.path) }
           : {}),
       },
     ]),

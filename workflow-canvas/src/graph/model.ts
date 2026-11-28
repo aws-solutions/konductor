@@ -23,6 +23,7 @@ export interface WorkflowSpec {
   intent: { outcome: string };
   /** The number of declared workflow parameters. */
   paramCount?: number;
+  checkCount?: number;
   stages: readonly StageSpec[];
 }
 
@@ -41,7 +42,7 @@ interface Placed {
 /** The start of the workflow: what it is meant to achieve. */
 export type IntentGraphNode = Placed & {
   type: 'intent';
-  data: { outcome: string; paramCount: number };
+  data: { outcome: string; paramCount: number; checkCount: number };
 };
 
 /** One unit of work, done by one agent on one harness. */

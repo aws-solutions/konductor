@@ -12,7 +12,7 @@ import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 import { paramsInPlaceBlocker, withParams } from './param-text';
 import { outputEditBlocker, withOutputs } from './outputs-text';
-import { withAcceptanceChecks } from './checks-spots';
+import { checkCollectionBlocker, withAcceptanceChecks } from './checks-spots';
 import { doneWhenEditBlocker, withDoneWhen } from './done-when-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
@@ -363,6 +363,17 @@ export function paramsBlocker(state: EditState): string | undefined {
       state.saved.text,
       state.saved.view.params !== undefined,
     )
+  );
+}
+
+/** Why the intent acceptance checks cannot make this kind of edit. */
+export function checksBlocker(
+  state: EditState,
+  structural = false,
+): string | undefined {
+  return (
+    changeBlocker(state) ??
+    checkCollectionBlocker(state.saved.text, 'accept', structural)
   );
 }
 
