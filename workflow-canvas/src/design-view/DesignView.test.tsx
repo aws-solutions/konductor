@@ -1782,6 +1782,32 @@ describe('DesignView, many problems in the text', () => {
     );
   });
 
+  it('summarizes stage problems and moves focus to the full list', async () => {
+    const diagnostics = Array.from({ length: 100 }, (_, index) => ({
+      message: `Reference ${index + 1} names no output.`,
+      path: 'stages[0].prompt',
+      line: 14,
+      severity: 'error' as const,
+    }));
+    drawn({
+      document: { ...HELLO_DOCUMENT, diagnostics },
+      openedHeld: true,
+    });
+    await settle();
+
+    const action = screen.getByRole('button', {
+      name: 'Show 100 findings for stage draft',
+    });
+    expect(action.textContent).toBe('Reference 1 names no output. 99 more.');
+    await act(async () => {
+      fireEvent.click(action);
+    });
+    expect(document.activeElement).toBe(
+      screen.getByLabelText('Workflow findings'),
+    );
+    expect(findingItems()).toHaveLength(FINDINGS_PER_PAGE);
+  });
+
   it('shows every problem of a short list with nothing left', async () => {
     const { scheduler } = drawn({ answers: [manyFindings(3)] });
     await openProperties();

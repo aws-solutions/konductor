@@ -51,6 +51,8 @@ export interface CanvasSelection {
    * Enter or Space, also when it is the selected one already.
    */
   onSelect(nodeId: string): void;
+  /** Moves focus from a stage problem summary to the full findings. */
+  onProblems?(nodeId: string): void;
   /** Opens the workflow parameter editor from the intent card. */
   onParams?(): void;
 }
@@ -108,6 +110,7 @@ export function WorkflowCanvas({
 }) {
   const selectedId = selection?.selectedId;
   const onSelect = selection?.onSelect;
+  const onProblems = selection?.onProblems;
   const onParams = selection?.onParams;
   const nodes = useMemo(
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
@@ -116,15 +119,20 @@ export function WorkflowCanvas({
   const onClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       const target = event.target;
-      if (
-        onParams &&
-        target instanceof HTMLElement &&
-        target.closest('[data-intent-params="true"]')
-      ) {
+      if (!(target instanceof HTMLElement)) return;
+      const problem = target.closest<HTMLElement>(
+        '[data-stage-problems="true"]',
+      );
+      if (onProblems && problem) {
+        const node = problem.closest<HTMLElement>('.react-flow__node-stage');
+        onProblems(node?.dataset.id ?? '');
+        return;
+      }
+      if (onParams && target.closest('[data-intent-params="true"]')) {
         onParams();
       }
     },
-    [onParams],
+    [onParams, onProblems],
   );
   // The nodes carry React Flow's `nokey` class (see markSelectable), so it
   // leaves their keys alone: Escape no longer drops focus, and a key is not
@@ -133,13 +141,24 @@ export function WorkflowCanvas({
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       const node = event.target;
-      if (!onSelect || !(node instanceof HTMLElement)) return;
+      if (!(node instanceof HTMLElement)) return;
+      if (
+        onProblems &&
+        node.closest('[data-stage-problems="true"]') &&
+        (event.key === 'Enter' || event.key === ' ')
+      ) {
+        event.preventDefault();
+        const stage = node.closest<HTMLElement>('.react-flow__node-stage');
+        onProblems(stage?.dataset.id ?? '');
+        return;
+      }
+      if (!onSelect) return;
       if (!node.classList.contains('react-flow__node-stage')) return;
       if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
       onSelect(node.dataset.id ?? '');
     },
-    [onSelect],
+    [onProblems, onSelect],
   );
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {

@@ -44,7 +44,6 @@ import {
   DEFAULT_AGENT,
   fileBlocker,
   insertionBlocker,
-  joinMessages,
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
@@ -382,6 +381,9 @@ export function DesignView({
       stages: state.draft.stages.map((stage) => {
         const from = state.bases.indexOf(stage.id);
         const source = from < 0 ? undefined : state.saved.view.stages[from];
+        const problems = stageProblems
+          .filter((candidate) => candidate.stageId === stage.id)
+          .map(({ message }) => message);
         return {
           id: stage.id,
           name: stage.name,
@@ -390,14 +392,7 @@ export function DesignView({
           ...(source?.prompt_file === undefined
             ? { prompt: stage.prompt }
             : { prompt_file: source.prompt_file }),
-          ...(() => {
-            const problem = joinMessages(
-              stageProblems.filter(
-                (candidate) => candidate.stageId === stage.id,
-              ),
-            );
-            return problem === undefined ? {} : { problem };
-          })(),
+          ...(problems.length === 0 ? {} : { problems }),
         };
       }),
     }),
@@ -416,6 +411,7 @@ export function DesignView({
   const [opens, setOpens] = useState(0);
   const [paramOpens, setParamOpens] = useState(0);
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
+  const findingsRef = useRef<HTMLDivElement>(null);
   const paramNameErrors = useMemo(
     () =>
       Object.fromEntries(
@@ -487,6 +483,14 @@ export function DesignView({
         setOpens((count) => count + 1);
       },
       onParams: () => setParamOpens((count) => count + 1),
+      onProblems: (nodeId) => {
+        const stage = state.draft.stages.find(
+          (candidate) => stageNodeId(candidate.id) === nodeId,
+        );
+        if (!stage) return;
+        select(stage.id);
+        requestAnimationFrame(() => findingsRef.current?.focus());
+      },
     }),
     [state.selectedId, state.draft.stages, select],
   );
@@ -719,7 +723,9 @@ export function DesignView({
           <CheckLine status={draft.status} failure={draft.failure} />
         )}
         <EditAlerts state={state} onReload={editor.reload} />
-        <Findings diagnostics={visibleFindings} />
+        <div ref={findingsRef} tabIndex={-1} aria-label="Workflow findings">
+          <Findings diagnostics={visibleFindings} />
+        </div>
         <DesignerLayout
           drawing={
             <WorkflowCanvas

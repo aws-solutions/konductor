@@ -13,8 +13,8 @@ export interface StageSpec {
   outcome?: string;
   prompt?: string;
   prompt_file?: string;
-  /** A check finding placed on this stage card. */
-  problem?: string;
+  /** Check findings placed on this stage card. */
+  problems?: readonly string[];
 }
 
 /** The part of a workflow that can be drawn. The API view satisfies it. */
@@ -55,8 +55,9 @@ export type StageGraphNode = Placed & {
     description?: string;
     /** The full description, before the card cuts it to one line. */
     descriptionTitle?: string;
-    /** A check finding placed on the card. */
+    /** A bounded summary of check findings placed on the card. */
     problem?: string;
+    problemCount?: number;
     /** No stage follows this one, so the run ends here, at a stop mark. */
     endsRun?: true;
     /** What that stop mark shows; left out while the run may still reach it. */

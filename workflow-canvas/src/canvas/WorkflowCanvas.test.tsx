@@ -75,14 +75,19 @@ describe('WorkflowCanvas stage diagnostics', () => {
       {
         name: 'broken',
         intent: { outcome: 'Fix it.' },
-        stages: [{ name: 'plan', agent: 'k-architect', problem }],
+        stages: [{ name: 'plan', agent: 'k-architect', problems: [problem] }],
       },
       'kiro-cli',
     );
+    const onProblems = vi.fn();
     render(
       <WorkflowCanvas
         graph={graph}
-        selection={{ onSelect: vi.fn(), selectedId: undefined }}
+        selection={{
+          onSelect: vi.fn(),
+          onProblems,
+          selectedId: undefined,
+        }}
       />,
     );
     expect(screen.getByText(problem)).toBeDefined();
@@ -91,5 +96,12 @@ describe('WorkflowCanvas stage diagnostics', () => {
         name: new RegExp(problem.replace(/[{}]/g, '\\$&')),
       }),
     ).toBeDefined();
+    const action = screen.getByRole('button', {
+      name: 'Show 1 finding for stage plan',
+    });
+    fireEvent.click(action);
+    fireEvent.keyDown(action, { key: 'Enter' });
+    expect(onProblems).toHaveBeenCalledTimes(2);
+    expect(onProblems).toHaveBeenLastCalledWith('stage-plan');
   });
 });
