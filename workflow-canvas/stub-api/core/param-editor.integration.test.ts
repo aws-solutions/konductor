@@ -6,6 +6,7 @@ import {
   canSave,
   fileBlocker,
   isDirty,
+  paramsBlocker,
   textOf,
 } from '../../src/designer/core/edit-view.ts';
 import { checkWorkflowText } from './validator.ts';
@@ -121,4 +122,33 @@ describe('parameter editing through check and save', () => {
     expect(isDirty(state)).toBe(false);
     expect(state.saved.text).toContain('params: { goal: {} }');
   });
+
+  it.each([
+    [
+      'a BOM-prefixed empty mapping',
+      '\uFEFFparams: {}\nformat: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting\nstages:\n  - name: draft\n    agent: k-developer\n',
+    ],
+    [
+      'an explicit-key empty mapping',
+      '? params\n: {}\nformat: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting\nstages:\n  - name: draft\n    agent: k-developer\n',
+    ],
+  ])(
+    'refuses a params edit beside %s without adding another mapping',
+    (_name, text) => {
+      const checked = checkWorkflowText(text, 'hello');
+      expect(checked.errors).toBe(0);
+      let state = reduce(undefined, {
+        type: 'open',
+        document: { ...HELLO_DOCUMENT, text, view: checked.view! },
+      })!;
+      expect(paramsBlocker(state)).toBeDefined();
+
+      state = reduce(state, {
+        type: 'set-param',
+        id: 'p-goal',
+        change: { description: 'Run it' },
+      })!;
+      expect(textOf(state)).toBeUndefined();
+    },
+  );
 });

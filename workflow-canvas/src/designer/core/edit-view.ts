@@ -177,6 +177,7 @@ export function writtenOf(state: EditState): Written {
                 : {}),
             };
           }),
+          saved.view.params !== undefined,
         )
       : staged;
   written.set(draft, { saved, bases, result });
@@ -215,7 +216,13 @@ export function writeBlocker(state: EditState): string | undefined {
 
 /** Why parameter declarations cannot be changed now. */
 export function paramsBlocker(state: EditState): string | undefined {
-  return changeBlocker(state) ?? paramsInPlaceBlocker(state.saved.text);
+  return (
+    changeBlocker(state) ??
+    paramsInPlaceBlocker(
+      state.saved.text,
+      state.saved.view.params !== undefined,
+    )
+  );
 }
 
 /**

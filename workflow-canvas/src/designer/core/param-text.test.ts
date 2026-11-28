@@ -90,6 +90,40 @@ describe('withParams', () => {
     });
   });
 
+  it.each([
+    [
+      'one-space indentation',
+      'params:\n goal:\n  description: Old\nstages:\n  - name: draft\n    agent: k-developer\n',
+    ],
+    [
+      'four-space indentation',
+      'params:\n    goal:\n        description: Old\nstages:\n  - name: draft\n    agent: k-developer\n',
+    ],
+    [
+      'space before the top-level colon',
+      'params :\n  goal:\n    description: Old\nstages:\n  - name: draft\n    agent: k-developer\n',
+    ],
+    [
+      'a leading BOM',
+      '\uFEFFparams:\n  goal:\n    description: Old\nstages:\n  - name: draft\n    agent: k-developer\n',
+    ],
+  ])('edits %s without reformatting', (_name, text) => {
+    expect(
+      withParams(
+        text,
+        [
+          changed({ name: 'goal', description: 'Old' }, 0, {
+            description: 'New',
+          }),
+        ],
+        true,
+      ),
+    ).toEqual({
+      ok: true,
+      text: text.replace('description: Old', 'description: New'),
+    });
+  });
+
   it('keeps CRLF and comments when a field is added', () => {
     const text =
       'params:\r\n  goal: {} # goal\r\n  # end params\r\nstages:\r\n  - name: draft\r\n    agent: k-developer\r\n';
@@ -182,6 +216,7 @@ describe('withParams', () => {
 describe('params writer refusal boundary', () => {
   it.each([
     ['flow mapping', 'params: { goal: {} }\n', FLOW_REASON],
+    ['BOM-prefixed empty mapping', '\uFEFFparams: {}\n', FLOW_REASON],
     ['quoted params key', '"params":\n  goal: {}\n', QUOTED_REASON],
     ['escaped quoted params key', '"par\\x61ms":\n  goal: {}\n', QUOTED_REASON],
     ['quoted param key', 'params:\n  "goal": {}\n', QUOTED_REASON],
@@ -239,5 +274,26 @@ describe('params writer refusal boundary', () => {
         { name: 'goal', description: 'Changed', default: '', required: false },
       ]),
     ).toEqual({ ok: false, reason });
+  });
+
+  it('refuses an explicit-key empty mapping when the source had params', () => {
+    const text =
+      '? params\n: {}\nstages:\n  - name: draft\n    agent: k-developer\n';
+
+    expect(paramsInPlaceBlocker(text, true)).toBe(LAYOUT_REASON);
+    expect(
+      withParams(
+        text,
+        [
+          {
+            name: 'goal',
+            description: 'Changed',
+            default: '',
+            required: false,
+          },
+        ],
+        true,
+      ),
+    ).toEqual({ ok: false, reason: LAYOUT_REASON });
   });
 });

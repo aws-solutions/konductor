@@ -39,6 +39,8 @@ interface Plan {
   readonly items: readonly ParamItem[];
   readonly rest: readonly Line[];
   readonly eol: string;
+  readonly paramIndent: string;
+  readonly fieldIndent: string;
 }
 
 const FLOW_REASON =
@@ -52,15 +54,15 @@ const DUPLICATE_REASON =
 const LAYOUT_REASON =
   'The params mapping is not a block with one parameter and field per line, so the editor cannot change it byte for byte. Make the change in a text editor.';
 
-const PARAMS_KEY = /^params:[ \t]*(?:#.*)?$/;
+const BOM = '\uFEFF';
+const PARAMS_KEY = /^params[ \t]*:[ \t]*(?:#.*)?$/;
 const ANY_PARAMS_KEY = /^(?:params|"params"|'params')[ \t]*:/;
 const QUOTED_PARAMS_KEY = /^(?:"params"|'params')[ \t]*:/;
 const STAGES_KEY = /^(?:stages|"stages"|'stages'):[ \t]*(?:#.*)?$/;
 const TOP_LEVEL = /^(?:[^\s#-]|---|\.\.\.)/;
-const PARAM_HEADER = /^  ([a-z][a-z0-9_]{0,63})[ \t]*:[ \t]*(.*)$/;
-const QUOTED_PARAM = /^  (?:(?:"(?:\\.|[^"])*")|'[^']*')[ \t]*:/;
-const FIELD = /^    (type|description|default|required)[ \t]*:[ \t]*(.*)$/;
-const QUOTED_FIELD = /^    (?:(?:"(?:\\.|[^"])*")|'[^']*')[ \t]*:/;
+const PARAM_HEADER = /^([ \t]+)([a-z][a-z0-9_]{0,63})[ \t]*:[ \t]*(.*)$/;
+const FIELD = /^([ \t]+)(type|description|default|required)[ \t]*:[ \t]*(.*)$/;
+const QUOTED_KEY = /^([ \t]+)(?:(?:"(?:\\.|[^"])*")|'[^']*')[ \t]*:/;
 const FILLER = /^[ \t]*(?:#.*)?$/;
 const METADATA = /^[ \t]*[&*!]/;
 
@@ -124,15 +126,21 @@ function scalarSpan(
   return end > start ? { start, end } : undefined;
 }
 
-function fieldsOf(body: readonly Line[]): ReadonlyMap<string, Field> | string {
+function fieldsOf(
+  body: readonly Line[],
+  paramIndent: string,
+): { fields: ReadonlyMap<string, Field>; fieldIndent?: string } | string {
   const fields = new Map<string, Field>();
+  let fieldIndent: string | undefined;
   for (let index = 1; index < body.length; index += 1) {
     const line = body[index]!;
     if (FILLER.test(line.text)) continue;
-    if (QUOTED_FIELD.test(line.text)) return QUOTED_REASON;
+    if (QUOTED_KEY.test(line.text)) return QUOTED_REASON;
     const match = FIELD.exec(line.text);
-    if (!match) return LAYOUT_REASON;
-    const key = match[1]!;
+    if (!match || match[1]!.length <= paramIndent.length) return LAYOUT_REASON;
+    fieldIndent ??= match[1]!;
+    if (match[1] !== fieldIndent) return LAYOUT_REASON;
+    const key = match[2]!;
     if (fields.has(key)) return DUPLICATE_REASON;
     const valueAt = line.text.indexOf(':') + 1;
     if (METADATA.test(line.text.slice(valueAt))) return METADATA_REASON;
@@ -140,31 +148,54 @@ function fieldsOf(body: readonly Line[]): ReadonlyMap<string, Field> | string {
     if (!span) return LAYOUT_REASON;
     fields.set(key, { line: index, ...span });
   }
-  return fields;
+  return { fields, fieldIndent };
 }
 
-function itemsOf(
-  block: readonly Line[],
-): { items: ParamItem[]; rest: Line[] } | string {
+function itemsOf(block: readonly Line[]):
+  | {
+      items: ParamItem[];
+      rest: Line[];
+      paramIndent: string;
+      fieldIndent: string;
+    }
+  | string {
+  const content = [...block.entries()].filter(
+    ([, line]) => !FILLER.test(line.text),
+  );
+  if (content.length === 0) {
+    return {
+      items: [],
+      rest: [...block],
+      paramIndent: '  ',
+      fieldIndent: '    ',
+    };
+  }
+  const first = content[0]![1].text;
+  if (QUOTED_KEY.test(first)) return QUOTED_REASON;
+  const firstHeader = PARAM_HEADER.exec(first);
+  if (!firstHeader) return LAYOUT_REASON;
+  const paramIndent = firstHeader[1]!;
   const starts: number[] = [];
   const names = new Set<string>();
-  for (const [index, line] of block.entries()) {
-    if (FILLER.test(line.text)) continue;
-    if (QUOTED_PARAM.test(line.text)) return QUOTED_REASON;
-    if (!/^  \S/.test(line.text)) continue;
+  for (const [index, line] of content) {
+    const indent = /^[ \t]*/.exec(line.text)![0];
+    if (indent.length > paramIndent.length) continue;
+    if (indent !== paramIndent) return LAYOUT_REASON;
+    if (QUOTED_KEY.test(line.text)) return QUOTED_REASON;
     const match = PARAM_HEADER.exec(line.text);
-    if (!match) return LAYOUT_REASON;
-    if (names.has(match[1]!)) return DUPLICATE_REASON;
-    names.add(match[1]!);
+    if (!match || match[1] !== paramIndent) return LAYOUT_REASON;
+    if (names.has(match[2]!)) return DUPLICATE_REASON;
+    names.add(match[2]!);
     starts.push(index);
   }
-  const head = block.slice(0, starts[0] ?? block.length);
+  const head = block.slice(0, starts[0]);
   if (!head.every((line) => FILLER.test(line.text))) return LAYOUT_REASON;
-  let lead = starts.length > 0 ? [...head] : [];
+  let lead = [...head];
+  let fieldIndent: string | undefined;
   const items: ParamItem[] = [];
   for (const [position, start] of starts.entries()) {
     const match = PARAM_HEADER.exec(block[start]!.text)!;
-    const rawTail = match[2] ?? '';
+    const rawTail = match[3] ?? '';
     if (METADATA.test(rawTail)) return METADATA_REASON;
     const emptyFlow = /^\{\}[ \t]*(?:#.*)?$/.test(rawTail);
     if (rawTail !== '' && !/^#/.test(rawTail) && !emptyFlow) {
@@ -174,34 +205,46 @@ function itemsOf(
     let cut = chunk.length;
     while (cut > 1 && FILLER.test(chunk[cut - 1]!.text)) cut -= 1;
     const body = chunk.slice(0, cut);
-    const fields = emptyFlow ? new Map<string, Field>() : fieldsOf(body);
-    if (typeof fields === 'string') return fields;
+    const parsed = emptyFlow
+      ? { fields: new Map<string, Field>(), fieldIndent: undefined }
+      : fieldsOf(body, paramIndent);
+    if (typeof parsed === 'string') return parsed;
+    fieldIndent ??= parsed.fieldIndent;
     items.push({
-      name: match[1]!,
-      keyStart: 2,
-      keyEnd: 2 + match[1]!.length,
+      name: match[2]!,
+      keyStart: paramIndent.length,
+      keyEnd: paramIndent.length + match[2]!.length,
       lead,
       body,
-      fields,
+      fields: parsed.fields,
       emptyFlow,
     });
     lead = chunk.slice(cut);
   }
-  return { items, rest: lead };
+  return {
+    items,
+    rest: lead,
+    paramIndent,
+    fieldIndent: fieldIndent ?? paramIndent + paramIndent,
+  };
 }
 
 function planFor(text: string): Plan | string | undefined {
   const lines = linesOf(text);
-  if (lines.some((line) => quotedTopLevelParams(line.text))) {
+  const comparable = (line: Line, index: number) =>
+    index === 0 ? line.text.replace(BOM, '') : line.text;
+  if (
+    lines.some((line, index) => quotedTopLevelParams(comparable(line, index)))
+  ) {
     return QUOTED_REASON;
   }
   const candidates = lines.flatMap((line, index) =>
-    ANY_PARAMS_KEY.test(line.text) ? [index] : [],
+    ANY_PARAMS_KEY.test(comparable(line, index)) ? [index] : [],
   );
   if (candidates.length === 0) return undefined;
   if (candidates.length > 1) return DUPLICATE_REASON;
   const key = candidates[0]!;
-  const keyText = lines[key]!.text;
+  const keyText = comparable(lines[key]!, key);
   if (QUOTED_PARAMS_KEY.test(keyText)) return QUOTED_REASON;
   if (!PARAMS_KEY.test(keyText)) {
     const tail = keyText.slice(keyText.indexOf(':') + 1);
@@ -223,18 +266,25 @@ function planFor(text: string): Plan | string | undefined {
   };
 }
 
-function generated(param: ParamToWrite, eol: string): Line[] {
+function generated(
+  param: ParamToWrite,
+  eol: string,
+  paramIndent = '  ',
+  fieldIndent = '    ',
+): Line[] {
   const fields = [
     ...(param.description !== ''
-      ? [`    description: ${scalar(param.description)}`]
+      ? [`${fieldIndent}description: ${scalar(param.description)}`]
       : []),
-    ...(param.default !== '' ? [`    default: ${scalar(param.default)}`] : []),
-    ...(param.required ? ['    required: true'] : []),
+    ...(param.default !== ''
+      ? [`${fieldIndent}default: ${scalar(param.default)}`]
+      : []),
+    ...(param.required ? [`${fieldIndent}required: true`] : []),
   ];
   return fields.length === 0
-    ? [{ text: `  ${param.name}: {}`, eol }]
+    ? [{ text: `${paramIndent}${param.name}: {}`, eol }]
     : [
-        { text: `  ${param.name}:`, eol },
+        { text: `${paramIndent}${param.name}:`, eol },
         ...fields.map((text) => ({ text, eol })),
       ];
 }
@@ -254,6 +304,7 @@ function editItem(
   item: ParamItem,
   param: ParamToWrite,
   eol: string,
+  fieldIndent: string,
 ): Line[] | string {
   const before = param.before;
   if (!before) return LAYOUT_REASON;
@@ -281,7 +332,7 @@ function editItem(
         text: `${line.text.slice(0, field.start)}${value}${line.text.slice(field.end)}`,
       };
     } else if (key === 'required' ? param.required : param[key] !== '') {
-      additions.push({ text: `    ${key}: ${value}`, eol });
+      additions.push({ text: `${fieldIndent}${key}: ${value}`, eol });
     }
   }
   if (additions.length === 0) return lines;
@@ -300,8 +351,12 @@ function editItem(
 }
 
 /** The file-wide reason parameter declarations cannot be edited in place. */
-export function paramsInPlaceBlocker(text: string): string | undefined {
+export function paramsInPlaceBlocker(
+  text: string,
+  sourceHasParams = false,
+): string | undefined {
   const plan = planFor(text);
+  if (!plan && sourceHasParams) return LAYOUT_REASON;
   return typeof plan === 'string' ? plan : undefined;
 }
 
@@ -309,11 +364,12 @@ export function paramsInPlaceBlocker(text: string): string | undefined {
 export function withParams(
   text: string,
   params: readonly ParamToWrite[],
+  sourceHasParams = params.some((param) => param.from !== undefined),
 ): Written {
   const plan = planFor(text);
   if (typeof plan === 'string') return { ok: false, reason: plan };
   if (!plan) {
-    if (params.some((param) => param.from !== undefined)) {
+    if (sourceHasParams || params.some((param) => param.from !== undefined)) {
       return { ok: false, reason: LAYOUT_REASON };
     }
     const lines = linesOf(text);
@@ -336,7 +392,11 @@ export function withParams(
   const body: Line[] = [];
   for (const param of params) {
     if (param.from === undefined) {
-      appendLines(body, generated(param, plan.eol), plan.eol);
+      appendLines(
+        body,
+        generated(param, plan.eol, plan.paramIndent, plan.fieldIndent),
+        plan.eol,
+      );
       continue;
     }
     const item = plan.items[param.from];
@@ -344,7 +404,7 @@ export function withParams(
       return { ok: false, reason: LAYOUT_REASON };
     }
     claimed.add(param.from);
-    const edited = editItem(item, param, plan.eol);
+    const edited = editItem(item, param, plan.eol, plan.fieldIndent);
     if (typeof edited === 'string') return { ok: false, reason: edited };
     appendLines(body, [...item.lead, ...edited], plan.eol);
   }
