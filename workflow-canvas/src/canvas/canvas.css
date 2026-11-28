@@ -180,6 +180,21 @@
   white-space: nowrap;
 }
 
+.wf-stage-problem {
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--wf-status-error);
+  font: 600 9.5px var(--wf-font-code);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wf-stage-problem:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: 2px;
+}
+
 .wf-node-description {
   overflow: hidden;
   margin-top: 8px;

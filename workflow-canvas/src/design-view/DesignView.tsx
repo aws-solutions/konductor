@@ -23,6 +23,11 @@ import {
   parameterNameError,
 } from '../designer/core/param-text';
 import { ComponentsTray } from '../designer-view/ComponentsTray';
+import {
+  OUTPUT_DUPLICATE_ERROR,
+  OUTPUT_NAME_ERROR,
+} from '../designer/core/outputs-text';
+import { outputRowErrors } from '../designer-view/OutputsPanel';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import {
   useEditHistory,
@@ -42,7 +47,9 @@ import {
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
+  outputsBlocker,
   paramsBlocker,
+  problemsOfDraft,
   promptFieldOf,
   rawTextOf,
   READ_ONLY_REASON,
@@ -52,6 +59,7 @@ import {
 } from '../designer/core';
 import { EditAlerts } from '../designer/EditAlerts';
 import { SaveControls } from '../designer/SaveControls';
+import type { DraftStage } from '../designer/core/draft';
 import type { Editor } from '../designer/use-editor';
 import type { LoadedWorkflow } from '../workflow/load-workflow';
 import type { Scheduler } from '../execution/core/ports';
@@ -101,6 +109,39 @@ const STATUS_KIND: Readonly<Record<DraftStatus, StatusIndicatorProps.Type>> = {
 };
 
 const count = (n: number) => n.toLocaleString('en-US');
+
+type OutputField = 'name' | 'path';
+
+interface OutputFieldFailure {
+  readonly key: string;
+  readonly stageId: string;
+  readonly outputId: string;
+  readonly field: OutputField;
+  readonly message: string;
+}
+
+function outputFailuresOf(
+  stages: readonly DraftStage[],
+): readonly OutputFieldFailure[] {
+  const failures: OutputFieldFailure[] = [];
+  for (const stage of stages) {
+    const errors = outputRowErrors(stage.outputs ?? []);
+    for (const output of stage.outputs ?? []) {
+      for (const field of ['name', 'path'] as const) {
+        const message = errors[output.id]?.[field];
+        if (message === undefined) continue;
+        failures.push({
+          key: JSON.stringify([stage.id, output.id, field, message]),
+          stageId: stage.id,
+          outputId: output.id,
+          field,
+          message,
+        });
+      }
+    }
+  }
+  return failures;
+}
 
 /**
  * What the check found wrong with the text, worst first. A text may hold
@@ -331,6 +372,7 @@ export function DesignView({
   const ofNow = answer?.view ? answer : undefined;
   const checked = ofNow ?? draft.lastGood ?? opened.answer;
   const shownParamCount = history.paramCount ?? state.draft.params.length;
+  const stageProblems = useMemo(() => problemsOfDraft(state), [state]);
   const spec = useMemo(
     () => ({
       name: state.saved.view.name,
@@ -339,6 +381,9 @@ export function DesignView({
       stages: state.draft.stages.map((stage) => {
         const from = state.bases.indexOf(stage.id);
         const source = from < 0 ? undefined : state.saved.view.stages[from];
+        const problems = stageProblems
+          .filter((candidate) => candidate.stageId === stage.id)
+          .map(({ message }) => message);
         return {
           id: stage.id,
           name: stage.name,
@@ -347,10 +392,17 @@ export function DesignView({
           ...(source?.prompt_file === undefined
             ? { prompt: stage.prompt }
             : { prompt_file: source.prompt_file }),
+          ...(problems.length === 0 ? {} : { problems }),
         };
       }),
     }),
-    [state.bases, state.draft.stages, state.saved.view, shownParamCount],
+    [
+      stageProblems,
+      state.bases,
+      state.draft.stages,
+      state.saved.view,
+      shownParamCount,
+    ],
   );
   const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
   const { select } = editor;
@@ -359,6 +411,7 @@ export function DesignView({
   const [opens, setOpens] = useState(0);
   const [paramOpens, setParamOpens] = useState(0);
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
+  const findingsRef = useRef<HTMLDivElement>(null);
   const paramNameErrors = useMemo(
     () =>
       Object.fromEntries(
@@ -370,6 +423,11 @@ export function DesignView({
     [state.draft.params],
   );
   const parameterNameFailure = Object.values(paramNameErrors)[0];
+  const outputFieldFailures = useMemo(
+    () => outputFailuresOf(state.draft.stages),
+    [state.draft.stages],
+  );
+  const outputFieldFailure = outputFieldFailures[0]?.message;
   const announcedNameFailure = useRef(false);
   useEffect(() => {
     if (parameterNameFailure === undefined) {
@@ -383,6 +441,36 @@ export function DesignView({
       count: count + 1,
     }));
   }, [parameterNameFailure]);
+  const activeOutputFailures = useRef<ReadonlySet<string>>(new Set());
+  const changedOutputField = useRef<
+    | {
+        readonly stageId: string;
+        readonly outputId: string;
+        readonly field: OutputField;
+      }
+    | undefined
+  >(undefined);
+  useEffect(() => {
+    const previous = activeOutputFailures.current;
+    activeOutputFailures.current = new Set(
+      outputFieldFailures.map(({ key }) => key),
+    );
+    const added = outputFieldFailures.filter(({ key }) => !previous.has(key));
+    const changed = changedOutputField.current;
+    changedOutputField.current = undefined;
+    const failure =
+      added.find(
+        ({ stageId, outputId, field }) =>
+          stageId === changed?.stageId &&
+          outputId === changed.outputId &&
+          field === changed.field,
+      ) ?? added[0];
+    if (!failure) return;
+    setAnnouncement(({ count }) => ({
+      text: failure.message,
+      count: count + 1,
+    }));
+  }, [outputFieldFailures]);
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -395,6 +483,14 @@ export function DesignView({
         setOpens((count) => count + 1);
       },
       onParams: () => setParamOpens((count) => count + 1),
+      onProblems: (nodeId) => {
+        const stage = state.draft.stages.find(
+          (candidate) => stageNodeId(candidate.id) === nodeId,
+        );
+        if (!stage) return;
+        select(stage.id);
+        requestAnimationFrame(() => findingsRef.current?.focus());
+      },
     }),
     [state.selectedId, state.draft.stages, select],
   );
@@ -407,6 +503,21 @@ export function DesignView({
     index: state.draft.stages.indexOf(picked),
     total: state.draft.stages.length,
   };
+  const pickedOutputErrors = picked
+    ? outputRowErrors(picked.outputs ?? [])
+    : {};
+  const pickedHasOutputError = Object.values(pickedOutputErrors).some(
+    ({ name, path }) => name !== undefined || path !== undefined,
+  );
+  const visibleFindings = pickedHasOutputError
+    ? findings.filter(({ path }) => {
+        const index = state.draft.stages.indexOf(picked!);
+        return !(
+          path.startsWith(`stages[${index}].outputs`) ||
+          path.startsWith(`stages.${picked!.name}.outputs`)
+        );
+      })
+    : findings;
   // The keys of the picked stage come from the check of the file as it was
   // loaded: that is what the file holds. The stage is taken from the place it
   // was loaded from, which a rename or another stage being added or deleted
@@ -436,8 +547,19 @@ export function DesignView({
     .filter(
       (key) => !SAVABLE_KEYS.includes(key) || (key === 'prompt' && !promptRead),
     );
+  const outputSourceBlocker = picked
+    ? outputsBlocker(state, picked.id)
+    : undefined;
+  const outputStructuralBlocker = picked
+    ? outputsBlocker(state, picked.id, true)
+    : undefined;
   const stage: LayoutStage | undefined = picked && {
     name: picked.name,
+    outputs: picked.outputs ?? [],
+    outputsDisabled: outputSourceBlocker !== undefined,
+    outputsDisabledReason: outputSourceBlocker,
+    outputsStructuralDisabled: outputStructuralBlocker !== undefined,
+    outputsStructuralDisabledReason: outputStructuralBlocker,
     rules,
     values,
     // The agent the file names, which stays on offer even when the list of
@@ -460,10 +582,11 @@ export function DesignView({
       ? (fileBlocker(state) ?? writeBlocker(state))
       : undefined;
   const paramsSourceBlocker = paramsBlocker(state);
-  const pageRefusal =
-    refusal === PARAM_NAME_ERROR && parameterNameFailure !== undefined
-      ? undefined
-      : refusal;
+  const fieldRefusal =
+    (refusal === PARAM_NAME_ERROR && parameterNameFailure !== undefined) ||
+    ((refusal === OUTPUT_NAME_ERROR || refusal === OUTPUT_DUPLICATE_ERROR) &&
+      outputFieldFailure !== undefined);
+  const pageRefusal = fieldRefusal ? undefined : refusal;
   const paramsMessage = paramsSourceBlocker ?? pageRefusal;
   const insertDisabledReason =
     insertionBlocker(state) ??
@@ -600,7 +723,14 @@ export function DesignView({
           <CheckLine status={draft.status} failure={draft.failure} />
         )}
         <EditAlerts state={state} onReload={editor.reload} />
-        <Findings diagnostics={findings} />
+        <div
+          ref={findingsRef}
+          tabIndex={-1}
+          role="region"
+          aria-label="Workflow findings"
+        >
+          <Findings diagnostics={visibleFindings} />
+        </div>
         <DesignerLayout
           drawing={
             <WorkflowCanvas
@@ -639,6 +769,31 @@ export function DesignView({
           onParamChange={(id, change) => editor.setParam(id, change)}
           onParamAdd={editor.addParam}
           onParamRemove={editor.removeParam}
+          onOutputChange={(id, change) => {
+            if (picked && outputSourceBlocker === undefined) {
+              const output = picked.outputs?.find(
+                (candidate) => candidate.id === id,
+              );
+              if (output) {
+                changedOutputField.current = {
+                  stageId: picked.id,
+                  outputId: id,
+                  field: output.name === change.name ? 'path' : 'name',
+                };
+              }
+              editor.setOutput(picked.id, id, change);
+            }
+          }}
+          onOutputAdd={() => {
+            if (picked && outputStructuralBlocker === undefined) {
+              editor.addOutput(picked.id);
+            }
+          }}
+          onOutputRemove={(id) => {
+            if (picked && outputStructuralBlocker === undefined) {
+              editor.removeOutput(picked.id, id);
+            }
+          }}
           onStageChange={({ values: next }) => {
             if (!picked) return;
             const name = next.name ?? '';

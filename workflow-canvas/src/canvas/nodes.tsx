@@ -179,6 +179,18 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
             {data.description}
           </div>
         )}
+        {data.problem && (
+          <div
+            className="wf-stage-problem"
+            title={data.problem}
+            role="button"
+            tabIndex={0}
+            data-stage-problems="true"
+            aria-label={`Show ${data.problemCount ?? 1} ${data.problemCount === 1 ? 'finding' : 'findings'} for stage ${data.name}`}
+          >
+            {data.problem}
+          </div>
+        )}
       </div>
       {data.endsRun ? (
         <span className="wf-node-stop">

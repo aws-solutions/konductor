@@ -5,7 +5,8 @@ import Tabs from '@cloudscape-design/components/tabs';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { FieldForm, type FieldFormChange } from './FieldForm';
 import { ParamsPanel, type ParamChange } from './ParamsPanel';
-import type { DraftParam } from '../designer/core/draft';
+import { OutputsPanel, type OutputChange } from './OutputsPanel';
+import type { DraftOutput, DraftParam } from '../designer/core/draft';
 import { YamlPane, type MarkedStage } from './YamlPane';
 import type { AgentOption, FieldValues, StageFieldRule } from './field-rules';
 import './designer-layout.css';
@@ -28,6 +29,11 @@ export interface LayoutStage {
   readonly name: string;
   readonly rules: readonly StageFieldRule[];
   readonly values: FieldValues;
+  readonly outputs?: readonly DraftOutput[];
+  readonly outputsDisabled?: boolean;
+  readonly outputsDisabledReason?: string;
+  readonly outputsStructuralDisabled?: boolean;
+  readonly outputsStructuralDisabledReason?: string;
   /** The `agent` of the stage when it was loaded, before any edit. */
   readonly originalAgent?: string;
   /** The keys that cannot be changed yet; they are shown as they are. */
@@ -75,6 +81,9 @@ export function DesignerLayout({
   onParamAdd,
   onParamRemove,
   onStageChange,
+  onOutputChange,
+  onOutputAdd,
+  onOutputRemove,
   onStageDelete,
   deleteDisabled = false,
   deleteDisabledReason,
@@ -99,6 +108,9 @@ export function DesignerLayout({
   onParamAdd?: () => void;
   onParamRemove?: (id: string) => void;
   onStageChange: (change: FieldFormChange) => void;
+  onOutputChange?: (id: string, change: OutputChange) => void;
+  onOutputAdd?: () => void;
+  onOutputRemove?: (id: string) => void;
   /** Deletes the picked stage. Without it, no delete control is shown. */
   onStageDelete?: () => void;
   deleteDisabled?: boolean;
@@ -157,6 +169,18 @@ export function DesignerLayout({
         {...(stage.readOnlyKeys ? { readOnlyKeys: stage.readOnlyKeys } : {})}
         onChange={onStageChange}
       />
+      {onOutputChange && onOutputAdd && onOutputRemove && (
+        <OutputsPanel
+          outputs={stage.outputs ?? []}
+          disabled={stage.outputsDisabled}
+          disabledReason={stage.outputsDisabledReason}
+          structuralDisabled={stage.outputsStructuralDisabled}
+          structuralDisabledReason={stage.outputsStructuralDisabledReason}
+          onChange={onOutputChange}
+          onAdd={onOutputAdd}
+          onRemove={onOutputRemove}
+        />
+      )}
       {onStageDelete && (
         <Button
           disabled={deleteDisabled}

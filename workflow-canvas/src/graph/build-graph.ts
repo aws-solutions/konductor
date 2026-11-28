@@ -37,6 +37,19 @@ function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
   };
 }
 
+function problemOf(
+  stage: StageSpec,
+): Pick<StageGraphNode['data'], 'problem' | 'problemCount'> {
+  const messages = [...new Set(stage.problems ?? [])];
+  const first = messages[0];
+  if (!first) return {};
+  const more = messages.length - 1;
+  return {
+    problem: more > 0 ? `${first} ${more} more.` : first,
+    problemCount: messages.length,
+  };
+}
+
 // Two stages with one name read alike, so each says its place in the list.
 function stageLabel(
   stage: StageSpec,
@@ -44,7 +57,9 @@ function stageLabel(
   place: { at: number; of: number } | undefined,
 ): string {
   const where = place ? ` (${place.at} of ${place.of})` : '';
-  return `Stage ${stage.name}${where}, agent ${stage.agent}, harness ${harness}`;
+  const summary = problemOf(stage).problem;
+  const problem = summary ? `, problem: ${summary}` : '';
+  return `Stage ${stage.name}${where}, agent ${stage.agent}, harness ${harness}${problem}`;
 }
 
 // The place of the stage, only when another stage has its name.
@@ -84,6 +99,7 @@ function stageNode(
       agent: stage.agent,
       harness,
       ...descriptionOf(stage),
+      ...problemOf(stage),
     },
   };
 }

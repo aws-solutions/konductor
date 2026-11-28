@@ -223,7 +223,7 @@ describe('LibraryView', () => {
     expect(screen.getByTestId('yaml-text').hasAttribute('readonly')).toBe(true);
     expect(screen.queryByTestId('library-live')).toBeNull();
     expect(onAnnounce).toHaveBeenCalledWith(`${READY.title} opened read-only.`);
-    for (const name of ['Save', /^Add /, 'Undo', 'Redo']) {
+    for (const name of ['Save', /^Add agent-/, 'Undo', 'Redo']) {
       expect(
         (screen.getByRole('button', { name }) as HTMLButtonElement).disabled ||
           screen.getByRole('button', { name }).getAttribute('aria-disabled') ===

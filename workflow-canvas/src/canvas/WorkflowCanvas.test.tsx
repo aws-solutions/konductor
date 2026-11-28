@@ -67,3 +67,41 @@ describe('WorkflowCanvas, on Enter and Space', () => {
     expect(heard).toHaveBeenCalledWith('Enter');
   });
 });
+
+describe('WorkflowCanvas stage diagnostics', () => {
+  it('shows the diagnostic text and includes it in the node name', () => {
+    const problem = 'The reference {plan.missing} names no output.';
+    const graph = buildGraph(
+      {
+        name: 'broken',
+        intent: { outcome: 'Fix it.' },
+        stages: [{ name: 'plan', agent: 'k-architect', problems: [problem] }],
+      },
+      'kiro-cli',
+    );
+    const onProblems = vi.fn();
+    render(
+      <WorkflowCanvas
+        graph={graph}
+        selection={{
+          onSelect: vi.fn(),
+          onProblems,
+          selectedId: undefined,
+        }}
+      />,
+    );
+    expect(screen.getByText(problem)).toBeDefined();
+    expect(
+      screen.getByRole('group', {
+        name: new RegExp(problem.replace(/[{}]/g, '\\$&')),
+      }),
+    ).toBeDefined();
+    const action = screen.getByRole('button', {
+      name: 'Show 1 finding for stage plan',
+    });
+    fireEvent.click(action);
+    fireEvent.keyDown(action, { key: 'Enter' });
+    expect(onProblems).toHaveBeenCalledTimes(2);
+    expect(onProblems).toHaveBeenLastCalledWith('stage-plan');
+  });
+});
