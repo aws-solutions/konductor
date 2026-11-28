@@ -12,6 +12,14 @@ export interface DraftParam {
   readonly required: boolean;
 }
 
+/** One editable output declaration. */
+export interface DraftOutput {
+  readonly id: string;
+  readonly sourceIndex?: number;
+  readonly name: string;
+  readonly path: string;
+}
+
 /** A stage being edited. The `id` stays when the stage is renamed. */
 export interface DraftStage {
   id: string;
@@ -23,6 +31,8 @@ export interface DraftStage {
    * way to change it here.
    */
   prompt: string;
+  outputs?: readonly DraftOutput[];
+  nextOutputId?: number;
 }
 
 /** The editable workflow declaration. */
@@ -87,10 +97,57 @@ export function draftOf(
       ...stage,
       id: idOf(index + 1),
       prompt: prompts[index] ?? '',
+      outputs: Object.entries(stage.outputs ?? {}).map(
+        ([name, path], outputIndex) => ({
+          id: `${idOf(index + 1)}-o${outputIndex + 1}`,
+          sourceIndex: outputIndex,
+          name,
+          path,
+        }),
+      ),
+      nextOutputId: Object.keys(stage.outputs ?? {}).length + 1,
     })),
     params: draftParams,
     nextId: stages.length + 1,
     nextParamId,
+  };
+}
+
+export interface SubmittedOutputRows {
+  readonly stageId: string;
+  readonly outputIds: readonly string[];
+}
+
+/** Rebinds submitted rows to their positions in the saved response. */
+export function rebaseOutputSources(
+  draft: Draft,
+  stages: readonly StageKeys[],
+  submitted: readonly SubmittedOutputRows[],
+): Draft {
+  return {
+    ...draft,
+    stages: draft.stages.map((stage) => {
+      const stageIndex = submitted.findIndex(
+        ({ stageId }) => stageId === stage.id,
+      );
+      if (stageIndex < 0) return stage;
+      const sourceIds = submitted[stageIndex]!.outputIds;
+      const savedCount = Object.keys(stages[stageIndex]?.outputs ?? {}).length;
+      return {
+        ...stage,
+        outputs: (stage.outputs ?? []).map((output) => {
+          const sourceIndex = sourceIds.indexOf(output.id);
+          if (sourceIndex >= 0 && sourceIndex < savedCount) {
+            return { ...output, sourceIndex };
+          }
+          return {
+            id: output.id,
+            name: output.name,
+            path: output.path,
+          };
+        }),
+      };
+    }),
   };
 }
 
@@ -152,6 +209,8 @@ export function insertStage(draft: Draft, index: number, agent: string): Draft {
     name: nextStageName(draft),
     agent,
     prompt: '',
+    outputs: [],
+    nextOutputId: 1,
   };
   const at = Math.max(0, Math.min(index, draft.stages.length));
   return {
@@ -169,7 +228,9 @@ export function addStage(draft: Draft): Draft {
 function change(
   draft: Draft,
   id: string,
-  edit: Partial<Pick<DraftStage, 'name' | 'agent' | 'prompt'>>,
+  edit: Partial<
+    Pick<DraftStage, 'name' | 'agent' | 'prompt' | 'outputs' | 'nextOutputId'>
+  >,
 ): Draft {
   return {
     ...draft,
@@ -192,6 +253,53 @@ export function setAgent(draft: Draft, id: string, agent: string): Draft {
 /** Gives the stage the prompt as typed; the writer and the check judge it. */
 export function setPrompt(draft: Draft, id: string, prompt: string): Draft {
   return change(draft, id, { prompt });
+}
+
+/** Changes one output row of a stage. */
+export function setOutput(
+  draft: Draft,
+  stageId: string,
+  outputId: string,
+  output: Pick<DraftOutput, 'name' | 'path'>,
+): Draft {
+  const stage = draft.stages.find((candidate) => candidate.id === stageId);
+  const outputs = stage?.outputs ?? [];
+  if (!stage || !outputs.some((candidate) => candidate.id === outputId)) {
+    return draft;
+  }
+  return change(draft, stageId, {
+    outputs: outputs.map((candidate) =>
+      candidate.id === outputId ? { ...candidate, ...output } : candidate,
+    ),
+  });
+}
+
+/** Adds a blank output row to a stage. */
+export function addOutput(draft: Draft, stageId: string): Draft {
+  const stage = draft.stages.find((candidate) => candidate.id === stageId);
+  if (!stage) return draft;
+  const outputs = stage.outputs ?? [];
+  const nextOutputId = stage.nextOutputId ?? 1;
+  const id = `${stage.id}-o${nextOutputId}`;
+  return change(draft, stageId, {
+    outputs: [...outputs, { id, name: '', path: '' }],
+    nextOutputId: nextOutputId + 1,
+  });
+}
+
+/** Removes one output row from a stage. */
+export function removeOutput(
+  draft: Draft,
+  stageId: string,
+  outputId: string,
+): Draft {
+  const stage = draft.stages.find((candidate) => candidate.id === stageId);
+  if (!stage) return draft;
+  const before = stage.outputs ?? [];
+  const outputs = before.filter((output) => output.id !== outputId);
+  return outputs.length === before.length
+    ? draft
+    : change(draft, stageId, { outputs });
 }
 
 /** Gives a parameter field the value as typed. */

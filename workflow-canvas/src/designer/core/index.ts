@@ -16,6 +16,7 @@ export {
   insertStage,
   nextStageName,
   type Draft,
+  type DraftOutput,
   type DraftStage,
 } from './draft';
 export { reduce, reduceSlot } from './edit-reducer';
@@ -38,6 +39,7 @@ export {
   formTextOf,
   insertionBlocker,
   isDirty,
+  outputsBlocker,
   paramsBlocker,
   problemsOfDraft,
   promptFieldOf,

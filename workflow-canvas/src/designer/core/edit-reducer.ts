@@ -5,6 +5,7 @@ import type {
   WorkflowDocument,
 } from '../../api/types';
 import {
+  addOutput,
   addParam,
   addStage,
   canAddStage,
@@ -12,10 +13,13 @@ import {
   idsOf,
   insertStage,
   neighbourOf,
+  rebaseOutputSources,
+  removeOutput,
   removeParam,
   removeStage,
   renameStage,
   setAgent,
+  setOutput,
   setParam,
   setPrompt,
   type Draft,
@@ -102,6 +106,35 @@ function promptSet(state: EditState, id: string, prompt: string): EditState {
   const stage = state.draft.stages.find((candidate) => candidate.id === id);
   if (!stage || stage.prompt === prompt) return state;
   return edited(state, setPrompt(state.draft, id, prompt), state.selectedId);
+}
+
+function outputSet(
+  state: EditState,
+  stageId: string,
+  outputId: string,
+  output: { name: string; path: string },
+): EditState {
+  return edited(
+    state,
+    setOutput(state.draft, stageId, outputId, output),
+    state.selectedId,
+  );
+}
+
+function outputAdded(state: EditState, stageId: string): EditState {
+  return edited(state, addOutput(state.draft, stageId), state.selectedId);
+}
+
+function outputRemoved(
+  state: EditState,
+  stageId: string,
+  outputId: string,
+): EditState {
+  return edited(
+    state,
+    removeOutput(state.draft, stageId, outputId),
+    state.selectedId,
+  );
 }
 
 function paramSet(
@@ -244,6 +277,11 @@ function savedAs(
   // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
+    draft: rebaseOutputSources(
+      state.draft,
+      result.view.stages,
+      state.sentOutputs ?? [],
+    ),
     saved: {
       ...state.saved,
       text,
@@ -254,6 +292,7 @@ function savedAs(
     bases: state.sent ?? idsOf(state.draft),
     paramBases: state.sentParams ?? state.draft.params.map((param) => param.id),
     sent: undefined,
+    sentOutputs: undefined,
     sentParams: undefined,
     save: { phase: 'saved' },
   };
@@ -349,6 +388,12 @@ function step(
       return agentSet(state, event.id, event.agent);
     case 'set-prompt':
       return promptSet(state, event.id, event.prompt);
+    case 'set-output':
+      return outputSet(state, event.stageId, event.outputId, event.output);
+    case 'add-output':
+      return outputAdded(state, event.stageId);
+    case 'remove-output':
+      return outputRemoved(state, event.stageId, event.outputId);
     case 'set-param':
       return paramSet(state, event.id, event.change);
     case 'add-param':
@@ -367,6 +412,10 @@ function step(
             ...state,
             save: { phase: 'saving' },
             sent: idsOf(state.draft),
+            sentOutputs: state.draft.stages.map((stage) => ({
+              stageId: stage.id,
+              outputIds: (stage.outputs ?? []).map(({ id }) => id),
+            })),
             sentParams: paramsDirty(state)
               ? paramIdsForWrite(state)
               : state.paramBases.filter((id) =>

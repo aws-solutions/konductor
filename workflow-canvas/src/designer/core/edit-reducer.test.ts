@@ -281,6 +281,40 @@ describe('save', () => {
     expect(stagesOf(saved.draft)[0]?.agent).toBe('k-tpm');
   });
 
+  it('settles after removing the last saved output', () => {
+    const text = HELLO_TEXT.replace(
+      '    agent: k-developer\n',
+      '    agent: k-developer\n    outputs:\n      design: DESIGN.md\n',
+    );
+    const state = openDocument({
+      ...HELLO_DOCUMENT,
+      text,
+      view: {
+        ...HELLO_VIEW,
+        stages: [
+          { ...HELLO_VIEW.stages[0]!, outputs: { design: 'DESIGN.md' } },
+          HELLO_VIEW.stages[1]!,
+        ],
+      },
+    })!;
+    const outputId = state.draft.stages[0]!.outputs![0]!.id;
+    const saving = run(
+      state,
+      { type: 'remove-output', stageId: 's1', outputId },
+      { type: 'save' },
+    );
+    const saved = run(saving, {
+      type: 'saved',
+      text: textOf(saving)!,
+      result: savedResult([
+        { ...HELLO_VIEW.stages[0]!, outputs: {} },
+        HELLO_VIEW.stages[1]!,
+      ]),
+    });
+
+    expect(saveStatus(saved)).toEqual({ kind: 'success', text: 'Saved' });
+  });
+
   it('replaces the findings of an older draft with those of the save', () => {
     const saved = run(
       opened(),
@@ -591,6 +625,53 @@ describe('an answer that is meant for an earlier document or an earlier save', (
 
 describe('an edit made while a save is in flight', () => {
   const sentStages = [stageViewOf('draft', 'k-tpm'), HELLO_VIEW.stages[1]!];
+  const outputText = HELLO_TEXT.replace(
+    '    agent: k-developer\n',
+    '    agent: k-developer\n    outputs:\n      a: A.md\n      b: B.md\n',
+  );
+  const outputStages = [
+    {
+      ...HELLO_VIEW.stages[0]!,
+      outputs: { a: 'A.md', b: 'B.md' },
+    },
+    HELLO_VIEW.stages[1]!,
+  ];
+  const outputSaving = () => {
+    const initial = openDocument({
+      ...HELLO_DOCUMENT,
+      text: outputText,
+      view: { ...HELLO_VIEW, stages: outputStages },
+    });
+    if (!initial) throw new Error('The output sample cannot be edited.');
+    const first = initial.draft.stages[0]!;
+    const a = first.outputs![0]!;
+    const b = first.outputs![1]!;
+    const changed = run(
+      initial,
+      { type: 'remove-output', stageId: first.id, outputId: a.id },
+      { type: 'add-output', stageId: first.id },
+    );
+    const c = changed.draft.stages[0]!.outputs!.at(-1)!;
+    const saving = run(
+      changed,
+      {
+        type: 'set-output',
+        stageId: first.id,
+        outputId: c.id,
+        output: { name: 'c', path: 'C.md' },
+      },
+      { type: 'save' },
+    );
+    return { saving, b, c };
+  };
+  const outputSaveResult = () =>
+    savedResult([
+      {
+        ...HELLO_VIEW.stages[0]!,
+        outputs: { b: 'B.md', c: 'C.md' },
+      },
+      HELLO_VIEW.stages[1]!,
+    ]);
   const saving = () =>
     run(
       opened(),
@@ -599,6 +680,62 @@ describe('an edit made while a save is in flight', () => {
     );
   const editedWhileSaving = () =>
     run(saving(), { type: 'rename', id: 's2', name: 'qa' });
+
+  it('keeps source identity for a scalar output edit made during a structural save', () => {
+    const { saving, b, c } = outputSaving();
+    const edited = run(saving, {
+      type: 'set-output',
+      stageId: 's1',
+      outputId: b.id,
+      output: { name: 'b', path: 'B2.md' },
+    });
+    const saved = run(edited, {
+      type: 'saved',
+      text: saving.submitted!.text,
+      result: outputSaveResult(),
+    });
+
+    expect(saved.draft.stages[0]!.outputs).toEqual([
+      expect.objectContaining({ id: b.id, sourceIndex: 0, path: 'B2.md' }),
+      expect.objectContaining({ id: c.id, sourceIndex: 1, path: 'C.md' }),
+    ]);
+    expect(textOf(saved)).toContain('b: B2.md');
+    expect(textOf(saved)).toContain('c: C.md');
+  });
+
+  it('keeps remaining row identity after removal during a structural save', () => {
+    const { saving, b, c } = outputSaving();
+    const edited = run(saving, {
+      type: 'remove-output',
+      stageId: 's1',
+      outputId: b.id,
+    });
+    const saved = run(edited, {
+      type: 'saved',
+      text: saving.submitted!.text,
+      result: outputSaveResult(),
+    });
+
+    expect(saved.draft.stages[0]!.outputs).toEqual([
+      expect.objectContaining({ id: c.id, sourceIndex: 1 }),
+    ]);
+    expect(textOf(saved)).not.toContain('b: B.md');
+    expect(textOf(saved)).toContain('c: C.md');
+  });
+
+  it('resolves saved output rows after their stage is removed during a save', () => {
+    const { saving } = outputSaving();
+    const edited = run(saving, { type: 'remove', id: 's1' });
+    const saved = run(edited, {
+      type: 'saved',
+      text: saving.submitted!.text,
+      result: outputSaveResult(),
+    });
+
+    expect(saved.draft.stages.map(({ id }) => id)).toEqual(['s2']);
+    expect(textOf(saved)).toContain('name: review');
+    expect(textOf(saved)).not.toContain('name: draft');
+  });
 
   it('takes no Add or indexed insertion while a form save is held', () => {
     const state = saving();

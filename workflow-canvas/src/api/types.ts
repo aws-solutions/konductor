@@ -41,11 +41,13 @@ export interface StageView {
   outcome?: string;
   prompt?: string;
   prompt_file?: string;
+  /** Output files declared by name, in source order. */
+  outputs?: Record<string, string>;
   range: LineRange;
 }
 
 /** The keys of a stage that the editor reads and writes. */
-export type StageKeys = Pick<StageView, 'name' | 'agent'>;
+export type StageKeys = Pick<StageView, 'name' | 'agent' | 'outputs'>;
 
 /** One parameter declaration in a workflow file. */
 export interface ParamView {

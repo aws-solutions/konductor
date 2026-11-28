@@ -5,6 +5,7 @@ import { hasErrors, withEchoes, type Problem } from './problems';
 import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 import { paramsInPlaceBlocker, withParams } from './param-text';
+import { outputEditBlocker, withOutputs } from './outputs-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
 export const READ_ONLY_REASON = 'The workflow is read-only.';
@@ -116,10 +117,44 @@ export function paramIdsForWrite(state: EditState): string[] {
   return paramsForWrite(state).map((param) => param.id);
 }
 
-// Whether the stages, params or prompts of the draft differ from the file.
+/** Whether any stage output declaration differs from the saved view. */
+export function outputsDirty(state: EditState): boolean {
+  return state.draft.stages.some((stage) => {
+    const from = state.bases.indexOf(stage.id);
+    const before =
+      from < 0 ? {} : (state.saved.view.stages[from]?.outputs ?? {});
+    const entries = Object.entries(before);
+    const outputs = stage.outputs ?? [];
+    return (
+      entries.length !== outputs.length ||
+      outputs.some(
+        (output, index) =>
+          output.name !== entries[index]?.[0] ||
+          output.path !== entries[index]?.[1],
+      )
+    );
+  });
+}
+
+function outputRequests(state: EditState) {
+  return state.draft.stages.map((stage) => {
+    const from = state.bases.indexOf(stage.id);
+    return {
+      outputs: (stage.outputs ?? []).map(({ name, path, sourceIndex }) => ({
+        name,
+        path,
+        ...(sourceIndex === undefined ? {} : { source: sourceIndex }),
+      })),
+      before: from < 0 ? {} : (state.saved.view.stages[from]?.outputs ?? {}),
+    };
+  });
+}
+
+// Whether the stages, params, outputs or prompts of the draft differ from the file.
 function formDirty(state: EditState): boolean {
   if (!sameStages(stagesOf(state.draft), state.saved.view.stages)) return true;
   if (paramsDirty(state)) return true;
+  if (outputsDirty(state)) return true;
   // A file whose prompts cannot be read has none that the draft could change.
   const spots = savedPrompts(state.saved);
   return (
@@ -166,10 +201,14 @@ export function writtenOf(state: EditState): Written {
     return changed ? { name, agent, from, prompt } : { name, agent, from };
   });
   const staged = withStages(saved.text, saved.view, stages);
+  const withStageOutputs =
+    staged.ok && outputsDirty(state)
+      ? withOutputs(staged.text, outputRequests(state))
+      : staged;
   const result =
-    staged.ok && paramsDirty(state)
+    withStageOutputs.ok && paramsDirty(state)
       ? withParams(
-          staged.text,
+          withStageOutputs.text,
           paramsForWrite(state).map((param) => {
             const from = state.paramBases.indexOf(param.id);
             const original =
@@ -196,7 +235,7 @@ export function writtenOf(state: EditState): Written {
           }),
           saved.view.params !== undefined,
         )
-      : staged;
+      : withStageOutputs;
   written.set(draft, { saved, bases, result });
   return result;
 }
@@ -240,6 +279,20 @@ export function paramsBlocker(state: EditState): string | undefined {
       state.saved.view.params !== undefined,
     )
   );
+}
+
+/** Why one stage's output declarations cannot make this kind of edit. */
+export function outputsBlocker(
+  state: EditState,
+  stageId: string,
+  structural = false,
+): string | undefined {
+  const blocked = changeBlocker(state);
+  if (blocked) return blocked;
+  const sourceIndex = state.bases.indexOf(stageId);
+  return sourceIndex < 0
+    ? undefined
+    : outputEditBlocker(state.saved.text, sourceIndex, structural);
 }
 
 /**
