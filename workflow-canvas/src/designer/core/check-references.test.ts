@@ -87,6 +87,47 @@ it('keeps references separate through a temporary duplicate id', () => {
   ).toEqual([['b'], ['c']]);
 });
 
+it('binds a repaired stale id to its unique check key', () => {
+  const stale = draftOf(
+    [{ name: 'plan', agent: 'k-architect', done_when: ['missing'] }],
+    [],
+    {},
+    [{ id: 'old', file: 'OLD.md' }],
+  );
+  expect(stale.stages[0]!.doneWhen).toEqual([{ id: 'missing' }]);
+
+  const repaired = setCheck(stale, 'c1', {
+    id: 'missing',
+    kind: 'file',
+    file: 'OLD.md',
+    run: [],
+  });
+
+  expect(repaired.stages[0]!.doneWhen).toEqual([{ key: 'c1' }]);
+  expect(doneWhenIds(repaired, repaired.stages[0]!.doneWhen ?? [])).toEqual([
+    'missing',
+  ]);
+});
+
+it('keeps an ambiguous source id unresolved', () => {
+  const duplicate = draftOf(
+    [{ name: 'plan', agent: 'k-architect', done_when: ['same'] }],
+    [],
+    {},
+    [
+      { id: 'same', file: 'ONE.md' },
+      { id: 'same', file: 'TWO.md' },
+    ],
+  );
+  const edited = setCheck(duplicate, 'c1', {
+    id: 'same',
+    kind: 'file',
+    file: 'EDITED.md',
+    run: [],
+  });
+  expect(edited.stages[0]!.doneWhen).toEqual([{ id: 'same' }]);
+});
+
 it('removes references by stable key and sets selections by key', () => {
   const draft = draftOf(STAGES, [], {}, CHECKS);
   const selected = setDoneWhen(draft, 's1', ['c2']);

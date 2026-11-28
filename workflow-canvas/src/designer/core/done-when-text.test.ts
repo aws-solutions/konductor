@@ -84,6 +84,31 @@ describe('withDoneWhen scalar sequence edits', () => {
     );
     expect(removed).toBe(BLOCK);
   });
+  it.each([
+    ['LF', BLOCK, BLOCK.replace('      - old', '      []')],
+    [
+      'CRLF',
+      BLOCK.replaceAll('\n', '\r\n'),
+      BLOCK.replace('      - old', '      []').replaceAll('\n', '\r\n'),
+    ],
+    [
+      'BOM',
+      `\uFEFF${BLOCK}`,
+      `\uFEFF${BLOCK.replace('      - old', '      []')}`,
+    ],
+    [
+      'no final newline',
+      BLOCK.slice(0, -1),
+      BLOCK.replace('      - old', '      []').slice(0, -1),
+    ],
+  ])(
+    'clears the final block list with %s bytes preserved',
+    (_, text, expected) => {
+      expect(value(withDoneWhen(text, [request([])], new Set(['old'])))).toBe(
+        expected,
+      );
+    },
+  );
 });
 
 describe('withDoneWhen insertion and refusals', () => {

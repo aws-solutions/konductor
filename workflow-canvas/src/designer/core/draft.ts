@@ -378,11 +378,20 @@ export function setCheck(
   if (!(draft.checks ?? []).some((candidate) => candidate.key === key)) {
     return draft;
   }
+  const checks = (draft.checks ?? []).map((candidate) =>
+    candidate.key === key ? { ...candidate, ...check } : candidate,
+  );
   return {
     ...draft,
-    checks: (draft.checks ?? []).map((candidate) =>
-      candidate.key === key ? { ...candidate, ...check } : candidate,
-    ),
+    checks,
+    stages: draft.stages.map((stage) => ({
+      ...stage,
+      doneWhen: (stage.doneWhen ?? []).map((reference) => {
+        if ('key' in reference) return reference;
+        const matches = checks.filter(({ id }) => id === reference.id);
+        return matches.length === 1 ? { key: matches[0]!.key } : reference;
+      }),
+    })),
   };
 }
 
