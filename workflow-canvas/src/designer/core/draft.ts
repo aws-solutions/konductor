@@ -369,6 +369,20 @@ export function removeOutput(
     : change(draft, stageId, { outputs });
 }
 
+function bindUniqueCheckReferences(
+  stages: readonly DraftStage[],
+  checks: readonly DraftCheck[],
+): readonly DraftStage[] {
+  return stages.map((stage) => ({
+    ...stage,
+    doneWhen: (stage.doneWhen ?? []).map((reference) => {
+      if ('key' in reference) return reference;
+      const matches = checks.filter(({ id }) => id === reference.id);
+      return matches.length === 1 ? { key: matches[0]!.key } : reference;
+    }),
+  }));
+}
+
 /** Changes one acceptance check. */
 export function setCheck(
   draft: Draft,
@@ -384,14 +398,7 @@ export function setCheck(
   return {
     ...draft,
     checks,
-    stages: draft.stages.map((stage) => ({
-      ...stage,
-      doneWhen: (stage.doneWhen ?? []).map((reference) => {
-        if ('key' in reference) return reference;
-        const matches = checks.filter(({ id }) => id === reference.id);
-        return matches.length === 1 ? { key: matches[0]!.key } : reference;
-      }),
-    })),
+    stages: bindUniqueCheckReferences(draft.stages, checks),
   };
 }
 
@@ -402,18 +409,18 @@ export function addCheck(draft: Draft): Draft {
   const ids = new Set(checks.map((check) => check.id));
   while (ids.has(`check-${number}`)) number += 1;
   const next = draft.nextCheckId ?? 1;
+  const added: DraftCheck = {
+    key: `c${next}`,
+    id: `check-${number}`,
+    kind: 'file',
+    file: '',
+    run: [],
+  };
+  const nextChecks = [...checks, added];
   return {
     ...draft,
-    checks: [
-      ...checks,
-      {
-        key: `c${next}`,
-        id: `check-${number}`,
-        kind: 'file',
-        file: '',
-        run: [],
-      },
-    ],
+    checks: nextChecks,
+    stages: bindUniqueCheckReferences(draft.stages, nextChecks),
     nextCheckId: next + 1,
   };
 }
@@ -422,15 +429,17 @@ export function addCheck(draft: Draft): Draft {
 export function removeCheck(draft: Draft, key: string): Draft {
   const checks = draft.checks ?? [];
   if (!checks.some((check) => check.key === key)) return draft;
+  const nextChecks = checks.filter((check) => check.key !== key);
+  const stages = draft.stages.map((stage) => ({
+    ...stage,
+    doneWhen: (stage.doneWhen ?? []).filter(
+      (reference) => !('key' in reference) || reference.key !== key,
+    ),
+  }));
   return {
     ...draft,
-    checks: checks.filter((check) => check.key !== key),
-    stages: draft.stages.map((stage) => ({
-      ...stage,
-      doneWhen: (stage.doneWhen ?? []).filter(
-        (reference) => !('key' in reference) || reference.key !== key,
-      ),
-    })),
+    checks: nextChecks,
+    stages: bindUniqueCheckReferences(stages, nextChecks),
   };
 }
 

@@ -4,6 +4,7 @@ import { parse } from 'yaml';
 import { withAcceptanceChecks } from './checks-spots';
 import { withDoneWhen } from './done-when-text';
 import {
+  addCheck,
   doneWhenIds,
   draftOf,
   removeCheck,
@@ -126,6 +127,48 @@ it('keeps an ambiguous source id unresolved', () => {
     run: [],
   });
   expect(edited.stages[0]!.doneWhen).toEqual([{ id: 'same' }]);
+});
+
+it('binds an ambiguous id after removing one duplicate', () => {
+  const duplicate = draftOf(
+    [{ name: 'plan', agent: 'k-architect', done_when: ['same'] }],
+    [],
+    {},
+    [
+      { id: 'same', file: 'ONE.md' },
+      { id: 'same', file: 'TWO.md' },
+    ],
+  );
+  const repaired = removeCheck(duplicate, 'c2');
+  expect(repaired.stages[0]!.doneWhen).toEqual([{ key: 'c1' }]);
+
+  const renamed = setCheck(repaired, 'c1', {
+    id: 'renamed',
+    kind: 'file',
+    file: 'ONE.md',
+    run: [],
+  });
+  expect(doneWhenIds(renamed, renamed.stages[0]!.doneWhen ?? [])).toEqual([
+    'renamed',
+  ]);
+});
+
+it('binds a stale id after adding the matching default check', () => {
+  const stale = draftOf([
+    { name: 'plan', agent: 'k-architect', done_when: ['check-1'] },
+  ]);
+  const repaired = addCheck(stale);
+  expect(repaired.stages[0]!.doneWhen).toEqual([{ key: 'c1' }]);
+
+  const renamed = setCheck(repaired, 'c1', {
+    id: 'renamed',
+    kind: 'file',
+    file: '',
+    run: [],
+  });
+  expect(doneWhenIds(renamed, renamed.stages[0]!.doneWhen ?? [])).toEqual([
+    'renamed',
+  ]);
 });
 
 it('removes references by stable key and sets selections by key', () => {
