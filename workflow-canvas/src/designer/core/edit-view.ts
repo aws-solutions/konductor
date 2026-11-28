@@ -3,6 +3,7 @@ import type { EditableDocument, EditState } from './edit-state';
 import {
   doneWhenIds,
   linkOutput,
+  outputLinkPromptError,
   sameStages,
   stagesOf,
   unlinkOutput,
@@ -337,6 +338,13 @@ export function dataLinkBlocker(
 ): string | undefined {
   const blocked = changeBlocker(state);
   if (blocked) return blocked;
+  const promptError = outputLinkPromptError(
+    state.draft,
+    sourceId,
+    targetId,
+    outputName,
+  );
+  if (promptError) return promptError;
   const draft = linkOutput(
     state.draft,
     sourceId,

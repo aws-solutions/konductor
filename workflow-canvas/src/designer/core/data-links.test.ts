@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { draftOf, linkOutput, unlinkOutput } from './draft';
+import {
+  LINK_PROMPT_ERROR,
+  MAX_PROMPT_CHARS,
+  draftOf,
+  linkOutput,
+  outputLinkPromptError,
+  unlinkOutput,
+} from './draft';
 
 const STAGES = [
   { name: 'plan', agent: 'k-architect', outputs: {} },
@@ -39,6 +46,28 @@ describe('data-link draft edits', () => {
   it('does not invent an output when none was supplied', () => {
     const draft = draftOf(STAGES);
     expect(linkOutput(draft, 's1', 's2', 'output')).toBe(draft);
+  });
+
+  it('accepts the exact prompt limit and rejects one character more', () => {
+    const line = 'Read {plan.design}.';
+    const atLimit = 'x'.repeat(MAX_PROMPT_CHARS - line.length - 1);
+    const draft = draftOf(
+      [{ ...STAGES[0]!, outputs: { design: 'DESIGN.md' } }, STAGES[1]!],
+      ['', atLimit],
+    );
+    const linked = linkOutput(draft, 's1', 's2', 'design');
+    expect([...(linked.stages[1]?.prompt ?? '')]).toHaveLength(
+      MAX_PROMPT_CHARS,
+    );
+
+    const over = draftOf(
+      [{ ...STAGES[0]!, outputs: { design: 'DESIGN.md' } }, STAGES[1]!],
+      ['', `${atLimit}x`],
+    );
+    expect(outputLinkPromptError(over, 's1', 's2', 'design')).toBe(
+      LINK_PROMPT_ERROR,
+    );
+    expect(linkOutput(over, 's1', 's2', 'design')).toBe(over);
   });
 
   it('removes only the exact generated line', () => {

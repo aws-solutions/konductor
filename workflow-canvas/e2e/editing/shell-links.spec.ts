@@ -34,6 +34,27 @@ async function dragLink(
   await designer.page.mouse.up();
 }
 
+async function dragSequence(
+  designer: DesignerPage,
+  sourceName: string,
+  targetName: string,
+) {
+  const source = designer.stage(sourceName).locator('.wf-port-out');
+  const target = designer.stage(targetName).locator('.wf-port-in');
+  const [sourceBox, targetBox] = await Promise.all([
+    source.boundingBox(),
+    target.boundingBox(),
+  ]);
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  const from = center(sourceBox!);
+  const to = center(targetBox!);
+  await designer.page.mouse.move(from.x, from.y);
+  await designer.page.mouse.down();
+  await designer.page.mouse.move(to.x, to.y, { steps: 12 });
+  await designer.page.mouse.up();
+}
+
 async function saveYaml(
   designer: DesignerPage,
   change: (text: string) => string,
@@ -52,6 +73,12 @@ function dataEdge(designer: DesignerPage, output: string) {
   });
 }
 
+test('run-order handles do not create data links', async ({ designer }) => {
+  await dragSequence(designer, 'draft', 'review');
+  await expect(designer.page.getByTestId('link-output-dialog')).toHaveCount(0);
+  await designer.expectStatus('No changes');
+});
+
 test('drag with no output can be cancelled or confirmed in the dialog', async ({
   designer,
 }) => {
@@ -62,6 +89,21 @@ test('drag with no output can be cancelled or confirmed in the dialog', async ({
   await expect(
     dialog.getByRole('textbox', { name: 'Output name' }),
   ).toHaveAttribute('aria-invalid', 'true');
+  await expect(designer.page.getByTestId('designer-live')).toContainText(
+    'An output name must start',
+  );
+  await dialog.getByRole('textbox', { name: 'Output name' }).fill('design');
+  const path = dialog.getByRole('textbox', { name: 'Output path' });
+  for (const invalid of ['../DESIGN.md', '/tmp/x', 'a\\b', 'a//b', 'C:x']) {
+    await path.fill(invalid);
+    await expect(path).toHaveAttribute('aria-invalid', 'true');
+    await expect(
+      dialog.getByRole('button', { name: 'Link output', exact: true }),
+    ).toBeDisabled();
+  }
+  await expect(designer.page.getByTestId('designer-live')).toContainText(
+    'Use a relative path',
+  );
   await expectNoAccessibilityViolations(designer.page);
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toHaveCount(0);
@@ -76,7 +118,27 @@ test('drag with no output can be cancelled or confirmed in the dialog', async ({
     .getByRole('button', { name: 'Link output', exact: true })
     .click();
 
+  await expect(designer.page.getByTestId('designer-live')).toHaveText(
+    'Linked draft.design to review.',
+  );
+  await expect(
+    designer.page
+      .getByRole('tabpanel', { name: 'Properties' })
+      .getByRole('textbox', { name: 'name' }),
+  ).toBeFocused();
   await expect(dataEdge(designer, 'design')).toBeVisible();
+
+  const undo = designer.page.getByRole('button', { name: 'Undo' });
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await designer.openYaml();
+  const yaml = designer.page.getByTestId('yaml-text');
+  await expect(yaml).not.toHaveValue(/design: DESIGN.md/);
+  await expect(yaml).not.toHaveValue(/Read \{draft\.design\}\./);
+  await designer.page.getByRole('button', { name: 'Redo' }).click();
+  await expect(yaml).toHaveValue(/design: DESIGN.md/);
+  await expect(yaml).toHaveValue(/Read \{draft\.design\}\./);
+
   await designer.save.click();
   await designer.expectStatus('Saved');
   await designer.page.reload();
@@ -113,6 +175,42 @@ test('drag with several outputs links the chosen output', async ({
   await expect(dataEdge(designer, 'design')).toHaveCount(0);
   await designer.save.click();
   await designer.expectStatus('Saved');
+});
+
+test('one output links with an announcement and target focus', async ({
+  designer,
+}) => {
+  const panel = designer.page.getByRole('tabpanel', { name: 'Properties' });
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  await panel.getByRole('textbox', { name: 'Output name 1' }).fill('design');
+  await panel.getByRole('textbox', { name: 'Output path 1' }).fill('DESIGN.md');
+
+  await dragLink(designer, 'draft', 'review');
+
+  await expect(dataEdge(designer, 'design')).toBeVisible();
+  await expect(designer.page.getByTestId('designer-live')).toHaveText(
+    'Linked draft.design to review.',
+  );
+  await expect(panel.getByRole('textbox', { name: 'name' })).toBeFocused();
+});
+
+test('rejects a link that would exceed the prompt limit', async ({
+  designer,
+}) => {
+  const panel = designer.page.getByRole('tabpanel', { name: 'Properties' });
+  await panel.getByRole('button', { name: 'Add output' }).click();
+  await panel.getByRole('textbox', { name: 'Output name 1' }).fill('design');
+  await panel.getByRole('textbox', { name: 'Output path 1' }).fill('DESIGN.md');
+  await designer.stage('review').click();
+  await designer.prompt.fill('x'.repeat(32768));
+
+  await dragLink(designer, 'draft', 'review');
+
+  await expect(designer.page.getByTestId('link-message')).toHaveText(
+    'The linked prompt would exceed 32768 characters.',
+  );
+  await expect(dataEdge(designer, 'design')).toHaveCount(0);
+  await expect(designer.prompt).toHaveValue('x'.repeat(32768));
 });
 
 test('refused drops show a reason and leave the draft unchanged', async ({

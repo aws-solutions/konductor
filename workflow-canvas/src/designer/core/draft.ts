@@ -465,6 +465,26 @@ export function doneWhenIds(
   );
 }
 
+export const LINK_PROMPT_ERROR = `The linked prompt would exceed ${MAX_PROMPT_CHARS} characters.`;
+
+/** Why adding an output reference would exceed the prompt contract. */
+export function outputLinkPromptError(
+  draft: Draft,
+  sourceId: string,
+  targetId: string,
+  outputName: string,
+): string | undefined {
+  const source = draft.stages.find((stage) => stage.id === sourceId);
+  const target = draft.stages.find((stage) => stage.id === targetId);
+  if (!source || !target) return undefined;
+  const line = `Read {${source.name}.${outputName}}.`;
+  const prompt =
+    target.prompt === ''
+      ? line
+      : `${target.prompt}${target.prompt.endsWith('\n') ? '' : '\n'}${line}`;
+  return [...prompt].length > MAX_PROMPT_CHARS ? LINK_PROMPT_ERROR : undefined;
+}
+
 /** Adds one chosen output reference to a later stage's prompt. */
 export function linkOutput(
   draft: Draft,
@@ -497,6 +517,7 @@ export function linkOutput(
     target.prompt === ''
       ? line
       : `${target.prompt}${target.prompt.endsWith('\n') ? '' : '\n'}${line}`;
+  if ([...prompt].length > MAX_PROMPT_CHARS) return draft;
   return {
     ...draft,
     stages: draft.stages.map((stage) => {

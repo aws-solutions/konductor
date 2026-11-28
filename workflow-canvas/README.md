@@ -468,7 +468,7 @@ server-listed fields, which stay read-only. `outcome` is included there when
 the stage declares it. **Delete stage** stays at the bottom. A stage may also
 have a `prompt_file`, which the page shows as a read-only path and a save
 keeps. The stages run in the order they are listed, and there is no way to
-link or reorder them yet.
+reorder them yet.
 
 The **YAML** pane edits the whole file. Typing over it freezes Add and every
 stage field until that raw edit is saved or typed back. **Save** writes the

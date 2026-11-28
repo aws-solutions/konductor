@@ -442,6 +442,15 @@ export function DesignView({
     setLinkMessage(message);
     setAnnouncement(({ count }) => ({ text: message, count: count + 1 }));
   }, []);
+  const announceLinkDialogError = useCallback((message: string | undefined) => {
+    if (!message) return;
+    setAnnouncement(({ count }) => ({ text: message, count: count + 1 }));
+  }, []);
+  const announceLinked = useCallback(
+    (source: string, output: string, target: string) =>
+      showLinkMessage(`Linked ${source}.${output} to ${target}.`),
+    [showLinkMessage],
+  );
   const paramNameErrors = useMemo(
     () =>
       Object.fromEntries(
@@ -835,6 +844,9 @@ export function DesignView({
       setLinkMessage(undefined);
       if (outputs.length === 1) {
         editor.linkOutput(sourceId, targetId, candidate.name);
+        select(targetId);
+        setOpens((count) => count + 1);
+        announceLinked(source.name, candidate.name, target.name);
         return;
       }
       setLinkRequest({
@@ -843,7 +855,7 @@ export function DesignView({
         values: { outputName: '', outputPath: '' },
       });
     },
-    [editor, showLinkMessage, stageIdFromNode, state],
+    [announceLinked, editor, select, showLinkMessage, stageIdFromNode, state],
   );
   const confirmLink = useCallback(() => {
     if (!linkRequest) return;
@@ -874,7 +886,6 @@ export function DesignView({
       newOutput,
     );
     if (blocker) {
-      setLinkRequest(undefined);
       showLinkMessage(blocker);
       return;
     }
@@ -884,13 +895,11 @@ export function DesignView({
       linkRequest.values.outputName,
       newOutput,
     );
+    select(target.id);
+    setOpens((count) => count + 1);
     setLinkRequest(undefined);
-    setLinkMessage(undefined);
-    setAnnouncement(({ count }) => ({
-      text: `Linked ${source.name}.${linkRequest.values.outputName} to ${target.name}.`,
-      count: count + 1,
-    }));
-  }, [editor, linkRequest, showLinkMessage, state]);
+    announceLinked(source.name, linkRequest.values.outputName, target.name);
+  }, [announceLinked, editor, linkRequest, select, showLinkMessage, state]);
   const deleteLink = useCallback(
     (
       sourceNodeId: string,
@@ -1187,6 +1196,7 @@ export function DesignView({
               }
               onCancel={() => setLinkRequest(undefined)}
               onConfirm={confirmLink}
+              onError={announceLinkDialogError}
             />
           ) : null;
         })()}

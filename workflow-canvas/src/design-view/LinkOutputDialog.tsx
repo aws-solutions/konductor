@@ -6,8 +6,10 @@ import Input from '@cloudscape-design/components/input';
 import Modal from '@cloudscape-design/components/modal';
 import Select from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import { useEffect } from 'react';
 import type { DraftOutput } from '../designer/core/draft';
 import { outputNameError } from '../designer/core/outputs-text';
+import { pathValueError } from '../designer-view/OutputsPanel';
 
 /** The values collected before a data link changes the draft. */
 export interface LinkDialogValues {
@@ -30,6 +32,7 @@ export function LinkOutputDialog({
   onChange,
   onCancel,
   onConfirm,
+  onError,
 }: {
   sourceName: string;
   targetName: string;
@@ -38,11 +41,13 @@ export function LinkOutputDialog({
   onChange: (values: LinkDialogValues) => void;
   onCancel: () => void;
   onConfirm: () => void;
+  onError: (message: string | undefined) => void;
 }) {
   const creates = outputs.length === 0;
   const nameError = creates ? outputNameError(values.outputName) : undefined;
-  const pathError =
-    creates && !values.outputPath ? 'Enter the output path.' : undefined;
+  const pathError = creates ? pathValueError(values.outputPath) : undefined;
+  const error = nameError ?? pathError;
+  useEffect(() => onError(error), [error, onError]);
   const chosen = outputs.find(({ name }) => name === values.outputName);
   const set = (change: Partial<LinkDialogValues>) =>
     onChange({ ...values, ...change });
