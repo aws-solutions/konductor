@@ -32,6 +32,7 @@ import {
   changeBlocker,
   formTextOf,
   isDirty,
+  paramIdsForWrite,
   paramsDirty,
   rawTextOf,
   textBlocker,
@@ -352,7 +353,7 @@ function step(
             save: { phase: 'saving' },
             sent: idsOf(state.draft),
             sentParams: paramsDirty(state)
-              ? state.draft.params.map((param) => param.id)
+              ? paramIdsForWrite(state)
               : state.paramBases.filter((id) =>
                   state.draft.params.some((param) => param.id === id),
                 ),

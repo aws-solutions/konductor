@@ -6,6 +6,8 @@ import {
   type ParamToWrite,
 } from './param-text';
 
+const NAME_REASON =
+  'A parameter name must start with a lowercase letter and contain only lowercase letters, digits or underscores, up to 64 characters.';
 const FLOW_REASON =
   'The params mapping uses flow style, so the editor cannot change it byte for byte. Make the change in a text editor.';
 const QUOTED_REASON =
@@ -209,6 +211,22 @@ describe('withParams', () => {
     expect(withParams(text, [kept({ name: 'goal' }, 0)])).toEqual({
       ok: false,
       reason: LAYOUT_REASON,
+    });
+  });
+  it.each([
+    ['existing rename', true],
+    ['new row', false],
+  ])('refuses a YAML-shaped name on %s', (_case, existing) => {
+    const text =
+      'params:\n  old: {}\nstages:\n  - name: draft\n    agent: k-developer\n';
+    const invalid = 'topic: {description: injected, required: true} #';
+    const param = existing
+      ? changed({ name: 'old' }, 0, { name: invalid })
+      : { name: invalid, description: '', default: '', required: false };
+
+    expect(withParams(text, [param], true)).toEqual({
+      ok: false,
+      reason: NAME_REASON,
     });
   });
 });

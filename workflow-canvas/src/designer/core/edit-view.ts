@@ -86,8 +86,8 @@ export function paramsDirty(state: EditState): boolean {
     if (
       !param ||
       name !== param.name ||
-      value.description !== (param.description || undefined) ||
-      value.default !== (param.default || undefined) ||
+      (value.description ?? '') !== param.description ||
+      (value.default ?? '') !== param.default ||
       (value.required ?? false) !== param.required
     ) {
       return true;
@@ -97,6 +97,17 @@ export function paramsDirty(state: EditState): boolean {
   return state.draft.params.some(
     (param) => !sourceIds.has(param.id) && !emptyGoal(param),
   );
+}
+
+function paramsForWrite(state: EditState): Draft['params'] {
+  return state.draft.params.filter(
+    (param) => state.paramBases.includes(param.id) || !emptyGoal(param),
+  );
+}
+
+/** Parameter ids written by a parameter-changing submission. */
+export function paramIdsForWrite(state: EditState): string[] {
+  return paramsForWrite(state).map((param) => param.id);
 }
 
 // Whether the stages, params or prompts of the draft differ from the file.
@@ -153,7 +164,7 @@ export function writtenOf(state: EditState): Written {
     staged.ok && paramsDirty(state)
       ? withParams(
           staged.text,
-          draft.params.map((param) => {
+          paramsForWrite(state).map((param) => {
             const from = state.paramBases.indexOf(param.id);
             const original =
               from < 0
