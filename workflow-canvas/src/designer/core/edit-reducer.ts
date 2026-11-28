@@ -5,6 +5,7 @@ import type {
   WorkflowDocument,
 } from '../../api/types';
 import {
+  addOutput,
   addParam,
   addStage,
   canAddStage,
@@ -12,10 +13,12 @@ import {
   idsOf,
   insertStage,
   neighbourOf,
+  removeOutput,
   removeParam,
   removeStage,
   renameStage,
   setAgent,
+  setOutput,
   setParam,
   setPrompt,
   type Draft,
@@ -102,6 +105,35 @@ function promptSet(state: EditState, id: string, prompt: string): EditState {
   const stage = state.draft.stages.find((candidate) => candidate.id === id);
   if (!stage || stage.prompt === prompt) return state;
   return edited(state, setPrompt(state.draft, id, prompt), state.selectedId);
+}
+
+function outputSet(
+  state: EditState,
+  stageId: string,
+  outputId: string,
+  output: { name: string; path: string },
+): EditState {
+  return edited(
+    state,
+    setOutput(state.draft, stageId, outputId, output),
+    state.selectedId,
+  );
+}
+
+function outputAdded(state: EditState, stageId: string): EditState {
+  return edited(state, addOutput(state.draft, stageId), state.selectedId);
+}
+
+function outputRemoved(
+  state: EditState,
+  stageId: string,
+  outputId: string,
+): EditState {
+  return edited(
+    state,
+    removeOutput(state.draft, stageId, outputId),
+    state.selectedId,
+  );
 }
 
 function paramSet(
@@ -349,6 +381,12 @@ function step(
       return agentSet(state, event.id, event.agent);
     case 'set-prompt':
       return promptSet(state, event.id, event.prompt);
+    case 'set-output':
+      return outputSet(state, event.stageId, event.outputId, event.output);
+    case 'add-output':
+      return outputAdded(state, event.stageId);
+    case 'remove-output':
+      return outputRemoved(state, event.stageId, event.outputId);
     case 'set-param':
       return paramSet(state, event.id, event.change);
     case 'add-param':

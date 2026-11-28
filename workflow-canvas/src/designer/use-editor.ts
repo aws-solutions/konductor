@@ -29,6 +29,13 @@ export interface Editor {
   rename(id: string, name: string): void;
   setAgent(id: string, agent: string): void;
   setPrompt(id: string, prompt: string): void;
+  setOutput(
+    stageId: string,
+    outputId: string,
+    output: { name: string; path: string },
+  ): void;
+  addOutput(stageId: string): void;
+  removeOutput(stageId: string, outputId: string): void;
   setParam(
     id: string,
     change: Partial<
@@ -127,6 +134,11 @@ export function useEditor(
         rename: (id, name) => dispatch({ type: 'rename', id, name }),
         setAgent: (id, agent) => dispatch({ type: 'set-agent', id, agent }),
         setPrompt: (id, prompt) => dispatch({ type: 'set-prompt', id, prompt }),
+        setOutput: (stageId, outputId, output) =>
+          dispatch({ type: 'set-output', stageId, outputId, output }),
+        addOutput: (stageId) => dispatch({ type: 'add-output', stageId }),
+        removeOutput: (stageId, outputId) =>
+          dispatch({ type: 'remove-output', stageId, outputId }),
         setParam: (id, change) => dispatch({ type: 'set-param', id, change }),
         addParam: () => dispatch({ type: 'add-param' }),
         removeParam: (id) => dispatch({ type: 'remove-param', id }),

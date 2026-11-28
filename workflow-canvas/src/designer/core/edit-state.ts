@@ -115,6 +115,14 @@ export type EditEvent =
   | { type: 'set-agent'; id: string; agent: string }
   | { type: 'set-prompt'; id: string; prompt: string }
   | {
+      type: 'set-output';
+      stageId: string;
+      outputId: string;
+      output: { name: string; path: string };
+    }
+  | { type: 'add-output'; stageId: string }
+  | { type: 'remove-output'; stageId: string; outputId: string }
+  | {
       type: 'set-param';
       id: string;
       change: Partial<

@@ -73,6 +73,15 @@ function parseRange(value: unknown): LineRange {
   };
 }
 
+function stringMapOf(value: unknown): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(objectOf(value)).map(([key, entry]) => [
+      key,
+      stringOf(entry),
+    ]),
+  );
+}
+
 function parseStage(value: unknown): StageView {
   const stage = objectOf(value);
   const outcome =
@@ -81,6 +90,12 @@ function parseStage(value: unknown): StageView {
     stage.prompt === undefined ? undefined : stringOf(stage.prompt);
   const promptFile =
     stage.prompt_file === undefined ? undefined : stringOf(stage.prompt_file);
+  const outputs =
+    stage.outputs === undefined ? undefined : stringMapOf(stage.outputs);
+  const doneWhen =
+    stage.done_when === undefined
+      ? undefined
+      : arrayOf(stage.done_when).map(stringOf);
   return {
     name: stringOf(stage.name),
     kind: kindOf(stage.kind),
@@ -88,6 +103,8 @@ function parseStage(value: unknown): StageView {
     ...(outcome === undefined ? {} : { outcome }),
     ...(prompt === undefined ? {} : { prompt }),
     ...(promptFile === undefined ? {} : { prompt_file: promptFile }),
+    ...(outputs === undefined ? {} : { outputs }),
+    ...(doneWhen === undefined ? {} : { done_when: doneWhen }),
     range: parseRange(stage.range),
   };
 }
