@@ -152,7 +152,7 @@ export function insertMapPair(
   const lastEnd = contentEnd(last);
   const at = afterLine(text, lastEnd);
   const eol = eolOf(text);
-  const hadLineBreak = at > lastEnd;
+  const hadLineBreak = /[\r\n]/.test(text.slice(lastEnd, at));
   const prefix = hadLineBreak ? '' : eol;
   const suffix = hadLineBreak ? eol : '';
   const separator = value.startsWith(eol) ? '' : ' ';
