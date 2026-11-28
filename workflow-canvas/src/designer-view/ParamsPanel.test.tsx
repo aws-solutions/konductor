@@ -52,4 +52,24 @@ describe('ParamsPanel goal identity', () => {
     expect((remove[1] as HTMLButtonElement).disabled).toBe(false);
     expect(remove[1]?.getAttribute('aria-disabled')).not.toBe('true');
   });
+
+  it('shows a writer blocker without freezing the row', () => {
+    const draft = addParam(draftOf(STAGES));
+    render(
+      <ParamsPanel
+        params={draft.params}
+        disabled={false}
+        disabledReason="A parameter name is invalid."
+        onChange={() => {}}
+        onAdd={() => {}}
+        onRemove={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId('params-blocker').textContent).toContain(
+      'A parameter name is invalid.',
+    );
+    const names = screen.getAllByRole('textbox', { name: 'name' });
+    expect((names[1] as HTMLInputElement).disabled).toBe(false);
+  });
 });

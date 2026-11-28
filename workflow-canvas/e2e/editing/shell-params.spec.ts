@@ -72,6 +72,11 @@ test('edits, adds, saves and removes workflow parameters', async ({
   await expectChipInsideIntent(designer.page, 2);
 
   await expect(names).toHaveCount(2);
+  await names.nth(1).fill('topic: {description: injected, required: true} #');
+  await expect(panel.getByTestId('params-blocker')).toContainText(
+    'A parameter name must start with a lowercase letter',
+  );
+  await expect(names.nth(1)).toBeEnabled();
   await names.nth(1).fill('goal');
   await expect(names.nth(1)).toBeEnabled();
   await expect(

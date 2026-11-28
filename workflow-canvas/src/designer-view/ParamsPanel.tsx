@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import Checkbox from '@cloudscape-design/components/checkbox';
@@ -32,6 +33,11 @@ export function ParamsPanel({
   return (
     <SpaceBetween size="m">
       <Box variant="awsui-key-label">Parameters</Box>
+      {disabledReason && (
+        <Alert type="warning" data-testid="params-blocker">
+          {disabledReason}
+        </Alert>
+      )}
       {params.map((param) => (
         <Container key={param.id}>
           <SpaceBetween size="s">

@@ -428,7 +428,8 @@ export function DesignView({
     rawText === undefined
       ? (fileBlocker(state) ?? writeBlocker(state))
       : undefined;
-  const paramDisabledReason = paramsBlocker(state) ?? refusal;
+  const paramsSourceBlocker = paramsBlocker(state);
+  const paramsMessage = paramsSourceBlocker ?? refusal;
 
   // Why the text cannot be typed into now, if it cannot: read-only, a load,
   // or a save on its way to the server.
@@ -569,8 +570,8 @@ export function DesignView({
           openProperties={opens}
           openParams={paramOpens}
           params={state.draft.params}
-          paramsDisabled={paramDisabledReason !== undefined}
-          paramsDisabledReason={paramDisabledReason}
+          paramsDisabled={paramsSourceBlocker !== undefined}
+          paramsDisabledReason={paramsMessage}
           onParamChange={(id, change) => editor.setParam(id, change)}
           onParamAdd={editor.addParam}
           onParamRemove={editor.removeParam}
