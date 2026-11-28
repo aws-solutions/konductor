@@ -1,14 +1,15 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Keep or prune, stages 2 to 4: agent files, SOPs and always-loaded context
 
-2026-11-23. Pilot 1 gave NO DATA (a control failed); the control is fixed and a controls-only rerun is
-ready. [← capability playbook](cap-playbook.md) · [reference](reference.md)
+2026-11-28. The first unit has a quick record (lean prune, not signed off); no other unit has a baseline. [← capability playbook](cap-playbook.md) · [reference](reference.md)
 
-**Where it stands.** No unit has been measured yet. The first pilot, the always-loaded context file
-`k-orchestrator-shared`, ran on 2026-11-23: its 15 tasks were written and signed off, and the quick check stopped
-before the unit because the convention control failed. The control is fixed (free). Next is a paid rerun of the
-controls only, then the unit, each the owner's call ([Pilot 1 and the rerun](#pilot-1-and-the-rerun)). Stages 2 to 4
-after the pilot each have their own plan and cap to approve (Appendix D).
+**Where it stands.** One unit has a quick record: the always-loaded context file `k-orchestrator-shared`. Its first
+run (2026-11-23, pilot 1) gave NO DATA because a control failed; the control was fixed (free), its weak tasks were
+rewritten (deepseek-3.2 writes, glm-5 reviews), and the rerun (`kp-pilot-3`, the same day) passed both controls and read 15 of 15 tasks
+with three judge families: 215 calls, 3,225 counted credits, about 35 real. The record's suggested verdict is
+**lean prune** with the label "teaches conventions (human call)". It has no sign-off, no deep run and no other unit has
+a baseline, so there is no verdict yet ([Pilot 1 and the rerun](#pilot-1-and-the-rerun)). Each later stage has its own
+plan and cap to approve (Appendix D).
 
 Words used here: a **unit** is one agent file, SOP or context file. The **keep arm** answers with the unit, the
 **drop arm** without it. **Quick depth** is one answer per task and arm; **deep depth** is three, plus a repeat of the
@@ -150,6 +151,12 @@ nothing. The convention control's prompts changed, so its calls are new.
 The controls part runs on the newest `feat/bench-pilot-nk` commit, pins it, prints each control's checks and stops.
 The unit part refuses to start unless both controls passed. Each part has its own ledger, and `--dry-run` shows its
 plan for free. `cap unit-stage --controls-only` (env `KP_CONTROLS_ONLY` in `run-pilot.sh`) is the mode underneath.
+
+**What happened next.** The unit part was read after the weak tasks were rewritten (D-224) and the role line was
+added to both arms (D-230). That run is `kp-pilot-3` (2026-11-23): both controls passed, 15 of 15 tasks counted, 215
+calls, 3,225 counted credits, about 35 real. Reading A gave the interval [-0.86, +0.18], which contains 0, and reading B's
+lower end is above 0, so the suggested verdict is lean prune with the label "teaches conventions (human call)". A person
+has not signed it.
 
 ## What is missing
 
