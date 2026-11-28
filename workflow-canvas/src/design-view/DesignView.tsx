@@ -18,6 +18,10 @@ import {
   DesignerLayout,
   type LayoutStage,
 } from '../designer-view/DesignerLayout';
+import {
+  PARAM_NAME_ERROR,
+  parameterNameError,
+} from '../designer-view/ParamsPanel';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import {
   useEditHistory,
@@ -352,6 +356,30 @@ export function DesignView({
   const [opens, setOpens] = useState(0);
   const [paramOpens, setParamOpens] = useState(0);
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
+  const paramNameErrors = useMemo(
+    () =>
+      Object.fromEntries(
+        state.draft.params.flatMap((param) => {
+          const error = parameterNameError(param.name);
+          return error ? [[param.id, error]] : [];
+        }),
+      ),
+    [state.draft.params],
+  );
+  const parameterNameFailure = Object.values(paramNameErrors)[0];
+  const announcedNameFailure = useRef(false);
+  useEffect(() => {
+    if (parameterNameFailure === undefined) {
+      announcedNameFailure.current = false;
+      return;
+    }
+    if (announcedNameFailure.current) return;
+    announcedNameFailure.current = true;
+    setAnnouncement(({ count }) => ({
+      text: parameterNameFailure,
+      count: count + 1,
+    }));
+  }, [parameterNameFailure]);
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -429,7 +457,11 @@ export function DesignView({
       ? (fileBlocker(state) ?? writeBlocker(state))
       : undefined;
   const paramsSourceBlocker = paramsBlocker(state);
-  const paramsMessage = paramsSourceBlocker ?? refusal;
+  const pageRefusal =
+    refusal === PARAM_NAME_ERROR && parameterNameFailure !== undefined
+      ? undefined
+      : refusal;
+  const paramsMessage = paramsSourceBlocker ?? pageRefusal;
 
   // Why the text cannot be typed into now, if it cannot: read-only, a load,
   // or a save on its way to the server.
@@ -520,9 +552,9 @@ export function DesignView({
             {EARLIER_TEXT_NOTE}
           </Alert>
         )}
-        {refusal !== undefined && (
+        {pageRefusal !== undefined && (
           <Alert type="warning" data-testid="save-refused">
-            {refusal}
+            {pageRefusal}
           </Alert>
         )}
         {opened.reading && (

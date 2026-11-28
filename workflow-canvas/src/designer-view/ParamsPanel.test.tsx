@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { addParam, draftOf, setParam } from '../designer/core/draft';
-import { ParamsPanel } from './ParamsPanel';
+import { PARAM_NAME_ERROR, ParamsPanel } from './ParamsPanel';
 
 const STAGES = [{ name: 'draft', agent: 'k-developer' }];
 
@@ -53,23 +53,20 @@ describe('ParamsPanel goal identity', () => {
     expect(remove[1]?.getAttribute('aria-disabled')).not.toBe('true');
   });
 
-  it('shows a writer blocker without freezing the row', () => {
-    const draft = addParam(draftOf(STAGES));
-    render(
-      <ParamsPanel
-        params={draft.params}
-        disabled={false}
-        disabledReason="A parameter name is invalid."
-        onChange={() => {}}
-        onAdd={() => {}}
-        onRemove={() => {}}
-      />,
-    );
+  it('associates a writer name error without freezing the row', () => {
+    let draft = addParam(draftOf(STAGES));
+    draft = setParam(draft, draft.params.at(-1)!.id, {
+      name: 'topic: {description: injected} #',
+    });
+    render(panel(draft.params));
 
-    expect(screen.getByTestId('params-blocker').textContent).toContain(
-      'A parameter name is invalid.',
-    );
-    const names = screen.getAllByRole('textbox', { name: 'name' });
-    expect((names[1] as HTMLInputElement).disabled).toBe(false);
+    const input = screen.getAllByRole('textbox', { name: 'name' })[1]!;
+    expect((input as HTMLInputElement).disabled).toBe(false);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    const described = (input.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(' ');
+    expect(described).toContain(PARAM_NAME_ERROR);
   });
 });

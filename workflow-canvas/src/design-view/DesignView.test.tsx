@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useMemo } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { StageView, WorkflowDocument } from '../api/types';
+import { PARAM_NAME_ERROR } from '../designer-view/ParamsPanel';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
@@ -781,6 +782,39 @@ describe('DesignView, the Properties tab', () => {
     expect(screen.getByTestId('designer-live').textContent).toBe(
       'Stage review deleted.',
     );
+  });
+
+  it('associates and announces one invalid parameter name error', async () => {
+    drawn();
+    await settle();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'params 1, edit declared parameters',
+        }),
+      );
+    });
+    await settle();
+    await act(async () => {
+      fireEvent.click(button('Add parameter'));
+    });
+    const names = within(panelOf('Properties')).getAllByRole('textbox', {
+      name: 'name',
+    });
+
+    await typeInto(names[1]!, 'topic: {description: injected} #');
+    await settle();
+
+    const input = names[1]!;
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    const described = (input.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(' ');
+    expect(described).toContain(PARAM_NAME_ERROR);
+    const live = screen.getByTestId('designer-live').textContent ?? '';
+    expect(live.split(PARAM_NAME_ERROR).length - 1).toBe(1);
+    expect(screen.queryByTestId('save-refused')).toBeNull();
   });
 
   // The keys of the file as it was loaded, and which of them can be edited:
