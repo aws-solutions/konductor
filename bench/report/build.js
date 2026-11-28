@@ -268,8 +268,16 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   add('dots-quality', C.dotPlot({ title: 'Quality per task, one dot per replicate', id: 'dots-quality', unit: 'quality (0-100)', min: 0, max: 100, rows: qDots }), 'Per-task dot plot of quality');
 
   if (!full) return { blocks, charts, title: 'Benchmark report (quick)' };
+  fullBlocks({ run, tasks, report, rows, scores, facts, ctx, docPhases, sens, blocks, add, arms, base, heads, unit, good, rq, taskOrder, omitted });
+  return { blocks, charts, title: 'Benchmark report (full)' };
+}
 
-  // ---- full ----
+/**
+ * The sections only the full report has, appended to `blocks` in order (charts through `add`).
+ * Takes buildRunDocument's inputs plus its derived values: arms, base, heads, unit, good (clean
+ * passes), rq (quality of a run), taskOrder and omitted (notes for the "Not shown" list).
+ */
+function fullBlocks({ run, tasks, report, rows, scores, facts, ctx, docPhases, sens, blocks, add, arms, base, heads, unit, good, rq, taskOrder, omitted }) {
   blocks.push(...sensitivitySection(sens));
   blocks.push(D.h(2, 'Scores with components'));
   blocks.push(scoreRowsTable(scores));
@@ -352,7 +360,6 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
 
   blocks.push(D.h(2, 'Detailed tables (the existing report, unchanged)'));
   blocks.push(D.md(D.demote(renderMarkdown(report).replace(/^# Benchmark report\n+/, ''), 1)));
-  return { blocks, charts, title: 'Benchmark report (full)' };
 }
 
 module.exports = { threeArmsOf, buildRunDocument, scorecardBlocks, topFlags, forestRows, tone, agreementMatrix, skillLoads, headlineTable, noiseBands, MIN_REL };
