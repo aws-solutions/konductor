@@ -61,6 +61,7 @@ An agent with its own tool hooks runs on `st-plant-policy-hooked,st-plant-allowa
   (`bench/plugins/strands/meta.js`) is plant only and single turn.
 - **One real model.** Only `qwen.qwen3-coder-next` in us-east-1, pinned in
   `bench/physical/strands/plant_strands/bedrock_models.json`. Any other model id is refused.
+  A price last checked more than 30 days ago (`pricesReadOn`) also stops the run, until you check the price page and update it.
 - **No public release.** The toy release is taken for control runs only. A real-model run needs your team's own
   signed release (`bench/physical/ci/plant-release.js`; see the reference).
 - **Counted runs.** A real-model run counts only when the release pins `versions.strands.version`. Release

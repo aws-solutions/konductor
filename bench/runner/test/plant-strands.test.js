@@ -151,6 +151,26 @@ test('only the pinned Bedrock model is priced; any other model is refused before
   for (const m of ['bedrock:us.anthropic.claude-sonnet-5-5', 'openai:gpt-5', '', 'qwen.qwen3-coder-next']) assert.throws(() => strands.bedrockModelOf(m), /pinned id \(qwen\.qwen3-coder-next, anthropic\.claude-sonnet-5-5, global\.anthropic\.claude-sonnet-5-5\)/, m);
 });
 
+// D-11: the prices are copied by hand, so a paid run refuses prices nobody has checked for a month.
+test('a pinned price older than 30 days, or with no valid read date, is refused before a paid run', () => {
+  const day = 86400000;
+  const read = Date.parse('2026-11-28T00:00:00Z');
+  const qwen = strands.bedrockModelOf('bedrock:qwen.qwen3-coder-next');
+  assert.match(qwen.pricesReadOn, /^\d{4}-\d{2}-\d{2}$/);
+  const model = { id: 'm', pricesReadOn: '2026-11-28' };
+  assert.doesNotThrow(() => strands.assertPricesFresh(model, read));
+  assert.doesNotThrow(() => strands.assertPricesFresh(model, read + 30 * day));
+  assert.throws(() => strands.assertPricesFresh(model, read + 31 * day), /prices of m were read on 2026-11-28, 31 days ago.*update the prices and pricesReadOn in bedrock_models\.json/);
+  assert.throws(() => strands.assertPricesFresh(model, read - day), /2026-11-28 is in the future/);
+  for (const bad of [undefined, '', 'yesterday', '2026-13-45']) assert.throws(() => strands.assertPricesFresh({ id: 'm', pricesReadOn: bad }, read), /no valid pricesReadOn/, String(bad));
+});
+
+test('runOptions checks the price date before it reads the profile keys; the fake model needs no date', () => {
+  const late = Date.parse('2027-06-01T00:00:00Z');
+  assert.throws(() => strands.runOptions({ opts: { model: 'bedrock:qwen.qwen3-coder-next', 'aws-profile': 'p' }, deps: { now: late, readAwsProfile: () => assert.fail('keys were read') } }), /days ago/);
+  assert.deepEqual(strands.runOptions({ opts: { model: 'fake:/s.json' }, deps: { now: late } }), { stModel: null, stCreds: null });
+});
+
 test('a Bedrock run gets what is left of the budget as its hard cap, and only its profile keys and region', () => {
   const ctx = BEDROCK_CTX();
   const cmd = strands.buildCommand({ arm: { vanilla: true }, task: { prompt: 'p' }, config: { model: 'bedrock:qwen.qwen3-coder-next' }, ctx, cwd: '/r/work' });

@@ -40,7 +40,7 @@ function resolveStrands({ python = 'python3', agentFile = null } = {}) {
 
 /**
  * The pinned Bedrock model `model` names (`bedrock:<id>`): `{id, region, inputUsdPerMTok, outputUsdPerMTok, maxTokens,
- * pricesSource}`. Null for the fake model; throws for any other model, so an unpriced model never starts.
+ * pricesSource, pricesReadOn}`. Null for the fake model; throws for any other model, so an unpriced model never starts.
  */
 function bedrockModelOf(model) {
   const m = /^(fake|bedrock):(.+)$/.exec(String(model));
@@ -48,6 +48,20 @@ function bedrockModelOf(model) {
   const pin = m ? PINS.models[m[2]] : null;
   if (!pin) throw new Error(`Strands arms take --model fake:<script.json> or bedrock:<id> with a pinned id (${Object.keys(PINS.models).join(', ')}); got ${model}`);
   return { id: m[2], region: PINS.region, ...pin, pricesSource: PINS.pricesSource };
+}
+
+const PRICES_MAX_AGE_DAYS = 30;
+
+/**
+ * Throws when the prices of `model` (from bedrockModelOf) were last read from the price page more than 30 days before
+ * `now` (ms), or on a missing or future date. The prices are copied by hand (D-11), so a paid run must not trust old ones.
+ */
+function assertPricesFresh(model, now = Date.now()) {
+  const on = /^\d{4}-\d{2}-\d{2}$/.test(model.pricesReadOn ?? '') ? Date.parse(`${model.pricesReadOn}T00:00:00Z`) : NaN;
+  if (Number.isNaN(on)) throw new Error(`bedrock_models.json has no valid pricesReadOn (YYYY-MM-DD) for ${model.id}; read the AWS price page and set it`);
+  const days = Math.floor((now - on) / 86400000);
+  if (days < 0) throw new Error(`pricesReadOn ${model.pricesReadOn} is in the future for ${model.id}`);
+  if (days > PRICES_MAX_AGE_DAYS) throw new Error(`prices of ${model.id} were read on ${model.pricesReadOn}, ${days} days ago (limit ${PRICES_MAX_AGE_DAYS}): check the AWS price page, then update the prices and pricesReadOn in bedrock_models.json`);
 }
 
 const prepareArm = () => ({});
@@ -121,6 +135,7 @@ function runOptions({ opts, deps = {} }) {
   let stCreds = null;
   if (stModel) {
     if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
+    assertPricesFresh(stModel, deps.now); // after the flag checks, so a test that stops at a missing flag never reads the clock
     const { profileCredentials } = require('../../sdk').awsCreds;
     stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
     stCreds.current();
@@ -175,4 +190,4 @@ function envOfArm({ stCreds }) {
 /** The run's model config from --model and --effort (run-cmd.js): the model as given; the launcher takes no effort. */
 const modelConfig = ({ opts }) => ({ model: opts.model, effort: 'default' });
 
-module.exports = { id, meta, streams: require('./streams.js'), modelConfig, runOptions, setUpRun, plantPreflight, runEnvInfo, harnessRunConfig, envOfArm, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
+module.exports = { id, meta, streams: require('./streams.js'), modelConfig, runOptions, setUpRun, plantPreflight, runEnvInfo, harnessRunConfig, envOfArm, resolveStrands, bedrockModelOf, assertPricesFresh, prepareArm, trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'], removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
