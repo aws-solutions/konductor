@@ -160,7 +160,10 @@ has not signed it.
 
 ## What is missing
 
-1. Unit baselines. Only the pilot unit has one: 15 tasks, written by glm-5, reviewed by deepseek-3.2 and signed off
+1. Unit baselines. Since 2026-11-28 the 8 agent units have their 16 briefs each (`unit-baselines/agent-<name>/briefs.json`,
+   one brief per rule of the agent file, a plain control last), so `cap unit-author` can write their tasks once the
+   owner sets a cap (at most 8 calls, 120 counted credits a unit; `--dry-run` is free). The SOPs and context files
+   have no briefs yet. Only the pilot unit has a baseline: 15 tasks, written by glm-5, reviewed by deepseek-3.2 and signed off
    on 2026-11-23 (one task was dropped after its one fix). Every other unit needs 16 tasks with rubrics, in two
    batches of 8, frozen on its current hash; the unit map in the workspace reports lists seed tasks for them.
 2. A deep-depth paid provider. The paid provider answers in one turn, so it runs quick depth only; deep depth needs
