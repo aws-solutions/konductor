@@ -146,12 +146,19 @@ test('shows every bad output reference on the stage card and accessible name', a
   await expect(
     card.getByText(/missing.*names an output.*does not declare/),
   ).toBeVisible();
-  await expect(
-    card.getByText(/other.*names an output.*does not declare/),
-  ).toBeVisible();
+  await expect(card.getByText(/1 more/)).toBeVisible();
   await expect(
     designer.page.getByRole('group', {
-      name: /Stage review.*problem:.*missing.*other/,
+      name: /Stage review.*problem:.*missing.*1 more/,
     }),
   ).toBeVisible();
+  await designer.page
+    .getByRole('button', { name: 'Show 2 findings for stage review' })
+    .click();
+  const findings = designer.page.getByRole('region', {
+    name: 'Workflow findings',
+  });
+  await expect(findings).toBeFocused();
+  await expect(findings).toContainText('draft.missing');
+  await expect(findings).toContainText('draft.other');
 });
