@@ -9,8 +9,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const os = require('node:os');
 const { spawnSync } = require('node:child_process');
+const { mkScratch } = require('./scratch.js');
 
 const KIT = path.join(__dirname, '..', '..', 'scenarios', 'konductor', 'standard');
 const UNBOUND = path.join(__dirname, '..', '..', 'scripts', 'shell-unbound.js');
@@ -52,7 +52,7 @@ test('kit standard: helper plan places every DEV task in run or skipped, a probe
 
 test('kit standard: helper cc-plan mirrors the plan under the cc- prefix and prices it from the plain credits', () => {
   const repo = path.join(__dirname, '..', '..', '..');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccplan-'));
+  const dir = mkScratch('ccplan-');
   try {
     // expected is in Kiro credits over the four Kiro arms (ratio sum 5.35): 53.5 is 10 plain credits, 10.7 is 2
     const plan = { konductorSha: 'kon-sha', noskillsArm: 'konductor-noskills=dir:/var/tmp/x/tree', listArm: 'konductor-list=dir:/var/tmp/x/list', run: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], batches: { t1: { tasks: ['a', 'b'], expected: 53.5 }, t9: { tasks: ['c'], expected: 10.7 } } };

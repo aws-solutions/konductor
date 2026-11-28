@@ -11,6 +11,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { builtinModules } = require('node:module');
+const { mkScratch } = require('./scratch.js');
 
 const BENCH = path.join(__dirname, '..', '..');
 const BASELINE_FILE = path.join(__dirname, 'import-layers-baseline.json');
@@ -71,7 +72,7 @@ test('the rules: core may use built-ins and core only; runner may not reach repo
 });
 
 test('a fixture tree: a new wrong-way import is found, test files are not read', () => {
-  const root = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'import-layers-'));
+  const root = mkScratch('import-layers-');
   try {
     fs.mkdirSync(path.join(root, 'core'));
     fs.mkdirSync(path.join(root, 'runner', 'test'), { recursive: true });

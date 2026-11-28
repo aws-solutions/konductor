@@ -5,15 +5,15 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { mkScratch } = require('./scratch.js');
 
 const OPS = path.join(__dirname, '..', '..', 'ops', 'next-experiment-2026-11-22');
 const BENCH = path.join(__dirname, '..', '..');
 
 test('rescore-table.js: one TSV line per run with saved, before and after scores and hidden counts', () => {
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'rescore-table-'));
+  const out = mkScratch('rescore-table-');
   try {
     const hidden = (passed, total) => ({ type: 'tests', scored: true, pass: passed === total, tests: { passed, total } });
     const write = (phase, result) => {

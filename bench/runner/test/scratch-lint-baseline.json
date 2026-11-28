@@ -3,10 +3,6 @@
   "files": {
     "runner/test/cap-exposure.test.js": 2,
     "runner/test/cap-skillcli.test.js": 2,
-    "runner/test/import-layers.test.js": 1,
-    "runner/test/kit-standard.test.js": 1,
-    "runner/test/ops-launchers.test.js": 1,
-    "runner/test/ops-rescore-table.test.js": 1,
     "runner/test/ops-suite-script.test.js": 1,
     "runner/test/pack-suite.test.js": 1,
     "runner/test/pilot-gaps.test.js": 2,

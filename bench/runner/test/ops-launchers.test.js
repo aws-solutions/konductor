@@ -8,9 +8,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { mkScratch } = require('./scratch.js');
 
 const OPS = path.join(__dirname, '..', '..', 'ops');
 const MAKE = path.join(OPS, 'make-launchers.sh');
@@ -36,7 +36,7 @@ const destOf = (ws, rel) => (rel.startsWith('workspace/') ? path.join(ws, 'scrip
 /** A temp workspace and a stub ops tree with one stub per versioned file. */
 function setUp(t) {
   // realpath: make-launchers.sh writes the workspace's real path (pwd -P), so a symlinked TMPDIR must match it.
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ops-launchers-')));
+  const root = fs.realpathSync(mkScratch('ops-launchers-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const ws = path.join(root, 'ws');
   const stub = path.join(root, 'ops');
