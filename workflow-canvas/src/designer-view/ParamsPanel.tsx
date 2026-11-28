@@ -7,20 +7,12 @@ import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import type { DraftParam } from '../designer/core/draft';
+import { parameterNameError } from '../designer/core/param-text';
 
 /** Changes to one declared workflow parameter. */
 export type ParamChange = Partial<
   Pick<DraftParam, 'name' | 'description' | 'default' | 'required'>
 >;
-
-export const PARAM_NAME_ERROR =
-  'A parameter name must start with a lowercase letter and contain only lowercase letters, digits or underscores, up to 64 characters.';
-const PARAM_NAME = /^[a-z][a-z0-9_]{0,63}$/;
-
-/** The writer error for a parameter name, if it has one. */
-export function parameterNameError(name: string): string | undefined {
-  return PARAM_NAME.test(name) ? undefined : PARAM_NAME_ERROR;
-}
 
 /** The editable workflow parameter declarations shown in the side panel. */
 export function ParamsPanel({

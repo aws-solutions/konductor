@@ -21,7 +21,7 @@ import {
 import {
   PARAM_NAME_ERROR,
   parameterNameError,
-} from '../designer-view/ParamsPanel';
+} from '../designer/core/param-text';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import {
   useEditHistory,

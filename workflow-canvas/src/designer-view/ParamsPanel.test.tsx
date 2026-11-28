@@ -2,7 +2,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { addParam, draftOf, setParam } from '../designer/core/draft';
-import { PARAM_NAME_ERROR, ParamsPanel } from './ParamsPanel';
+import { PARAM_NAME_ERROR } from '../designer/core/param-text';
+import { ParamsPanel } from './ParamsPanel';
 
 const STAGES = [{ name: 'draft', agent: 'k-developer' }];
 

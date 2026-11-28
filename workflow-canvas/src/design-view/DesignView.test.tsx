@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useMemo } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { StageView, WorkflowDocument } from '../api/types';
-import { PARAM_NAME_ERROR } from '../designer-view/ParamsPanel';
+import { PARAM_NAME_ERROR } from '../designer/core/param-text';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
