@@ -4,8 +4,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('../../runner/test/scratch.js');
 const { checkInput, checkExpectedOutput } = require('../lib/validity.js');
 const { findDuplicates } = require('../lib/dedup.js');
 const { parseRules, loadRules, checkRules } = require('../lib/rules.js');
@@ -143,7 +143,7 @@ test('violation text names the tools and carries the note', () => {
 test('a rules file may be an array or an object with a rules array', () => {
   assert.equal(parseRules({ rules: [{ before: ['a', 'b'] }] }).length, 1);
   assert.equal(parseRules([]).length, 0);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agenteval-rules-'));
+  const dir = mkScratch('agenteval-rules-');
   try {
     const file = path.join(dir, 'rules.json');
     fs.writeFileSync(file, JSON.stringify([{ before: ['lookup_order', 'issue_refund'] }]));

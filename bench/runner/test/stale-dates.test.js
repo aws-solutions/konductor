@@ -7,8 +7,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 const { datesIn, staleDates } = require('../../scenarios/dates.js');
 const { lintDir } = require('../../scenarios/lint.js');
 
@@ -29,7 +29,7 @@ test('staleDates: after the authoring date and before now; history before author
 });
 
 test('lintDir: a stale date is a warning, never a finding, so the lint does not fail with the calendar', (t) => {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'stale-dates-'));
+  const d = mkScratch('stale-dates-');
   t.after(() => fs.rmSync(d, { recursive: true, force: true }));
   fs.mkdirSync(path.join(d, 't9'));
   fs.writeFileSync(path.join(d, 't9', 't9-a.json'), JSON.stringify({ id: 't9-a', prompt: 'Ship before 2026-11-20.', fixture: 't9-a', hidden: 't9-a', authorship: { family: 'claude', model: 'm', date: '2026-11-12' } }));

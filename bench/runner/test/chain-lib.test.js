@@ -7,8 +7,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 
 const CHAIN = path.join(__dirname, '..', '..', 'scripts', 'lib', 'chain');
 const { loadConfig, makeContext, envOr, fmtDur, ts, which } = require(path.join(CHAIN, 'context.js'));
@@ -18,7 +18,7 @@ const { credsOk } = require(path.join(CHAIN, 'creds.js'));
 const P = require(path.join(CHAIN, 'proc.js'));
 
 function tmp(t) {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'chain-lib-'));
+  const d = mkScratch('chain-lib-');
   t.after(() => fs.rmSync(d, { recursive: true, force: true }));
   return d;
 }

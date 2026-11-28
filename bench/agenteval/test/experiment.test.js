@@ -4,12 +4,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('../../runner/test/scratch.js');
 const { loadExperiment, parseExperiment } = require('../lib/experiment.js');
 
 const withFile = (content, fn) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agenteval-exp-'));
+  const dir = mkScratch('agenteval-exp-');
   try {
     const file = path.join(dir, 'exp.json');
     fs.writeFileSync(file, typeof content === 'string' ? content : JSON.stringify(content));

@@ -6,15 +6,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 const { spawnSync } = require('node:child_process');
 const { parseRates, renderParseRates } = require('../../report/parse-rate.js');
 
 const CLI = path.join(__dirname, '..', '..', 'report', 'parse-rate.js');
 
 function study(t) {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'parse-rate-'));
+  const d = mkScratch('parse-rate-');
   t.after(() => fs.rmSync(d, { recursive: true, force: true }));
   const put = (rel, j) => { fs.mkdirSync(path.dirname(path.join(d, rel)), { recursive: true }); fs.writeFileSync(path.join(d, rel), JSON.stringify(j)); };
   put('cell-a/judgments.json', {

@@ -7,8 +7,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 
 const { render, fromSet } = require('../../physical/ci/coverage.js');
 
@@ -23,7 +23,7 @@ test('render names every rule, the now-covered lost link (D-106 closed) and the 
 });
 
 test('fromSet reads a minimal set into the structural snapshot (distinct shapes, no counts)', () => {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-'));
+  const d = mkScratch('cov-');
   fs.mkdirSync(path.join(d, 'answers'));
   fs.mkdirSync(path.join(d, 'release', 'tasks'), { recursive: true });
   const write = (dir, name, obj) => fs.writeFileSync(path.join(d, dir, name), JSON.stringify(obj));
