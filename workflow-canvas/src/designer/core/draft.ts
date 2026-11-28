@@ -113,22 +113,39 @@ export function draftOf(
   };
 }
 
-/** Rebinds rows that exactly match the saved output order. */
+export interface SubmittedOutputRows {
+  readonly stageId: string;
+  readonly outputIds: readonly string[];
+}
+
+/** Rebinds submitted rows to their positions in the saved response. */
 export function rebaseOutputSources(
   draft: Draft,
   stages: readonly StageKeys[],
+  submitted: readonly SubmittedOutputRows[],
 ): Draft {
   return {
     ...draft,
-    stages: draft.stages.map((stage, stageIndex) => {
-      const saved = Object.entries(stages[stageIndex]?.outputs ?? {});
+    stages: draft.stages.map((stage) => {
+      const stageIndex = submitted.findIndex(
+        ({ stageId }) => stageId === stage.id,
+      );
+      if (stageIndex < 0) return stage;
+      const sourceIds = submitted[stageIndex]!.outputIds;
+      const savedCount = Object.keys(stages[stageIndex]?.outputs ?? {}).length;
       return {
         ...stage,
-        outputs: (stage.outputs ?? []).map((output, index) =>
-          saved[index]?.[0] === output.name && saved[index]?.[1] === output.path
-            ? { ...output, sourceIndex: index }
-            : output,
-        ),
+        outputs: (stage.outputs ?? []).map((output) => {
+          const sourceIndex = sourceIds.indexOf(output.id);
+          if (sourceIndex >= 0 && sourceIndex < savedCount) {
+            return { ...output, sourceIndex };
+          }
+          return {
+            id: output.id,
+            name: output.name,
+            path: output.path,
+          };
+        }),
       };
     }),
   };

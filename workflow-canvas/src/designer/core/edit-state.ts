@@ -5,7 +5,13 @@ import type {
   WorkflowDocument,
   WorkflowView,
 } from '../../api/types';
-import { draftOf, idsOf, sourceParamIds, type Draft } from './draft';
+import {
+  draftOf,
+  idsOf,
+  sourceParamIds,
+  type Draft,
+  type SubmittedOutputRows,
+} from './draft';
 import { checkOf, type Check } from './problems';
 import { savedPrompts } from './saved-prompts';
 
@@ -61,6 +67,8 @@ export interface EditState {
   paramBases: readonly string[];
   /** The ids of the draft stages in the save that is going on, in order. */
   sent?: readonly string[];
+  /** Output row ids submitted for each stage, in submitted stage order. */
+  sentOutputs?: readonly SubmittedOutputRows[];
   /** The ids of the params in the save that is going on, in order. */
   sentParams?: readonly string[];
   selectedId: string;

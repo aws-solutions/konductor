@@ -193,6 +193,44 @@ describe('withOutputs structural edits preserve surviving bytes', () => {
     expect(Object.keys(parse(written).stages[0].outputs)).toEqual(['b', 'c']);
   });
 
+  it.each([
+    [
+      'one block row',
+      stage('    outputs:\n      a: A.md\n'),
+      [{ name: 'c', path: 'C.md' }],
+      { a: 'A.md' },
+    ],
+    [
+      'many block rows with CRLF',
+      stage('    outputs:\r\n      a: A.md\r\n      b: B.md\r\n', '\r\n'),
+      [
+        { name: 'c', path: 'C.md' },
+        { name: 'd', path: 'D.md' },
+      ],
+      { a: 'A.md', b: 'B.md' },
+    ],
+    [
+      'one flow row',
+      stage('    outputs: {a: A.md}\n'),
+      [{ name: 'c', path: 'C.md' }],
+      { a: 'A.md' },
+    ],
+    [
+      'many flow rows',
+      stage('    outputs: {a: A.md, b: B.md}\n'),
+      [
+        { name: 'c', path: 'C.md' },
+        { name: 'd', path: 'D.md' },
+      ],
+      { a: 'A.md', b: 'B.md' },
+    ],
+  ])('replaces every source row in %s', (_, text, outputs, before) => {
+    const written = value(withOutputs(text, [{ outputs, before }]));
+    expect(parse(written).stages[0].outputs).toEqual(
+      Object.fromEntries(outputs.map(({ name, path }) => [name, path])),
+    );
+  });
+
   it('refuses a pure row reorder', () => {
     const text = stage(`    outputs: {a: A.md, b: B.md}
 `);

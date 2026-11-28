@@ -277,7 +277,11 @@ function savedAs(
   // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
-    draft: rebaseOutputSources(state.draft, result.view.stages),
+    draft: rebaseOutputSources(
+      state.draft,
+      result.view.stages,
+      state.sentOutputs ?? [],
+    ),
     saved: {
       ...state.saved,
       text,
@@ -288,6 +292,7 @@ function savedAs(
     bases: state.sent ?? idsOf(state.draft),
     paramBases: state.sentParams ?? state.draft.params.map((param) => param.id),
     sent: undefined,
+    sentOutputs: undefined,
     sentParams: undefined,
     save: { phase: 'saved' },
   };
@@ -407,6 +412,10 @@ function step(
             ...state,
             save: { phase: 'saving' },
             sent: idsOf(state.draft),
+            sentOutputs: state.draft.stages.map((stage) => ({
+              stageId: stage.id,
+              outputIds: (stage.outputs ?? []).map(({ id }) => id),
+            })),
             sentParams: paramsDirty(state)
               ? paramIdsForWrite(state)
               : state.paramBases.filter((id) =>
