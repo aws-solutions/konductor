@@ -290,11 +290,12 @@ export function withOutputs(
     ) {
       return { ok: false, reason: METADATA_REASON };
     }
+    const outputsKey = pair.key as Scalar | null | undefined;
     if (
       pair.value.items.length !== request.outputs.length &&
-      pair.key?.range &&
+      outputsKey?.range &&
       pair.value.range &&
-      text.slice(pair.key.range[1], pair.value.range[1]).includes('#')
+      text.slice(outputsKey.range[1], pair.value.range[1]).includes('#')
     ) {
       return { ok: false, reason: COMMENTS_REASON };
     }
