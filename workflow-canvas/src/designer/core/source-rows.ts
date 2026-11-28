@@ -75,6 +75,42 @@ export function sourceRowPatches({
     matches.length !== currentCount || matches.length !== source.rows.length;
   if (!structural) return [];
   if (source.hasComments) return commentReason;
+  if (matches.length === 0 && source.rows.length > 0) {
+    const first = source.rows[0]!;
+    const last = source.rows.at(-1)!;
+    if (currentCount === 0) {
+      return [
+        {
+          start: first.start,
+          end: last.contentEnd,
+          text: source.flow ? '' : emptyText,
+        },
+      ];
+    }
+    const rows = Array.from({ length: currentCount }, (_, index) =>
+      render(index),
+    );
+    if (source.flow) {
+      return [
+        {
+          start: first.start,
+          end: last.contentEnd,
+          text: rows.join(', '),
+        },
+      ];
+    }
+    const eol = eolOf(text);
+    const hadLineBreak = /[\r\n]/.test(
+      text.slice(last.contentEnd, last.lineEnd),
+    );
+    return [
+      {
+        start: first.lineStart,
+        end: last.lineEnd,
+        text: `${rows.map((row) => `${source.indent}${row}`).join(eol)}${hadLineBreak ? eol : ''}`,
+      },
+    ];
+  }
   const patches: SourcePatch[] = [];
   const kept = new Set(matches.map(({ source }) => source));
   const removed = source.rows
