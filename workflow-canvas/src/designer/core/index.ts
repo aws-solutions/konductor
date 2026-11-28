@@ -17,6 +17,7 @@ export {
   nextStageName,
   type Draft,
   type DraftCheck,
+  type DraftCheckReference,
   type DraftOutput,
   type DraftStage,
 } from './draft';
@@ -36,6 +37,7 @@ export {
   canEdit,
   changeBlocker,
   canSave,
+  doneWhenBlocker,
   fileBlocker,
   formTextOf,
   insertionBlocker,

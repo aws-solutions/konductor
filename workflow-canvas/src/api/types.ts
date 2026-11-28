@@ -43,11 +43,16 @@ export interface StageView {
   prompt_file?: string;
   /** Output files declared by name, in source order. */
   outputs?: Record<string, string>;
+  /** Acceptance-check ids that must pass before this stage completes. */
+  done_when?: string[];
   range: LineRange;
 }
 
 /** The keys of a stage that the editor reads and writes. */
-export type StageKeys = Pick<StageView, 'name' | 'agent' | 'outputs'>;
+export type StageKeys = Pick<
+  StageView,
+  'name' | 'agent' | 'outputs' | 'done_when'
+>;
 
 /** One parameter declaration in a workflow file. */
 export interface ParamView {
