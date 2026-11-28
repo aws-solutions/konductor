@@ -35,6 +35,7 @@ import {
   KNOWN_AGENTS,
   MAX_STAGES,
   nextStageName,
+  paramsBlocker,
   promptFieldOf,
   rawTextOf,
   READ_ONLY_REASON,
@@ -232,10 +233,7 @@ export function DesignView({
   // what the places of the stages are read for.
   const [sent, setSent] = useState<string>();
   const sentText = submittedText ?? sent;
-  const history = useEditHistory(savedText);
-  const paramCounts = useRef(
-    new Map<string, number>([[savedText, state.draft.params.length]]),
-  );
+  const history = useEditHistory(savedText, state.draft.params.length);
   const draft = useYamlDraft({
     initialText: savedText,
     name: state.saved.name,
@@ -265,8 +263,7 @@ export function DesignView({
   useEffect(() => {
     if (held.current === loaded) return;
     held.current = loaded;
-    paramCounts.current = new Map([[savedText, state.draft.params.length]]);
-    reset(savedText);
+    reset(savedText, state.draft.params.length);
   }, [loaded, savedText, reset, state.draft.params.length]);
   // The draft opens its text unchecked, so the keys of a stage are read from
   // a check of the file as it was loaded, and where each stage of the draft
@@ -294,8 +291,11 @@ export function DesignView({
   // can write, so undo always lands on one.
   useEffect(() => {
     if (written !== undefined) {
-      paramCounts.current.set(written, state.draft.params.length);
-      record(written, rawText === undefined ? 'stages' : 'text');
+      record(
+        written,
+        rawText === undefined ? 'stages' : 'text',
+        state.draft.params.length,
+      );
     }
   }, [rawText, record, state.draft.params.length, written]);
   useEffect(() => edit(history.text), [edit, history.text]);
@@ -323,8 +323,7 @@ export function DesignView({
   // of this draft only while no stage was added, deleted or moved since.
   const ofNow = answer?.view ? answer : undefined;
   const checked = ofNow ?? draft.lastGood ?? opened.answer;
-  const shownParamCount =
-    paramCounts.current.get(history.text) ?? state.draft.params.length;
+  const shownParamCount = history.paramCount ?? state.draft.params.length;
   const spec = useMemo(
     () => ({
       name: state.saved.view.name,
@@ -429,6 +428,7 @@ export function DesignView({
     rawText === undefined
       ? (fileBlocker(state) ?? writeBlocker(state))
       : undefined;
+  const paramDisabledReason = paramsBlocker(state) ?? refusal;
 
   // Why the text cannot be typed into now, if it cannot: read-only, a load,
   // or a save on its way to the server.
@@ -569,8 +569,8 @@ export function DesignView({
           openProperties={opens}
           openParams={paramOpens}
           params={state.draft.params}
-          paramsDisabled={frozen !== undefined || refusal !== undefined}
-          paramsDisabledReason={frozen ?? refusal}
+          paramsDisabled={paramDisabledReason !== undefined}
+          paramsDisabledReason={paramDisabledReason}
           onParamChange={(id, change) => editor.setParam(id, change)}
           onParamAdd={editor.addParam}
           onParamRemove={editor.removeParam}

@@ -29,10 +29,11 @@ describe('ParamsPanel goal identity', () => {
         .disabled,
     ).toBe(true);
     expect(
-      screen
-        .getByRole('button', { name: 'Remove parameter' })
-        .getAttribute('aria-disabled'),
-    ).toBe('true');
+      (screen.getByRole('checkbox', { name: 'required' }) as HTMLInputElement)
+        .disabled,
+    ).toBe(true);
+    const remove = screen.getByRole('button', { name: 'Remove parameter' });
+    expect(remove.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('keeps another row editable when its typed name is goal', () => {
@@ -43,7 +44,12 @@ describe('ParamsPanel goal identity', () => {
     const names = screen.getAllByRole('textbox', { name: 'name' });
     expect((names[0] as HTMLInputElement).disabled).toBe(true);
     expect((names[1] as HTMLInputElement).disabled).toBe(false);
+    const required = screen.getAllByRole('checkbox', { name: 'required' });
+    expect((required[0] as HTMLInputElement).disabled).toBe(true);
+    expect((required[1] as HTMLInputElement).disabled).toBe(false);
     const remove = screen.getAllByRole('button', { name: 'Remove parameter' });
+    expect(remove[0]?.getAttribute('aria-disabled')).toBe('true');
+    expect((remove[1] as HTMLButtonElement).disabled).toBe(false);
     expect(remove[1]?.getAttribute('aria-disabled')).not.toBe('true');
   });
 });

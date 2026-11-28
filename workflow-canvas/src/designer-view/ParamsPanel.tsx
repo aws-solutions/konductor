@@ -64,7 +64,7 @@ export function ParamsPanel({
             </FormField>
             <Checkbox
               checked={param.required}
-              disabled={disabled || param.name === 'goal'}
+              disabled={disabled || param.isGoal}
               onChange={({ detail }) =>
                 onChange(param.id, { required: detail.checked })
               }
@@ -72,7 +72,7 @@ export function ParamsPanel({
               required
             </Checkbox>
             <Button
-              disabled={disabled || param.name === 'goal'}
+              disabled={disabled || param.isGoal}
               disabledReason={
                 param.isGoal
                   ? 'The goal parameter is always present.'

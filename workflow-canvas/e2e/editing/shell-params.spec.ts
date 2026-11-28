@@ -72,6 +72,14 @@ test('edits, adds, saves and removes workflow parameters', async ({
   await expectChipInsideIntent(designer.page, 2);
 
   await expect(names).toHaveCount(2);
+  await names.nth(1).fill('goal');
+  await expect(names.nth(1)).toBeEnabled();
+  await expect(
+    panel.getByRole('checkbox', { name: 'required' }).nth(1),
+  ).toBeEnabled();
+  await expect(
+    panel.getByRole('button', { name: 'Remove parameter' }).nth(1),
+  ).toBeEnabled();
   await names.nth(1).fill('audience');
   await descriptions.nth(1).fill('Reader');
   await defaults.nth(1).fill('Developers');

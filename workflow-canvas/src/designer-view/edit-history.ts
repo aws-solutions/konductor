@@ -13,6 +13,7 @@ export type EditKind = 'stages' | 'text';
 export interface EditPoint {
   readonly text: string;
   readonly kind: EditKind;
+  readonly paramCount?: number;
 }
 
 /**
@@ -29,8 +30,12 @@ export interface EditHistory {
 }
 
 /** A history with `text` and nothing to undo or redo. */
-export function startHistory(text: string): EditHistory {
-  return { past: [], current: { text, kind: 'stages' }, future: [] };
+export function startHistory(text: string, paramCount?: number): EditHistory {
+  return {
+    past: [],
+    current: { text, kind: 'stages', paramCount },
+    future: [],
+  };
 }
 
 /**
@@ -42,11 +47,12 @@ export function recordEdit(
   history: EditHistory,
   text: string,
   kind: EditKind = 'stages',
+  paramCount?: number,
 ): EditHistory {
   if (text === history.current.text) return history;
   return {
     past: [...history.past, history.current].slice(-EDIT_HISTORY_LIMIT),
-    current: { text, kind },
+    current: { text, kind, paramCount },
     future: [],
   };
 }
