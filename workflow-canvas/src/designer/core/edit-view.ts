@@ -5,7 +5,7 @@ import { hasErrors, withEchoes, type Problem } from './problems';
 import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 import { paramsInPlaceBlocker, withParams } from './param-text';
-import { outputsInPlaceBlocker, withOutputs } from './outputs-text';
+import { outputEditBlocker, withOutputs } from './outputs-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
 export const READ_ONLY_REASON = 'The workflow is read-only.';
@@ -277,9 +277,18 @@ export function paramsBlocker(state: EditState): string | undefined {
   );
 }
 
-/** Why output declarations cannot be changed now. */
-export function outputsBlocker(state: EditState): string | undefined {
-  return changeBlocker(state) ?? outputsInPlaceBlocker(state.saved.text);
+/** Why one stage's output declarations cannot make this kind of edit. */
+export function outputsBlocker(
+  state: EditState,
+  stageId: string,
+  structural = false,
+): string | undefined {
+  const blocked = changeBlocker(state);
+  if (blocked) return blocked;
+  const sourceIndex = state.bases.indexOf(stageId);
+  return sourceIndex < 0
+    ? undefined
+    : outputEditBlocker(state.saved.text, sourceIndex, structural);
 }
 
 /**

@@ -16,6 +16,8 @@ export interface OutputPairSpot {
   readonly path: string;
   readonly key: readonly [number, number];
   readonly value: readonly [number, number];
+  readonly lineStart: number;
+  readonly lineEnd: number;
 }
 
 /** The source ranges needed to edit one stage's outputs. */
@@ -26,9 +28,7 @@ export interface OutputsSpot {
   readonly keyIndent: string;
   readonly outputs?: {
     readonly flow: boolean;
-    readonly start: number;
-    readonly end: number;
-    readonly contentEnd: number;
+    readonly close: number;
     readonly indent: string;
     readonly pairs: readonly OutputPairSpot[];
     readonly hasComments: boolean;
@@ -57,18 +57,23 @@ function textScalar(node: unknown): node is Scalar<string> {
   );
 }
 
-function columnOf(text: string, offset: number): number {
+function lineStart(text: string, offset: number): number {
   let start = offset;
   while (start > 0 && text[start - 1] !== '\n' && text[start - 1] !== '\r') {
     start -= 1;
   }
-  return offset - start;
+  return start;
+}
+
+function columnOf(text: string, offset: number): number {
+  return offset - lineStart(text, offset);
 }
 
 function afterLine(text: string, offset: number): number {
   let end = offset;
-  while (end < text.length && text[end] !== '\n' && text[end] !== '\r')
+  while (end < text.length && text[end] !== '\n' && text[end] !== '\r') {
     end += 1;
+  }
   if (text[end] === '\r' && text[end + 1] === '\n') return end + 2;
   return end < text.length ? end + 1 : end;
 }
@@ -77,6 +82,15 @@ function endOf(pair: Pair | undefined): number {
   const key = pair?.key as Scalar | null | undefined;
   const value = pair?.value as Scalar | YAMLMap | null | undefined;
   return Math.max(key?.range?.[1] ?? 0, value?.range?.[1] ?? 0);
+}
+
+function hasComment(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const node = value as { comment?: unknown; commentBefore?: unknown };
+  return (
+    (typeof node.comment === 'string' && node.comment !== '') ||
+    (typeof node.commentBefore === 'string' && node.commentBefore !== '')
+  );
 }
 
 function outputMapSpot(
@@ -96,52 +110,56 @@ function outputMapSpot(
   const names = new Set<string>();
   const pairs: OutputPairSpot[] = [];
   for (const item of map.items) {
-    if (!textScalar(item.key) || !textScalar(item.value))
+    if (!textScalar(item.key) || !textScalar(item.value)) {
       return METADATA_REASON;
+    }
     if (names.has(item.key.value)) return DUPLICATE_REASON;
     names.add(item.key.value);
-    const keyRange = item.key.range!;
-    const valueRange = item.value.range!;
+    const key = item.key.range!;
+    const value = item.value.range!;
     pairs.push({
       name: item.key.value,
       path: item.value.value,
-      key: [keyRange[0], keyRange[1]],
-      value: [valueRange[0], valueRange[1]],
+      key: [key[0], key[1]],
+      value: [value[0], value[1]],
+      lineStart: lineStart(text, key[0]),
+      lineEnd: afterLine(text, value[1]),
     });
   }
   const first = map.items[0]?.key as Scalar | null | undefined;
-  const contentEnd = endOf(map.items.at(-1));
-  const key = pair.key as Scalar | null | undefined;
-  if (pairs.length > 0 && (!first?.range || contentEnd === 0))
-    return LAYOUT_REASON;
+  if (pairs.length > 0 && !first?.range) return LAYOUT_REASON;
   return {
     flow: map.flow === true,
-    start: map.range[0],
-    end: map.range[1],
-    contentEnd,
+    close: map.range[1] - 1,
     indent: first?.range ? ' '.repeat(columnOf(text, first.range[0])) : '',
     pairs,
     hasComments:
-      key?.range !== undefined &&
-      key.range !== null &&
-      text.slice(key.range[1], map.range[1]).includes('#'),
+      hasComment(pair.key) ||
+      hasComment(map) ||
+      map.items.some(
+        (item) =>
+          hasComment(item) || hasComment(item.key) || hasComment(item.value),
+      ),
   };
 }
 
 function stageSpot(text: string, stage: YAMLMap): OutputsSpot {
-  if (!stage.range || stage.items.length === 0)
+  if (!stage.range || stage.items.length === 0) {
     return { stageFlow: false, keyIndent: '', reason: LAYOUT_REASON };
+  }
   const first = stage.items[0]?.key as Scalar | null | undefined;
-  if (!first?.range)
+  if (!first?.range) {
     return { stageFlow: false, keyIndent: '', reason: LAYOUT_REASON };
+  }
   const keyIndent = ' '.repeat(columnOf(text, first.range[0]));
   const pairs = stage.items.filter((pair) => pairNamed(pair, 'outputs'));
-  if (pairs.length > 1)
+  if (pairs.length > 1) {
     return {
       stageFlow: stage.flow === true,
       keyIndent,
       reason: DUPLICATE_REASON,
     };
+  }
   const outputs = pairs[0] ? outputMapSpot(text, pairs[0]) : undefined;
   if (typeof outputs === 'string') {
     return { stageFlow: stage.flow === true, keyIndent, reason: outputs };
@@ -150,8 +168,8 @@ function stageSpot(text: string, stage: YAMLMap): OutputsSpot {
     stageFlow: stage.flow === true,
     keyIndent,
     ...(stage.flow
-      ? { stageClose: stage.range[1] - 1 }
-      : { insertAt: afterLine(text, endOf(stage.items.at(-1))) }),
+      ? { stageClose: endOf(stage.items.at(-1)) }
+      : { insertAt: endOf(stage.items.at(-1)) }),
     ...(outputs ? { outputs } : {}),
   };
 }
@@ -159,8 +177,9 @@ function stageSpot(text: string, stage: YAMLMap): OutputsSpot {
 /** Finds source ranges for every stage's outputs, or why the file cannot be mapped. */
 export function outputSpots(text: string): readonly OutputsSpot[] | string {
   const document = parseDocument(text, { uniqueKeys: false });
-  if (document.errors.length > 0 || !isMap(document.contents))
+  if (document.errors.length > 0 || !isMap(document.contents)) {
     return LAYOUT_REASON;
+  }
   const roots = document.contents.items.filter((pair) =>
     pairNamed(pair, 'stages'),
   );
