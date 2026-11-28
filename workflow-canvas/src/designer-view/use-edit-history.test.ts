@@ -76,11 +76,11 @@ describe('useEditHistory', () => {
     expect(result.current.text).toBe('v0');
   });
 
-  it('keeps at most the limit of earlier texts', () => {
+  it('keeps text and parameter-count metadata within the history limit', () => {
     const { result } = renderHistory();
     act(() => {
       for (let i = 1; i <= EDIT_HISTORY_LIMIT + 3; i += 1) {
-        result.current.record(`v${i}`);
+        result.current.record(`v${i}`, 'stages', i);
       }
     });
     act(() => {
@@ -88,6 +88,7 @@ describe('useEditHistory', () => {
     });
 
     expect(result.current.text).toBe('v3');
+    expect(result.current.paramCount).toBe(3);
     expect(result.current.canUndo).toBe(false);
   });
 

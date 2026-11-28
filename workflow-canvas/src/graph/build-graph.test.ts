@@ -42,7 +42,10 @@ describe('buildGraph', () => {
   it('gives the intent its outcome', () => {
     const [intent] = buildGraph(HELLO, 'kiro-cli').nodes;
 
-    expect(intent?.data).toEqual({ outcome: 'Add a greeting to the README' });
+    expect(intent?.data).toEqual({
+      outcome: 'Add a greeting to the README',
+      paramCount: 0,
+    });
   });
 
   it('gives each stage its name, its agent and the harness', () => {

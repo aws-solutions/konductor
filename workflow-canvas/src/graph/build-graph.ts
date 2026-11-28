@@ -33,7 +33,7 @@ function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
     type: 'intent',
     width: NODE_WIDTH.intent,
     height: NODE_HEIGHT.intent,
-    data: { outcome: spec.intent.outcome },
+    data: { outcome: spec.intent.outcome, paramCount: spec.paramCount ?? 0 },
   };
 }
 

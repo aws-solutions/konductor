@@ -3,7 +3,7 @@
 /** The width of each node kind. The intent is wider than a stage card. */
 export const NODE_WIDTH = { intent: 360, stage: 300 } as const;
 /** The height of each kind of node, as the node components draw them. */
-export const NODE_HEIGHT = { intent: 88, stage: 108 } as const;
+export const NODE_HEIGHT = { intent: 112, stage: 108 } as const;
 /** The empty space between one node and the next. */
 export const NODE_GAP = 56;
 

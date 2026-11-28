@@ -83,6 +83,21 @@ test('capture the Design view with the keys of a stage', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'next-design-properties');
 });
 
+test('capture the Design view with workflow parameters', async ({ canvas }) => {
+  await canvas.page
+    .getByRole('button', {
+      name: 'params 1, edit declared parameters',
+    })
+    .click();
+  await expect(
+    canvas.page
+      .getByRole('tabpanel', { name: 'Properties' })
+      .getByRole('textbox', { name: 'description' }),
+  ).toHaveValue('What the workflow should accomplish.');
+
+  await saveFullPageScreenshot(canvas.page, 'next-design-params');
+});
+
 test('capture the Design view with a prompt being typed', async ({
   canvas,
 }) => {

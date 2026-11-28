@@ -55,6 +55,12 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     }
   });
 
+  it('keeps the params chip text and edge visible on the intent card', () => {
+    expect(ratio('--wf-intent-text', '--wf-intent-bg')).toBeGreaterThanOrEqual(
+      AA_TEXT,
+    );
+  });
+
   it('keeps nodes, edges and the focus ring visible', () => {
     for (const name of ['--wf-node-border', '--wf-edge', '--wf-focus']) {
       expect(ratio(name, '--wf-canvas-bg')).toBeGreaterThanOrEqual(AA_GRAPHIC);

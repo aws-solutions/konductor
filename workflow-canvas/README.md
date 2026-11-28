@@ -453,15 +453,18 @@ The rest wraps the core, so the rules can be tested without a browser:
 
 ## The Design view
 
-The view has the graph on the left, with **Add stage** above it, and two panes
-on the right: **YAML**, the text of the workflow to type over, and
-**Properties**. The page header holds Save, the saved or unsaved state, and the
-flow-check state. Properties
-shows the selected stage (the first one when the page opens): its `name`, its
-`agent` and its `prompt`, and **Delete stage**. These are the keys of a stage
-that the view edits. A stage may also have a `prompt_file`, which the page
-shows as a read-only path and a save keeps. The stages run in the order they are
-listed, and there is no way to link or reorder them yet.
+The view has three columns. The left column holds Add stage, Undo and Redo.
+The drawing in the middle shows the intent and each stage. The intent's
+`params` chip opens the parameter declarations in the side panel, where you
+can edit their names, descriptions, defaults and required state. The `goal`
+parameter stays present. The side column has two panes: **YAML**, the text of
+the workflow to type over, and **Properties**. The page header holds Save, the
+saved or unsaved state, and the flow-check state. Properties shows the
+selected stage (the first one when the page opens): its `name`, its `agent`
+and its `prompt`, and **Delete stage**. These are the keys of a stage that the
+view edits. A stage may also have a `prompt_file`, which the page shows as a
+read-only path and a save keeps. The stages run in the order they are listed,
+and there is no way to link or reorder them yet.
 
 The **YAML** pane edits the whole file. Typing over it freezes Add and every
 stage field until that raw edit is saved or typed back. **Save** writes the

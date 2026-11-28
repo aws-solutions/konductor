@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import Box from '@cloudscape-design/components/box';
+import Button from '@cloudscape-design/components/button';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import {
   NODE_HEIGHT,
@@ -86,6 +88,31 @@ function NodeShape({
   );
 }
 
+const PARAM_BUTTON_STYLE = {
+  root: {
+    background: {
+      active: 'var(--wf-intent-bg)',
+      default: 'var(--wf-intent-bg)',
+      hover: 'var(--wf-intent-bg)',
+    },
+    borderColor: {
+      active: 'var(--wf-intent-text)',
+      default: 'var(--wf-intent-text)',
+      hover: 'var(--wf-intent-text)',
+    },
+    borderRadius: '999px',
+    color: {
+      active: 'var(--wf-intent-text)',
+      default: 'var(--wf-intent-text)',
+      hover: 'var(--wf-intent-text)',
+    },
+    focusRing: {
+      borderColor: 'var(--wf-intent-text)',
+      borderRadius: '999px',
+    },
+  },
+};
+
 /** The start of the workflow: the outcome it is for, with a run order out. */
 export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
   return (
@@ -99,6 +126,22 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
       <div className="wf-node-intent-outcome" title={data.outcome}>
         {data.outcome}
       </div>
+      <Box
+        className="wf-intent-params-position"
+        display="inline-block"
+        data-intent-params="true"
+      >
+        <Button
+          variant="normal"
+          style={PARAM_BUTTON_STYLE}
+          ariaLabel={`params ${data.paramCount}, edit declared parameters`}
+          nativeButtonAttributes={{
+            className: 'wf-intent-params-control nodrag nopan nowheel nokey',
+          }}
+        >
+          params {data.paramCount}
+        </Button>
+      </Box>
       <SequenceOut />
     </div>
   );

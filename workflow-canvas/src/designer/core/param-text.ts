@@ -55,9 +55,15 @@ const LAYOUT_REASON =
   'The params mapping is not a block with one parameter and field per line, so the editor cannot change it byte for byte. Make the change in a text editor.';
 
 const BOM = '\uFEFF';
-const NAME_REASON =
+/** Why a parameter name cannot be written, as the writer and the form say it. */
+export const PARAM_NAME_ERROR =
   'A parameter name must start with a lowercase letter and contain only lowercase letters, digits or underscores, up to 64 characters.';
 const PARAM_NAME = /^[a-z][a-z0-9_]{0,63}$/;
+
+/** The error for a parameter name the writer would refuse, if it has one. */
+export function parameterNameError(name: string): string | undefined {
+  return PARAM_NAME.test(name) ? undefined : PARAM_NAME_ERROR;
+}
 const PARAMS_KEY = /^params[ \t]*:[ \t]*(?:#.*)?$/;
 const ANY_PARAMS_KEY = /^(?:params|"params"|'params')[ \t]*:/;
 const QUOTED_PARAMS_KEY = /^(?:"params"|'params')[ \t]*:/;
@@ -369,8 +375,8 @@ export function withParams(
   params: readonly ParamToWrite[],
   sourceHasParams = params.some((param) => param.from !== undefined),
 ): Written {
-  if (params.some((param) => !PARAM_NAME.test(param.name))) {
-    return { ok: false, reason: NAME_REASON };
+  if (params.some((param) => parameterNameError(param.name) !== undefined)) {
+    return { ok: false, reason: PARAM_NAME_ERROR };
   }
   const plan = planFor(text);
   if (typeof plan === 'string') return { ok: false, reason: plan };

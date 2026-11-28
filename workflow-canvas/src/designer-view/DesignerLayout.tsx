@@ -4,6 +4,8 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Tabs from '@cloudscape-design/components/tabs';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { FieldForm, type FieldFormChange } from './FieldForm';
+import { ParamsPanel, type ParamChange } from './ParamsPanel';
+import type { DraftParam } from '../designer/core/draft';
 import { YamlPane, type MarkedStage } from './YamlPane';
 import type { AgentOption, FieldValues, StageFieldRule } from './field-rules';
 import './designer-layout.css';
@@ -65,6 +67,13 @@ export function DesignerLayout({
   stage,
   agents,
   openProperties = 0,
+  openParams = 0,
+  params,
+  paramsDisabled = false,
+  paramsDisabledReason,
+  onParamChange,
+  onParamAdd,
+  onParamRemove,
   onStageChange,
   onStageDelete,
   deleteDisabled = false,
@@ -80,6 +89,15 @@ export function DesignerLayout({
   agents: readonly AgentOption[];
   /** Goes up when the page asks for the keys of a stage to be shown. */
   openProperties?: number;
+  /** Goes up when the intent asks for the parameter editor. */
+  openParams?: number;
+  /** The workflow parameter declarations. */
+  params?: readonly DraftParam[];
+  paramsDisabled?: boolean;
+  paramsDisabledReason?: string;
+  onParamChange?: (id: string, change: ParamChange) => void;
+  onParamAdd?: () => void;
+  onParamRemove?: (id: string) => void;
   onStageChange: (change: FieldFormChange) => void;
   /** Deletes the picked stage. Without it, no delete control is shown. */
   onStageDelete?: () => void;
@@ -91,6 +109,8 @@ export function DesignerLayout({
   const [folded, setFolded] = useState(false);
   const propertiesPanel = useRef<HTMLDivElement>(null);
   const asked = useRef(openProperties);
+  const paramsAsked = useRef(openParams);
+  const [panel, setPanel] = useState<'stage' | 'params'>('stage');
   // An ask for the keys of a stage that the focus has not answered yet.
   const [wanted, setWanted] = useState(false);
   const sideId = `${id}-side`;
@@ -98,10 +118,20 @@ export function DesignerLayout({
   useEffect(() => {
     if (openProperties === asked.current) return;
     asked.current = openProperties;
+    setPanel('stage');
     setTab(PROPERTIES_TAB);
     setFolded(false);
     setWanted(true);
   }, [openProperties]);
+
+  useEffect(() => {
+    if (openParams === paramsAsked.current) return;
+    paramsAsked.current = openParams;
+    setPanel('params');
+    setTab(PROPERTIES_TAB);
+    setFolded(false);
+    setWanted(true);
+  }, [openParams]);
 
   // The focus moves for an ask that has not been answered yet, and the ask is
   // spent by that: every other way of reaching this tab, the arrow keys among
@@ -116,7 +146,7 @@ export function DesignerLayout({
     (form?.querySelector<HTMLElement>(EDITABLE) ?? panel)?.focus();
   }, [wanted, tab, folded]);
 
-  const properties = stage ? (
+  const stageProperties = stage ? (
     <SpaceBetween size="m">
       <FieldForm
         stageName={stage.name}
@@ -140,6 +170,23 @@ export function DesignerLayout({
   ) : (
     <p className="wf-layout-note">{NO_STAGE}</p>
   );
+  const properties =
+    panel === 'params' &&
+    params &&
+    onParamChange &&
+    onParamAdd &&
+    onParamRemove ? (
+      <ParamsPanel
+        params={params}
+        disabled={paramsDisabled}
+        disabledReason={paramsDisabledReason}
+        onChange={onParamChange}
+        onAdd={onParamAdd}
+        onRemove={onParamRemove}
+      />
+    ) : (
+      stageProperties
+    );
 
   return (
     <div className="wf-layout" data-folded={folded ? 'true' : undefined}>
