@@ -36,8 +36,9 @@ export {
 export {
   canEdit,
   changeBlocker,
-  canSave,
+  checksBlocker,
   doneWhenBlocker,
+  canSave,
   fileBlocker,
   formTextOf,
   insertionBlocker,

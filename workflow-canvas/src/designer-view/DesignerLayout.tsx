@@ -42,6 +42,9 @@ export interface LayoutStage {
   readonly outputsStructuralDisabled?: boolean;
   readonly outputsStructuralDisabledReason?: string;
   readonly doneWhen?: readonly string[];
+  readonly doneWhenDisabled?: boolean;
+  readonly doneWhenDisabledReason?: string;
+  readonly doneWhenError?: string;
   /** The `agent` of the stage when it was loaded, before any edit. */
   readonly originalAgent?: string;
   /** The keys that cannot be changed yet; they are shown as they are. */
@@ -85,7 +88,10 @@ export function DesignerLayout({
   openChecks = 0,
   params,
   checks,
-  checkIds = [],
+  checksDisabled = false,
+  checksDisabledReason,
+  checksStructuralDisabled = checksDisabled,
+  checksStructuralDisabledReason = checksDisabledReason,
   paramsDisabled = false,
   paramsDisabledReason,
   onParamChange,
@@ -119,13 +125,19 @@ export function DesignerLayout({
   /** The workflow parameter declarations. */
   params?: readonly DraftParam[];
   checks?: readonly DraftCheck[];
-  checkIds?: readonly string[];
+  checksDisabled?: boolean;
+  checksDisabledReason?: string;
+  checksStructuralDisabled?: boolean;
+  checksStructuralDisabledReason?: string;
   paramsDisabled?: boolean;
   paramsDisabledReason?: string;
   onParamChange?: (id: string, change: ParamChange) => void;
   onParamAdd?: () => void;
   onParamRemove?: (id: string) => void;
-  onCheckChange?: (key: string, check: Omit<DraftCheck, 'key'>) => void;
+  onCheckChange?: (
+    key: string,
+    check: Omit<DraftCheck, 'key' | 'sourceIndex'>,
+  ) => void;
   onCheckAdd?: () => void;
   onCheckRemove?: (key: string) => void;
   onDoneWhenChange?: (ids: readonly string[]) => void;
@@ -214,14 +226,24 @@ export function DesignerLayout({
         />
       )}
       {onDoneWhenChange && (
-        <FormField label="done_when">
+        <FormField
+          label="done_when"
+          errorText={stage.doneWhenError}
+          constraintText={stage.doneWhenDisabledReason}
+        >
           <Multiselect
-            selectedOptions={(stage.doneWhen ?? []).map((id) => ({
-              value: id,
+            selectedOptions={(stage.doneWhen ?? []).map((key) => ({
+              value: key,
+              label:
+                (checks ?? []).find((check) => check.key === key)?.id ?? key,
+            }))}
+            options={(checks ?? []).map(({ key, id }) => ({
+              value: key,
               label: id,
             }))}
-            options={checkIds.map((id) => ({ value: id, label: id }))}
             placeholder="Choose checks"
+            invalid={stage.doneWhenError !== undefined}
+            disabled={stage.doneWhenDisabled}
             onChange={({ detail }) =>
               onDoneWhenChange(
                 detail.selectedOptions.flatMap((option) =>
@@ -253,6 +275,10 @@ export function DesignerLayout({
     onCheckRemove ? (
       <ChecksPanel
         checks={checks}
+        disabled={checksDisabled}
+        disabledReason={checksDisabledReason}
+        structuralDisabled={checksStructuralDisabled}
+        structuralDisabledReason={checksStructuralDisabledReason}
         onChange={onCheckChange}
         onAdd={onCheckAdd}
         onRemove={onCheckRemove}
