@@ -49,9 +49,10 @@ import {
   canRemoveStage,
   changeBlocker,
   checksBlocker,
+  dataLinkBlocker,
+  dataLinkStructureBlocker,
   dataUnlinkBlocker,
   doneWhenBlocker,
-  dataLinkBlocker,
   DEFAULT_AGENT,
   fileBlocker,
   insertionBlocker,
@@ -816,37 +817,29 @@ export function DesignView({
         showLinkMessage('An output can link only to a later stage.');
         return;
       }
-      const targetPrompt = promptFieldOf(state, target);
-      if (targetPrompt.kind !== 'text') {
-        showLinkMessage(
-          targetPrompt.kind === 'file' || targetPrompt.kind === 'both'
-            ? 'A stage with prompt_file cannot take a data link.'
-            : targetPrompt.reason,
-        );
-        return;
-      }
       const outputs = source.outputs ?? [];
-      const candidate = outputs[0] ?? {
-        name: 'output',
-        path: 'OUTPUT.md',
-      };
-      const blocker = dataLinkBlocker(
+      const structureBlocker = dataLinkStructureBlocker(
         state,
         sourceId,
         targetId,
-        candidate.name,
-        outputs.length === 0 ? candidate : undefined,
+        outputs.length === 0,
       );
-      if (blocker) {
-        showLinkMessage(blocker);
+      if (structureBlocker) {
+        showLinkMessage(structureBlocker);
         return;
       }
       setLinkMessage(undefined);
       if (outputs.length === 1) {
-        editor.linkOutput(sourceId, targetId, candidate.name);
+        const output = outputs[0]!;
+        const blocker = dataLinkBlocker(state, sourceId, targetId, output.name);
+        if (blocker) {
+          showLinkMessage(blocker);
+          return;
+        }
+        editor.linkOutput(sourceId, targetId, output.name);
         select(targetId);
         setOpens((count) => count + 1);
-        announceLinked(source.name, candidate.name, target.name);
+        announceLinked(source.name, output.name, target.name);
         return;
       }
       setLinkRequest({

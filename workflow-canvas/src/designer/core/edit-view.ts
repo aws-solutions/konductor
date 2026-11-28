@@ -328,6 +328,50 @@ export function writtenOf(state: EditState): Written {
   return result;
 }
 
+/** Why source and target YAML cannot carry a proposed data link. */
+export function dataLinkStructureBlocker(
+  state: EditState,
+  sourceId: string,
+  targetId: string,
+  createsOutput: boolean,
+): string | undefined {
+  const blocked = changeBlocker(state);
+  if (blocked) return blocked;
+  const source = state.draft.stages.find(({ id }) => id === sourceId);
+  const target = state.draft.stages.find(({ id }) => id === targetId);
+  if (!source || !target) return 'The output link does not fit these stages.';
+  const prompt = promptFieldOf(state, target);
+  if (prompt.kind === 'file' || prompt.kind === 'both') {
+    return 'A stage with prompt_file cannot take a data link.';
+  }
+  if (prompt.kind === 'blocked') return prompt.reason;
+  const outputs = source.outputs ?? [];
+  const existing = outputs.reduce<(typeof outputs)[number] | undefined>(
+    (shortest, output) =>
+      !shortest || output.name.length < shortest.name.length
+        ? output
+        : shortest,
+    undefined,
+  );
+  const candidate = createsOutput ? { name: 'x', path: 'X' } : existing;
+  if (!candidate) return 'The output link does not fit these stages.';
+  const draft = linkOutput(
+    state.draft,
+    sourceId,
+    targetId,
+    candidate.name,
+    createsOutput ? candidate : undefined,
+  );
+  if (draft === state.draft) {
+    return (
+      outputLinkPromptError(state.draft, sourceId, targetId, candidate.name) ??
+      'The output link does not fit these stages.'
+    );
+  }
+  const written = writtenOf({ ...state, draft });
+  return written.ok ? undefined : written.reason;
+}
+
 /** Why a proposed data link cannot be written without changing the draft. */
 export function dataLinkBlocker(
   state: EditState,
@@ -336,7 +380,12 @@ export function dataLinkBlocker(
   outputName: string,
   newOutput?: { readonly name: string; readonly path: string },
 ): string | undefined {
-  const blocked = changeBlocker(state);
+  const blocked = dataLinkStructureBlocker(
+    state,
+    sourceId,
+    targetId,
+    newOutput !== undefined,
+  );
   if (blocked) return blocked;
   const promptError = outputLinkPromptError(
     state.draft,

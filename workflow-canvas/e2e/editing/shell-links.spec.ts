@@ -213,6 +213,28 @@ test('rejects a link that would exceed the prompt limit', async ({
   await expect(designer.prompt).toHaveValue('x'.repeat(32768));
 });
 
+test('opens the dialog near the prompt limit for a shorter output name', async ({
+  designer,
+}) => {
+  const line = 'Read {draft.x}.';
+  await designer.stage('review').click();
+  await designer.prompt.fill('x'.repeat(32768 - line.length - 1));
+
+  await dragLink(designer, 'draft', 'review');
+  const dialog = designer.page.getByTestId('link-output-dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('textbox', { name: 'Output name' }).fill('x');
+  await dialog.getByRole('textbox', { name: 'Output path' }).fill('X.md');
+  await dialog
+    .getByRole('button', { name: 'Link output', exact: true })
+    .click();
+
+  await expect(dataEdge(designer, 'x')).toBeVisible();
+  await expect(designer.prompt).toHaveValue(
+    `${'x'.repeat(32768 - line.length - 1)}\n${line}`,
+  );
+});
+
 test('refused drops show a reason and leave the draft unchanged', async ({
   designer,
 }) => {
@@ -287,14 +309,26 @@ test('edge deletion removes generated lines but keeps authored references', asyn
   await expect(designer.prompt).toHaveValue('Use {draft.design} as input.');
 });
 
-test('the keyboard path uses the same output dialog', async ({ designer }) => {
+test('the keyboard path links, saves and reloads', async ({ designer }) => {
   await designer.stage('review').click();
   await designer.stage('draft').click();
   const panel = designer.page.getByRole('tabpanel', { name: 'Properties' });
   await panel.getByRole('button', { name: 'Link output to...' }).click();
   await designer.page.getByRole('menuitem', { name: 'review' }).click();
   const dialog = designer.page.getByTestId('link-output-dialog');
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await designer.expectStatus('No changes');
+  await dialog.getByRole('textbox', { name: 'Output name' }).fill('design');
+  await dialog.getByRole('textbox', { name: 'Output path' }).fill('DESIGN.md');
+  await dialog
+    .getByRole('button', { name: 'Link output', exact: true })
+    .click();
+
+  await expect(dataEdge(designer, 'design')).toBeVisible();
+  await expect(designer.page.getByTestId('designer-live')).toHaveText(
+    'Linked draft.design to review.',
+  );
+  await expect(panel.getByRole('textbox', { name: 'name' })).toBeFocused();
+  await designer.save.click();
+  await designer.expectStatus('Saved');
+  await designer.page.reload();
+  await expect(dataEdge(designer, 'design')).toBeVisible();
 });

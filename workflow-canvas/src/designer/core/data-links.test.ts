@@ -70,6 +70,19 @@ describe('data-link draft edits', () => {
     expect(linkOutput(over, 's1', 's2', 'design')).toBe(over);
   });
 
+  it.each(['', 'Keep this.', 'Keep this.\n', 'Keep this.\n\n'])(
+    'round trips a prompt ending in %j',
+    (prompt) => {
+      const draft = draftOf(
+        [{ ...STAGES[0]!, outputs: { design: 'DESIGN.md' } }, STAGES[1]!],
+        ['', prompt],
+      );
+      const linked = linkOutput(draft, 's1', 's2', 'design');
+      const unlinked = unlinkOutput(linked, 's1', 's2', 'design');
+      expect(unlinked.stages[1]?.prompt).toBe(prompt);
+    },
+  );
+
   it('removes only the exact generated line', () => {
     const draft = draftOf(
       [{ ...STAGES[0]!, outputs: { design: 'DESIGN.md' } }, STAGES[1]!],

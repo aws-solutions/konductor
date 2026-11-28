@@ -478,10 +478,7 @@ export function outputLinkPromptError(
   const target = draft.stages.find((stage) => stage.id === targetId);
   if (!source || !target) return undefined;
   const line = `Read {${source.name}.${outputName}}.`;
-  const prompt =
-    target.prompt === ''
-      ? line
-      : `${target.prompt}${target.prompt.endsWith('\n') ? '' : '\n'}${line}`;
+  const prompt = target.prompt === '' ? line : `${target.prompt}\n${line}`;
   return [...prompt].length > MAX_PROMPT_CHARS ? LINK_PROMPT_ERROR : undefined;
 }
 
@@ -513,10 +510,7 @@ export function linkOutput(
     outputs.find((candidate) => candidate.name === outputName) ?? created;
   if (!output) return draft;
   const line = `Read {${source.name}.${output.name}}.`;
-  const prompt =
-    target.prompt === ''
-      ? line
-      : `${target.prompt}${target.prompt.endsWith('\n') ? '' : '\n'}${line}`;
+  const prompt = target.prompt === '' ? line : `${target.prompt}\n${line}`;
   if ([...prompt].length > MAX_PROMPT_CHARS) return draft;
   return {
     ...draft,
