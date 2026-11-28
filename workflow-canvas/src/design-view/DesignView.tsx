@@ -378,6 +378,7 @@ export function DesignView({
       name: state.saved.view.name,
       intent: state.saved.view.intent,
       paramCount: shownParamCount,
+      checkCount: (state.draft.checks ?? []).length,
       stages: state.draft.stages.map((stage) => {
         const from = state.bases.indexOf(stage.id);
         const source = from < 0 ? undefined : state.saved.view.stages[from];
@@ -402,6 +403,7 @@ export function DesignView({
       state.draft.stages,
       state.saved.view,
       shownParamCount,
+      state.draft.checks,
     ],
   );
   const graph = useMemo(() => buildGraph(spec, harness), [spec, harness]);
@@ -410,6 +412,7 @@ export function DesignView({
   // column opens its keys each time, as the drawing says it will.
   const [opens, setOpens] = useState(0);
   const [paramOpens, setParamOpens] = useState(0);
+  const [checkOpens, setCheckOpens] = useState(0);
   const [announcement, setAnnouncement] = useState({ text: '', count: 0 });
   const findingsRef = useRef<HTMLDivElement>(null);
   const paramNameErrors = useMemo(
@@ -491,6 +494,7 @@ export function DesignView({
         select(stage.id);
         requestAnimationFrame(() => findingsRef.current?.focus());
       },
+      onChecks: () => setCheckOpens((count) => count + 1),
     }),
     [state.selectedId, state.draft.stages, select],
   );
@@ -560,6 +564,9 @@ export function DesignView({
     outputsDisabledReason: outputSourceBlocker,
     outputsStructuralDisabled: outputStructuralBlocker !== undefined,
     outputsStructuralDisabledReason: outputStructuralBlocker,
+    doneWhen: (picked.doneWhen ?? []).flatMap((reference) =>
+      'key' in reference ? [reference.key] : [],
+    ),
     rules,
     values,
     // The agent the file names, which stays on offer even when the list of
@@ -763,12 +770,21 @@ export function DesignView({
           agents={agents}
           openProperties={opens}
           openParams={paramOpens}
+          openChecks={checkOpens}
           params={state.draft.params}
+          checks={state.draft.checks ?? []}
+          checkIds={(state.draft.checks ?? []).map((check) => check.id)}
           paramsDisabled={paramsSourceBlocker !== undefined}
           paramsDisabledReason={paramsMessage}
           onParamChange={(id, change) => editor.setParam(id, change)}
           onParamAdd={editor.addParam}
           onParamRemove={editor.removeParam}
+          onCheckChange={editor.setCheck}
+          onCheckAdd={editor.addCheck}
+          onCheckRemove={editor.removeCheck}
+          onDoneWhenChange={(ids) => {
+            if (picked) editor.setDoneWhen(picked.id, ids);
+          }}
           onOutputChange={(id, change) => {
             if (picked && outputSourceBlocker === undefined) {
               const output = picked.outputs?.find(

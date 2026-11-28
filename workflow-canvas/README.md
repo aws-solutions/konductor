@@ -502,6 +502,7 @@ including when the editor already holds a different raw text.
   prompt that is an alias or has an anchor or a tag, for a stage with two
   `prompt` keys, and for a file that uses a `<<` merge key.
 - **Outputs** edits each `stages[].outputs` declaration as a name and path row. Add and remove change only that stage's output mapping. Output names are checked against the contract before the writer runs. The writer changes scalar ranges in place, supports block and flow mappings, and refuses structural edits that could move a comment, anchor, alias, tag or duplicate key.
+- **Checks** opens from the intent card and edits `intent.accept` file and run checks. Run arguments use one line each. A stage's **done_when** picker lists the declared check ids. Both writers change only their source ranges and refuse comments or YAML metadata they cannot keep safely.
 - **Delete stage** removes the stage, selects the one before it (or the next,
   for the first) and moves focus to its name. A workflow keeps at least one
   stage, so it is off for the last.

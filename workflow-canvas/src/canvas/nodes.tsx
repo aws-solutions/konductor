@@ -142,6 +142,22 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
           params {data.paramCount}
         </Button>
       </Box>
+      <Box
+        className="wf-intent-checks-position"
+        display="inline-block"
+        data-intent-checks="true"
+      >
+        <Button
+          variant="normal"
+          style={PARAM_BUTTON_STYLE}
+          ariaLabel={`checks ${data.checkCount}, edit acceptance checks`}
+          nativeButtonAttributes={{
+            className: 'wf-intent-checks-control nodrag nopan nowheel nokey',
+          }}
+        >
+          checks {data.checkCount}
+        </Button>
+      </Box>
       <SequenceOut />
     </div>
   );

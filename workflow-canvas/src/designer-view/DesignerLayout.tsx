@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import Button from '@cloudscape-design/components/button';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import FormField from '@cloudscape-design/components/form-field';
+import Multiselect from '@cloudscape-design/components/multiselect';
 import Tabs from '@cloudscape-design/components/tabs';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { FieldForm, type FieldFormChange } from './FieldForm';
 import { ParamsPanel, type ParamChange } from './ParamsPanel';
 import { OutputsPanel, type OutputChange } from './OutputsPanel';
-import type { DraftOutput, DraftParam } from '../designer/core/draft';
+import { ChecksPanel } from './ChecksPanel';
+import type {
+  DraftCheck,
+  DraftOutput,
+  DraftParam,
+} from '../designer/core/draft';
 import { YamlPane, type MarkedStage } from './YamlPane';
 import type { AgentOption, FieldValues, StageFieldRule } from './field-rules';
 import './designer-layout.css';
@@ -34,6 +41,7 @@ export interface LayoutStage {
   readonly outputsDisabledReason?: string;
   readonly outputsStructuralDisabled?: boolean;
   readonly outputsStructuralDisabledReason?: string;
+  readonly doneWhen?: readonly string[];
   /** The `agent` of the stage when it was loaded, before any edit. */
   readonly originalAgent?: string;
   /** The keys that cannot be changed yet; they are shown as they are. */
@@ -74,12 +82,19 @@ export function DesignerLayout({
   agents,
   openProperties = 0,
   openParams = 0,
+  openChecks = 0,
   params,
+  checks,
+  checkIds = [],
   paramsDisabled = false,
   paramsDisabledReason,
   onParamChange,
   onParamAdd,
   onParamRemove,
+  onCheckChange,
+  onCheckAdd,
+  onCheckRemove,
+  onDoneWhenChange,
   onStageChange,
   onOutputChange,
   onOutputAdd,
@@ -100,13 +115,20 @@ export function DesignerLayout({
   openProperties?: number;
   /** Goes up when the intent asks for the parameter editor. */
   openParams?: number;
+  openChecks?: number;
   /** The workflow parameter declarations. */
   params?: readonly DraftParam[];
+  checks?: readonly DraftCheck[];
+  checkIds?: readonly string[];
   paramsDisabled?: boolean;
   paramsDisabledReason?: string;
   onParamChange?: (id: string, change: ParamChange) => void;
   onParamAdd?: () => void;
   onParamRemove?: (id: string) => void;
+  onCheckChange?: (key: string, check: Omit<DraftCheck, 'key'>) => void;
+  onCheckAdd?: () => void;
+  onCheckRemove?: (key: string) => void;
+  onDoneWhenChange?: (ids: readonly string[]) => void;
   onStageChange: (change: FieldFormChange) => void;
   onOutputChange?: (id: string, change: OutputChange) => void;
   onOutputAdd?: () => void;
@@ -122,7 +144,8 @@ export function DesignerLayout({
   const propertiesPanel = useRef<HTMLDivElement>(null);
   const asked = useRef(openProperties);
   const paramsAsked = useRef(openParams);
-  const [panel, setPanel] = useState<'stage' | 'params'>('stage');
+  const checksAsked = useRef(openChecks);
+  const [panel, setPanel] = useState<'stage' | 'params' | 'checks'>('stage');
   // An ask for the keys of a stage that the focus has not answered yet.
   const [wanted, setWanted] = useState(false);
   const sideId = `${id}-side`;
@@ -144,6 +167,15 @@ export function DesignerLayout({
     setFolded(false);
     setWanted(true);
   }, [openParams]);
+
+  useEffect(() => {
+    if (openChecks === checksAsked.current) return;
+    checksAsked.current = openChecks;
+    setPanel('checks');
+    setTab(PROPERTIES_TAB);
+    setFolded(false);
+    setWanted(true);
+  }, [openChecks]);
 
   // The focus moves for an ask that has not been answered yet, and the ask is
   // spent by that: every other way of reaching this tab, the arrow keys among
@@ -181,6 +213,25 @@ export function DesignerLayout({
           onRemove={onOutputRemove}
         />
       )}
+      {onDoneWhenChange && (
+        <FormField label="done_when">
+          <Multiselect
+            selectedOptions={(stage.doneWhen ?? []).map((id) => ({
+              value: id,
+              label: id,
+            }))}
+            options={checkIds.map((id) => ({ value: id, label: id }))}
+            placeholder="Choose checks"
+            onChange={({ detail }) =>
+              onDoneWhenChange(
+                detail.selectedOptions.flatMap((option) =>
+                  option.value ? [option.value] : [],
+                ),
+              )
+            }
+          />
+        </FormField>
+      )}
       {onStageDelete && (
         <Button
           disabled={deleteDisabled}
@@ -195,11 +246,22 @@ export function DesignerLayout({
     <p className="wf-layout-note">{NO_STAGE}</p>
   );
   const properties =
-    panel === 'params' &&
-    params &&
-    onParamChange &&
-    onParamAdd &&
-    onParamRemove ? (
+    panel === 'checks' &&
+    checks &&
+    onCheckChange &&
+    onCheckAdd &&
+    onCheckRemove ? (
+      <ChecksPanel
+        checks={checks}
+        onChange={onCheckChange}
+        onAdd={onCheckAdd}
+        onRemove={onCheckRemove}
+      />
+    ) : panel === 'params' &&
+      params &&
+      onParamChange &&
+      onParamAdd &&
+      onParamRemove ? (
       <ParamsPanel
         params={params}
         disabled={paramsDisabled}
